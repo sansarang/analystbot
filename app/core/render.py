@@ -1326,4 +1326,7 @@ def say_long(card: Card) -> str:
     out.append("- 검열 결과 — "
                + ("⬜ **위반 0건**" if not rows
                   else " / ".join(str(x) for x in rows[:6])))
+    # 🔴 **버린 평도 보인다** — 템플릿으로 내려간 이유를 사람이 추적하게(#3)
+    for one in list(getattr(got, "dropped", None) or [])[:6]:
+        out.append(f"    🗑 버린 평 — {one}")
     return "\n".join(out)

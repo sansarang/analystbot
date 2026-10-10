@@ -65,7 +65,21 @@ def run(card: Card, *, state: RunState) -> SayOut:
         bad = bad2
     state.note(f"s9say 최종 평 — **템플릿으로 내린다** · {bad[:3]}")
     logger.info("[s9say] 템플릿 — %s", bad[:3])
-    return template(card, box, why="검열 두 번 위반", violations=bad)
+    # 🔴 **버린 평을 버리지 않는다** — 긴 카드가 그 글과 위반을 같이 보인다.
+    #    ⚠️ 그러지 않으면 *"왜 템플릿이 됐나"* 를 사람이 추적할 길이 없다(#3).
+    drop = again if again is not None else got
+    return template(card, box, why="검열 두 번 위반", violations=bad,
+                    dropped=_drop_of(drop))
+
+
+def _drop_of(got: SayOut | None) -> list[str]:
+    """🔴 버린 평을 **글자로** 남긴다(긴 카드가 적는다)."""
+    if got is None:
+        return []
+    out = [f"결론 `{got.verdict}` · 한 줄 {got.one_line}"]
+    out += [f"주장 — {kp.claim} / {kp.mechanism} · 근거 {list(kp.refs or [])}"
+            for kp in (got.key_points or [])]
+    return out
 
 
 def _used(got: SayOut, box: Bundle) -> dict:
@@ -136,7 +150,7 @@ def check(got: SayOut, *, card: Card, box: Bundle) -> list[str]:
                       and box.items.get(str(r)) is not None]
             if not flanks:
                 out.append(f"🔴 (s) 측면·자리 주장에 **1-1·1-2 근거가 없다** — "
-                           f"`{said[:40]}`")
+                           f"근거 {refs} · `{said[:60]}`")
             elif any(bool(box.items[str(r)].approx) for r in flanks) \
                     and APPROX not in said:
                 out.append(f"🔴 (s) **근사 지표인데 `{APPROX}` 라고 안 썼다** — "
@@ -145,12 +159,26 @@ def check(got: SayOut, *, card: Card, box: Bundle) -> list[str]:
         if any(w in said for w in PATH_WORDS) \
                 and not [r for r in refs if str(r).startswith("G")]:
             out.append(f"🔴 (t) 골 경로 주장에 **1-3 근거(`G*`)가 없다** — "
-                       f"`{said[:40]}`")
-        # (v) 운 요소
-        if any(w in said for w in LUCK_WORDS) \
-                and any(w in said for w in POWER_WORDS):
+                       f"근거 {refs} · `{said[:60]}`")
+        # (v) 운 요소 — 🔴 **"그 득점력"의 근거가 PK·자책골인** 모양만 센다
+        #
+        #  두 모양이다:
+        #    ① 주장에 `득점력` 류가 있고 **그 메커니즘이** PK·자책골이다
+        #       (지시서가 금지한 바로 그 꼴: *"PK로 만든 득점을 득점력의 근거로"*)
+        #    ② 메커니즘 **한 문장 안**에 둘이 같이 있다
+        #
+        #  ⚠️ 실측 2026-10-10(강원–부천): 한 주장 안에서 앞은 *"강원 득점 유형은
+        #     세트피스"*, 뒤는 *"부천 실점에 PK 비중"* 이었는데 **거짓 위반**으로
+        #     걸려 좋은 평이 템플릿으로 떨어졌다 — 글 전체를 한 덩이로 봤기 때문이다.
+        hit = (any(w in kp.claim for w in POWER_WORDS)
+               and any(w in said for w in LUCK_WORDS))
+        if not hit:
+            hit = any(any(w in one for w in LUCK_WORDS)
+                      and any(w in one for w in POWER_WORDS)
+                      for one in _sentences(kp.mechanism))
+        if hit:
             out.append(f"🔴 (v) **운 요소 득점을 득점력의 근거로 썼다** — "
-                       f"`{said[:40]}`")
+                       f"`{said[:60]}`")
         # 🔴 근거 없는 감성어(§2 프롬프트 원칙 · 금지 조항)
         for w in MOOD_WORDS:
             if w in said:
@@ -179,6 +207,15 @@ def check(got: SayOut, *, card: Card, box: Bundle) -> list[str]:
             out.append(f"🔴 (u) 확률은 **{want}** 인데 평이 "
                        f"`{lost[0]}` 승리를 말한다")
     return out
+
+
+#: 🔴 문장 끝 — 한국어 종결·마침표·중점으로 가른다
+_SENT = re.compile(r"[.!?。]\s*|(?<=다)\s+|,\s*")
+
+
+def _sentences(said: str) -> list[str]:
+    """🔴 (v) 가 **문장 안**에서만 세도록 가른다. ⚠️ 빈 토막은 버린다."""
+    return [x.strip() for x in _SENT.split(str(said or "")) if x and x.strip()]
 
 
 #: 🔴 *"{팀}이 이긴다"* 꼴 — ⚠️ 팀 이름이 그냥 나온 것과 가른다
@@ -250,7 +287,8 @@ def _names_in(said: str, known: set[str]) -> list[str]:
 # ══════════════════════════════════════════════════════════════════
 
 def template(card: Card, box: Bundle, *, why: str,
-             violations: list[str] | None = None) -> SayOut:
+             violations: list[str] | None = None,
+             dropped: list[str] | None = None) -> SayOut:
     """🔴 §3 — LLM 이 두 번 어긋났을 때의 평. **코드가 쓴다**(모델이 아니다).
 
     🔴 *"사실 묶음 **상위 근거 셋** + 확률 방향"* — 상위는 **발동 규칙 → 라인업
@@ -280,6 +318,7 @@ def template(card: Card, box: Bundle, *, why: str,
         decisive_moment="⬜ 템플릿 — 승부처는 적지 않는다",
         flip_condition="⬜ 템플릿 — 뒤집히는 조건은 적지 않는다",
         audit="템플릿", violations=list(violations or [f"🔴 {why}"]),
+        dropped=list(dropped or []),
         used={one.id: one.text for one in pick})
 
 
@@ -324,7 +363,10 @@ def _prompt(card: Card, box: Bundle) -> list:
         "🔴 **위에 없는 선수·숫자·사건을 쓰지 않는다** — 검열이 잡아 버린다.\n"
         f"🔴 측면(왼쪽·오른쪽) 주장은 `X*`·`F*` 근거가 있어야 하고, 그 근거가 "
         f"`{APPROX}` 지표면 글에도 **`{APPROX}`** 라고 쓴다.\n"
-        "🔴 골 경로(필드골·세트피스·PK …) 주장은 `G*` 근거가 있어야 한다.\n"
+        "🔴 골 경로(필드골·세트피스·코너·프리킥·역습·PK·자책골·헤더) 를 **주장에든 "
+        "메커니즘에든 한 글자라도 적으면** 그 주장의 `refs` 에 `G*` 를 **반드시** "
+        "넣는다. 측면(왼쪽·오른쪽·측면)을 적으면 같은 식으로 `X*` 또는 `F*` 를 "
+        "넣는다 — 둘 다 적었으면 **둘 다** 넣는다.\n"
         "🔴 **자책골·PK 로 만든 득점을 '득점력'의 근거로 쓰지 않는다.**\n"
         "🔴 `기세`·`정신력` 같은 말은 **쓰지 않는다**(사실 id 가 없다).\n"
         "🔴 `audit`·`violations`·`used` 칸은 **비워 둔다**(코드가 채운다).\n"

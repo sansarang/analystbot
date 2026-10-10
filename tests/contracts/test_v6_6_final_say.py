@@ -254,6 +254,17 @@ def test_v6_v_운요소_득점을_득점력의_근거로_못_쓴다():
                    refs=[gid, "X1"])
     bad = s9_say.check(_say(key_points=[one] * 3), card=card, box=box)
     assert any("(v)" in x for x in bad), bad
+    # 🔴🔴 **거짓 위반을 막는다** — 실측 2026-10-10(강원–부천): 한 주장 안에서
+    #    앞 문장은 *"강원 득점은 세트피스"*, 뒤 문장은 *"부천 실점에 PK 비중"*
+    #    이었는데 (v) 가 글 전체를 한 덩이로 봐 **좋은 평을 템플릿으로 떨어뜨렸다**.
+    #    ⚠️ 돌연변이: (v) 를 다시 글 전체로 돌리면 이 줄이 빨개진다.
+    far = KeyPoint(
+        claim="강원은 세트피스에서 골이 난다",
+        mechanism=("강원 득점 유형은 세트피스가 가장 많다. 부천은 실점에서 "
+                   "PK 비중이 높다. 그래서 공격력 차이가 아니라 경로 차이다"),
+        refs=[gid, "X1"])
+    ok = s9_say.check(_say(key_points=[far] * 3), card=card, box=box)
+    assert not any("(v)" in x for x in ok), ok
 
 
 def test_v6_근거없는_감성어를_잡는다():

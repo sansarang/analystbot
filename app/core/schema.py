@@ -708,6 +708,8 @@ class SayOut(Frozen):
     violations: list[str] = Field(default_factory=list)
     #: 🔴 긴 카드가 적는다 — `{id: 원 사실}`(검열이 쓴 그 묶음)
     used: dict = Field(default_factory=dict)
+    #: 🔴 **버린 평**(검열이 두 번 잡은 글) — 긴 카드가 보인다(#3 추적 가능하게)
+    dropped: list[str] = Field(default_factory=list)
 
 
 class SpellOut(Frozen):
