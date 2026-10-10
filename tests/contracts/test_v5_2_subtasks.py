@@ -37,14 +37,24 @@ def _ref():
 # ══════════════════════════════════════════════════════════════════
 # 분할 — 유형군 4 × 홈/원정 = 8
 # ══════════════════════════════════════════════════════════════════
-def test_r2_하위가_여덟이다():
+def test_r2_하위가_유형군_곱_두자리다():
+    """🔴 하위 = **유형군 × 홈/원정**. ⚠️ 종전엔 `== 8`(A~D)로 못 박혀 있었다.
+
+    🔴🔴 **F(새 사실 72시간)를 더했다** — 사용자 지시 2026-10-10(재작성) §3-1:
+       *"하위 과제 **F**(경기 하나에 대해서만): 팀마다, 킥오프 기준 72시간 안,
+       현지어+영어."* 그래서 수를 **표에서 자라게** 바꿨다(#1 사본 금지 —
+       손으로 적은 8은 표가 바뀌면 한 발 늦는다).
+    """
     from app.research import subtasks
     got = subtasks.split(_ref())
-    assert len(got) == 8, f"🔴 하위가 {len(got)}개다(8이어야 한다): " \
-                          f"{[s.name for s in got]}"
+    keys = [g["key"] for g in subtasks.GROUPS]
+    assert len(got) == 2 * len(keys), (
+        f"🔴 하위가 {len(got)}개다(유형군 {len(keys)} × 2 여야 한다): "
+        f"{[s.name for s in got]}")
     names = [s.name for s in got]
-    assert names == ["A-홈", "A-원정", "B-홈", "B-원정",
-                     "C-홈", "C-원정", "D-홈", "D-원정"], names
+    assert names == [f"{k}-{side}" for k in keys for side in ("홈", "원정")], names
+    # 🔴 §3-1 — **F 가 있어야 한다**(새 사실이 판단에 들어가는 통로다)
+    assert "F-홈" in names and "F-원정" in names, names
 
 
 def test_r2_유형군이_표에서_온다():
@@ -52,7 +62,8 @@ def test_r2_유형군이_표에서_온다():
     from app.research import subtasks
     assert hasattr(subtasks, "GROUPS"), "🔴 `GROUPS` 표가 없다"
     keys = [g["key"] for g in subtasks.GROUPS]
-    assert keys == ["A", "B", "C", "D"], keys
+    # 🔴 F 를 더했다(§3-1 · 2026-10-10 재작성) — 그 전엔 A~D 였다
+    assert keys == ["A", "B", "C", "D", "F"], keys
     kinds = {k for g in subtasks.GROUPS for k in g["kinds"]}
     # 🔴 지시서 표가 이름을 **그대로 줬다** — 지어낸 것이 아니다
     for want in ("absence_def", "absence_att", "pitcher_state",

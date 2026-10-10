@@ -106,6 +106,14 @@ class Subtask:
     budget: Budget = field(default_factory=lambda: Budget(0, 0, 0, 0))
     #: 🔴 2차 보충인가 — 리드가 `not_tried`·`empty` 칸만 다시 돌린다
     second: bool = False
+    #: 🔴🔴 **그 하위의 발행일 창(시간)** — 사용자 지시 2026-10-10(재작성) §3-1
+    #
+    #  > 하위 과제 F … 킥오프 기준 **72시간 안**.
+    #
+    #  🔴 `0` 이면 **기본 창**(`s5_verify.DATE_WINDOW_DAYS` 7일)을 쓴다.
+    #  ⚠️ 창을 코드에 적지 않는다 — `config/subtask_groups.yaml` 의
+    #     `window_hours:` 가 원본이다(사본 금지).
+    window_hours: int = 0
 
 
 def _budget(*, second: bool = False) -> Budget:
@@ -182,6 +190,8 @@ def split(ref: Any) -> list[Subtask]:
                 langs=langs,
                 # 🔴 **자기 팀의 현지어**를 든다(§4-2)
                 local_lang=team_lang(team),
+                # 🔴 §3-1 — 그 하위의 발행일 창(F 는 72시간)
+                window_hours=int(row.get("window_hours") or 0),
                 # 🔴 **하위마다 새 객체**(M59) — 공유하면 한쪽이 다 쓴다
                 budget=_budget()))
     logger.info("[subtasks] 하위 %d개 — %s", len(out),

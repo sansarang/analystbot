@@ -535,7 +535,49 @@ def reason_check(said, *, card) -> list[str]:
             if not any(nm in k or k in nm for k in known if k):
                 bad.append(f"(l) 선수 사실 — `{nm}` 은 XI·결장 명단·변수 대상에 "
                            f"없다(없는 선수 언급)")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **(o) 새 사실이 있으면 한 문장은 그것을 쓴다**(§3-5 · 2026-10-10)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 카드 이유 문단에 새 사실이 하나라도 있으면 **최소 한 문장은 새 사실을
+    #  > 쓴다**(검열 항목 추가).
+    #
+    #  🔴 세는 규칙은 `render.new_facts` 하나다(사본 금지).
+    #  ⚠️ 새 사실이 **0건이면 이 항목은 아무것도 세지 않는다** — 없는 것을
+    #     쓰라고 할 수는 없다(그 0건은 §3-4 가 카드에 적는다).
+    bad += new_fact_check(rows, card=card)
     return bad
+
+
+def new_fact_check(rows: list, *, card) -> list[str]:
+    """🔴🔴 **(o) §3-5** — 새 사실이 있으면 **한 문장 이상**이 그것을 써야 한다.
+
+    🔴 어떻게 세나: 새 사실 변수의 **id**(`R3`)가 그 문장의 `fact_refs` 에 있거나,
+       그 변수의 **대상**(선수·팀 이름)이 문장 글자에 있으면 쓴 것으로 본다.
+    ⚠️ `fact_refs` 만 보면 모델이 번호를 안 적었을 때 **멀쩡한 문장을 위반으로**
+       센다(실측: 모델이 번호를 자주 빼먹는다). 🔴 그래서 글자도 본다.
+    """
+    from app.core import render
+    got = render.new_facts(card)
+    if not got:
+        return []
+    ids = {str(v.id) for v in got}
+    words: set[str] = set()
+    for v in got:
+        for said in (str(v.target or ""), str(v.subject or "")):
+            # ⚠️ `absence:손흥민` 처럼 **유형:대상** 꼴이다 — 뒤쪽만 쓴다
+            one = said.split(":")[-1].strip()
+            if len(one) >= 2:
+                words.add(one)
+    for line in (rows or []):
+        if ids & {str(f) for f in (getattr(line, "fact_refs", None) or [])}:
+            return []
+        low = str(getattr(line, "text", "") or "")
+        if any(w in low for w in words):
+            return []
+    return [f"(o) 새 사실 {len(got)}건이 있는데 이유 문단이 **하나도 안 썼다** — "
+            f"§3-5(새 뉴스는 판단에 반드시 들어간다) · 새 사실 {sorted(ids)}"]
+
 
 
 #: 🔴 사람 이름으로 **볼 수 있는** 조각 — 라틴 문자 두 낱말 이상이거나 한글 2~4자

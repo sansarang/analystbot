@@ -211,3 +211,63 @@ words:
     hockey:
       en: [hockey, NHL]
       ko: [아이스하키]
+
+  # ══════════════════════════════════════════════════════════════════
+  # 🔴🔴 **새 사실(72시간) 개념 낱말** — 사용자 지시 2026-10-10(재작성) §3-1
+  # ══════════════════════════════════════════════════════════════════
+  #
+  # > 개념 낱말(search_words.yaml): 복귀·합류·전역·부상·결장·출전 정지·경고
+  # > 누적·대표팀 차출·로테이션·기자회견·감독 발언·징크스·원정 강세·직전 대회
+  # > 일정(컵·대륙 대회) / 復帰・合流・離脱・欠場・出場停止・会見・スタメン /
+  # > return·injured·suspended·ruled out·press conference / กลับมา·บาดเจ็บ·แบน /
+  # > 复出·伤停·停赛·首发 / regresa·lesionado·suspendido.
+  #
+  # ⚠️ **지시서가 준 낱말을 그대로** 적었다 — 늘리는 것은 실측으로 한다.
+  # 🔴 유형은 `variable_types.yaml` 의 `word:` 로 이 개념을 **가리킨다**(사본 금지).
+
+  # 복귀·합류·전역 — `returning`
+  returning:
+    ko: [복귀, 합류, 전역, 제대, 복귀 선발]
+    en: [return, returns, back from injury, available again]
+    ja: [復帰, 合流]
+    th: [กลับมา]
+    zh: [复出, 回归]
+    es: [regresa, regreso, vuelve]
+
+  # 출전 정지·경고 누적 — `suspension`
+  suspension:
+    ko: [출전 정지, 경고 누적, 퇴장, 징계]
+    en: [suspended, suspension, booking ban, red card ban]
+    ja: [出場停止, 警告累積]
+    th: [แบน, ใบแดง]
+    zh: [停赛, 累计黄牌]
+    es: [suspendido, sancionado]
+
+  # 결장·이탈 — `absence` (위 `injury` 와 **다른 개념이 아니다**: 72시간 창의
+  # ⚠️ 같은 낱말을 또 적지 않고, 지시서가 새로 준 언어만 더한다)
+  absence72:
+    ko: [결장, 이탈, 부상]
+    en: [ruled out, injured, out injured, doubt]
+    ja: [離脱, 欠場]
+    th: [บาดเจ็บ]
+    zh: [伤停]
+    es: [lesionado, baja]
+
+  # 직전 대회 일정(컵·대륙 대회) — `schedule_load`
+  schedule_load:
+    ko: [컵대회, 대륙 대회, 원정 일정, 휴식일]
+    en: [cup tie, continental, midweek, days rest, travel]
+    ja: [カップ戦, 連戦, 中3日]
+    th: [ถ้วย]
+    zh: [杯赛, 连续作战]
+    es: [copa, calendario]
+
+  # 징크스·원정 강세(특정 구장·원정 기록) — `venue_record`
+  venue_record:
+    ko: [원정 강세, 원정 징크스, 홈 강세, 상대 전적 구장]
+    en: [away record, home record, at this stadium, unbeaten at]
+    ja: [アウェー成績, ホーム成績]
+    th: [สถิติเยือน]
+    zh: [客场战绩, 主场战绩]
+    es: [como visitante, racha fuera]
+

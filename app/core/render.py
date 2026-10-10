@@ -49,6 +49,10 @@ def card_text(card: Card, *, debug: bool = False) -> str:
               _b7(card), _b8(card), _b9(card), _b10(card))
     for num, title, body in zip(NUMBERS, TITLES, bodies, strict=True):
         out.append(f"\n**{num}. {title}**\n{body}")
+        # 🔴🔴 §3-4 — **🆕 새 사실(72시간)** 은 결장 블록(2b) 바로 뒤다
+        #    ⚠️ 왜 거기인가: 새 사실의 대부분이 **결장·복귀**라 같이 읽힌다.
+        if num == "2b":
+            out.append("\n" + new_facts_block(card))
         # 🔴 **결론 바로 아래**가 논평 자리다(지시 ④)
         if num == "8":
             out.append(_comment(card, debug=debug))
@@ -977,3 +981,49 @@ def _price_of(box, side: str) -> float | None:
         if q.market == "win" and q.side == side:
             return q.price
     return None
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **🆕 새 사실(72시간)** — 사용자 지시 2026-10-10(재작성) §3-4
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 카드 블록 *"🆕 새 사실(72시간)"*: 항목 한 줄 + **출처·날짜** + **변수 번호**.
+#  > 0건이면 *"새 사실 0건 — 검색 n회·문서 m건"* 과 운영자 알림.
+
+#: 🔴 새 사실을 나른 하위 과제 — `config/subtask_groups.yaml` 의 `F` 다
+NEW_SUBS: tuple[str, ...] = ("F-home", "F-away")
+NEW_HEAD = "🆕 **새 사실(72시간)**"
+
+
+def new_facts(card: Card) -> list:
+    """🔴 그 카드의 **새 사실 변수들** — 하위 과제 F 가 나른 것.
+
+    🔴 변수가 **자기 하위를 들고 있다**(`Variable.subtask`) — `Card` 에 `docs`
+       칸이 없어서 문서를 거쳐 셀 길이 없었다(그래서 칸을 하나 더했다).
+    ⚠️ 묶인 변수는 **F 가 이긴다**(`s5_verify._merge`) — 같은 사실을 72시간 창에서
+       찾았다면 그것은 새로 나온 사실이다(§3-3).
+    """
+    return [v for v in (card.variables or [])
+            if not v.from_rule and str(v.subtask or "") in NEW_SUBS]
+
+
+def new_facts_block(card: Card) -> str:
+    """🔴🔴 §3-4 — 카드 블록 한 덩이. **0건이면 그 사실을 적는다**(#3).
+
+    한 줄 꼴: `· {claim} — 출처 {n}곳 · {발행일} · [{변수 번호}]`
+    """
+    rows = new_facts(card)
+    if not rows:
+        # 🔴 §3-4 — *"0건이면 '새 사실 0건 — 검색 n회·문서 m건'"*
+        # ⚠️ `Cost` 에 검색 횟수 칸이 **없다**(`calls` 는 LLM 호출이다) — 지어
+        #    내지 않고 **있는 수**를 적는다: 기사 변수 수와 깔때기다.
+        n_var = len([v for v in (card.variables or []) if not v.from_rule])
+        box = dict(getattr(getattr(card, "funnel", None), "counts", None) or {})
+        said = " · ".join(f"{k} {v}" for k, v in sorted(box.items())
+                          if k in ("queries", "hits", "kept_date", "docs"))
+        return (f"{NEW_HEAD} — 🔴 **0건** · 기사 변수 {n_var}개(F 하위에서 온 것 "
+                f"0개)" + (f" · {said}" if said else ""))
+    out = [NEW_HEAD]
+    for v in rows:
+        out.append(f"· {v.claim} — 출처 {len(v.doc_ids)}곳 · [{v.id}]")
+    return "\n".join(out)

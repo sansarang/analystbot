@@ -253,6 +253,8 @@ def run(ref: MatchRef, facts: Facts, docs: list[Doc],
             hardness=("hard" if level == 2 else "soft"),
             weight=float(WEIGHT_OF[name]), claim=row["claim"],
             quote=row["quote"], doc_ids=row["doc_ids"],
+            # 🔴 §3-4 — **어느 하위가 나른 변수인가**(🆕 블록이 이것으로 고른다)
+            subtask=str(row.get("subtask") or ""),
             # 🔴🔴 **근거로 쓸 수 있나** — 등급 0(단일 aggregator·충돌)은 못 쓴다.
             #    ⚠️ 옛 경로가 `hardness == "none"` 으로 가른 그 선이다
             #       (`analyze.split_basis`) — 뜻을 옮겨 적었다.
@@ -402,6 +404,8 @@ def _one(c: VarCandidate, ref: MatchRef, by_id: dict[str, Doc], *,
             "goals": goals_of(kind), "target": target,
             "match_link": str(c.match_link or ""),
             "claim": c.claim, "quote": quote, "doc_ids": [doc.id],
+            # 🔴 §3-4 — **어느 하위가 나른 사실인가**(🆕 블록이 이것으로 고른다)
+            "subtask": str(c.subtask or ""),
             # 🔴 유형이 바뀌면 방향을 다시 세야 한다 — 그 경기 맥락을 함께 든다
             "_ref": ref}
 
@@ -608,6 +612,16 @@ def _merge(rows: list[dict], *, state: RunState,
         #    말했으면 그 사실은 가려진 것이다(지시 2).
         if not row.get("_basis_off"):
             keep["_basis_off"] = ""
+        # 🔴🔴 §3-3·§3-4 — **F(새 사실 72시간)가 함께 찾았으면 새 사실이다**
+        #
+        #  > 같은 사실 여러 기사 → 하나로 묶고 **출처 수만 올린다**.
+        #
+        #  ⚠️ 묶으면 **먼저 들어온 하위**가 남는다 — A~D 가 먼저면 그 변수는
+        #     🆕 블록에서 사라진다. 🔴 F 가 같은 사실을 72시간 창에서 찾았다면
+        #     그것은 **새로 나온 사실**이고, 사용자가 그것을 보라고 했다.
+        if str(row.get("subtask") or "").startswith("F-") \
+                and not str(keep.get("subtask") or "").startswith("F-"):
+            keep["subtask"] = str(row["subtask"])
         state.drop(f"s5/{row['type']}/{target[:24]}", DropReason.DUPLICATE,
                    f"같은 사실로 묶었다(열쇠 {key[1]}·{key[2][:20]}) → 출처 "
                    f"{len(keep['doc_ids'])}곳")

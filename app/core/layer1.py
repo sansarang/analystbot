@@ -593,6 +593,14 @@ def text(card: Card, *, buttons: bool = True) -> str:
     out.append(f"🎯 예상 {_scores(card)}")
     out.append(f"🎯 보드 판정: {_board(card)}")
     out.append(f"⚠️ 뒤집히는 길: {_flip(card)}")
+    # 🔴🔴 §3-4 — **🆕 새 사실(72시간)** 은 1겹에도 올라온다
+    #
+    #  > 새 뉴스(72시간)는 **판단에 반드시 들어간다**(지시서 원칙 ③).
+    #
+    #  🔴 1겹이 **기본 카드**다 — 여기 없으면 사람이 그 사실을 못 본다.
+    #  ⚠️ 0건일 때도 적는다(그 사실이 §3-4 가 요구한 보고다). 🔴 다만 1겹은
+    #     900자 상한이라 **항목 둘까지**만 보이고 나머지는 긴 카드가 든다.
+    out.append(_new_facts(card))
     if buttons:
         out.append(" ".join(f"[{lab}]" for lab, _ in BUTTONS))
     said = "\n".join(x for x in out if x is not None)
@@ -745,3 +753,22 @@ def _flip(card: Card) -> str:
     if not out:
         return "반대 결과를 그린 갈래가 없다 — 세트가 한쪽으로만 쏠렸다"
     return " / ".join(out)
+
+
+#: 🔴 1겹에 보일 새 사실 **항목 수**(§5 900자 상한) — 나머지는 긴 카드가 든다
+NEW_SHOW = 2
+
+
+def _new_facts(card: Card) -> str:
+    """🔴 §3-4 — 1겹의 **🆕 새 사실** 줄. 0건이면 그 사실을 한 줄로 적는다.
+
+    🔴 세는 규칙은 `render.new_facts` 하나다(사본 금지) — 여기서는 **줄이기만** 한다.
+    """
+    from app.core import render
+    rows = render.new_facts(card)
+    if not rows:
+        return f"{render.NEW_HEAD} — 🔴 0건"
+    said = " / ".join(f"{_cap(v.claim, 70)}[{v.id}]" for v in rows[:NEW_SHOW])
+    more = f" (+{len(rows) - NEW_SHOW}건은 `📖 자세히`)" if len(rows) > NEW_SHOW \
+        else ""
+    return f"{render.NEW_HEAD} {said}{more}"

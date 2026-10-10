@@ -44,6 +44,18 @@ def _count(stage: str, n: int = 1) -> None:
     _TALLY[stage] = _TALLY.get(stage, 0) + int(n)
 
 
+def _window_of(sub: Any) -> timedelta:
+    """🔴🔴 그 하위의 **발행일 창** — 사용자 지시 2026-10-10(재작성) §3-1.
+
+    > 하위 과제 **F** … 킥오프 기준 **72시간 안**.
+
+    🔴 수는 `config/subtask_groups.yaml` 의 `window_hours:` 가 든다(사본 금지).
+    ⚠️ 없으면 기본 창(`s5_verify.DATE_WINDOW_DAYS` 7일)이다 — 다른 하위는 그대로다.
+    """
+    said = int(getattr(sub, "window_hours", 0) or 0)
+    return timedelta(hours=said) if said > 0 else timedelta(days=_window_days())
+
+
 def _sub_cfg() -> dict:
     from app.core.llm import cfg
     return dict((cfg().get("budget") or {}).get("per_subtask") or {})
@@ -321,7 +333,7 @@ async def _fetch(sub: Any, ref: MatchRef, kept: list[tuple[Any, str]], *,
     # 🔴 **자리를 잡은 URL** — 캐시와 따로 든다(캐시는 `Doc` 을, 이쪽은 **의도**를)
     claimed = claimed if claimed is not None else set(cache)
     top = int(_sub_cfg().get("fetch_top") or 3)
-    floor = ref.kickoff_utc - timedelta(days=_window_days())
+    floor = ref.kickoff_utc - _window_of(sub)
     out: list[Doc] = []
     for h, tier in kept:
         if len(out) >= top:

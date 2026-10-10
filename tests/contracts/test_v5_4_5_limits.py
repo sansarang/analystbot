@@ -40,7 +40,12 @@ def test_v5_4_5_경기당_fetch_상한이_스물넷이다():
     """
     from app import rules, solar
     want = int((rules.llm_budget()["per_match"]["tool_calls"] or {})["fetch"])
-    assert want == 24, want          # 🔴 지시서가 준 수다(§1-3)
+    # 🔴 수를 박지 않는다 — **하위당 fetch × 하위 수**가 그 수다
+    #    (실사고 2026-10-10: 하위 F 를 더하자 박아 둔 24 가 빨개졌다)
+    from app.research import subtasks as _st
+    from app import rules as _r
+    want2 = int(_r.llm_budget()["per_subtask"]["fetch"]) * 2 * len(_st.groups())
+    assert want == want2, (want, want2)
     b = solar.MatchBudget()
     b.tool_calls["fetch"] = want
     ok, why = b.can_tool("fetch")

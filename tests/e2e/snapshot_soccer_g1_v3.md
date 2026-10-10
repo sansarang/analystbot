@@ -6,7 +6,7 @@
 ⏳ **확정 XI 전** — 10-06 19:00 KST 이후 `/재분석`(지금 XI 는 none)
 
 **1. 자료 한계 고백**
-- 버린 것: `body_missing` 6건 · `conflict` 1건 · `duplicate` 5건 · `identity_mismatch` 63건 · `post_match` 3건 · `sport_mismatch` 5건 · `stale` 2건 · `team_tier_mismatch` 4건 · `type_off_catalog` 3건
+- 버린 것: `body_missing` 12건 · `conflict` 1건 · `duplicate` 5건 · `identity_mismatch` 78건 · `post_match` 3건 · `sport_mismatch` 5건 · `stale` 2건 · `team_tier_mismatch` 4건 · `type_off_catalog` 3건
 - 문서 8건 · 변수 10개 · 시나리오 6개
 - 못 받은 칸 — 오늘 XI 없음(상태 none — IR02·IR03 이 안 돈다) · 감독 미확보 · 순위표 없음
 - 🔴 충돌: **채택 구조 사실**(공식 어댑터 6승 3무 0패 · 표본 9경기) / **버림 기사**(11승 4무 1패) — 공식 > 출처 수 > 등급
@@ -18,6 +18,8 @@
 **2b. 결장**
 - **South Korea**
     Jens Castrop(?) — 부상 · 복귀 Mid October 2026 · www.fotmob.com
+
+🆕 **새 사실(72시간)** — 🔴 **0건** · 기사 변수 4개(F 하위에서 온 것 0개) · docs 8 · hits 271 · kept_date 188 · queries 15
 
 **3. 폼**
 - **South Korea** — 최근5 **L L W L D** · 득점 평균 0.8 · 보정 평균 **0.25** · 휴식 4일 · 무패 1 · 무승 2

@@ -34,9 +34,13 @@ def test_dec2_경기당_예산이_올랐다():
     assert int(got["input_tokens"]) == 300_000, got
     tot = int(got["output_tokens"])
     assert tot > 20_000, f"🔴 결정 ② 전(20k)으로 되돌아갔다: {tot}"
-    # 🔴 **하위 8개 × 하위 상한 + 2차 예비 = 경기 합계**(지시서 §1 표)
-    assert tot == 8 * int(sub["output_tokens"]) \
-        + int(sub.get("second_output_tokens") or 0), (tot, sub)
+    # 🔴 **하위 수 × 하위 상한 + 2차 예비 = 경기 합계**(지시서 §1 표)
+    #    ⚠️ 하위 수를 **박지 않는다** — 실사고 2026-10-10: 하위 F(새 사실 72시간)
+    #       를 더하자 박아 둔 `8` 이 빨개졌다. 🔴 표에서 센다.
+    from app.research import subtasks as _st
+    n = 2 * len(_st.groups())
+    assert tot == n * int(sub["output_tokens"]) \
+        + int(sub.get("second_output_tokens") or 0), (tot, sub, n)
 
 
 def test_dec2_돈_상한은_그대로다():

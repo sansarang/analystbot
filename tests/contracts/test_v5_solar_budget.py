@@ -45,9 +45,13 @@ def test_v5_2_한도가_yaml에_선언돼_있다():
     #       🔴 계약이 보는 것은 *"칸이 있고 종전(20k)보다 크다"* 다.
     assert pm.get("input_tokens") == 300_000, pm
     assert int(pm.get("output_tokens") or 0) > 20_000, pm
-    assert (pm.get("tool_calls") or {}).get("search") == 24, pm
-    # 🔴 지시서 2026-10-06 §1-3 이 16 → **24** 로 올렸다(하위 3건 × 8)
-    assert (pm.get("tool_calls") or {}).get("fetch") == 24, pm
+    # 🔴 수를 박지 않는다 — **하위당 수 × 하위 수**가 경기 상한이다
+    #    (실사고 2026-10-10: 하위 F 를 더하자 박아 둔 24 가 빨개졌다)
+    from app.research import subtasks as _st
+    n = 2 * len(_st.groups())
+    sub = b["per_subtask"]
+    assert (pm.get("tool_calls") or {}).get("search") == int(sub["search"]) * n, pm
+    assert (pm.get("tool_calls") or {}).get("fetch") == int(sub["fetch"]) * n, pm
     # ⚠️ 수를 박지 않는다 — 사용자가 2026-10-05 에 $3 → $5 로 올렸다.
     #    🔴 계약이 보는 것은 *"그 칸이 있고 월 상한보다 작다"* 다.
     assert float(b.get("per_day_usd") or 0) > 0, b
@@ -133,9 +137,14 @@ def test_v5_2_경기당_출력_상한에서_멈춘다():
 
 
 def test_v5_2_도구_호출_상한():
-    """🔴 §2 — search 24 · fetch 16."""
+    """🔴 §2 — 경기 상한만큼 쓰면 막힌다. ⚠️ 수는 **표가 든다**(사본 금지).
+
+    🔴 실사고 2026-10-10: 하위 F 를 더하자 박아 둔 `24` 가 빨개졌다.
+    """
+    from app import rules as _r0
+    cap0 = int((_r0.llm_budget()["per_match"]["tool_calls"])["search"])
     mb = solar.MatchBudget()
-    for _ in range(24):
+    for _ in range(cap0):
         assert mb.can_tool("search")[0]
         mb.took_tool("search")
     ok, why = mb.can_tool("search")

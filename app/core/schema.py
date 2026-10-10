@@ -39,8 +39,12 @@ MatchFormat = Literal["league", "group", "knockout_single", "two_leg_1st",
                       "two_leg_2nd", "final_single", "friendly", "unknown"]
 
 #: 🔴 하위 과제 **여덟** — 유형군 4 × 팀 2(§2 s3)
+#: 🔴🔴 **F 를 더했다** — 사용자 지시 2026-10-10(재작성) §3-1(새 사실 72시간).
+#  ⚠️ `Literal` 이라 여기 없으면 그 하위의 문서·변수가 **스키마에서 거부된다**
+#     (조용히 0건이 아니라 터진다 — 그 쪽이 맞다).
 SubtaskId = Literal["A-home", "A-away", "B-home", "B-away",
-                    "C-home", "C-away", "D-home", "D-away"]
+                    "C-home", "C-away", "D-home", "D-away",
+                    "F-home", "F-away"]
 
 #: 🔴 출처 등급 — 도메인 등급표가 든다
 Tier = Literal["official", "national", "local", "aggregator", "tip", "dead"]
@@ -627,6 +631,13 @@ class Variable(Frozen):
     #
     #  ⚠️ 실사고 2026-10-06: 근거에서 뺀 `R1`(맞대결 표본 1경기)을 DeepSeek 문장이
     #     그대로 인용했다. 🔴 이 칸이 그 분리의 **단일 원본**이다.
+    #: 🔴🔴 **어느 하위 과제가 나른 변수인가**(`F-home` 등) — 사용자 지시
+    #  2026-10-10(재작성) §3-4 가 **🆕 새 사실(72시간)** 블록을 요구한다.
+    #
+    #  ⚠️ `Card` 에는 `docs` 칸이 **없다** — 그래서 문서를 거쳐 세려면 길이 없다.
+    #     🔴 그래서 **변수가 자기 하위를 들고 간다**(칸은 더하기만 한다).
+    #  ⚠️ 규칙으로 지은 변수(`from_rule`)는 **빈 글자**다(하위가 없다).
+    subtask: str = ""
     usable_as_basis: bool = True
 
 

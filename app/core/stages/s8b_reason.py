@@ -83,7 +83,8 @@ def _prompt(card: Card, box: dict[str, dict]) -> list:
         f"**{layer1.CAP_REASON}자 안**. 문장마다 `fact_refs` 에 위 사실 id 를 "
         "**하나 이상** 적는다(id 를 글에 적지는 말고 칸에만).\n"
         "🔴 문단에는 **서로 다른 종류**의 고유 사실이 최소 셋 들어가야 한다"
-        "(선수 이름 · 결장·징계 · 순위·동기 · 맞대결 수치 · 폼 수치 중 셋).")
+        "(선수 이름 · 결장·징계 · 순위·동기 · 맞대결 수치 · 폼 수치 중 셋)."
+        + _new_rule(card))
     return [
         llm.Message(role="system",
                     content=("너는 축구 분석 카드의 **이유 문단**을 쓴다. "
@@ -94,6 +95,24 @@ def _prompt(card: Card, box: dict[str, dict]) -> list:
             f"걸지 여부 **{layer1.bet_words(card)}**\n\n"
             f"🔴 **카드 사실**(이것만 쓴다):\n{facts}\n\n{rule}")),
     ]
+
+
+def _new_rule(card: Card) -> str:
+    """🔴🔴 §3-5 — **새 사실이 있으면 한 문장은 그것을 쓰라고** 적는다.
+
+    > 카드 이유 문단에 새 사실이 하나라도 있으면 **최소 한 문장은 새 사실을 쓴다**
+    > (검열 항목 추가).
+
+    ⚠️ 검열만 넣으면 모델이 계속 걸리고 **템플릿으로 떨어진다** — 쓸 수 있게
+       프롬프트가 먼저 말해야 한다. 🔴 세는 규칙은 `render.new_facts` 하나다.
+    """
+    from app.core import render
+    got = render.new_facts(card)
+    if not got:
+        return ""
+    said = " · ".join(f"`{v.id}` {v.claim}" for v in got[:4])
+    return ("\n🔴🔴 **새 사실(72시간)이 있다 — 최소 한 문장은 이것을 쓴다**"
+            f"(§3-5): {said}")
 
 
 def template(card: Card) -> ReasonPara:

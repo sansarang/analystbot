@@ -28,8 +28,15 @@ def test_wo1_예산이_되돌아왔다():
     from app import rules
     b = rules.llm_budget()
     assert int(b["per_subtask"]["output_tokens"]) == 4_000, b["per_subtask"]
-    assert int(b["per_match"]["output_tokens"]) == 40_000, b["per_match"]
-    assert int(b["per_match"]["tool_calls"]["fetch"]) == 24, b["per_match"]
+    # 🔴 수를 박지 않는다 — **하위 합계 + 2차 예비 = 경기 상한**이 불변식이다
+    #    (실사고 2026-10-10: 하위 F 를 더하자 박아 둔 40_000·24 가 빨개졌다).
+    sub = b["per_subtask"]
+    from app.research import subtasks as _st
+    n = 2 * len(_st.groups())
+    assert int(b["per_match"]["output_tokens"]) == \
+        int(sub["output_tokens"]) * n + int(sub.get("second_output_tokens") or 0), b
+    assert int(b["per_match"]["tool_calls"]["fetch"]) == \
+        int(sub["fetch"]) * n, b["per_match"]
     # 🔴 하위 8개 × 4,000 = 32,000 ≤ 경기 40,000 (2차 예비 8,000 이 그 차이다)
     assert 8 * 4_000 <= int(b["per_match"]["output_tokens"])
 
