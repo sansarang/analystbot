@@ -38,6 +38,7 @@ import asyncio
 import logging
 import sys
 import time
+from typing import Any
 from datetime import datetime, timedelta, timezone
 
 KST = timezone(timedelta(hours=9))
@@ -49,10 +50,29 @@ class _Msg:
     def __init__(self, text: str) -> None:
         self.text = text
         self.chunks: list[str] = []
+        self.chat = None
+        self.message_id = None
+        self.sent_id = 0
 
-    async def answer(self, body: str) -> None:        # noqa: D102
+    async def answer(self, body: str, **kw) -> Any:    # noqa: D102
+        """🔴 `**kw` 를 받는다 — 봇이 `reply_markup`(버튼)을 함께 보낸다.
+
+        ⚠️ 실사고 2026-10-10: 버튼을 붙인 뒤 이 도구가
+           `TypeError: unexpected keyword argument 'reply_markup'` 로 터졌다 —
+           **카드를 다 만들고 나서** 터져 실행이 버려졌다.
+        🔴 버튼을 **글자로 찍는다** — 도구에서 눌러 볼 수는 없지만 어떤 버튼이
+           붙었는지는 보여야 한다(#3 조용히 삼키지 않는다).
+        """
         self.chunks.append(str(body))
         print(str(body), flush=True)
+        kb = kw.get("reply_markup")
+        rows = getattr(kb, "inline_keyboard", None) or []
+        if rows:
+            said = " / ".join(" ".join(b.text for b in row) for row in rows)
+            print(f"[버튼] {said}", flush=True)
+        # 🔴 봇이 보낸 메시지의 자리를 본다(§2-3 이 그것을 고쳐 쓴다)
+        self.sent_id = len(self.chunks)
+        return self
 
 
 def _as_of(said: str) -> datetime:

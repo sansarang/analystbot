@@ -19,7 +19,7 @@
 - **South Korea**
     Jens Castrop(?) — 부상 · 복귀 Mid October 2026 · www.fotmob.com
 
-🆕 **새 사실(72시간)** — 🔴 **0건** · 기사 변수 4개(F 하위에서 온 것 0개) · docs 8 · hits 271 · kept_date 188 · queries 15
+🆕 **새 사실(72시간)** — 🔴 **0건** · 기사 변수 4개(F 하위에서 온 것 0개) · docs 8 · hits 271 · kept_date 188 · queries 20
 
 **3. 폼**
 - **South Korea** — 최근5 **L L W L D** · 득점 평균 0.8 · 보정 평균 **0.25** · 휴식 4일 · 무패 1 · 무승 2

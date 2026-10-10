@@ -248,17 +248,39 @@ def team_lang(team: object) -> str:
     return local[0] if local else ""
 
 
-def first_lang(*, league: str, langs: tuple | list = ()) -> str:
-    """🔴 **1차 질의 언어**(§4-4). 기본은 영어, 한국 리그는 한국어.
+def local_lang_of(*, league: str, teams: tuple | list = ()) -> str:
+    """🔴🔴 **그 경기의 현지어** — 없으면 빈 글자. 사용자 지시 2026-10-10 §3-1.
 
-    ⚠️ `langs` 에 그 언어가 없으면 **있는 것 중 첫 것**이다 — 없는 언어를
-       지어내지 않는다(#4).
+    > 하위 과제 F … 팀마다, 킥오프 기준 72시간 안, **현지어+영어**.
+
+    ══════════════════════════════════════════════════════════════════
+    🔴🔴 **언어는 `queries.langs_for` 가 안다 — 손 목록을 보지 않는다**
+    ══════════════════════════════════════════════════════════════════
+
+    ⚠️ 실사고 2026-10-10: 현지어를 `LOCAL_FIRST`(손으로 적은 한글 이름 다섯)로만
+       골랐다. 그런데 fotmob 은 대회를 **`K-League 1`** 이라고 적는다 — 그 글자가
+       목록에 없어서 강원–부천 검색이 **영어뿐**이었고, 한국어 매체에만 있는
+       새 사실(황문기 병역 복귀 등)을 **한 건도 못 집었다**.
+    🔴 `queries.langs_for` 는 이미 안다: `K-League 1`→`ko`(팀으로 되물어) ·
+       인도네시아 수퍼리그→`id`(자동 등록) · 일본→`ja` · 이탈리아→`it`.
+
+    ⚠️ **1차 질의는 영어다**(§4-4) — 이 함수는 **2차 현지어 질의**의 언어다.
+       🔴 §4-4 의 *"한국 리그는 1차부터 한국어 허용"* 은 그 2차가 지킨다(1차를
+          현지어로 바꿨더니 고정물의 녹음이 전부 빗나갔다 · 2026-10-10).
+       ⚠️ 그래서 `first_lang` 은 **지웠다** — 부르는 곳이 없는 함수는 없는 코드
+          보다 나쁘다(CLAUDE.md #2).
     """
-    got = tuple(str(x) for x in (langs or ()))
-    said = str(league or "")
-    if any(w and w in said for w in LOCAL_FIRST):
-        return "ko" if ("ko" in got or not got) else got[0]
-    return "en" if ("en" in got or not got) else got[0]
+    try:
+        from app import queries
+        rows, _why = queries.langs_for(str(league or ""),
+                                       *[str(x) for x in (teams or ())])
+        got = next((x for x in rows if x and x != "en"), "")
+    except Exception:                                       # noqa: BLE001
+        got = ""
+    if got:
+        return got
+    # 🔴 손 목록은 **퇴로**로만 남긴다(그 다섯은 오래 측정된 이름이다)
+    return "ko" if any(w and w in str(league or "") for w in LOCAL_FIRST) else ""
 
 
 def narrow_words(hits: list) -> list[str]:
@@ -360,3 +382,29 @@ def _sub_cfg() -> dict:
 # 🔴 그 일을 v6 가 한다: 찾기 `s3_docs`, 문단·추출 `s4_extract`(루프 없음).
 # ⚠️ **남긴 것**은 v6 가 부르는 부품뿐이다: `groups`·`split`·`Subtask`·`Budget`·
 #    `comp_short`·`team_lang`·`first_lang`·`narrow_words`·`narrow_query`.
+
+
+def local_name(name: str, lang: str) -> str:
+    """🔴🔴 그 언어로 쓴 **팀 이름**. 없으면 받은 이름 그대로(§3-1 "현지어").
+
+    ⚠️ 실사고 2026-10-10: 한국어 질의를 **로마자 이름**으로 던졌다
+       (`Gangwon FC Bucheon FC 1995 결장`). 한국 매체는 `강원`·`부천`이라 쓴다 —
+       그래서 한국어 질의가 나갔는데도 **한국 기사를 못 집었다**.
+    🔴 이름은 **이름표**(`teamref`)가 든다(사본 금지) — 여기서 짓지 않는다.
+    🔴 **짧은 표기를 고른다** — 매체는 정식명보다 약칭을 쓴다(`강원 FC` 보다 `강원`).
+    """
+    said = str(name or "").strip()
+    one = str(lang or "").strip()
+    if not said or not one:
+        return said
+    try:
+        from app import teamref
+        key, _why = teamref.key_of(said)
+        ref = teamref.registry().teams.get(key) if key else None
+    except Exception:                                       # noqa: BLE001
+        return said
+    rows = [str(x) for x in ((getattr(ref, "names", None) or {}).get(one) or [])
+            if ":" not in str(x)]
+    # 🔴 짧은 것부터 — ⚠️ 너무 짧으면(한 글자) 엉뚱한 결과가 쏟아진다
+    rows = sorted((x for x in rows if len(x) >= 2), key=len)
+    return rows[0] if rows else said

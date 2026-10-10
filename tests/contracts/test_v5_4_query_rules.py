@@ -18,6 +18,10 @@
 """
 from __future__ import annotations
 
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+
 import ast
 import inspect
 
@@ -59,15 +63,29 @@ def test_r4_좁히기_질의도_낱말_상한을_지킨다():
     assert "Ronaldo" in got, got
 
 
-def test_r4_한국_리그는_1차부터_한국어를_허용한다():
-    """🔴 §4-4: *"KBO·K리그·한국 대표팀은 1차부터 한국어 허용."*"""
+def test_r4_현지어_질의가_그_리그_언어로_나간다():
+    """🔴 §4-4(*"1차 영어 → 2차에서 팀 현지어"*) + §3-1(*"현지어+영어"*).
+
+    ⚠️ 종전엔 `first_lang` 으로 *"KBO·K리그는 1차부터 한국어"* 만 셌다. 🔴 그
+       함수는 **아무 데서도 안 불렸다**(1차가 `"en"` 으로 박혀 있었다) — 안 이어진
+       코드라 **지웠다**(CLAUDE.md #2).
+    🔴🔴 실사고 2026-10-10: 현지어를 손으로 적은 목록(`LOCAL_FIRST`)으로만 골라
+       fotmob 표기 **`K-League 1`** 이 안 걸렸다 → 강원–부천 검색이 **영어뿐**이고
+       한국어 매체의 새 사실을 **한 건도** 못 집었다. 그래서 `local_lang_of` 가
+       `queries.langs_for`(이름표·자동 등록·CLDR)에 묻는다.
+    """
     from app.research import subtasks
-    assert subtasks.first_lang(league="KBO", langs=("ko", "en")) == "ko"
-    assert subtasks.first_lang(league="K리그1", langs=("ko",)) == "ko"
-    # 🔴 그 밖은 **영어가 1차**다
-    assert subtasks.first_lang(league="UEFA Nations League",
-                               langs=("fr", "en")) == "en"
-    assert subtasks.first_lang(league="NPB", langs=("ja", "en")) == "en"
+    # 🔴 fotmob·ESPN 표기로도 현지어가 서야 한다(그게 실사고의 핵이다)
+    assert subtasks.local_lang_of(league="K-League 1",
+                                  teams=("Gangwon FC", "Bucheon FC 1995")) == "ko"
+    assert subtasks.local_lang_of(league="K리그1") == "ko"
+    assert subtasks.local_lang_of(league="KBO") == "ko"
+    assert subtasks.local_lang_of(league="J. League",
+                                  teams=("Kashiwa Reysol",)) == "ja"
+    # 🔴 **1차는 영어**다 — 현지어는 2차다(§4-4). 그 자리를 코드로 확인한다
+    said = (ROOT / "app" / "core" / "stages"
+            / "s3_docs.py").read_text(encoding="utf-8")
+    assert 'one = "en"' in said, "🔴 1차 질의가 영어가 아니다(§4-4)"
 
 
 def test_r4_네_번째_검색은_없다():

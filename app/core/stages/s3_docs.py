@@ -90,12 +90,35 @@ def queries_for(sub: Any, ref: MatchRef) -> list[tuple[str, str]]:
                 return str(got[0])
         return ""
 
+    # 🔴 **1차는 영어다**(§4-4: *"1차 영어 → 2차에서 팀 현지어"*).
+    #    ⚠️ 1차를 현지어로 바꿔 봤다가 **되돌렸다**(2026-10-10): 고정물의 질의가
+    #       달라져 녹음이 전부 빗나갔다(기사 변수 0개). 🔴 §4-4 의 *"한국 리그는
+    #       한국어 허용"* 은 **2차 현지어 질의**가 이미 지킨다.
+    one = "en"
     out: list[tuple[str, str]] = [
-        (" ".join(x for x in (mine, other, word("en")) if x), "en")]
-    lang = _st.team_lang(mine) or _st.first_lang(
-        league=ref.competition, langs=tuple(ref.langs))
-    if lang and lang != "en" and word(lang):
+        (" ".join(x for x in (mine, other, word(one)) if x), one)]
+    # 🔴 **현지어 질의의 언어**다(§4-4 의 1차 언어가 아니다 · §3-1 "현지어+영어").
+    #    ⚠️ 실사고 2026-10-10: `first_lang` 을 썼더니 `K-League 1` 이 손 목록에
+    #       없어 한국어 질의가 **안 나갔다**(새 사실 0건의 원인이었다).
+    lang = _st.team_lang(mine) or _st.local_lang_of(
+        league=ref.competition, teams=(mine, other))
+    if lang and lang != one and word(lang):
         out.append((" ".join(x for x in (mine, other, word(lang)) if x), lang))
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **현지 이름으로 한 번 더**(§3-1 "현지어") — 지우지 않고 **더한다**
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 실사고 2026-10-10 ①: 한국어 질의를 **로마자 이름**으로 던져
+        #     `Gangwon FC Bucheon FC 1995 결장` 이 됐다 — 한국 매체는 `강원`·
+        #     `부천`이라 쓴다. 그래서 한국어로 묻고도 한국 기사를 못 집었다.
+        #  ⚠️ 실사고 2026-10-10 ②: 그래서 위 질의의 **이름을 바꿔** 봤더니
+        #     고정물의 녹음이 빗나가 **변수 10→7 · 기사 변수 4→1** 로 깎였다.
+        #     🔴 녹음은 지난 경기라 다시 만들 수 없다 — 그래서 **바꾸지 않고
+        #        한 줄 더한다**(하위당 검색 상한 3 안이다 · §4-5).
+        a, b = _st.local_name(mine, lang), _st.local_name(other, lang)
+        said = " ".join(x for x in (a, b, word(lang)) if x)
+        if said and said != out[-1][0]:
+            out.append((said, lang))
     return [(queries.slot_value(q), lg) for q, lg in out if str(q).strip()]
 
 
@@ -104,9 +127,11 @@ def names_of(ref: MatchRef) -> tuple[list[str], list[str]]:
 
     ⚠️ 인자는 **열쇠**다(§8-1) — 이름을 받으면 또 하나의 해석 지점이 된다.
     """
-    home = [n for n in adapt.names_of_key(ref.home) if n] or [ref.home_name]
-    away = [n for n in adapt.names_of_key(ref.away) if n] or [ref.away_name]
-    return home, away
+    # 🔴 **출처가 실제로 쓴 이름도 넣는다** — 열쇠의 이름만 보면 그 경기 페이지가
+    #    쓴 표기를 버린다(⚠️ 열쇠가 어긋났을 때 그 사실이 조용히 묻힌다).
+    home = [n for n in (*adapt.names_of_key(ref.home), ref.home_name) if n]
+    away = [n for n in (*adapt.names_of_key(ref.away), ref.away_name) if n]
+    return list(dict.fromkeys(home)), list(dict.fromkeys(away))
 
 
 def identity_ok(title: str, snippet: str, names: tuple[list[str], list[str]]
@@ -126,13 +151,37 @@ def identity_ok(title: str, snippet: str, names: tuple[list[str], list[str]]
     for side in names:
         for n in side:
             got = str(n or "").strip().lower()
-            if len(got) >= 3 and got in said:
+            if len(got) >= _min_len(got) and got in said:
                 return True, f"신원 ✅ `{n}`"
     return False, (f"🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — "
                    f"{said[:60]!r}")
 
 
-def sport_ok(sport: str, title: str, body: str) -> tuple[bool, str]:
+#: 🔴 한글·한자·가나는 **두 글자면 구체적**이다 — 로마자는 세 글자가 필요하다
+_CJK = re.compile(r"[가-힣ぁ-んァ-ヴー一-龥]")
+
+
+def _min_len(said: str) -> int:
+    """🔴🔴 신원 검사의 **최소 글자 수** — 글자 종류에 따라 다르다.
+
+    ══════════════════════════════════════════════════════════════════
+    🔴🔴 실사고 2026-10-10 — **한국 기사가 전부 떨어졌다**
+    ══════════════════════════════════════════════════════════════════
+
+    강원–부천 실행에서 `identity_mismatch` **178건**이 났고 문서가 **1건**이었다.
+    한국어 질의는 제대로 나갔는데(`강원 부천 결장` → 8건) 그 기사들이 전부
+    신원 검사에서 떨어졌다 — 🔴 이름표가 `강원`·`부천` 을 **알고 있었는데**
+    이 검사가 `len >= 3` 을 요구했고 그 둘은 **두 글자**다.
+
+    🔴 그래서 **글자 종류로** 가른다: 한글·한자·가나는 2, 로마자는 3.
+    ⚠️ 왜 로마자는 3인가 — 두 글자 로마자(`AC`·`FC`)는 아무 글에나 걸린다.
+       한글 두 글자(`강원`)는 그렇지 않다(음절이 정보를 더 들고 있다).
+    """
+    return 2 if _CJK.search(str(said or "")) else 3
+
+
+def sport_ok(sport: str, title: str, body: str, *,
+             comp: tuple | list = ()) -> tuple[bool, str]:
     """🔴🔴 **종목 검사**(사용자 지시 2026-10-06 ②) — 그 종목 낱말이 본문에 있나.
 
     > `Doc` 단계에서 그 종목 낱말(축구/football/fútbol 등, `search_words.yaml`)이
@@ -153,8 +202,40 @@ def sport_ok(sport: str, title: str, body: str) -> tuple[bool, str]:
     for w in words:
         if str(w).lower() in said:
             return True, f"종목 ✅ `{w}`"
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **대회 이름도 종목의 증거다**(실사고 2026-10-10)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 강원–부천 실행에서 한국 기사 **18건**이 종목 검사에서 떨어졌다. 그
+    #     기사들은 `축구` 를 안 쓰고 **`K리그1 31라운드`** 라고 적는다 — 매체는
+    #     독자가 아는 것을 되풀이하지 않는다.
+    #  🔴 그 글이 **그 대회**를 말하고 있으면 종목은 이미 정해진다. 그래서 대회
+    #     이름(과 그 현지 표기)을 증거로 받는다.
+    #  ⚠️ 두 글자 미만은 받지 않는다 — 아무 글에나 걸린다.
+    for one in (comp or ()):
+        got = str(one or "").strip().lower()
+        if len(got) >= 2 and got in said:
+            return True, f"종목 ✅ 대회 이름 `{one}`(종목 낱말은 없다)"
     return False, (f"🔴 본문에 **{sport} 낱말이 없다**({', '.join(words[:4])} …) — "
                    f"남의 종목 기사다")
+
+
+def comp_names(ref: MatchRef) -> list[str]:
+    """🔴 그 대회를 가리키는 **이름들**(현지 표기 포함) — 종목 검사의 둘째 증거.
+
+    🔴 이름은 **표가 든다**(사본 금지): `config/competitions.yaml` 의 `names` 와
+       `app/league_index.py` 의 리그 이름. ⚠️ 여기서 짓지 않는다.
+    """
+    out = [str(ref.competition or ""), str(ref.competition_short or "")]
+    try:
+        from app.core import competition as _c
+        key, _why = _c.key_of(competition=str(ref.competition or ""))
+        row = _c.row_of(key) if key else {}
+        out += [str(x) for x in (row.get("names") or [])]
+        out.append(_c.short_key(key))
+    except Exception:                                       # noqa: BLE001
+        pass
+    return [x for x in dict.fromkeys(out) if str(x or "").strip()]
 
 
 def gate_ok(said: str) -> tuple[bool, str]:
@@ -388,7 +469,7 @@ async def _fetch(sub: Any, ref: MatchRef, kept: list[tuple[Any, str]], *,
         # 🔴 **종목 검사**(사용자 지시 2026-10-06 ②) — 받은 뒤 본문으로 본다
         #    ⚠️ 제목·스니펫만으로는 모자랐다(테니스 기사가 통과했다).
         ok_s, said_s = sport_ok(ref.sport, str(getattr(h, "title", "") or ""),
-                                str(body))
+                                str(body), comp=comp_names(ref))
         if not ok_s:
             state.drop(f"s3/{name}/{url[:40]}", DropReason.SPORT_MISMATCH,
                        said_s[:100])
@@ -425,6 +506,14 @@ async def _fetch(sub: Any, ref: MatchRef, kept: list[tuple[Any, str]], *,
 #   순위도 `2-1` 꼴로 적힌다). 🔴 그래서 **스코어 + 종료 낱말**을 함께 본다.
 RESULT_WORDS = (
     "최종 스코어", "경기 종료", "풀타임", "승리를 거뒀", "패배를 안", "무승부로",
+    # 🔴🔴 **실측으로 늘렸다**(2026-10-10 · 강원–부천 실행에서 받은 실제 기사)
+    #
+    #  ⚠️ `news.jkn.co.kr/post/1014517` — *"강원, 후반 두 골로 부천 제압 … 부천FC를
+    #     **2-0으로 꺾었다**"*. 🔴 위 낱말 어느 것도 안 걸렸다 — 한국 매체는
+    #     *"꺾었다·제압·승리했다·무릎 꿇"* 으로 쓴다.
+    #  🔴 **기억으로 적지 않았다** — 받은 글에 있던 꼴만 넣고, 늘릴 때도 실측으로
+    #     한다(그 사실을 여기 적는다).
+    "꺾었", "제압", "승리했", "패했", "무승부를 기록", "역전승", "완승", "신승",
     "final score", "full-time", "full time", "ft:", "beat ", "defeated ",
     "won ", "drew ", "試合終了", "勝利", "敗れ", "引き分け",
     "resultado final", "venció", "empató", "derrotó",
@@ -473,14 +562,20 @@ def premature_result(body: str, ref: MatchRef) -> tuple[bool, str]:
 
 
 def _both_teams(line: str, ref: MatchRef) -> bool:
-    """🔴 그 문장에 **이 경기 두 팀**이 다 있나 — 이름 대조는 `verify` 가 원본이다.
+    """🔴 그 문장에 **이 경기 두 팀**이 다 있나.
 
-    ⚠️ 여기서 이름 규칙을 다시 쓰지 않는다(사본 금지) — `verify.mentions_team`
-       이 별칭·현지 표기를 아는 곳이다.
+    🔴 이름은 **이름표가 든 별칭 전부**다(`names_of`) — 로마자만 보면 한국·일본
+       기사를 못 읽는다. ⚠️ 실사고 2026-10-10: 한국 결과 기사(*"부천FC를 2-0으로
+       꺾었다"*)가 `Gangwon FC`·`Bucheon FC 1995` 로만 대조돼 **안 걸렸다**.
+    🔴 최소 글자 수는 `_min_len` 하나다(한글 2 · 로마자 3 · 사본 금지).
     """
-    from app import verify
-    return all(verify.mentions_team(line, str(nm), None)
-               for nm in (ref.home_name, ref.away_name) if str(nm or "").strip())
+    low = str(line or "").lower()
+    for side in names_of(ref):
+        if not any(str(n or "").strip().lower() in low
+                   and len(str(n).strip()) >= _min_len(str(n))
+                   for n in side):
+            return False
+    return True
 
 
 async def regather(ref: MatchRef, sid: str, words: list[str], *,
