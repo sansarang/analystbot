@@ -107,6 +107,19 @@ def test_v6_긴카드가_시간대_리드유지력_발동규칙을_낸다():
         assert _g.PROVISIONAL in said, "🔴 임시값 표시가 카드에서 빠졌다"
 
 
+def test_v6_축마다_0건을_따로_적는다():
+    """🔴 #3 — 축3 이 발동했어도 **축2 0건**은 그대로 보인다.
+
+    ⚠️ 돌연변이: 두 축을 한 목록으로 합쳐 세면(`if not rows`) 축3 발동 5건이
+       축2 의 0건을 **조용히 가린다** — 그것이 실측 2026-10-10 의 모양이었다.
+    """
+    from app.core import render
+    said = render.matchup_long(_card())            # 🔴 `fired2` 는 빈 목록이다
+    assert "축2 T1~T6 발동 0건" in said, "🔴 축2 가 0건인 사실이 카드에서 사라졌다"
+    assert "`T1" in said or "`T9" in said or "`T10" in said, (
+        "🔴 축3 발동이 아예 안 적혔다 — 시험 재료가 틀렸다")
+
+
 def test_v6_상성이_못돌면_사유를_적는다():
     """🔴 #3 — 세 축을 못 모았을 때 **그 사유**가 긴 카드에 남는다."""
     from app.core import render

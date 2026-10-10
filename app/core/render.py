@@ -1190,7 +1190,10 @@ def _goal_table(box: dict, names: dict) -> list[str]:
         if not rows:
             out.append(f"- **{names[side]}** 골 목록 — ⬜ **0건**")
             continue
-        out.append(f"- **{names[side]}** 골 {len(rows)}건 (분·유형·상태·xG)")
+        # 🔴 **상태는 넣은 팀 기준**이다(`goals.state_of` · 비중 표와 같은 기준) —
+        #    그 말을 안 적으면 실점 줄의 `앞섬` 을 우리가 앞선 것으로 읽는다
+        out.append(f"- **{names[side]}** 골 {len(rows)}건 "
+                   "(분·유형·상태·xG · 상태는 **넣은 팀 기준**)")
         seen: list[str] = []
         for one in rows:
             key = f"{one.get('opp')}|{one.get('home')}"
@@ -1258,9 +1261,12 @@ def _fired_rows(box: dict, names: dict) -> list[str]:
        계수를 표시 없이 쓰지 않는다).
     """
     out = ["- **발동 규칙과 적합 효과**(§2 T1~T6 · §3-3 T9~T13)"]
-    rows = list(box.get("fired2") or []) + list(box.get("fired") or [])
-    if not rows:
-        out.append("    ⬜ **발동 0건** — 두 팀 사이 비교에서 문턱을 넘은 규칙이 없다")
+    # 🔴 **축마다 따로 센다** — 한 축이 0건인 것을 다른 축의 발동이 가린다(#3)
+    axes = (("축2 T1~T6", list(box.get("fired2") or [])),
+            ("축3 T9~T13", list(box.get("fired") or [])))
+    out += [f"    ⬜ **{what} 발동 0건** — 문턱을 넘은 규칙이 없다"
+            for what, got in axes if not got]
+    rows = [one for _, got in axes for one in got]
     for one in rows:
         moved = dict(one.moves())
         out.append(
