@@ -2307,3 +2307,14 @@ def league_id_of(j: dict) -> str:
     """
     gen = (_page(j or {}).get("general") or {})
     return str(gen.get("parentLeagueId") or gen.get("leagueId") or "").strip()
+
+
+def ccode_of(j: dict) -> str:
+    """🔴 경기 페이지가 말하는 **그 경기의 나라 코드**(`general.countryCode`).
+
+    ⚠️ **컵대회는 순위표 페이지가 나라를 안 준다** — 실측 2026-10-10: 호주컵
+       (`leagues/9471/table/x`)의 `ccode` 가 비어 자동 등록이 실패했다.
+    🔴 경기 페이지는 준다(실측: `general.countryCode = 'ITA'`).
+    """
+    gen = (_page(j or {}).get("general") or {})
+    return str(gen.get("countryCode") or "").strip()

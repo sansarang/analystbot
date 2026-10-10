@@ -392,8 +392,11 @@ async def _by_index(net, *, team: str, opponent: str, day: date,
     #       `None` 이었고, 자동 등록이 *"리그 id 를 못 받았다"* 로 실패했다.
     #       카드는 *"대회를 알아보지 못했다"* 를 띄웠다 — 등록이 안 됐으니 맞는
     #       말이었지만 **까닭이 로그에 없었다**(#3). 둘 다 고쳤다.
+    j = fotmob.payload(page.text or "") or {}
+    if not out.ccode:
+        out.ccode = fotmob.ccode_of(j)
     if not out.league_id:
-        said = fotmob.league_id_of(fotmob.payload(page.text or "") or {})
+        said = fotmob.league_id_of(j)
         if said:
             out.league_id = said
             got.tried.append(f"리그 id 를 경기 페이지에서 읽었다 — `{said}`")
@@ -417,6 +420,7 @@ async def _register(net, out) -> tuple[dict, str]:
     from app.core import discover
     try:
         return await discover.register(net, league_id=out.league_id,
-                                       league_name=out.league_name)
+                                       league_name=out.league_name,
+                                       ccode=str(out.ccode or ""))
     except Exception as exc:                            # noqa: BLE001
         return {}, f"🔴 등록 중 죽었다 — {exc!r}"

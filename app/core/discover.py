@@ -73,6 +73,8 @@ class Found:
     why: str = ""
     league_id: object = None
     league_name: str = ""
+    #: 🔴 그 경기의 나라 코드 — **컵대회는 순위표가 안 준다**(실측 2026-10-10)
+    ccode: str = ""
     #: 🔴 어느 칸에서 찾았나 — 보고가 이것을 적는다(§4 "출처")
     rung: str = ""
 
@@ -283,6 +285,7 @@ async def _by_league(net, *, home: str, away: str, days: list[date],
 
 
 async def register(net, *, league_id: object, league_name: str = "",
+                   ccode: str = "", when: date | None = None,
                    ) -> tuple[dict, str]:
     """🔴🔴 §2 마지막 줄 — 찾은 경기의 **리그 id 로 자동 등록**을 건다.
 
@@ -310,19 +313,33 @@ async def register(net, *, league_id: object, league_name: str = "",
     if key and not key.startswith("league:fotmob"):
         return {}, f"등록 안 한다 — 손 표가 이미 아는 대회다({why_key})"
     key = f"league:fotmob{league_id}"
+    # 🔴 **이미 오늘 확인했고 이 글자도 담겨 있으면 다시 받지 않는다**(§2: 갱신만).
+    #    ⚠️ 분석마다 리그 표·일정을 다시 받으면 그 호스트에 실례다.
+    today = (when or date.today()).isoformat()
+    have = al.load(key)
+    if (have.get("checked_at") == today
+            and str(league_name or "") in (have.get("seen") or [])):
+        return have, f"이미 오늘 등록했다 — `{key}`"
     meta = await fm.league_meta(net, league_id)
+    if not meta.get("ccode") and ccode:
+        # 🔴🔴 **컵대회는 순위표가 없어서 나라 코드를 안 준다**(실측 2026-10-10:
+        #    호주컵 `league:fotmob9471` → *"나라(ccode)를 못 받았다"*).
+        #    🔴 경기 페이지의 `general.countryCode` 가 그것을 준다 — 부르는 쪽이
+        #       넘겨준다(여기서 또 받지 않는다).
+        meta = {**meta, "ccode": str(ccode)}
     if not meta.get("ccode"):
         return {}, (f"🔴 등록 실패 — `{key}` 의 나라(ccode)를 못 받았다"
-                    f"(리그 표 페이지가 안 준다)")
+                    f"(리그 표 페이지도·경기 페이지도 안 줬다)")
     page = await net.get(f"{fm.BASE}/leagues/{league_id}/table/x")
     teams = sorted(fm.team_ids(fm.payload(getattr(page, "text", "") or "")
                                or {}))
     rows = await fm.league_season_rows(net, league_id)
     # 🔴 **경기 페이지가 적은 글자**를 함께 담는다 — 카드 쪽이 그 글자만 받는다
     seen = [str(league_name or ""), str(meta.get("name") or "")]
-    old = load_seen(key)
+    old_seen = load_seen(key)
     box, why = al.build(competition_key=key, meta=meta, teams=teams,
-                        baseline=al.baseline_of(rows), seen=[*old, *seen])
+                        baseline=al.baseline_of(rows), seen=[*old_seen, *seen],
+                        when=when)
     if not box:
         return {}, why
     p, said = al.save(box)

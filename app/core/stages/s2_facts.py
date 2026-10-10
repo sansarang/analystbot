@@ -550,6 +550,23 @@ async def _fill_form(ref: MatchRef, box: dict, *, state: RunState, net: Any,
     # ③ 핵심 선수 — 리그 통계 페이지 + 전체 목록
     lid = str((((fm._page(fm.payload(pages[0]) or {}).get("content") or {})
                 .get("table") or {}).get("parentLeagueId")) or "") if pages else ""
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **리그 자동 등록은 분석마다 걸린다** — 사용자 결정 2026-10-10 §2
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 경기를 찾으면 그 경기의 리그 id로 자동 등록을 건다(**이미 있으면 갱신만**).
+    #
+    #  ⚠️ 실사고 2026-10-10: `findgame` 에만 걸어 뒀더니 **표에 이미 있는 경기**는
+    #     등록이 안 걸렸다(엘살바도르 경기 재실행 — 그 카드는 대회를 **라리가**로
+    #     판정했고 경고조차 없었다). 🔴 그래서 **이 자리**다 — 경기 페이지를
+    #     이미 열어 뒀고 리그 id·나라 코드가 둘 다 여기 있다.
+    #  🔴 하루 한 번만 받는다(`discover.register` 안의 신선도 검사).
+    if lid:
+        from app.core import discover
+        _box, _why = await discover.register(
+            net, league_id=lid, league_name=str(ref.competition or ""),
+            ccode=fm.ccode_of(fm.payload(pages[0]) or {}))
+        state.note(f"s2 자동 등록 — {_why}")
     if not lid:
         return
     sp = await _day_page(net, fm.league_stats_url(lid, "x"), state=state,
