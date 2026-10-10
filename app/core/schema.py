@@ -232,6 +232,16 @@ class Ambiguous(Frozen):
 
     why: str
     candidates: list[str] = Field(default_factory=list)
+    #: 🔴🔴 **버튼으로 고를 수 있는 후보**(§1-3 · 2026-10-10 재작성)
+    #
+    #  > 후보 2개 이상 → 텔레그램 버튼으로 고르게 한다(**리그·날짜·시각을 붙여서**).
+    #  > 고르기 전에 분석하지 않는다.
+    #
+    #  칸: `key`(`games.ext_id` — 이것으로 못 박는다) · `home` · `away` ·
+    #      `league` · `kst`(사람이 읽는 시각).
+    #  ⚠️ `candidates`(글자)는 **그대로 둔다** — 버튼을 못 쓰는 자리(로그·도구)가
+    #     그것을 읽는다(칸은 더하기만 한다).
+    picks: list[dict] = Field(default_factory=list)
 
 
 #: 🔴 결장 사유 — 축구 지시서 §2 표가 이름으로 댔다(자유 문자열 금지)

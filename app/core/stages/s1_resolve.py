@@ -103,6 +103,64 @@ def _trimmed(name: str) -> list[str]:
     return out
 
 
+def picks_of(rows: list[dict]) -> list[dict]:
+    """🔴🔴 §1-3 — `games` 행들 → **버튼으로 고를 후보**.
+
+    > 후보 2개 이상 → 텔레그램 버튼으로 고르게 한다(**리그·날짜·시각을 붙여서**).
+
+    🔴 `key` 는 `games.ext_id` 다 — 사용자가 누르면 그 열쇠로 **못 박는다**
+       (`run(pick_key=…)`). ⚠️ 다시 찾으면 또 여럿이 나와 같은 자리에서 멈춘다.
+    ⚠️ 열쇠가 없는 행은 **버튼으로 내지 않는다** — 누르면 못 찾는 버튼이다.
+    """
+    from app import timefmt
+    out: list[dict] = []
+    for r in (rows or []):
+        key = str(dict(r).get("ext_id") or "").strip()
+        if not key:
+            continue
+        when = dict(r).get("starts_kst") or dict(r).get("starts_utc")
+        said = ""
+        if when is not None:
+            try:
+                said = timefmt.kst_label(timefmt.aware(when, where="후보"))
+            except (TypeError, ValueError):
+                said = ""
+        out.append({"key": key,
+                    "home": str(dict(r).get("home") or ""),
+                    "away": str(dict(r).get("away") or ""),
+                    "league": str(dict(r).get("league") or ""),
+                    "kst": said})
+    return out
+
+
+async def _by_key(pool: Any, key: str, *, state: RunState
+                  ) -> MatchRef | None:
+    """🔴🔴 §1-3 — **버튼으로 고른 경기 하나**를 표에서 집는다. 없으면 `None`.
+
+    🔴 표를 읽는 SQL 은 `app/slate.py` 의 `by_key` 하나다(사본 금지) — 여기서
+       질의를 다시 쓰지 않는다.
+    ⚠️ 확정 기준(창·이름표)은 **적용하지 않는다** — 사용자가 **그 경기를 골랐다**.
+       🔴 그 대신 *"이미 시작했나"* 는 뒤 단계가 그대로 센다(등급이 거둬진다).
+    """
+    from app import queries, slate
+    got = await slate.by_key(pool, key)
+    rows = list(getattr(got, "games", None) or [])
+    if not rows:
+        state.note(f"s1 고른 경기 — 🔴 `{key}` 가 표에 없다")
+        return None
+    from app import matchref
+    raw = matchref.ref_from_row(rows[0])
+    ref = adapt.ref_of(raw, competition_short=queries.competition_short(
+        getattr(raw, "competition", "")), openworld=True)
+    if ref is None:
+        state.note(f"s1 고른 경기 — 🔴 `{key}` 행으로 ref 를 못 만들었다")
+        return None
+    state.match_key = ref.id
+    state.note(f"s1 **사용자가 고른 경기** — `{key}` · {ref.home_name} vs "
+               f"{ref.away_name} · {ref.competition}")
+    return ref
+
+
 async def _spell_hints(q: Question, *, state: RunState) -> dict:
     """🔴 §1-1 ② — **이름표가 모르는 쪽의 철자 후보**(`{물은 이름: [후보…]}`).
 
@@ -224,9 +282,22 @@ async def _openworld(pool: Any, q: Question, *, state: RunState,
 
 
 async def run(q: Question, *, pool: Any, state: RunState,
-              net: Any = None, board_text: str = "") -> MatchRef | Ambiguous:
-    """🔴 질문 → 그 경기 하나. ⚠️ 못 고르면 `Ambiguous`(예외를 안 던진다)."""
+              net: Any = None, board_text: str = "",
+              pick_key: str = "") -> MatchRef | Ambiguous:
+    """🔴 질문 → 그 경기 하나. ⚠️ 못 고르면 `Ambiguous`(예외를 안 던진다).
+
+    🔴🔴 **`pick_key` 는 사용자가 버튼으로 고른 경기**다(§1-3 · 2026-10-10
+       재작성). 그것이 오면 **찾지 않는다** — 표에서 그 행 하나를 집는다.
+       ⚠️ 다시 찾으면 또 여럿이 나와 같은 자리에서 멈춘다.
+    """
     from app import queries, resolve
+    if str(pick_key or "").strip():
+        got = await _by_key(pool, str(pick_key).strip(), state=state)
+        if got is not None:
+            return got
+        return Ambiguous(
+            why=f"🔴 고른 경기를 표에서 못 찾았다 — `{pick_key}`",
+            candidates=[])
     try:
         look = await resolve.match_of(
             pool, team=q.team or q.raw, opponent=q.opponent or "",
@@ -257,10 +328,13 @@ async def run(q: Question, *, pool: Any, state: RunState,
         if got is not None:
             return got
         reason = getattr(getattr(look, "reason", None), "value", "?")
+        rows = list(getattr(look, "candidates", None) or ())[:6]
         return Ambiguous(
             why=f"🔴 경기를 확정하지 못했다 — `{reason}`",
             candidates=[f"{r.get('away')} @ {r.get('home')} · {r.get('league')}"
-                        for r in (getattr(look, "candidates", None) or ())][:6])
+                        for r in rows],
+            # 🔴 §1-3 — **버튼으로 고르게 한다**(리그·날짜·시각을 붙여서)
+            picks=picks_of(rows))
     raw = look.ref
     got = adapt.ref_of(
         raw, competition_short=queries.competition_short(

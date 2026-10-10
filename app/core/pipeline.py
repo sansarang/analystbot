@@ -33,6 +33,7 @@ LAST_TTL_HOURS = 24
 async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
                   state: RunState | None = None, board: Board | None = None,
                   board_text: str = "", board_image: str = "",
+                  pick_key: str = "",
                   now: datetime | None = None) -> Card | Ambiguous:
     """🔴 질문 하나 → 카드 하나. ⚠️ 경기를 **못 고르면** `Ambiguous`(묻는다).
 
@@ -71,7 +72,7 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
         st.note(f"보드 {len(got_board.lines)}줄 · 추가 {len(extra)} · "
                 f"못 읽음 {len(bad)}")
     ref = await s1_resolve.run(q, pool=pool, state=st, net=net,
-                               board_text=board_text)
+                               board_text=board_text, pick_key=pick_key)
     if isinstance(ref, Ambiguous):
         return ref
     st.match_key = ref.id

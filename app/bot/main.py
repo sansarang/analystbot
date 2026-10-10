@@ -24,7 +24,7 @@ from datetime import datetime, timedelta
 
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
-from aiogram.types import Message
+from aiogram.types import CallbackQuery, Message
 
 from app import secrets_mask, timefmt
 from app.research import rerank as _rerank
@@ -105,10 +105,50 @@ async def cmd_analyze(m: Message) -> None:
     #    ⚠️ 배당 숫자는 파서가 **받지 않는다**(`app/core/board.py`).
     lines = (m.text or "").splitlines()
     board_text = "\n".join(lines[1:]).strip() if len(lines) > 1 else ""
-    body = await _v6_card(pool, team=team, opponent=opponent,
-                          board_text=board_text)
-    for chunk in _split(body):
+    body, got = await _v6_card(pool, team=team, opponent=opponent,
+                               board_text=board_text, want_ref=True)
+    await _send_card(m, body, got, asked=arg, board_text=board_text)
+
+
+async def _send_card(m: Message, body: str, got, *, asked: str,
+                     board_text: str = "") -> None:
+    """🔴🔴 **카드와 버튼을 함께 보낸다** — 사용자 지시 2026-10-10 §1-3·§2-3.
+
+    ⚠️ 실측 2026-10-10: 봇에 인라인 키보드가 **하나도 없었다** — 카드 밑 글자는
+       누를 수 없었다. 🔴 그래서 §2-3 의 *"사용자가 누른 경기만 돈다"* 를 지킬
+       방법 자체가 없었다.
+    🔴 버튼은 **마지막 조각**에만 붙인다(카드가 길면 여러 조각으로 나간다).
+    """
+    from app.bot import keys, pending
+    from app.core.schema import Ambiguous
+    ask = pending.Ask(asked=asked, board_text=board_text)
+    if isinstance(got, Ambiguous):
+        ask.picks = list(got.picks or [])
+        token = pending.new(ask)
+        kb = keys.pick_keys(token, ask.picks)
+    else:
+        ask.key = str(getattr(getattr(got, "match", None), "id", "") or "")
+        token = pending.new(ask)
+        # 🔴 §2-3 — **확정 XI 전이면** 라인업 감시 버튼을 더한다
+        kb = keys.card_keys(token=token, watch=_xi_open(got))
+    chunks = _split(body)
+    for chunk in chunks[:-1]:
         await m.answer(chunk)
+    sent = await m.answer(chunks[-1], reply_markup=kb)
+    ask.chat_id = getattr(getattr(sent, "chat", None), "id", None)
+    ask.message_id = getattr(sent, "message_id", None)
+
+
+def _xi_open(card) -> bool:
+    """🔴 §2-3 — **확정 XI 전인가**(그때만 감시 버튼을 낸다).
+
+    🔴 판정은 `layer1.xi_confirmed` 하나다(사본 금지) — 여기서 다시 세지 않는다.
+    """
+    try:
+        from app.core import layer1
+        return not layer1.xi_confirmed(card)
+    except Exception:                                       # noqa: BLE001
+        return False
 
 
 @dp.message(Command("reanalyze", "재분석"))
@@ -175,7 +215,8 @@ async def cmd_debug(m: Message) -> None:
 
 async def _v6_card(pool, *, team: str = "", opponent: str = "", said: str = "",
                    again: bool = False, board_text: str = "",
-                   debug: bool = False, deep: bool = False) -> str:
+                   debug: bool = False, deep: bool = False,
+                   pick_key: str = "", want_ref: bool = False):
     """🔴🔴 **v6 경로** — `pipeline.analyze` → `render.card_text`(§8 4단계).
 
     ══════════════════════════════════════════════════════════════════
@@ -201,14 +242,21 @@ async def _v6_card(pool, *, team: str = "", opponent: str = "", said: str = "",
     fn = pipeline.reanalyze if again else pipeline.analyze
     got = await fn(asked, pool=pool, net=_net_mod.Net(),
                    chain=_search.build_chain(),
-                   **({} if again else {"board_text": board_text}))
+                   **({} if again else {"board_text": board_text,
+                                        "pick_key": pick_key}))
     if isinstance(got, Ambiguous):
         # 🔴 **고르지 않는다** — 사용자가 지목한다(§17-g-3 · M14)
         lines = [f"🔴 경기를 확정하지 못했다 — {got.why}"]
         lines += [f"  · {c}" for c in got.candidates]
-        return "\n".join(lines)
+        # 🔴 §1-3 — 버튼으로 고를 수 있으면 그 사실을 알린다(버튼은 호출부가 붙인다)
+        if got.picks:
+            lines.append(f"👇 **아래 버튼에서 고르면** 그 경기로 분석한다"
+                         f"(후보 {len(got.picks)}개)")
+        out = "\n".join(lines)
+        return (out, got) if want_ref else out
     if debug:
-        return render.debug_text(got)
+        said = render.debug_text(got)
+        return (said, got) if want_ref else said
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **1겹이 기본이다**(사용자 지시 2026-10-09(3차) §1)
     # ══════════════════════════════════════════════════════════════════
@@ -217,7 +265,99 @@ async def _v6_card(pool, *, team: str = "", opponent: str = "", said: str = "",
     #
     #  🔴 긴 카드는 **버튼 뒤**다(`📖 자세히` → `deep=True`). ⚠️ 종전에는 1겹이
     #     없어서 열네 블록이 한꺼번에 나갔다.
-    return render.card_text(got) if deep else render.layer1_text(got)
+    said = render.card_text(got) if deep else render.layer1_text(got)
+    return (said, got) if want_ref else said
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **버튼이 실제로 일한다** — 사용자 지시 2026-10-10(재작성) §1-3·§2-3
+# ══════════════════════════════════════════════════════════════════
+
+
+@dp.callback_query()
+async def on_button(cb: CallbackQuery) -> None:
+    """🔴 카드·후보 버튼 한 곳. ⚠️ **여기서 말을 만들지 않는다**(§17-c) —
+    파이프라인이 만든 카드를 그대로 낸다.
+
+    | 버튼 | 무엇 |
+    |---|---|
+    | `pick` | §1-3 — 후보를 고른다. 🔴 그 열쇠로 **못 박아** 분석한다 |
+    | `deep`·`scen`·`market` | 1겹의 뒤쪽(긴 카드) — 마지막 실행을 다시 쓴다 |
+    | `again` | 🔄 즉시 한 번 재분석 |
+    | `watch`·`unwatch` | §2-3 — **라인업 감시**를 켜고 끈다 |
+    """
+    from app.bot import keys, pending
+    action, arg = keys.unpack(cb.data)
+    if not action:
+        await cb.answer("🔴 못 알아보는 버튼이다(봇이 다시 켜졌다) — 다시 물어라")
+        return
+    token = arg.split(":")[0]
+    ask = pending.get(token)
+    if ask is None:
+        await cb.answer("🔴 그 카드를 더는 들고 있지 않다 — 다시 물어라",
+                        show_alert=True)
+        return
+    s = get_settings()
+    pool = await get_pool(s.database_url)
+    if action == "pick":
+        await _on_pick(cb, ask, arg, pool=pool)
+        return
+    if action in ("watch", "unwatch"):
+        await _on_watch(cb, ask, token, on=(action == "watch"), pool=pool)
+        return
+    if action in ("deep", "scen", "market", "again"):
+        await cb.answer("돌린다…")
+        body, got = await _v6_card(pool, said=ask.asked, again=True,
+                                  deep=(action != "again"), want_ref=True)
+        await _send_card(cb.message, body, got, asked=ask.asked,
+                         board_text=ask.board_text)
+        return
+    await cb.answer(f"🔴 아직 안 이은 버튼이다 — `{action}`")
+
+
+async def _on_pick(cb: CallbackQuery, ask, arg: str, *, pool) -> None:
+    """🔴🔴 §1-3 — **후보를 고르면 그 경기로 못 박아** 분석한다.
+
+    > 고르기 전에 분석하지 않는다.
+
+    🔴 못 박는 길은 `pipeline.analyze(pick_key=…)` 다 — 다시 찾으면 또 여럿이
+       나와 **같은 자리에서 멈춘다**.
+    """
+    try:
+        i = int(arg.split(":")[1])
+    except (IndexError, ValueError):
+        await cb.answer("🔴 버튼 번호를 못 읽었다")
+        return
+    picks = list(ask.picks or [])
+    if not 0 <= i < len(picks):
+        await cb.answer("🔴 그 후보가 없다 — 다시 물어라")
+        return
+    box = dict(picks[i])
+    key = str(box.get("key") or "")
+    await cb.answer(f"{box.get('home')} vs {box.get('away')} — 분석한다")
+    said = f"{box.get('home')} vs {box.get('away')}"
+    body, got = await _v6_card(pool, said=said, pick_key=key, want_ref=True,
+                              board_text=ask.board_text)
+    await _send_card(cb.message, body, got, asked=said,
+                     board_text=ask.board_text)
+
+
+async def _on_watch(cb: CallbackQuery, ask, token: str, *, on: bool,
+                    pool) -> None:
+    """🔴🔴 §2-3 — **라인업 감시**를 켜고 끈다.
+
+    > 사용자가 **누른 경기만** 그 시각부터 5분 간격으로 사다리를 돌고, 확정되면
+    > 재분석해서 **원래 메시지를 고쳐 쓴다**. 누르지 않으면 돌지 않는다
+    > (자동 분석 아님).
+    """
+    from app.bot import watch as _watch
+    if not on:
+        said = _watch.stop(ask)
+        await cb.answer(said)
+        return
+    said = _watch.start(cb.bot, ask, pool=pool, card=lambda: _v6_card(
+        pool, said=ask.asked, again=True, want_ref=True))
+    await cb.answer(said)
 
 
 @dp.message(Command("status", "상태"))
@@ -230,7 +370,10 @@ async def cmd_status(m: Message) -> None:
     from app.core import autoleague
     # 🔴 §1 — 리그 **상한을 걷었다**(사용자 결정 2026-10-10). 그래서 자동 등록
     #    목록이 운영자의 **유일한 눈**이다 — 여기 함께 적는다.
-    await m.answer(auditlog.stats() + "\n\n" + autoleague.report())
+    from app.bot import pending
+    # 🔴 §2-3 — *"사용자가 누른 경기만 돈다"* 를 사람이 확인하는 자리다
+    await m.answer(auditlog.stats() + "\n\n" + autoleague.report()
+                   + "\n\n" + pending.report())
 
 
 @dp.message(Command("health"))
