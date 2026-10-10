@@ -626,7 +626,8 @@ def text(card: Card, *, buttons: bool = True) -> str:
     #     떨어져 있으면 읽는 사람이 둘을 잇지 못한다.
     #  ⚠️ **빈 글자는 넣지 않는다** — 넣으면 빈 줄이 생기고 §1 순서 계약이
     #     그것을 센다(실측 2026-10-10: `('📊','🎯','📊',' ')` 로 빨개졌다).
-    for said_block in (plan_block(card), move_block(card)):
+    # 🔴🔴 §5(셋째 지시) — **⚔️ 상성 블록은 결론 바로 아래**다
+    for said_block in (edge_block(card), plan_block(card), move_block(card)):
         if said_block:
             out.append(said_block)
     out.append(f"🎯 예상 {_scores(card)}")
@@ -906,3 +907,118 @@ def _over_line(card: Card) -> str:
                       for x in OVER_LINES if str(x) in over)
     return (f"오버 {said} (최종만 — 총골 분포는 재가중을 한 번만 돈다)"
             if said else "")
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 §5 **⚔️ 상성 블록** — 사용자 지시 2026-10-10(셋째)
+# ══════════════════════════════════════════════════════════════════
+#
+#  > ⚔️ 상성 — {팀}이 {상대}를 이길 수 있나
+#  >  폼: {보정 폼 백분위 두 팀 한 줄}
+#  >  전술: {무기→약점 한 줄, 꺼진 무기·후반 무기 포함}
+#  >  골 내용: {예: "부천 실점 9 중 6골 후반 · 강원 득점 후반 58% → 후반 강원 우위"}
+#  >  → 상성 우위: {팀} · 승률 잠정 nn% → 최종 nn% (폼 +x · 전술 +y · 골 내용 +z %p)
+
+EDGE_HEAD = "⚔️ **상성**"
+
+
+def edge_block(card: Card) -> str:
+    """🔴🔴 §5 — 상성 블록. **세 축을 못 모았으면 빈 글자**(사유는 긴 카드가 적는다).
+
+    🔴 수는 `s2e_matchup` 이 센 것을 그대로 적는다 — 여기서 다시 세지 않는다.
+    """
+    box = dict(getattr(card, "matchup", None) or {})
+    if not box.get("profile"):
+        return ""
+    m = card.match
+    out = [f"{EDGE_HEAD} — {m.home_name}이 {m.away_name}를 이길 수 있나"]
+    said = _form_line(box, card)
+    if said:
+        out.append(f" 폼: {said}")
+    out.append(f" 전술: {_tactic_line(box)}")
+    said_g = _goal_line(box, card)
+    if said_g:
+        out.append(f" 골 내용: {said_g}")
+    out.append(f" → {_edge_line(box, card)}")
+    return "\n".join(out)
+
+
+def _form_line(box: dict, card: Card) -> str:
+    """🔴 §5 — **보정 폼 백분위 두 팀 한 줄**. 백분위가 없으면 지수만 적는다."""
+    rows = dict(box.get("form") or {})
+    if not rows:
+        return ""
+    said = []
+    for side, name in (("home", card.match.home_name),
+                       ("away", card.match.away_name)):
+        one = rows.get(side)
+        if one is None:
+            continue
+        idx = one.index()
+        pct = one.pct_att
+        said.append(f"{name} {idx:+.2f}" if idx is not None else f"{name} 미상"
+                    + (f"({pct:.0%})" if pct is not None else ""))
+    return " · ".join(said) + "(보정 득실차/경기 · 상대 Elo 보정)"
+
+
+def _tactic_line(box: dict) -> str:
+    """🔴 §5 — 전술 줄. ⚠️ 축2 가 안 돌면 **그 사실을 적는다**(#3)."""
+    said = str(box.get("axis2_why") or "")
+    return said or "⬜ 축2 자료 없음"
+
+
+def _goal_line(box: dict, card: Card) -> str:
+    """🔴 §5 — **골 내용 한 줄**(사용자 예시 꼴). 발동 규칙을 사람 말로."""
+    rows = [f for f in (box.get("fired") or []) if not f.watch_only]
+    if not rows:
+        rows = list(box.get("fired") or [])
+        if not rows:
+            return ""
+    m = card.match
+    said = []
+    for f in rows[:3]:
+        who = m.home_name if f.side == "home" else m.away_name
+        said.append(f"{who} [{f.rule}] {f.text}"
+                    + (f" ({_watch()})" if f.watch_only else ""))
+    return " / ".join(said)
+
+
+def _watch() -> str:
+    from app.core import goals as _g
+    return _g.WATCH_ONLY
+
+
+def _edge_line(box: dict, card: Card) -> str:
+    """🔴🔴 §5 — `상성 우위: {팀} · 승률 잠정 nn% → 최종 nn% (기여 분해)`.
+
+    🔴 기여 분해는 `matchup["share"]` 가 든다(`compare` 가 센다) — 없으면 그
+       사실을 적는다. ⚠️ 합이 잠정→최종 변화와 **같아야** 한다(§7 계약).
+    """
+    m = card.match
+    old, new = getattr(card, "prob_before", None), card.our_prob
+    who = _edge_team(box, card)
+    head = f"상성 우위: **{who}**" if who else "상성 우위: ⬜ 가리기 어렵다"
+    if old is None or new is None:
+        return head + " · 승률 비교는 **잠정 열이 없어** 못 적는다"
+    said = (f" · {m.home_name} 승 잠정 {old.home:.0%} → 최종 "
+            f"**{new.home:.0%}**")
+    share = dict(box.get("share") or {})
+    if share:
+        said += (" (" + " · ".join(f"{k} {float(v):+.1f}%p"
+                                   for k, v in share.items()) + ")")
+    else:
+        said += " (기여 분해 — 🔴 적합 전이라 못 쪼갠다)"
+    return head + said
+
+
+def _edge_team(box: dict, card: Card) -> str:
+    """🔴 §5 — **상성 우위 팀**. 발동 규칙의 무게로 센다(동률이면 빈 글자)."""
+    tally = {"home": 0.0, "away": 0.0}
+    for f in (box.get("fired") or []):
+        if f.watch_only:
+            continue
+        tally[str(f.side)] = tally.get(str(f.side), 0.0) + 1.0
+    if tally["home"] == tally["away"]:
+        return ""
+    side = "home" if tally["home"] > tally["away"] else "away"
+    return card.match.home_name if side == "home" else card.match.away_name

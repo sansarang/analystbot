@@ -310,6 +310,35 @@ async def refresh(net, *, when: date | None = None, state=None
     return out, rows
 
 
+def all_comps(*, when: date | None = None) -> list[str]:
+    """🔴🔴 **등급을 찾을 대회 목록** — 표 + **쌓인 파일에서 자란다**.
+
+    ══════════════════════════════════════════════════════════════════
+    🔴🔴 **실사고 2026-10-10** — 자체 Elo 를 만들어 두고 못 찾았다
+    ══════════════════════════════════════════════════════════════════
+
+    `config/league_elo.yaml` 의 `competitions` 는 football-data 리그 아홉뿐이다.
+    🔴 그런데 K리그1·J1 은 **fotmob 결과로 자체 Elo 를 만들어** `var/league_elo/`
+       에 쌓아 두고 있었다(`KL1.json` — 14팀 · 1516.95 …).
+    ⚠️ `rating_of` 가 그 목록만 봐서 **`Gangwon FC` 를 못 찾았다** — 그래서 보정
+       폼(§1)이 Elo 보정을 아예 못 했다. 🔴 `comps=['KL1']` 로 직접 부르면
+       **찾는다**(1544.97) — 즉 자료는 있고 **목록이 좁았다**.
+
+    🔴 그래서 **쌓인 파일에서 자라게** 한다(#1 손으로 유지하는 목록은 한 발 늦는다).
+    ⚠️ 표의 순서를 **먼저** 둔다 — 같은 팀이 두 대회에 있으면 오래 측정된 쪽이다.
+    """
+    said = [str(c) for c in (table().get("competitions") or [])]
+    try:
+        # 🔴 **그날 파일이 있는 대회를 더한다** — 경로는 `path_of` 하나가 안다
+        box = path_of("x", when=when).parent
+        for one in sorted(box.glob("*.json")):
+            if one.stem not in said:
+                said.append(one.stem)
+    except Exception:                                       # noqa: BLE001
+        pass
+    return said
+
+
 def rating_of(team: str, *, comps: list[str] | None = None,
               when: date | None = None) -> tuple[float | None, str]:
     """🔴 그 팀의 리그 Elo. `(등급, 사유)` — ⚠️ 못 찾으면 `(None, 사유)`.
@@ -323,7 +352,7 @@ def rating_of(team: str, *, comps: list[str] | None = None,
         box = teamref.registry().teams.get(key)
         if box is not None:
             names |= {n.lower() for v in box.names.values() for n in v}
-    for comp in (comps or [str(c) for c in (table().get("competitions") or [])]):
+    for comp in (comps or all_comps(when=when)):
         box_file = load(comp, when=when)
         said = box_file.get("ratings") or {}
         # 🔴 **통로를 지어내지 않는다** — 등급 파일의 `via` 가 말한다(지시

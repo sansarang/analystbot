@@ -128,11 +128,16 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     plan = _s2d.run(ref, facts, state=st,
                     news=[v for v in variables
                           if str(getattr(v, "subtask", "") or "").startswith("F-")])
+    # 🔴🔴 **상성 세 축**(사용자 지시 2026-10-10(셋째)) — 축1 폼 · 축3 골 내용
+    #    ⚠️ 축2(T1~T8)는 스타일 프로필 자료가 없어 아직 안 돈다(사유가 들어온다)
+    from app.core.stages import s2e_matchup as _s2e
+    edge = await _s2e.run(ref, facts, state=st, net=net)
     before_layers = _layers(ref, facts, variables, hypo, base_p, adj_p, feed_mk,
                             user_mk, state=st, outlook=look)
     layers = _layers(ref, facts, variables, hypo, base_p, adj_p, feed_mk,
                      user_mk, state=st, outlook=look, strategy=plan)
     layers["strategy"] = plan
+    layers["matchup"] = edge
     layers["prob_before"] = before_layers.get("ours")
     layers["ocr_text"] = ocr_text
     from app.core import reweight as _reweight
@@ -378,6 +383,7 @@ def card_of(ref: MatchRef, facts: Facts, variables: list[Variable],
         # 🔴 §2·§4 — 전략 판정과 **잠정 확률**(최종은 `our_prob`)
         strategy=box.get("strategy"),
         prob_before=box.get("prob_before"),
+        matchup=dict(box.get("matchup") or {}),
         match=ref, facts=facts, variables=variables,
         drops=[*state.drops, *hypo.drops], hypo=hypo, evals=said.evals,
         direction=said.direction, conclusion=said.conclusion,

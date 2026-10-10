@@ -2351,3 +2351,76 @@ def ccode_of(j: dict) -> str:
     """
     gen = (_page(j or {}).get("general") or {})
     return str(gen.get("countryCode") or "").strip()
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **골 타임라인** — 사용자 지시 2026-10-10(셋째) §3-1
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 골 하나하나를 기록한다(득점·실점 모두) — 출처: fotmob **경기 페이지
+#  > 타임라인(HTML)**. 칸: 분, 유형, 그 순간 경기 상태(앞섬·동점·뒤짐),
+#  > 어시스트, 슈팅 xG(있으면).
+#
+#  🔴 실측 2026-10-10 — 끝난 경기 페이지의 `content.matchFacts.events.events` 에
+#     타임라인이 있다(19 event). 골 event 의 칸:
+#       `time`·`timeStr`·`isHome`·`homeScore`·`awayScore`·`newScore`·
+#       `assistStr`·`ownGoal`·`goalDescription`·`shotmapEvent`
+#     그리고 `shotmapEvent` 안에:
+#       `expectedGoals`·`situation`·`shotType`·`isOwnGoal`·`isFromInsideBox`
+#  ⚠️ **골 43개 중 18개(42%)는 `shotmapEvent` 가 없다** — 하위 리그·오래된 경기다.
+#     🔴 그때는 `goalDescription` 만 보고 나머지 칸은 **`미상`** 으로 둔다
+#        (0 으로 메우지 않는다 · #3 조용한 0 금지).
+#  🔴 유형 어휘는 `config/tactical_rules.yaml` 의 `kinds` 가 든다(사본 금지) —
+#     이 함수는 **원값을 그대로** 담고, 유형으로 옮기는 것은 `app/core/goals.py` 다.
+
+
+def goals_of(j: dict) -> list[dict]:
+    """🔴🔴 §3-1 — 그 경기의 **골 목록**. 타임라인이 없으면 빈 목록.
+
+    한 줄 꼴:
+      `minute` 분 · `added` 추가시간 · `home` 홈 팀 골인가 ·
+      `before` 그 골 **직전** 스코어 `(홈, 원정)` · `after` 직후 스코어 ·
+      `assist` 어시스트 이름 · `own_goal` 자책골인가 ·
+      `situation`·`shot_type`·`xg` 원값(없으면 `None`) · `desc` 설명 글자
+
+    ⚠️ **득점 팀 기준으로 `before` 를 적는다** — 그 순간 상태(앞섬·동점·뒤짐)는
+       `app/core/goals.py` 가 이 수로 센다(판정을 두 곳에 두지 않는다).
+    """
+    mf = ((_page(j or {}).get("content") or {}).get("matchFacts") or {})
+    rows = ((mf.get("events") or {}).get("events") or [])
+    out: list[dict] = []
+    for e in rows:
+        box = dict(e)
+        if str(box.get("type") or "") != "Goal":
+            continue
+        if box.get("isPenaltyShootoutEvent"):
+            continue            # 🔴 승부차기는 90분 골이 아니다
+        after = [int(x) for x in (box.get("newScore") or [])
+                 if str(x).lstrip("-").isdigit()]
+        home = bool(box.get("isHome"))
+        se = dict(box.get("shotmapEvent") or {})
+        # 🔴 **직전 스코어** — 직후에서 그 골을 뺀다(어느 쪽이 넣었나로 가른다)
+        before = None
+        if len(after) == 2:
+            before = ((after[0] - 1, after[1]) if home
+                      else (after[0], after[1] - 1))
+        got_xg = se.get("expectedGoals")
+        out.append({
+            "minute": int(box.get("time") or 0),
+            "added": int(box.get("overloadTime") or 0),
+            "home": home,
+            "player": str(box.get("nameStr") or box.get("fullName") or ""),
+            "assist": str(box.get("assistStr") or "") or None,
+            "own_goal": bool(box.get("ownGoal") or se.get("isOwnGoal")),
+            "before": tuple(before) if before else None,
+            "after": tuple(after) if len(after) == 2 else None,
+            "situation": (str(se.get("situation")) if se.get("situation")
+                          else None),
+            "shot_type": (str(se.get("shotType")) if se.get("shotType")
+                          else None),
+            "xg": (float(got_xg) if got_xg not in (None, "") else None),
+            "inside_box": se.get("isFromInsideBox"),
+            "desc": str(box.get("goalDescription") or "") or None,
+        })
+    out.sort(key=lambda r: (r["minute"], r["added"]))
+    return out

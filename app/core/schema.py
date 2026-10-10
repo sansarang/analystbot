@@ -1006,6 +1006,12 @@ class Card(Frozen):
     #
     #  🔴 둘이 같으면 전략이 확률을 못 움직인 것이고, 카드가 그것도 적는다.
     prob_before: ProbTriple | None = None
+    #: 🔴🔴 **상성 세 축**(사용자 지시 2026-10-10(셋째)) — `s2e_matchup` 산출
+    #
+    #  칸: `form`(축1) · `profile`(축3 프로필) · `fired`(T9~T13) · `axis2_why` ·
+    #      `share`(기여 분해) · `why`
+    #  ⚠️ 못 모은 축은 **사유 글자**가 들어 있다(조용히 비우지 않는다).
+    matchup: dict = Field(default_factory=dict)
     #: 🔴🔴 **③ 이 움직인 양**(사용자 지시 2026-10-06(6차) ③) — 변수별 로그 오즈 이동
     #
     #  ⚠️ 비면 *"③ 이동 없음 — 우리 열 = 기준"* 을 적는다(빈 줄은 "안 봤다"와 같다).
