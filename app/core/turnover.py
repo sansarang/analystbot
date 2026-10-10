@@ -75,9 +75,14 @@ def off_matchday(facts, key: str, xi) -> tuple[list, str]:
     from app.core import discover as _d
     box = flags()
     look = int(box.get("look_back") or 5)
-    now = {_d.name_key(x) for x in (getattr(xi, "players", None) or [])}
-    bench = {_d.name_key(x) for x in (getattr(xi, "bench", None) or [])}
-    today = now | bench
+    # 🔴🔴 **오늘 경기 명단 = 선발 + 벤치 + 경기 명단**(`facts.squad`).
+    #    ⚠️ 실측 2026-10-10: `XI.bench` 만 보면 **12명**밖에 안 돼(벤치가 덜 찬
+    #       판이 있다) 어느 팀이든 ① 이 켜졌다(안양이 13명 이탈로 잡혔다).
+    #       🔴 경기 페이지가 주는 **선발 11 + 벤치 9 = 20명**이 `facts.squad` 다.
+    today = {_d.name_key(x) for x in
+             [*(getattr(xi, "players", None) or []),
+              *(getattr(xi, "bench", None) or []),
+              *((getattr(facts, "squad", None) or {}).get(key) or [])]}
     if not today:
         return [], "🔴 오늘 경기 명단이 없다 — 못 센다"
     rows = list((getattr(facts, "past_xi", None) or {}).get(key) or [])[-look:]
@@ -88,7 +93,8 @@ def off_matchday(facts, key: str, xi) -> tuple[list, str]:
         for nm in (getattr(one, "players", None) or []):
             if _d.name_key(nm) not in today and str(nm) not in out:
                 out.append(str(nm))
-    return out, (f"최근 {len(rows)}경기 선발 중 오늘 명단(선발+벤치 {len(today)}명)"
+    return out, (f"최근 {len(rows)}경기 선발 중 오늘 경기 명단"
+                 f"(선발+벤치+명단 {len(today)}명)"
                  f"에 **없는 선수 {len(out)}명**")
 
 
@@ -102,9 +108,11 @@ def r_matchday(facts, key: str, xi) -> tuple[float, str]:
     from app.core import discover as _d
     box = flags()
     look = int(box.get("look_back") or 5)
+    # 🔴 r 도 **같은 집합**으로 센다(①과 한 곳이다)
     today = {_d.name_key(x) for x in
              [*(getattr(xi, "players", None) or []),
-              *(getattr(xi, "bench", None) or [])]}
+              *(getattr(xi, "bench", None) or []),
+              *((getattr(facts, "squad", None) or {}).get(key) or [])]}
     rows = list((getattr(facts, "past_xi", None) or {}).get(key) or [])[-look:]
     if not today or not rows:
         return 1.0, "🔴 오늘 명단이나 과거 선발이 없다 — r 을 안 깎는다(1.0)"
