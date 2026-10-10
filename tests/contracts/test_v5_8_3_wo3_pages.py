@@ -195,3 +195,60 @@ def test_wo3_2_슬러그_표가_있으면_모양이_맞다():
 
 
 
+
+
+def test_v6_리그id가_어긋나면_대회_글자는_결정권이_없다():
+    """🔴🔴 실사고 2026-10-10 — **엘살바도르 리그가 라리가로 붙었다**.
+
+    `Primera Division - Apertura`(fotmob 335)가 `league:PD`(라리가 · fotmob 87)로
+    판정됐다 — 그 줄의 `football_data_names` 에 `Primera Division` 이 있어
+    **품는 일치**가 걸렸다. 자동 등록이 **라리가 열쇠로 파일을 썼다.**
+
+    ⚠️ 돌연변이: `key_of` ③ 에서 `if lid and ids and lid not in ids: continue`
+       를 지우면 — 이 계약이 잡는다.
+    🔴 그 리그의 기준 모델로 판정하면 카드가 **통째로 거짓**이 된다(M14).
+    """
+    from app.core import competition as comp
+    key, why = comp.key_of(competition="Primera Division - Apertura",
+                           league_id=335)
+    assert not key.startswith("league:PD"), (
+        f"🔴 엘살바도르 리그(fotmob 335)가 라리가 열쇠로 붙었다 — {key} · {why}")
+    # 🔴 라리가 자신은 **그대로** 서야 한다(고치다 깨뜨리지 않았나)
+    got, _ = comp.key_of(competition="LaLiga", league_id=87)
+    assert got == "league:PD", got
+
+
+def test_v6_자동등록은_손표_열쇠로_쓰지_않는다():
+    """🔴🔴 §1 — 자동 등록은 **`league:fotmob{id}`** 열쇠로만 쓴다.
+
+    > `config/competitions.yaml` 은 **사용자 영역**이다(기준 모델·분할 규칙).
+
+    ⚠️ 돌연변이: `discover.register` 에서 손 표 열쇠를 거르는 줄을 지우면 —
+       자동 등록이 라리가 파일을 덮어쓴다. 🔴 호출을 AST 로 보지 않고 **결과**를
+       본다: 쌓인 파일의 열쇠가 전부 `league:fotmob` 로 시작한다.
+    """
+    from app.core import autoleague as al
+    bad = [k for k in al.registered() if not k.startswith("league:fotmob")]
+    assert not bad, (
+        f"🔴 자동 등록 파일이 **손 표 꼴의 열쇠**로 쌓였다 {bad} — "
+        f"`config/competitions.yaml` 의 열쇠를 덮으면 그 리그 판정이 거짓이 된다")
+
+
+def test_v6_정확일치가_품는일치를_이긴다():
+    """🔴 ②b — 자동 등록이 **본 글자**와 정확히 같으면 손 표보다 먼저다.
+
+    ⚠️ 돌연변이: `key_of` 의 ②b 블록을 지우면 — 카드 쪽(리그 id 없음)이 다시
+       엘살바도르를 라리가로 판정한다. 🔴 등록 파일이 있을 때만 세는 계약이므로
+       파일이 없으면 **건너뛴 사실을 적는다**(#3).
+    """
+    from app.core import autoleague as al
+    rows = [(k, al.load(k)) for k in al.registered()]
+    seen = [(k, s) for k, b in rows for s in (b.get("seen") or [])]
+    if not seen:
+        import pytest
+        pytest.skip("🔴 자동 등록 파일이 아직 없다 — 셀 것이 없다(인수 실행 전)")
+    from app.core import competition as comp
+    bad = [f"{s} → {comp.key_of(competition=s)[0]} (기대 {k})"
+           for k, s in seen if comp.key_of(competition=s)[0] != k]
+    assert not bad, ("🔴 자동 등록이 **본 글자**인데 열쇠가 다른 데로 갔다:\n  "
+                     + "\n  ".join(bad))

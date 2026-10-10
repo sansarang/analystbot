@@ -43,8 +43,19 @@ def rows() -> dict[str, dict]:
 
 
 def _norm(said: object) -> str:
-    """🔴 대조용 꼴 — 낮춰 쓰고 공백을 줄인다. ⚠️ 글자를 **지어내 바꾸지 않는다**."""
-    return " ".join(str(said or "").strip().lower().split())
+    """🔴 대조용 꼴 — 낮춰 쓰고 공백을 줄이고 **악센트를 벗긴다**.
+
+    ⚠️ 글자를 **지어내 바꾸지 않는다** — 유니코드 분해 뒤 결합문자만 뗀다.
+    🔴 왜 악센트를 벗기나(실측 2026-10-10): fotmob 이 리그 표 페이지에서는
+       `Segunda Federación` 으로, 경기 페이지에서는
+       `Segunda Federacion - Group 2` 로 적는다. 같은 대회인데 **악센트가
+       갈려서** 자동 등록 열쇠를 못 찾았고 카드가 *"대회를 알아보지 못했다"* 를
+       띄웠다.
+    """
+    import unicodedata
+    low = unicodedata.normalize("NFKD", str(said or "").strip().lower())
+    return " ".join("".join(c for c in low
+                            if not unicodedata.combining(c)).split())
 
 
 def key_of(*, competition: str = "", league_id: object = None,
@@ -78,10 +89,40 @@ def key_of(*, competition: str = "", league_id: object = None,
                    ((row.get("sources") or {}).get("fotmob_ids") or [])]
             if lid in ids:
                 return key, f"fotmob 리그 id `{lid}`"
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 ②b **자동 등록이 본 글자와 정확히 같으면 그것이 먼저다**
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실사고 2026-10-10: 카드 쪽은 리그 id 를 못 받고 **대회 글자만** 받는다.
+    #     그래서 엘살바도르 `Primera Division - Apertura` 가 손 표의
+    #     `league:PD`(라리가)에 **품는 일치**로 붙었다 — 그 리그의 기준 모델로
+    #     판정하면 카드가 통째로 거짓이 된다(M14).
+    #  🔴 **정확 일치는 품는 일치보다 센 증거**다. 그래서 ③ 보다 먼저 본다.
+    if said:
+        from app.core import autoleague as _al
+        key = _al.key_by_seen(competition)
+        if key:
+            return key, f"**자동 등록** 리그 — 경기 페이지 글자 `{competition}`"
     # ③ 글자 표기 — **긴 것부터** 본다
     if said:
         cand: list[tuple[int, str, str]] = []
         for key, row in box.items():
+            # ══════════════════════════════════════════════════════════
+            # 🔴🔴 **리그 id 가 그 줄과 어긋나면 글자는 결정권이 없다**
+            # ══════════════════════════════════════════════════════════
+            #
+            #  ⚠️ 실사고 2026-10-10: 엘살바도르 `Primera Division - Apertura`
+            #     (fotmob 335)가 **스페인 라리가** `league:PD`(fotmob 87)로
+            #     붙었다 — 그 줄의 `football_data_names` 에 `Primera Division`
+            #     이 있어서다. 자동 등록이 라리가 열쇠로 파일을 썼다(지웠다).
+            #  🔴 대회 이름은 **나라를 넘어 겹친다**(`Primera División`·
+            #     `Super League`·`Serie B`). 그래서 **id 가 글자를 이긴다**:
+            #     그 줄이 fotmob id 를 선언했는데 우리 id 가 거기 없으면 **모순**
+            #     이므로 그 줄을 후보에서 뺀다.
+            ids = [str(x) for x in
+                   ((row.get("sources") or {}).get("fotmob_ids") or [])]
+            if lid and ids and lid not in ids:
+                continue
             for word in _words(row):
                 low = _norm(word)
                 if not low:

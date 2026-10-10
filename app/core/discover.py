@@ -296,11 +296,20 @@ async def register(net, *, league_id: object, league_name: str = "",
     from app.core import competition as comp
     if not league_id:
         return {}, "🔴 등록 못 한다 — 리그 id 를 못 받았다"
-    key, _why = comp.key_of(competition=league_name, league_id=league_id)
-    if not key:
-        # 🔴 대회 표에 없으면 **자동 등록 열쇠**를 리그 id 로 만든다 — 그 열쇠가
-        #    `data/leagues_auto/` 의 파일 이름이 된다(§1).
-        key = f"league:fotmob{league_id}"
+    key, why_key = comp.key_of(competition=league_name, league_id=league_id)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **손 표의 열쇠로는 절대 쓰지 않는다**(실사고 2026-10-10)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  엘살바도르 리그가 **라리가 열쇠**(`league:PD`)로 등록돼 파일을 썼다.
+    #  🔴 `config/competitions.yaml` 은 **사용자 영역**이고 거기엔 기준 모델·
+    #     분할 규칙이 달려 있다 — 자동 등록이 그 열쇠를 덮으면 그 리그의 판정이
+    #     통째로 거짓이 된다(M14).
+    #  🔴 그래서: 손 표가 아는 대회면 **등록할 것이 없다**(이미 선언돼 있다).
+    #     모르면 **리그 id 열쇠**로만 쓴다.
+    if key and not key.startswith("league:fotmob"):
+        return {}, f"등록 안 한다 — 손 표가 이미 아는 대회다({why_key})"
+    key = f"league:fotmob{league_id}"
     meta = await fm.league_meta(net, league_id)
     if not meta.get("ccode"):
         return {}, (f"🔴 등록 실패 — `{key}` 의 나라(ccode)를 못 받았다"
@@ -309,9 +318,19 @@ async def register(net, *, league_id: object, league_name: str = "",
     teams = sorted(fm.team_ids(fm.payload(getattr(page, "text", "") or "")
                                or {}))
     rows = await fm.league_season_rows(net, league_id)
+    # 🔴 **경기 페이지가 적은 글자**를 함께 담는다 — 카드 쪽이 그 글자만 받는다
+    seen = [str(league_name or ""), str(meta.get("name") or "")]
+    old = load_seen(key)
     box, why = al.build(competition_key=key, meta=meta, teams=teams,
-                        baseline=al.baseline_of(rows))
+                        baseline=al.baseline_of(rows), seen=[*old, *seen])
     if not box:
         return {}, why
     p, said = al.save(box)
     return (box if p else {}), f"{why} · {said}"
+
+
+def load_seen(key: str) -> list[str]:
+    """🔴 이미 쌓인 **본 글자들** — 갱신이 그것을 지우지 않게(§2: *"이미 있으면
+    갱신만"*). ⚠️ 덮어쓰면 어제 본 표기가 사라지고 같은 오진이 다시 난다."""
+    from app.core import autoleague as al
+    return [str(x) for x in (al.load(key).get("seen") or [])]

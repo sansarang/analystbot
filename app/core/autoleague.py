@@ -149,7 +149,8 @@ def baseline_of(rows: list[dict]) -> dict:
 
 
 def build(*, competition_key: str, meta: dict, teams: list[str],
-          baseline: dict, when: date | None = None) -> tuple[dict, str]:
+          baseline: dict, seen: list[str] | None = None,
+          when: date | None = None) -> tuple[dict, str]:
     """🔴🔴 §1 — 등록할 표를 **만든다**. `(표, 사유)` · 필수 칸이 없으면 `({}, 사유)`.
 
     ⚠️ **실패를 조용히 넘기지 않는다** — 사유에 무엇이 없는지 이름으로 적는다.
@@ -174,6 +175,18 @@ def build(*, competition_key: str, meta: dict, teams: list[str],
         "format": ("group" if int(meta.get("groups") or 0) > 1 else "league"),
         "zones": dict(meta.get("zones") or {}),
         "baseline": dict(baseline or {}),
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **경기 페이지가 적는 글자 그대로**(실사고 2026-10-10)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  엘살바도르 `Primera Division - Apertura` 가 **스페인 라리가**
+        #  `league:PD` 로 붙었다 — 그 줄의 `football_data_names` 에
+        #  `Primera Division` 이 있어 **품는 일치**가 걸렸다.
+        #  🔴 카드 쪽은 리그 id 없이 **대회 글자만** 받는다. 그래서 그 글자를
+        #     여기 **그대로** 담아 두고, 열쇠 판정이 **정확 일치**로 먼저 본다 —
+        #     정확 일치는 품는 일치보다 **센 증거**다.
+        "seen": sorted({str(x).strip() for x in (seen or [])
+                        if str(x).strip()}),
     }
     miss = [k for k in NEED if not said.get(k)]
     if miss:
@@ -268,9 +281,41 @@ def key_by_name(said: str) -> str:
     want = comp._norm(said)
     if not want:
         return ""
+    # 🔴 **긴 이름부터** 본다 — 손 표와 같은 규칙이다(`serie a` 가
+    #    `serie a - brazil` 을 가로채지 않게 · `competition.key_of` ③).
+    cand: list[tuple[int, str]] = []
     for key in registered():
         box = load(key)
-        for word in (str(box.get("name") or ""), short_of(key)):
-            if word and comp._norm(word) == want:
+        for word in (str(box.get("name") or ""), short_of(key),
+                     *[str(x) for x in (box.get("seen") or [])]):
+            low = comp._norm(word)
+            if not low:
+                continue
+            # 🔴 **품는 검사**다 — 실측 2026-10-10: 등록 이름은
+            #    `Segunda Federación` 인데 경기 페이지는
+            #    `Segunda Federacion - Group 2` 라고 적는다(조 이름이 붙는다).
+            if low == want or low in want:
+                cand.append((len(low), key))
+    if not cand:
+        return ""
+    cand.sort(key=lambda x: -x[0])
+    return cand[0][1]
+
+
+def key_by_seen(said: str) -> str:
+    """🔴🔴 **경기 페이지 글자와 정확히 같은** 자동 등록 열쇠. 없으면 `""`.
+
+    ⚠️ 실사고 2026-10-10: 손 표의 `football_data_names`(`Primera Division`)가
+       엘살바도르 리그 글자(`Primera Division - Apertura`)를 **품어서** 그 경기가
+       라리가로 붙었다. 🔴 **정확 일치가 품는 일치를 이긴다** — 그 순서를
+       `competition.key_of` 가 지킨다(여기는 재료만 준다).
+    """
+    from app.core import competition as comp
+    want = comp._norm(said)
+    if not want:
+        return ""
+    for key in registered():
+        for word in (load(key).get("seen") or []):
+            if comp._norm(word) == want:
                 return key
     return ""
