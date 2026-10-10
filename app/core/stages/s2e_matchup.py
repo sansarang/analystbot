@@ -65,6 +65,14 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
     out.update({"form": form, "profile": prof, "fired": fired, "rest": rest,
                 "why": (f"축1 폼 {', '.join(f'{s} {f.index()}' for s, f in form.items())}"
                         f" · 축3 발동 {len(fired)}건")})
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 §4 — **분 단위 시뮬레이션**(해석 계산 · 같은 입력이면 같은 수)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 λ 는 **이 경기 총골 기준**에서 나눈다(새 기준선을 만들지 않는다) —
+    #     그 기준은 `facts.standings["match_total_baseline"]` 하나다.
+    #  ⚠️ 기준이 없으면 시뮬레이션을 **안 돈다**(λ 를 지어내지 않는다 · #4).
+    out["sim"] = _simulate(ref, facts, out, state=state)
     state.note(f"s2e 상성 — {out['why']}")
     logger.info("[s2e] 상성 — %s · 발동 %s", out["why"],
                 [f.rule for f in fired])
@@ -189,3 +197,43 @@ def _rest_days(facts: Facts, key: str) -> int | None:
         return int(got)
     except (TypeError, ValueError):
         return None
+
+
+def _simulate(ref: MatchRef, facts: Facts, box: dict, *,
+              state: RunState) -> dict:
+    """🔴🔴 §4 — 세 축 → **스코어 분포·승무패·오버·선제골 팀 승률**.
+
+    🔴 λ 를 두 팀으로 나누는 규칙은 **보정 폼 지수의 차이**다 — 축1 이 이미 상대
+       전력을 보정했으므로 그 차이가 *"누가 더 넣나"* 를 말한다.
+    ⚠️ 기준 총골이 없으면 `{}` 다(사유를 적는다 · 지어내지 않는다).
+    """
+    from app.core import goals as _g
+    from app.core import sim as _sim
+    base = dict(getattr(facts, "standings", None) or {}).get(
+        "match_total_baseline")
+    if base is None:
+        said = "🔴 이 경기 총골 기준이 없다 — §4 시뮬레이션을 안 돈다"
+        state.note(f"s2e {said}")
+        return {"why": said}
+    form = dict(box.get("form") or {})
+    h = form.get("home").index() if form.get("home") else None
+    a = form.get("away").index() if form.get("away") else None
+    # 🔴 **기준 총골을 둘로 나눈다** — 폼 지수 차이로 기울인다
+    #    ⚠️ 기울이는 계수(0.25)는 **임시값**이다(적합 전 · 카드가 적는다)
+    tilt = 0.0
+    if h is not None and a is not None:
+        tilt = max(-0.4, min(0.4, 0.25 * (float(h) - float(a))))
+    lam_h = float(base) * (0.5 + tilt / 2.0)
+    lam_a = float(base) * (0.5 - tilt / 2.0)
+    args = _g.sim_input(box, lam_home=lam_h, lam_away=lam_a)
+    got = _sim.run(args["lam_home"], args["lam_away"],
+                   late_home=args["late_home"], late_away=args["late_away"],
+                   lead_mul=args["lead_mul"])
+    return {"home": got.home, "draw": got.draw, "away": got.away,
+            "over": got.over, "first_wins": got.first_wins,
+            "scores": dict(list(got.scores.items())[:40]),
+            "lam": [args["lam_home"], args["lam_away"]],
+            "tilt": round(tilt, 3),
+            "why": (f"총골 기준 {base} → λ {args['lam_home']}/"
+                    f"{args['lam_away']}(폼 차로 기울임 {tilt:+.2f} · "
+                    f"{_g.PROVISIONAL}) · {args['why']} · {got.why}")}

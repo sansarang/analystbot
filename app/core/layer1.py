@@ -939,6 +939,9 @@ def edge_block(card: Card) -> str:
     said_g = _goal_line(box, card)
     if said_g:
         out.append(f" 골 내용: {said_g}")
+    said_s = _sim_line(box)
+    if said_s:
+        out.append(f" 시뮬: {said_s}")
     out.append(f" → {_edge_line(box, card)}")
     return "\n".join(out)
 
@@ -1022,3 +1025,25 @@ def _edge_team(box: dict, card: Card) -> str:
         return ""
     side = "home" if tally["home"] > tally["away"] else "away"
     return card.match.home_name if side == "home" else card.match.away_name
+
+
+def _sim_line(box: dict) -> str:
+    """🔴🔴 §4 — **분 단위 시뮬레이션** 한 줄. 안 돌았으면 그 사유를 적는다.
+
+    > 90분을 분 단위로 시뮬레이션 … 승무패, 오버 1.5/2.5/3.5, **"선제골 팀이
+    > 이길 확률"** 까지.
+    """
+    said = dict(box.get("sim") or {})
+    if not said:
+        return ""
+    if said.get("home") is None:
+        return str(said.get("why") or "")[:110]
+    over = dict(said.get("over") or {})
+    got = (f"승무패 {float(said['home']):.0%}/{float(said['draw']):.0%}/"
+           f"{float(said['away']):.0%}")
+    if over:
+        got += " · 오버 " + " · ".join(
+            f"{x} {float(over.get(x, 0)):.0%}" for x in ("1.5", "2.5", "3.5"))
+    if said.get("first_wins") is not None:
+        got += f" · 선제골 팀 승 {float(said['first_wins']):.0%}"
+    return got

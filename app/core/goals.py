@@ -426,3 +426,85 @@ def _t13(rows: dict, side: str, mine: Profile, theirs: Profile,
                   watch_only=(mine.scored.header < min_n),
                   text=f"헤더 득점 {a:.0%}({mine.scored.header}/{mine.scored.n})",
                   why=why)]
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 §4 **세 축 → 시뮬레이션 입력** · 기여 분해
+# ══════════════════════════════════════════════════════════════════
+
+def sim_input(box: dict, *, lam_home: float, lam_away: float) -> dict:
+    """🔴🔴 §4 — 상성 묶음(`s2e_matchup` 산출) → **시뮬레이션 인자**.
+
+    돌려주는 것: `{lam_home, lam_away, late_home, late_away, lead_mul, why}`
+
+    🔴 **발동한 규칙만** 쓴다(`관찰만` 은 빼므로 확률이 안 움직인다 · §3-4).
+    🔴 λ 상한(±15%)을 지킨다 — 표가 그 수를 든다.
+    ⚠️ 상태 배율(`lead_mul`)은 **T11 이 걸렸을 때만** 넣는다. 그 규칙이 바로
+       *"리드 유지력 낮음 ↔ 상대 추격력 높음"* 이고, 지시서 §4 가 말한
+       *"앞서는 팀·뒤지는 팀의 득점률 변화"* 가 그것이다.
+    ⚠️ 배율의 크기(0.85·1.2)는 **임시값**이다 — 적합 전이고 카드가 그것을 적는다.
+    """
+    _cap_lo, cap_pct = _caps()
+    fired = [f for f in (box.get("fired") or []) if not f.watch_only]
+    lam = {"home": float(lam_home), "away": float(lam_away)}
+    late = {"home": 0.0, "away": 0.0}
+    pct = {"home": 0.0, "away": 0.0}
+    said: list[str] = []
+    for f in fired:
+        eff = dict(f.moves())
+        side = str(f.side)
+        if eff.get("lambda_own"):
+            pct[side] += float(eff["lambda_own"]) * 100.0
+            said.append(f"[{f.rule}] {side} λ {float(eff['lambda_own']):+.0%}")
+        if eff.get("lambda_own_late"):
+            late[side] += float(eff["lambda_own_late"])
+            said.append(f"[{f.rule}] {side} 후반 λ "
+                        f"{float(eff['lambda_own_late']):+.0%}")
+    out_lam = {}
+    for side in ("home", "away"):
+        cut = max(-cap_pct, min(cap_pct, pct[side]))
+        out_lam[side] = round(lam[side] * (1.0 + cut / 100.0), 4)
+        if abs(pct[side]) > cap_pct:
+            said.append(f"🔴 {side} λ 이동이 상한 ±{cap_pct:.0f}% 로 잘렸다")
+    lead_mul = None
+    if any(f.rule == "T11" for f in fired):
+        # 🔴 §4 — 상태 배율. ⚠️ 크기는 **임시값**이다
+        lead_mul = {"leading": 0.85, "trailing": 1.20}
+        said.append(f"[T11] 상태 배율 앞섬 ×0.85 · 뒤짐 ×1.20 ({PROVISIONAL})")
+    return {"lam_home": out_lam["home"], "lam_away": out_lam["away"],
+            "late_home": late["home"], "late_away": late["away"],
+            "lead_mul": lead_mul,
+            "why": " · ".join(said) or "발동한 규칙이 없다 — λ 를 안 움직인다"}
+
+
+def _caps() -> tuple[float, float]:
+    """🔴 상한 — `strategy.caps` 하나가 든다(사본 금지 · 같은 ±0.5 · ±15%)."""
+    from app.core import strategy
+    return strategy.caps()
+
+
+def share_of(before, after, parts: dict) -> dict:
+    """🔴🔴 §4 — **기여 분해**: 잠정→최종 변화 중 축마다 몇 %p 인가.
+
+    > 각 축의 기여를 분리해 보인다 … 잠정→최종 변화 중 몇 %p가 폼, 몇 %p가
+    > 전술 상성, 몇 %p가 골 내용 상성인지.
+
+    `parts` 는 `{축 이름: 그 축만 넣고 다시 센 확률}` 이다.
+    🔴 **합이 전체 변화와 같아야 한다**(§7 계약) — 그래서 **마지막 축에 잔차를
+       몰아 준다**(겹치는 효과를 버리지 않는다).
+    ⚠️ 축이 하나도 없으면 빈 표다(지어내지 않는다).
+    """
+    if before is None or after is None or not parts:
+        return {}
+    total = (float(after.home) - float(before.home)) * 100.0
+    out: dict[str, float] = {}
+    for name, got in parts.items():
+        if got is None:
+            continue
+        out[name] = round((float(got.home) - float(before.home)) * 100.0, 2)
+    if not out:
+        return {}
+    # 🔴 잔차를 **마지막 칸**에 더해 합을 맞춘다
+    last = list(out)[-1]
+    out[last] = round(out[last] + (total - sum(out.values())), 2)
+    return out

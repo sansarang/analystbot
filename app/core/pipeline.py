@@ -139,6 +139,17 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     layers["strategy"] = plan
     layers["matchup"] = edge
     layers["prob_before"] = before_layers.get("ours")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 §4 **기여 분해** — 잠정→최종 변화 중 축마다 몇 %p 인가
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 **축을 하나씩만 넣고 다시 세서** 그 몫을 본다(같은 함수를 여러 입력으로
+    #     부르는 것이고, 규칙은 하나다). ⚠️ 합이 전체 변화와 **같아야** 한다 —
+    #     `goals.share_of` 가 마지막 칸에 잔차를 몰아 그것을 지킨다(§7 계약).
+    edge["share"] = _axis_share(ref, facts, variables, hypo, base_p, adj_p,
+                                feed_mk, user_mk, look, plan, edge,
+                                before=before_layers.get("ours"),
+                                after=layers.get("ours"), state=st)
     layers["ocr_text"] = ocr_text
     from app.core import reweight as _reweight
     hypo = _reweight.of(hypo, layers.get("ours"), ref=ref, state=st)
@@ -581,4 +592,29 @@ def _market_moved(before: Card, layers: dict, *, state: RunState) -> list[str]:
     said = compare.moved(before.market, now)
     for line in said:
         state.note(f"§6 {line} — 새 기사를 다시 찾아볼 신호다")
+    return said
+
+
+def _axis_share(ref, facts, variables, hypo, base_p, adj_p, feed_mk, user_mk,
+                look, plan, edge, *, before, after, state) -> dict:
+    """🔴🔴 §4 — **세 축의 기여 분해**(`{축: %p}`). 못 쪼개면 빈 표.
+
+    🔴 쪼개는 법: 축을 **하나씩만 넣고** `_layers` 를 다시 돌려 그 몫을 본다.
+       ⚠️ 그래서 `_layers` 가 **부수 효과가 없어야** 한다 — 지금은 `state.note` 만
+          남기므로 수가 바뀌지 않는다(그 사실을 여기 적어 둔다).
+    🔴 축2(전술 T1~T8)는 아직 안 돌므로 **그 칸이 없다**(0 을 적지 않는다 · #3).
+    """
+    from app.core import goals as _g
+    if before is None or after is None:
+        return {}
+    parts: dict = {}
+    # 🔴 **전략만**(§2 둘째 지시) — 그것이 "전술" 몫이다
+    only_plan, _why = __import__("app.core.compare", fromlist=["x"]).our_prob(
+        hypo, start=(adj_p.probs if adj_p.probs is not None else base_p.probs),
+        variables=variables, adjusted=bool(adj_p.moved), ref=ref,
+        outlook=look, strategy=plan)
+    parts["전술"] = only_plan
+    said = _g.share_of(before, after, parts)
+    if said:
+        state.note(f"§4 기여 분해 — {said}(합 = 잠정→최종 변화)")
     return said
