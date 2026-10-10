@@ -723,6 +723,23 @@ def _scores(card: Card) -> str:
     """
     from app.core import reweight
     from app.core.stages.s9_audit import score_drivers, top_scores
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **예상 스코어도 시뮬 분포에서**(지적 ④ — 확률은 한 곳이다)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실측 2026-10-10(재현): 최종 확률은 홈 46% 인데 예상 스코어가
+    #     `3-3 · 1-2 · 1-1` 로 나와 카드가 **"방향과 어긋난다"** 고 스스로
+    #     적었다 — 스코어는 **재가중 시나리오 무게**에서, 확률은 **시뮬**에서
+    #     왔기 때문이다(두 생성기).
+    #  🔴 시뮬이 스코어 분포를 들고 있으므로 **그 상위 셋**을 쓴다. 그러면 확률·
+    #     오버·스코어가 **같은 분포**에서 나온다. ⚠️ 시뮬이 못 돌면 재가중
+    #     무게를 쓰고 그 사실을 적는다(#3).
+    sim_sc = dict(dict(dict(getattr(card, "matchup", None) or {})
+                       .get("sim") or {}).get("scores") or {})
+    if sim_sc:
+        top = sorted(sim_sc.items(), key=lambda kv: -float(kv[1]))[:3]
+        said = " · ".join(f"{int(k[0])}-{int(k[1])}" for k, _v in top)
+        return f"{said} (시뮬 분포)"
     rows = top_scores(card.hypo, 3)
     if not rows:
         return "못 골랐다 — 시나리오가 없다"
@@ -741,7 +758,8 @@ def _scores(card: Card) -> str:
         agree = [s for s, _w in rows
                  if reweight.side_of(*(int(x) for x in s.split("-"))) == side]
         if not agree:
-            out += f" ⚠️ **방향({side})과 어긋난다** — 무게가 반대쪽에 있다"
+            out += (f" ⚠️ **방향({side})과 어긋난다** — 무게가 반대쪽에 있다"
+                    " · 🔴 재가중 무게다(시뮬이 못 돌았다)")
     return out
 
 

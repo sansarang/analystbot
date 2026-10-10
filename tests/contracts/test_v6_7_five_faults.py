@@ -371,6 +371,60 @@ def test_v6_오버도_시뮬에서_나온다():
     assert "1.5 62%" in said2 and "재가중 분포" in said2, said2
 
 
+def test_v6_예상스코어도_시뮬에서_나온다():
+    """🔴🔴 ④ — *"확률 한 곳"*. 예상 스코어도 **같은 분포**에서 나온다.
+
+    ⚠️ 실측 2026-10-10(재현): 최종 확률은 홈 46% 인데 예상 스코어가
+       `3-3 · 1-2 · 1-1` 로 나와 카드가 **"방향과 어긋난다"** 고 스스로 적었다 —
+       스코어는 재가중 무게에서, 확률은 시뮬에서 왔다(두 생성기).
+    """
+    from app.core import layer1
+    from app.core.schema import Card, Facts, ProbTriple
+    sim = {"home": 0.46, "draw": 0.30, "away": 0.24,
+           "scores": {(1, 0): 0.11, (2, 1): 0.09, (1, 1): 0.10,
+                      (0, 0): 0.05, (3, 3): 0.01}}
+    card = Card(match=_ref(), facts=Facts(),
+                matchup={"profile": {"home": 1}, "sim": sim},
+                our_prob=ProbTriple(home=0.46, draw=0.30, away=0.24))
+    said = layer1._scores(card)
+    assert "시뮬 분포" in said, said
+    # 🔴 무게 큰 순으로 셋 — `1-0`(0.11) · `1-1`(0.10) · `2-1`(0.09)
+    assert said.startswith("1-0 · 1-1 · 2-1"), said
+    assert "어긋난다" not in said, "🔴 같은 분포에서 왔는데 어긋난다고 적었다"
+
+
+def test_v6_시뮬_스코어는_무게_큰_순으로_든다():
+    """🔴 ④ — ⚠️ 열쇠 순으로 40칸을 자르면 **상위 스코어가 사라진다**."""
+    from app.core.schema import Facts, ProbTriple
+    from app.core.stages import s2e_matchup as _s2e
+    from app.core.state import RunState
+    facts = Facts(standings={"match_total_baseline": 2.6})
+    got = _s2e.final_sim(_ref(), facts, {"fired": [], "fired2": [], "form": {}},
+                         state=RunState(match_key="x"),
+                         ours=ProbTriple(home=0.45, draw=0.27, away=0.28),
+                         before=ProbTriple(home=0.45, draw=0.27, away=0.28))
+    rows = list(dict(got["scores"]).items())
+    assert rows, "🔴 스코어 분포가 비었다"
+    vals = [float(v) for _k, v in rows]
+    assert vals == sorted(vals, reverse=True), "🔴 무게 순이 아니다"
+    # 🔴 가장 무거운 스코어가 **한 자리 수 득점**이다(열쇠 순이면 `0-0` 쪽만 남는다)
+    (h, a), top = rows[0]
+    assert (h + a) <= 4, (h, a, top)
+
+
+def test_v6_자리글자가_붙은_이름을_없는_이름이라_하지_않는다():
+    """🔴🔴 (r) 거짓 위반 — ⚠️ 실측 2026-10-10(재현): 평이 *"새로 들어온
+    **LB Min-Seo Park**"* 이라 적었고 검열이 그 다섯 글자를 통째로 **없는 이름**
+    이라 했다(묶음에는 `Min-Seo Park` 이 있다) — 좋은 평이 템플릿으로 떨어졌다.
+    """
+    from app.core.stages import s9_say
+    known = {"Min-Seo Park", "Si-Hoo Hong"}
+    assert s9_say._names_in("새로 들어온 LB Min-Seo Park 이", known) == []
+    assert s9_say._names_in("RB Si-Hoo Hong 과", known) == []
+    # 🔴 지어낸 이름은 여전히 걸린다
+    assert s9_say._names_in("Lionel Messi 가", known) == ["Lionel Messi"]
+
+
 # ══════════════════════════════════════════════════════════════════
 # ⑤ 상성 우위
 # ══════════════════════════════════════════════════════════════════

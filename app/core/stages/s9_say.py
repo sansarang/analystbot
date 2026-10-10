@@ -294,14 +294,25 @@ def _names_of(box: Bundle) -> set[str]:
 
 
 def _names_in(said: str, known: set[str]) -> list[str]:
-    """🔴 (r) — 글이 **인용한 이름들**. ⚠️ 로마자 이름만 센다.
+    """🔴 (r) — 글이 **인용한, 묶음에 없는** 이름들. ⚠️ 로마자 이름만 센다.
 
     ⚠️ 한글 토막은 보통 명사(*"오른쪽"*·*"수비"*)와 섞여 거짓 위반을 만든다 —
        실측 없이 그 둘을 가를 길이 없으므로 **로마자만** 센다(#4 추측 금지).
+    🔴🔴 **자리 글자가 이름에 붙는다** — ⚠️ 실측 2026-10-10(재현): 평이
+       *"새로 들어온 **LB Min-Seo Park**"* 이라고 적었고 검열이 그 다섯 글자를
+       통째로 **없는 이름**이라 했다(묶음에는 `Min-Seo Park` 이 있다). 그 거짓
+       위반 하나로 좋은 평이 템플릿으로 떨어졌다.
+    🔴 그래서 **묶음의 이름을 품고 있으면 통과**시킨다(지어낸 이름은 어떤 이름도
+       품지 않는다).
     """
     got = [x for x in _NAME.findall(str(said or ""))
            if re.match(r"^[A-Z]", x)]
-    return [x for x in got if x not in known]
+    out: list[str] = []
+    for nm in got:
+        if any(k and (k in nm or nm in k) for k in known):
+            continue
+        out.append(nm)
+    return out
 
 
 # ══════════════════════════════════════════════════════════════════

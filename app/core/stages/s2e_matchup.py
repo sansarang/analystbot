@@ -385,7 +385,10 @@ def final_sim(ref: MatchRef, facts: Facts, box: dict, *, state: RunState,
                 got.home, got.draw, got.away, share)
     return {"home": got.home, "draw": got.draw, "away": got.away,
             "over": got.over, "first_wins": got.first_wins,
-            "scores": dict(list(got.scores.items())[:40]),
+            # 🔴 **무게 큰 순으로** 40칸만 든다 — ⚠️ 열쇠 순으로 자르면
+            #    `0-0`~`4-8` 만 남아 상위 스코어가 사라진다(실측 2026-10-10).
+            "scores": dict(sorted(got.scores.items(),
+                                  key=lambda kv: -float(kv[1]))[:40]),
             "lam": [args["lam_home"], args["lam_away"]],
             "tilt": round(t_fin + f_tilt, 3),
             "tilt_prob": round(t_fin, 3), "tilt_form": round(f_tilt, 3),
