@@ -397,10 +397,17 @@ def _t11(rows: dict, side: str, mine: Profile, theirs: Profile,
     if not (hold <= 0.60 and comeback >= 0.40):
         return []
     n_led = sum(int(v) for v in mine.led_first.values())
+    n_tr = sum(int(v) for v in theirs.trailed_first.values())
     thin = n_led < 3        # 🔴 흐름 표본은 **경기 수**다(골 수가 아니다)
+    # 🔴🔴 **분모를 함께 쓴다**(사용자 지시 2026-10-10 ⑤) — *"'90%(9/10)'처럼
+    #    분모를 함께"*. ⚠️ `20%` 만 적으면 1/5 인지 2/10 인지 알 수 없다.
     return [Fired(rule="T11", side=side, effect=eff, watch_only=thin,
-                  text=(f"리드 유지력 {hold:.0%}({mine.led_first}) ↔ "
-                        f"상대 추격력 {comeback:.0%}({theirs.trailed_first})"),
+                  text=(f"리드 유지력 {hold:.0%}"
+                        f"({int(mine.led_first.get('지킴', 0))}/{n_led}"
+                        f" · {mine.led_first}) ↔ 상대 추격력 {comeback:.0%}"
+                        f"({int(theirs.trailed_first.get('역전승', 0))
+                            + int(theirs.trailed_first.get('무', 0))}/{n_tr}"
+                        f" · {theirs.trailed_first})"),
                   why=why + (f" · {WATCH_ONLY}(선제골 경기 {n_led}건 < 3)"
                              if thin else ""))]
 
@@ -466,7 +473,8 @@ def _t13(rows: dict, side: str, mine: Profile, theirs: Profile,
 # 🔴🔴 §4 **세 축 → 시뮬레이션 입력** · 기여 분해
 # ══════════════════════════════════════════════════════════════════
 
-def sim_input(box: dict, *, lam_home: float, lam_away: float) -> dict:
+def sim_input(box: dict, *, lam_home: float, lam_away: float,
+              axis2: bool = True, axis3: bool = True) -> dict:
     """🔴🔴 §4 — 상성 묶음(`s2e_matchup` 산출) → **시뮬레이션 인자**.
 
     돌려주는 것: `{lam_home, lam_away, late_home, late_away, lead_mul, why}`
@@ -480,7 +488,10 @@ def sim_input(box: dict, *, lam_home: float, lam_away: float) -> dict:
     """
     _cap_lo, cap_pct = _caps()
     # 🔴🔴 **축2(T1~T6)와 축3(T9~T13)을 함께** 센다 — 상한은 하나다(±15%)
-    fired = [f for f in [*(box.get("fired") or []), *(box.get("fired2") or [])]
+    # 🔴🔴 **축을 하나씩 끌 수 있다**(사용자 지시 2026-10-10 ④ — 기여 분해).
+    #    ⚠️ `axis3` 는 T9~T13(골 내용), `axis2` 는 T1~T6(스타일)이다.
+    fired = [f for f in [*((box.get("fired") or []) if axis3 else []),
+                         *((box.get("fired2") or []) if axis2 else [])]
              if not f.watch_only]
     lam = {"home": float(lam_home), "away": float(lam_away)}
     late = {"home": 0.0, "away": 0.0}
@@ -524,29 +535,11 @@ def _caps() -> tuple[float, float]:
     from app.core import strategy
     return strategy.caps()
 
-
-def share_of(before, after, parts: dict) -> dict:
-    """🔴🔴 §4 — **기여 분해**: 잠정→최종 변화 중 축마다 몇 %p 인가.
-
-    > 각 축의 기여를 분리해 보인다 … 잠정→최종 변화 중 몇 %p가 폼, 몇 %p가
-    > 전술 상성, 몇 %p가 골 내용 상성인지.
-
-    `parts` 는 `{축 이름: 그 축만 넣고 다시 센 확률}` 이다.
-    🔴 **합이 전체 변화와 같아야 한다**(§7 계약) — 그래서 **마지막 축에 잔차를
-       몰아 준다**(겹치는 효과를 버리지 않는다).
-    ⚠️ 축이 하나도 없으면 빈 표다(지어내지 않는다).
-    """
-    if before is None or after is None or not parts:
-        return {}
-    total = (float(after.home) - float(before.home)) * 100.0
-    out: dict[str, float] = {}
-    for name, got in parts.items():
-        if got is None:
-            continue
-        out[name] = round((float(got.home) - float(before.home)) * 100.0, 2)
-    if not out:
-        return {}
-    # 🔴 잔차를 **마지막 칸**에 더해 합을 맞춘다
-    last = list(out)[-1]
-    out[last] = round(out[last] + (total - sum(out.values())), 2)
-    return out
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **기여 분해는 이제 `s2e_matchup.final_sim` 이 한다** — ④(2026-10-10)
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 여기 있던 `share_of` 를 **지웠다**. 그 함수는 축마다 따로 센 확률을 받아
+#     **잔차를 마지막 칸에 몰아** 합을 맞췄다 — 겹치는 효과를 눈가림한 것이다.
+#  🔴 지금은 단계를 쌓아서 잰다(`잠정 → +폼 → +전략 → +축2 → +축3`). 차를 이어
+#     붙이면 합이 **정확히** 잠정→최종 변화다 — 잔차가 아예 없다.

@@ -856,9 +856,18 @@ def plan_block(card: Card) -> str:
         if one is None:
             out.append(f" {name}: ⬜ 판정 없음")
             continue
-        out.append(f" {name}: **{one.strategy}** — {_cap(str(one.why or ''), 90)}")
+        # 🔴 `squad_turnover` 는 **사람 말로** 적는다(코드 값은 열거값 그대로)
+        from app.core import turnover as _turn
+        out.append(f" {name}: **{_turn.verdict_ko(one.strategy)}** — "
+                   f"{_cap(str(one.why or ''), 90)}")
     if getattr(plan, "shape", ""):
         out.append(f" 양상: {plan.shape}")
+    # 🔴🔴 **선수단 교체 — 기준 약함**(지적 ③) — 1겹에도 올린다. 이 표시가 없으면
+    #    사람이 *"김천 우세"* 를 **온전한 기준**으로 읽는다.
+    said_w = str(dict(dict(getattr(card, "matchup", None) or {})
+                      .get("sim") or {}).get("weak") or "")
+    if said_w:
+        out.append(f" {_cap(said_w.lstrip(' ·'), 150)}")
     return "\n".join(out)
 
 
@@ -1020,7 +1029,9 @@ def _edge_line(box: dict, card: Card) -> str:
     m = card.match
     old, new = getattr(card, "prob_before", None), card.our_prob
     who = _edge_team(box, card)
-    head = f"상성 우위: **{who}**" if who else "상성 우위: ⬜ 가리기 어렵다"
+    head = (f"상성 우위: **{who}**" if who
+            else ("상성 우위: ⬜ **안 쓴다**(⑤ — 축이 갈렸거나 최종 확률과 "
+                  f"어긋난다) · 표 {edge_votes(box)}"))
     if old is None or new is None:
         return head + " · 승률 비교는 **잠정 열이 없어** 못 적는다"
     said = (f" · {m.home_name} 승 잠정 {old.home:.0%} → 최종 "
@@ -1035,16 +1046,78 @@ def _edge_line(box: dict, card: Card) -> str:
 
 
 def _edge_team(box: dict, card: Card) -> str:
-    """🔴 §5 — **상성 우위 팀**. 발동 규칙의 무게로 센다(동률이면 빈 글자)."""
-    tally = {"home": 0.0, "away": 0.0}
-    for f in (box.get("fired") or []):
-        if f.watch_only:
-            continue
-        tally[str(f.side)] = tally.get(str(f.side), 0.0) + 1.0
-    if tally["home"] == tally["away"]:
+    """🔴🔴 §5 — **상성 우위 팀**은 *세 축을 합친 결과*다(사용자 지시 2026-10-10 ⑤).
+
+    > 세 축을 합친 결과로만 "상성 우위"를 정한다(**규칙 하나·두 개로 정하지
+    > 않는다**). **최종 확률 방향과 다르면 쓰지 않는다.**
+
+    ⚠️ 실사고 2026-10-10(김천–안양): 축3 규칙 **둘**(T10·T11)만 세서 *"상성 우위
+       안양"* 이라고 적었다 — 그런데 축1 폼은 김천이 **1.1 이나 좋았고**(−0.17 대
+       −1.30) 최종 확률도 김천이 높았다(38% 대 34%). 카드 한 장이 **서로 반대되는
+       두 말**을 했다(사용자가 잡았다).
+    🔴 이제 셋을 더한다: **축1 폼 차 · 축2 발동 · 축3 발동**. 그리고 방향이 최종
+       확률과 **어긋나면 빈 글자**를 돌려준다(그 사실은 `_edge_line` 이 적는다).
+    """
+    side = edge_side(box, card)
+    if not side:
         return ""
-    side = "home" if tally["home"] > tally["away"] else "away"
     return card.match.home_name if side == "home" else card.match.away_name
+
+
+#: 🔴 ⑤ — 축1 이 **의견을 내는** 최소 폼 차(경기당 득실차). 이보다 작으면 **기권**이다
+FORM_MIN = 0.1
+
+
+def edge_votes(box: dict) -> dict:
+    """🔴🔴 ⑤ — **축마다 한 표**. `{"축1": "home"|"away"|"", …}`.
+
+    🔴 **무게를 매기지 않는다** — 축을 견주는 계수는 적합한 적이 없고, 지어낸
+       계수로 *"폼 1.1 이 규칙 둘보다 크다"* 를 정하면 그것이 곧 환각이다.
+       그래서 **표를 세고**, 갈리면 **안 쓴다**(아래 `edge_side`).
+    ⚠️ 의견이 없는 축은 **빈 글자**(기권)다 — 0 을 홈/원정 어느 쪽으로도 보내지
+       않는다(#3 조용한 0 금지).
+    """
+    out = {"축1": "", "축2": "", "축3": ""}
+    form = dict(box.get("form") or {})
+    h = form.get("home").index() if form.get("home") else None
+    a = form.get("away").index() if form.get("away") else None
+    if h is not None and a is not None and abs(float(h) - float(a)) >= FORM_MIN:
+        out["축1"] = "home" if float(h) > float(a) else "away"
+    for name, rows in (("축2", box.get("fired2") or []),
+                       ("축3", box.get("fired") or [])):
+        tally = {"home": 0, "away": 0}
+        for f in rows:
+            if f.watch_only:        # 🔴 관찰만은 확률을 안 움직인다 → 안 센다
+                continue
+            tally[str(f.side)] = tally.get(str(f.side), 0) + 1
+        if tally["home"] != tally["away"]:
+            out[name] = "home" if tally["home"] > tally["away"] else "away"
+    return out
+
+
+def edge_side(box: dict, card: Card) -> str:
+    """🔴🔴 ⑤ — **세 축이 한 쪽을 가리킬 때만** 그 쪽이다. 아니면 빈 글자.
+
+    > 세 축을 합친 결과로만 "상성 우위"를 정한다(**규칙 하나·두 개로 정하지
+    > 않는다**). **최종 확률 방향과 다르면 쓰지 않는다.**
+
+    ⚠️ 실사고 2026-10-10(김천–안양): 축3 규칙 둘이 *"안양"* 을 말했고 축1 폼은
+       김천을 **1.13** 앞세웠다 — 그런데 카드는 *"상성 우위 안양"* 만 적었다.
+    🔴 지금은 **축이 갈리면 안 쓴다**(둘 다 맞을 수는 없다). 그리고 최종 확률이
+       더 높게 본 팀의 **반대쪽**은 어떤 경우에도 안 쓴다 — `반반` 일 때도 그렇다
+       (⚠️ 그 구멍으로 김천–안양이 빠져나갔다: 38% 대 34% 는 `반반` 이다).
+    """
+    votes = [v for v in edge_votes(box).values() if v]
+    if not votes or len(set(votes)) != 1:
+        return ""
+    side = votes[0]
+    ours = card.our_prob
+    if ours is not None:
+        mine = float(ours.home if side == "home" else ours.away)
+        other = float(ours.away if side == "home" else ours.home)
+        if mine < other:
+            return ""
+    return side
 
 
 def _sim_line(box: dict) -> str:

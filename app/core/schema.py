@@ -627,8 +627,12 @@ class StrategyLine(Frozen):
 
     side: Literal["home", "away"]
     #: 🔴 여섯 가지뿐이다 — `enum` 으로 박아 모델이 다른 말을 못 하게 한다
+    #: 🔴🔴 `squad_turnover` 는 **코드만** 넣는다(사용자 지시 2026-10-10 지적 ③) —
+    #  LLM 은 그 값을 못 고른다(프롬프트에 없다). 전역·이적으로 선수단이 바뀐
+    #  팀의 판정이고, `로테이션·체력 관리` 를 **덮어쓴다**.
     strategy: Literal["공격 위주", "수비 위주", "역습",
-                      "로테이션·체력 관리", "실험", "평소 그대로"]
+                      "로테이션·체력 관리", "실험", "평소 그대로",
+                      "squad_turnover"]
     #: 🔴 §2-2 — **근거 사실 id 2개 이상**(`app/core/strategy.py` 가 발급한 `L*`)
     fact_refs: list[str] = Field(default_factory=list)
     why: str = ""

@@ -295,7 +295,8 @@ _SEEN: dict[tuple, asyncio.Future] = {}
 
 
 async def run(ref: MatchRef, facts: Facts, *, state: RunState, chain: Any,
-              net: Any, cache: dict[str, Doc] | None = None) -> list[Doc]:
+              net: Any, cache: dict[str, Doc] | None = None,
+              extra_words: dict | None = None) -> list[Doc]:
     """🔴 하위 과제 여덟 — **찾기는 동시에, 자리 잡기는 차례로**(§5 s3 · §7 재생).
 
     ══════════════════════════════════════════════════════════════════
@@ -316,6 +317,17 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, chain: Any,
     from app.research import subtasks as _st
     cache = cache if cache is not None else {}
     subs = _st.split(_RefShim(ref))
+    # 🔴🔴 **의심될 때만 개념을 더한다**(사용자 지시 2026-10-10 지적 ③) —
+    #    `{"F": ("squad_turnover",)}` 꼴. ⚠️ 늘 넣으면 다른 경기의 질의가
+    #    묽어진다(실측 2026-10-10: 개념에 따라 수확이 다섯 배 갈린다).
+    if extra_words:
+        import dataclasses as _dc
+        box = {str(k): tuple(str(x) for x in v)
+               for k, v in dict(extra_words).items()}
+        subs = [(_dc.replace(sub, words=tuple(sub.words) + box[str(sub.group)])
+                 if str(getattr(sub, "group", "")) in box else sub)
+                for sub in subs]
+        state.note(f"s3 개념 추가 — {box}(선수단 교체 의심)")
     # ── ① 찾기 — **동시에**(순서가 결과를 바꾸지 않는다)
     found = await asyncio.gather(
         *[_candidates(sub, ref, state=state, chain=chain) for sub in subs],

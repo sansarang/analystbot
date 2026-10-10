@@ -89,7 +89,23 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     # 🔴🔴 §2 경우의 수 — **코드만**(LLM 없음). 순위표가 없으면 빈 표다
     look = s2b_base.outlook(ref, facts, state=st)
     cache: dict[str, Doc] = {}
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **선수단 교체 판정**(사용자 지시 2026-10-10 지적 ③) — s3 **앞**이다
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 여기서 세야 s3 가 *"전역·이적·방출"* 을 **찾을 수 있다**(검색은 아래서
+    #     시작한다). ⚠️ 재료는 `facts` 뿐이다(XI·평소 XI·명단) — 새 통신 0건.
+    from app.core import turnover as _turn
+    turn = {side: _turn.read(ref, facts, side=side)
+            for side in ("home", "away")}
+    for side, one in turn.items():
+        st.note(f"s2 선수단 교체({side}) — "
+                + ("🔴 **켜졌다** · " if one.get("on") else "")
+                + str(one.get("why") or ""))
+    more = ({"F": ("squad_turnover",)}
+            if any(one.get("on") for one in turn.values()) else None)
     docs = await s3_docs.run(ref, facts, state=st, chain=chain, net=net,
+                             extra_words=more,
                              cache=cache)
     cands = await s4_extract.run(ref, docs, state=st, chain=chain, net=net,
                                  cache=cache)
@@ -125,7 +141,7 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     # 🔴🔴 **확정 라인업 전략**(사용자 지시 2026-10-10(둘째) §1·§3) — 확정 XI 일
     #    때만 판정이 나온다. 🔴 **잠정 확률을 먼저 세고** 최종과 나란히 든다(§4).
     from app.core.stages import s2d_strategy as _s2d
-    plan = _s2d.run(ref, facts, state=st,
+    plan = _s2d.run(ref, facts, state=st, turnover=turn,
                     news=[v for v in variables
                           if str(getattr(v, "subtask", "") or "").startswith("F-")])
     # 🔴🔴 **상성 세 축**(사용자 지시 2026-10-10(셋째)) — 축1 폼 · 축3 골 내용
@@ -140,16 +156,40 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     layers["matchup"] = edge
     layers["prob_before"] = before_layers.get("ours")
     # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 §4 **기여 분해** — 잠정→최종 변화 중 축마다 몇 %p 인가
+    # 🔴🔴 **확률은 한 곳이다 — 최종 = 시뮬레이션**(사용자 지시 2026-10-10 ④)
     # ══════════════════════════════════════════════════════════════════
     #
-    #  🔴 **축을 하나씩만 넣고 다시 세서** 그 몫을 본다(같은 함수를 여러 입력으로
-    #     부르는 것이고, 규칙은 하나다). ⚠️ 합이 전체 변화와 **같아야** 한다 —
-    #     `goals.share_of` 가 마지막 칸에 잔차를 몰아 그것을 지킨다(§7 계약).
-    edge["share"] = _axis_share(ref, facts, variables, hypo, base_p, adj_p,
-                                feed_mk, user_mk, look, plan, edge,
-                                before=before_layers.get("ours"),
-                                after=layers.get("ours"), state=st)
+    #  > 최종 확률 = **시뮬레이션(묶인 분포) 결과**. 카드의 "시뮬" 줄과 최종 숫자가
+    #  > 다르면 **계약 실패**. 잠정→최종 변화는 축별 기여로 분해해 합이 맞게.
+    #
+    #  🔴 확률층(①→②→③)이 낸 `ours` 는 이제 **시뮬의 입력**이다 — 그 홈/원정 비를
+    #     맞추는 λ 기울기를 풀고, 거기에 축1 폼·축2·축3 을 얹어 **다시 센 승무패**가
+    #     최종이다. ⚠️ 그래서 아래 모두(재가명·등급·양상·논평·오버)가 **같은 수**를
+    #     쓴다. 🔴 실사고 2026-10-10: 시뮬 52% · 최종 38% 로 두 답이 나갔다.
+    edge["turnover"] = turn
+    said_sim = _s2e.final_sim(ref, facts, edge, state=st,
+                              ours=layers.get("ours"),
+                              before=before_layers.get("ours"),
+                              turnover=turn)
+    if said_sim.get("home") is not None:
+        from app.core.schema import ProbTriple as _PT
+        edge["sim"] = said_sim
+        edge["share"] = dict(said_sim.get("share") or {})
+        # 🔴 **최종 = 시뮬**. 잠정도 같은 공간(시뮬)으로 옮긴다 — 두 열을 다른
+        #    자리에서 재면 비교가 거짓이 된다.
+        layers["ours"] = _PT(home=said_sim["home"], draw=said_sim["draw"],
+                             away=said_sim["away"])
+        box_b = dict(said_sim.get("before") or {})
+        if box_b:
+            layers["prob_before"] = _PT(home=box_b["home"], draw=box_b["draw"],
+                                        away=box_b["away"])
+    else:
+        # ⚠️ 시뮬이 못 돌면(총골 기준이 없다) **확률층 수를 그대로 쓴다** —
+        #    그 사실을 사유로 남긴다(#3 조용히 넘기지 않는다).
+        edge["sim"] = said_sim
+        edge["share"] = {}
+        st.note("§4 확률 한 곳 — 🔴 시뮬이 못 돌아 **확률층 수를 그대로 쓴다** · "
+                + str(said_sim.get("why") or ""))
     layers["ocr_text"] = ocr_text
     from app.core import reweight as _reweight
     hypo = _reweight.of(hypo, layers.get("ours"), ref=ref, state=st)
@@ -599,31 +639,6 @@ def _market_moved(before: Card, layers: dict, *, state: RunState) -> list[str]:
     said = compare.moved(before.market, now)
     for line in said:
         state.note(f"§6 {line} — 새 기사를 다시 찾아볼 신호다")
-    return said
-
-
-def _axis_share(ref, facts, variables, hypo, base_p, adj_p, feed_mk, user_mk,
-                look, plan, edge, *, before, after, state) -> dict:
-    """🔴🔴 §4 — **세 축의 기여 분해**(`{축: %p}`). 못 쪼개면 빈 표.
-
-    🔴 쪼개는 법: 축을 **하나씩만 넣고** `_layers` 를 다시 돌려 그 몫을 본다.
-       ⚠️ 그래서 `_layers` 가 **부수 효과가 없어야** 한다 — 지금은 `state.note` 만
-          남기므로 수가 바뀌지 않는다(그 사실을 여기 적어 둔다).
-    🔴 축2(전술 T1~T8)는 아직 안 돌므로 **그 칸이 없다**(0 을 적지 않는다 · #3).
-    """
-    from app.core import goals as _g
-    if before is None or after is None:
-        return {}
-    parts: dict = {}
-    # 🔴 **전략만**(§2 둘째 지시) — 그것이 "전술" 몫이다
-    only_plan, _why = __import__("app.core.compare", fromlist=["x"]).our_prob(
-        hypo, start=(adj_p.probs if adj_p.probs is not None else base_p.probs),
-        variables=variables, adjusted=bool(adj_p.moved), ref=ref,
-        outlook=look, strategy=plan)
-    parts["전술"] = only_plan
-    said = _g.share_of(before, after, parts)
-    if said:
-        state.note(f"§4 기여 분해 — {said}(합 = 잠정→최종 변화)")
     return said
 
 

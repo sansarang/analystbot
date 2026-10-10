@@ -103,6 +103,13 @@ def tokens(said: object) -> list[str]:
     """🔴 정규화한 **낱말들** — `covers` 가 이것으로 센다."""
     low = unicodedata.normalize("NFKD", str(said or ""))
     low = "".join(c for c in low if not unicodedata.combining(c)).lower()
+    # 🔴🔴 **NFC 로 되붙인다** — ⚠️ 실사고 2026-10-10: `NFKD` 가 한글 음절을
+    #    **자모**(U+1100 묶음)로 쪼개는데 아래 글자 묶음(`가-힣`)이 자모를 안 받아
+    #    **한글 이름이 통째로 빈 글자**가 됐다(`norm_name("김천상무") == ""`).
+    #    그래서 `same_team` 이 한글끼리 **절대 안 맞았다**(전역 주기 팀 표를
+    #    한글로 적자 드러났다). 🔴 결합문자를 뗀 뒤 다시 합치면 `Unión`→`union`
+    #    은 그대로이고 한글은 음절로 돌아온다.
+    low = unicodedata.normalize("NFC", low)
     low = re.sub(r"[^0-9a-z가-힣ぁ-んァ-ヴー一-龥]+", " ", low)
     return [w for w in low.split() if w and w not in _AFFIX]
 

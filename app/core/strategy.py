@@ -63,6 +63,13 @@ class TeamRead:
     #: 🔴 §2-1 — 공격·수비 기여 변화율(%) · 못 재면 `None`
     da: float | None = None
     dd: float | None = None
+    #: 🔴🔴 **기록 없는 선수 수**(오늘 XI + 평소 XI) — 카드가 적는다
+    #  ⚠️ 사용자 지적 2026-10-10: *"기록이 없는 선수는 0이 아니라 '모름'
+    #     (포지션 평균으로 수축)이어야 한다"*.
+    no_stat: int = 0
+    #: 🔴 ΔA·ΔD 를 **버린 사유**(상한을 넘었다 등). 비면 안 버렸다.
+    da_bad: str = ""
+    dd_bad: str = ""
     #: 🔴 핵심 선수 상태 — `{이름: "선발"|"벤치"|"명단 제외"}`
     key_state: dict = field(default_factory=dict)
     #: 🔴 교체 주력(선발 비율 30% 미만)의 벤치 — **약화로 읽지 않는다**
@@ -122,6 +129,53 @@ def slot_of(pos: object) -> str:
     return ""
 
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **포지션 분류 검사** — 사용자 지시 2026-10-10(다섯 지적 ②)
+# ══════════════════════════════════════════════════════════════════
+#
+#  > *"중앙 수비 수가 3을 넘거나 GK가 1이 아니면 분류 오류 — 경기 페이지 좌표·주
+#  > 포지션을 다시 대조."*
+#
+#  ⚠️ 실측 2026-10-10(김천–안양): 카드가 **"CB 자리 — 빠짐 네 명"** 을 냈다. 한 팀의
+#     중앙 수비는 둘·셋이다. 🔴 원인: `facts.player_pos` 가 묶음 글자(`DF`)만 들고
+#     있었고 `slot_of("DF")` 가 **전부 `CB`** 로 보냈다.
+#  🔴 고친 자리는 둘이다:
+#     ① `s2_facts` 가 **세부 자리**(`Player.spot` — 좌표에서 온 `LB`·`CB`·`RB`)를
+#        먼저 싣는다
+#     ② 아래 검사가 그래도 어긋나면 **사유를 남긴다**(조용히 지나가지 않는다)
+
+#: 🔴 한 팀 중앙 수비 수의 상한(3백까지) · 골키퍼 수는 정확히 1
+MAX_CB, EXACT_GK = 3, 1
+
+
+def slot_tally(names: list[str], pos: dict) -> dict:
+    """🔴 그 명단의 **칸별 수** — `{"CB": 2, "FB/WB": 2, …}`."""
+    out: dict[str, int] = {}
+    for nm in names:
+        slot = slot_of(pos.get(nm)) or "?"
+        out[slot] = out.get(slot, 0) + 1
+    return out
+
+
+def pos_fault(names: list[str], pos: dict) -> str:
+    """🔴🔴 분류가 어긋났나 — 어긋나면 **사유 글자**, 멀쩡하면 빈 글자.
+
+    ⚠️ 11명이 아닌 명단(예상 XI 조각)은 세지 않는다 — 거짓 경보가 된다.
+    """
+    if len(names) != 11:
+        return ""
+    box = slot_tally(names, pos)
+    bad = []
+    if int(box.get("CB", 0)) > MAX_CB:
+        bad.append(f"중앙 수비 {box['CB']}명(상한 {MAX_CB})")
+    if int(box.get("GK", 0)) != EXACT_GK:
+        bad.append(f"골키퍼 {int(box.get('GK', 0))}명(정확히 {EXACT_GK})")
+    if not bad:
+        return ""
+    return ("🔴 **포지션 분류 오류 의심** — " + " · ".join(bad)
+            + f" · 칸별 수 {box}")
+
+
 def read(ref, facts, *, side: str) -> TeamRead:
     """🔴🔴 §2-1 — 그 팀의 **오늘 명단 vs 평소 XI** 사실을 코드로 센다.
 
@@ -143,7 +197,25 @@ def read(ref, facts, *, side: str) -> TeamRead:
         return got
     got.confirmed = True
     rows = list((facts.past_xi or {}).get(key) or [])
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **선수단이 교체됐으면 평소 XI 를 "교체 이후" 경기로만**(지적 ③)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 전역 뒤 첫 경기들은 "평소 XI"를 **전역 이후 경기로만** 만들고(없으면
+    #  > **"평소 XI 없음 — 선수단 교체"**).
+    #
+    #  🔴 *"이제 이 팀에 없는 선수"* 가 뛴 경기는 **옛 선수단**이다 — 날짜로 짓지
+    #     않고 그 사실로 가른다(`turnover.past_since`).
+    #  ⚠️ 여기서 `turnover.read` 를 부르면 **되돌이**가 된다(그쪽이 이 함수를
+    #     부른다) — 그래서 **빠진 선수가 명단에도 없나**만 여기서 직접 센다.
+    gone = _off_squad(facts, key, xi, rows)
+    turn_why = ""
+    if gone:
+        from app.core import turnover as _turn
+        rows, turn_why = _turn.past_since(rows, names=gone)
     usual, how = _b.usual_xi(rows) if rows else ([], "과거 선발이 없다")
+    if turn_why:
+        how = f"{how} · {turn_why}"
     now = _names(xi)
     got.formation_now = str(getattr(xi, "formation", "") or "")
     got.formation_usual = _usual_formation(rows)
@@ -154,13 +226,46 @@ def read(ref, facts, *, side: str) -> TeamRead:
     pos = dict(facts.player_pos or {})
     got.swaps = _swaps(now, usual, pos)
     got.changed = len([x for x in now if x not in usual]) if usual else None
-    got.da, got.dd = _contrib(now, usual, facts)
+    got.da, got.dd, got.no_stat = _contrib(now, usual, facts)
+    # 🔴🔴 **±60% 를 넘으면 그 지표를 쓰지 않는다**(사용자 지시 2026-10-10) —
+    #    계산 오류 의심이다. ⚠️ 조용히 버리지 않는다: 사유를 칸에 적어 카드가 낸다.
+    if got.da is not None and abs(float(got.da)) > CONTRIB_SANE:
+        got.da_bad = (f"🔴 ΔA {got.da:+.0f}% 는 상한 ±{CONTRIB_SANE:.0f}% 를 "
+                      f"넘었다 — **계산 오류 의심으로 안 쓴다**"
+                      + (f"(기록 없는 선수 {got.no_stat}명)" if got.no_stat
+                         else ""))
+        got.da = None
+    if got.dd is not None and abs(float(got.dd)) > CONTRIB_SANE:
+        got.dd_bad = (f"🔴 ΔD {got.dd:+.0f}% 는 상한 ±{CONTRIB_SANE:.0f}% 를 "
+                      f"넘었다 — **계산 오류 의심으로 안 쓴다**")
+        got.dd = None
     got.key_state = _key_state(facts, key, xi)
     got.bench_regulars = _bench_regulars(facts, key, xi)
     got.returning = _returning(facts, key, xi)
     got.facts = _facts_of(got, name=name, how=how)
     got.why = f"평소 XI — {how}"
     return got
+
+
+def _off_squad(facts, key: str, xi, rows: list) -> set:
+    """🔴🔴 지적 ③ — **과거 선발 중 오늘 명단에 아예 없는 선수**들.
+
+    오늘 명단 = 선발 + 벤치 + 팀 명단(`facts.squad`). 🔴 그 어디에도 없으면
+    *"이제 이 팀에 없다"* 는 뜻이다(전역·이적·방출).
+    ⚠️ 명단 자료가 **없으면 빈 집합**이다 — 모르는 것을 교체로 읽지 않는다(#4).
+    """
+    squad = {str(x) for x in ((facts.squad or {}).get(key) or [])}
+    bench = {str(x) for x in (getattr(xi, "bench", None) or [])}
+    now = set(_names(xi))
+    if not squad and not bench:
+        return set()
+    known = now | bench | squad
+    out: set = set()
+    for one in (rows or []):
+        for nm in (getattr(one, "players", None) or []):
+            if str(nm) not in known:
+                out.add(str(nm))
+    return out
 
 
 def _names(xi) -> list[str]:
@@ -214,43 +319,89 @@ def _contrib(now: list[str], usual: list[str], facts) -> tuple:
     val = dict(facts.player_value or {})
     pos = dict(facts.player_pos or {})
     if not usual:
-        return None, None
+        return None, None, 0
+    names = [*now, *usual]
+    gone = len([nm for nm in names if nm not in att]) if att else len(names)
     da = None
     if att:
-        a_now = sum(float(att.get(nm, 0.0)) for nm in now)
-        a_old = sum(float(att.get(nm, 0.0)) for nm in usual)
+        a_now, n1 = _shrunk(now, att, pos)
+        a_old, n2 = _shrunk(usual, att, pos)
+        gone = n1 + n2
         if a_old > 0:
             da = _bs.pct_change(a_now, a_old)
     dd = None
     if val:
         back = {"GK", "CB", "FB/WB", "DM"}
-        d_now = sum(float(val.get(nm, 0.0)) for nm in now
-                    if slot_of(pos.get(nm)) in back)
-        d_old = sum(float(val.get(nm, 0.0)) for nm in usual
-                    if slot_of(pos.get(nm)) in back)
+        d_now, _ = _shrunk([nm for nm in now if slot_of(pos.get(nm)) in back],
+                           val, pos)
+        d_old, _ = _shrunk([nm for nm in usual if slot_of(pos.get(nm)) in back],
+                           val, pos)
         if d_old > 0:
             dd = _bs.pct_change(d_now, d_old)
-    return da, dd
+    return da, dd, gone
+
+
+#: 🔴🔴 **ΔA·ΔD 상한** — 사용자 지시 2026-10-10: *"±60%를 넘으면 계산 오류 의심으로
+#  그 지표를 쓰지 않고 운영자 알림"*.
+CONTRIB_SANE = 60.0
+
+
+def _shrunk(names: list[str], table: dict, pos: dict) -> tuple[float, int]:
+    """🔴🔴 기여 합 — **기록 없는 선수는 포지션 평균으로 수축**. `(합, 없는 수)`.
+
+    > 기록이 없는 선수는 **0이 아니라 "모름"**(포지션 평균으로 수축)이어야 한다.
+    > — 사용자 지적 2026-10-10(김천–안양에서 `ΔA −100%` 가 나왔다)
+
+    🔴 포지션 평균은 **그 표 안에서** 같은 칸(`slot_of`)의 평균이고, 그 칸에도
+       자료가 없으면 **표 전체 평균**이다. ⚠️ 둘 다 없으면(표가 비었으면) 0 이지만
+       그때는 `_contrib` 가 애초에 `None` 을 돌려준다.
+    """
+    hit = [float(table[nm]) for nm in names if nm in table]
+    gone = [nm for nm in names if nm not in table]
+    by_slot: dict[str, list[float]] = {}
+    for nm, v in table.items():
+        by_slot.setdefault(slot_of(pos.get(nm)) or "?", []).append(float(v))
+    whole = (sum(float(v) for v in table.values()) / len(table)
+             if table else 0.0)
+    total = sum(hit)
+    for nm in gone:
+        rows = by_slot.get(slot_of(pos.get(nm)) or "?") or []
+        total += (sum(rows) / len(rows)) if rows else whole
+    return total, len(gone)
 
 
 def _att_table(facts) -> dict:
     """🔴 선수 → **공격 기여**(시즌 득점+도움). 없으면 빈 표.
 
-    🔴 출처는 `facts.standings["key_players"]` 다 — `s2_facts` 가 리그 득점 순위
-       페이지에서 받아 둔 것이다(새 통로를 붙이지 않는다).
-    ⚠️ 그 표는 **팀마다 상위 2명**뿐이다 — 그래서 ΔA 는 *"핵심 선수가 빠졌나"* 를
-       보는 수이고, 명단 전체의 공격력이 아니다. 🔴 그 한계를 카드가 적는다.
+    🔴🔴 **출처가 둘이고 넓은 쪽이 먼저다**(사용자 지적 2026-10-10):
+      ① `facts.player_stats` — 팀 **선수단 페이지**(전원의 시즌 득점·도움)
+      ② `facts.standings["key_players"]` — 리그 순위 페이지(팀당 **상위 2명**)
+
+    ⚠️ 전에는 ②만 썼다. 그래서 상위 2명이 빠지면 나머지 아홉 명이 **전부 0** 으로
+       잡혀 `ΔA −100%` 라는 **불가능한 수**가 나왔다(실측 2026-10-10 김천–안양).
+    🔴 ① 은 **전원**을 든다 — 그래도 없는 선수는 `_contrib` 가 **포지션 평균으로
+       수축**하고 `기록 없음 n명` 을 적는다(0 으로 메우지 않는다).
     """
     out: dict[str, float] = {}
+    for nm, one in dict(getattr(facts, "player_stats", None) or {}).items():
+        box = dict(one)
+        if box.get("goals") is None and box.get("assists") is None:
+            continue
+        out[str(nm)] = float(int(box.get("goals") or 0)
+                             + int(box.get("assists") or 0))
     box = dict((facts.standings or {}).get("key_players") or {})
     for rows in box.values():
         for one in (rows or []):
             got = dict(one)
             nm = str(got.get("name") or "")
             try:
-                out[nm] = float(got.get("value") or 0.0)
+                said = float(got.get("value") or 0.0)
             except (TypeError, ValueError):
                 continue
+            # 🔴 ② 가 더 큰 수를 말하면 그것을 쓴다 — 득점+도움의 **같은 뜻**이고
+            #    리그 페이지가 더 최신일 수 있다(실측: 둘이 1~2 차이였다)
+            if nm and said > out.get(nm, 0.0):
+                out[nm] = said
     return out
 
 
@@ -335,11 +486,18 @@ def _facts_of(got: TeamRead, *, name: str, how: str) -> list:
     if got.changed is not None:
         add("rotation", f"{name} 평소 XI 대비 바뀐 자리 {got.changed}개",
             float(got.changed))
+    # 🔴 §2-1 — ΔA·ΔD. ⚠️ **버렸으면 그 사유를 사실로** 싣는다(#3 조용한 0 금지)
     if got.da is not None:
-        add("delta_att", f"{name} 공격 기여 {got.da:+.0f}%(핵심 선수 기준)",
-            float(got.da))
+        add("delta_att",
+            f"{name} 공격 기여 {got.da:+.0f}%(시즌 득점+도움 합"
+            + (f" · 기록 없는 선수 {got.no_stat}명은 포지션 평균으로 수축"
+               if got.no_stat else "") + ")", float(got.da))
+    elif got.da_bad:
+        add("delta_att", f"{name} {got.da_bad}")
     if got.dd is not None:
         add("delta_def", f"{name} 수비 자리 가치 {got.dd:+.0f}%", float(got.dd))
+    elif got.dd_bad:
+        add("delta_def", f"{name} {got.dd_bad}")
     for nm, said in sorted(got.key_state.items()):
         add("key_player", f"{name} 핵심 선수 {nm} — {said}")
     for one in got.bench_regulars:

@@ -197,8 +197,12 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
     pos: dict[str, str] = {}
     for key, box_xi in xi.items():
         for p in box_xi.lineup:
-            if p.pos:
-                pos[p.name] = p.pos
+            # 🔴🔴 **세부 자리가 먼저다**(`spot` — 좌표에서 온 `LB`·`CB`·`RB`).
+            #    ⚠️ 실사고 2026-10-10: 묶음 글자(`DF`)만 실어 `slot_of` 가 풀백까지
+            #       **중앙 수비로** 셌다 — 카드가 "CB 네 명"을 냈다(사용자가 잡았다).
+            said = str(getattr(p, "spot", "") or "") or str(p.pos or "")
+            if said:
+                pos[p.name] = said
     # 🔴🔴 **과거 경기에서도 포지션을 모은다**(사용자 지시 2026-10-06(6차) ③)
     #
     #  ⚠️ 실측 2026-10-06: 오늘 XI 가 없는 경기에서는 포지션 표가 **통째로 비어** ②
@@ -207,8 +211,9 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
     for rows in past.values():
         for box_xi in rows:
             for p in box_xi.lineup:
-                if p.pos:
-                    pos.setdefault(p.name, p.pos)
+                said = str(getattr(p, "spot", "") or "") or str(p.pos or "")
+                if said:
+                    pos.setdefault(p.name, said)
     for rows in missing.values():
         for m in rows:
             if m.pos and m.name not in pos:
@@ -216,6 +221,13 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
     # 🔴 **형식은 표가 정한다**(대회명·라운드) — 모르면 `unknown`(지어내지 않는다)
     fmt, why = _format_of(ref)
     state.note(f"s2 형식 — {why}")
+    # 🔴🔴 **포지션 분류 검사**(사용자 지시 2026-10-10 ②) — 어긋나면 사유를 남긴다
+    from app.core import strategy as _st
+    for key, box_xi in xi.items():
+        said = _st.pos_fault([p.name for p in box_xi.lineup], pos)
+        if said:
+            state.note(f"s2 포지션 분류 — {key} {said}")
+            box.setdefault("pos_fault", {})[key] = said
     gaps = _gaps(xi=xi, missing=missing, coach=coach, box=box, pos=pos)
     if gaps:
         state.note("s2 못 받은 칸 — " + " · ".join(gaps))
@@ -258,6 +270,9 @@ def _gaps(*, xi: dict, missing: dict, coach: dict, box: dict,
         out.append("직전 경기 XI 없음(IR02·IR06 이 못 돈다)")
     if not box.get("schedule"):
         out.append("일정 없음(IR11 이 못 돈다)")
+    # 🔴🔴 **포지션 분류 오류**(사용자 지시 2026-10-10 ②) — 칸별 수가 어긋났다
+    for key, said in dict(box.get("pos_fault") or {}).items():
+        out.append(f"{key} {said}")
     return out
 
 

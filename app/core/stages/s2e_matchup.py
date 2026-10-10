@@ -100,7 +100,11 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
     #  🔴 λ 는 **이 경기 총골 기준**에서 나눈다(새 기준선을 만들지 않는다) —
     #     그 기준은 `facts.standings["match_total_baseline"]` 하나다.
     #  ⚠️ 기준이 없으면 시뮬레이션을 **안 돈다**(λ 를 지어내지 않는다 · #4).
-    out["sim"] = _simulate(ref, facts, out, state=state)
+    # 🔴🔴 ④ — **시뮬레이션은 여기서 돌지 않는다**(사용자 지시 2026-10-10).
+    #    확률층(①→②→③)이 `ours` 를 낸 **뒤**에 `final_sim` 이 한 번 돌고, 그
+    #    결과가 **최종 확률**이다. ⚠️ 여기서 폼만으로 한 번 돌리면 그 수가
+    #    카드에 남아 최종과 **두 답**이 된다(실사고 2026-10-10: 52% 대 38%).
+    out["sim"] = {"why": "🔴 아직 안 돌았다 — 확률층 뒤에 `final_sim` 이 돈다"}
     state.note(f"s2e 상성 — {out['why']}")
     logger.info("[s2e] 상성 — %s · 발동 %s", out["why"],
                 [f.rule for f in fired])
@@ -229,41 +233,163 @@ def _rest_days(facts: Facts, key: str) -> int | None:
         return None
 
 
-def _simulate(ref: MatchRef, facts: Facts, box: dict, *,
-              state: RunState) -> dict:
-    """🔴🔴 §4 — 세 축 → **스코어 분포·승무패·오버·선제골 팀 승률**.
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **확률은 한 곳이다** — 사용자 지시 2026-10-10(다섯 지적 ④)
+# ══════════════════════════════════════════════════════════════════
+#
+#  > *"최종 확률 = **시뮬레이션(묶인 분포) 결과**. 카드의 '시뮬' 줄과 최종 숫자가
+#  > 다르면 계약 실패. 잠정→최종 변화는 축별 기여(폼·전술·골 내용)로 분해해 합이
+#  > 맞게."*
+#
+#  ⚠️ 실사고 2026-10-10(김천–안양): 시뮬이 **52%**, 최종이 **38%** 였다 — 한 카드가
+#     두 답을 냈다. 🔴 원인: λ 를 **폼 차이로만** 갈라서 ①②③(Elo·라인업·변수·
+#     전략)을 전혀 안 봤다. 그러니 두 경로가 서로 모르는 수를 냈다.
+#  🔴 이제 이렇게 한 줄로 꿴다:
+#     ① 확률층(①→②→③)이 `ours` 를 낸다 — 그 **홈/원정 비**를 맞추는 λ 기울기를
+#        **풀어서** 찾는다(계수가 없다 · 적합할 것도 없다)
+#     ② 그 위에 **축1 폼 기울기**와 **축2·축3 규칙의 λ 이동**을 얹는다
+#     ③ **최종 확률 = 그 시뮬레이션의 승무패**다(카드의 모든 수가 여기서 나온다)
+#  🔴 기여 분해는 **단계를 쌓아** 잰다(겹침 없이 합이 정확히 맞는다):
+#     `잠정(p0) → +폼(p1) → +전략(p2) → +축2(p3) → +축3(p4=최종)`
 
-    🔴 λ 를 두 팀으로 나누는 규칙은 **보정 폼 지수의 차이**다 — 축1 이 이미 상대
-       전력을 보정했으므로 그 차이가 *"누가 더 넣나"* 를 말한다.
-    ⚠️ 기준 총골이 없으면 `{}` 다(사유를 적는다 · 지어내지 않는다).
-    """
+#: 🔴 λ 기울기의 바닥·천장(한쪽이 0 이 되지 않게)
+TILT_LO, TILT_HI = -0.9, 0.9
+#: 🔴 비를 맞추는 이분법 횟수 — 30 번이면 1e-9 아래로 좁혀진다
+SOLVE_STEPS = 30
+
+
+def _lams(base: float, tilt: float) -> tuple[float, float]:
+    """🔴 기준 총골을 기울기로 **둘로 나눈다**."""
+    t = max(TILT_LO, min(TILT_HI, float(tilt)))
+    return float(base) * (0.5 + t / 2.0), float(base) * (0.5 - t / 2.0)
+
+
+def _sim_at(box: dict, base: float, tilt: float, *, axis2: bool, axis3: bool):
+    """🔴 그 기울기에서의 시뮬 산출(`sim.Out`) + 쓰인 인자."""
     from app.core import goals as _g
     from app.core import sim as _sim
+    lam_h, lam_a = _lams(base, tilt)
+    args = _g.sim_input(box, lam_home=lam_h, lam_away=lam_a,
+                        axis2=axis2, axis3=axis3)
+    got = _sim.run(args["lam_home"], args["lam_away"],
+                   late_home=args["late_home"], late_away=args["late_away"],
+                   lead_mul=args["lead_mul"])
+    return got, args
+
+
+def solve_tilt(box: dict, base: float, want: float) -> float:
+    """🔴🔴 ④ — **홈/원정 비 `want` 를 내는 기울기**를 이분법으로 찾는다.
+
+    `want` = 확률층이 말한 `p_home / p_away`. 🔴 규칙은 **끈 채로** 푼다 — 그래야
+    규칙의 몫이 기울기에 흡수되지 않고 **최종을 실제로 움직인다**.
+    ⚠️ 비가 0 이하·무한이면 기울기를 **안 바꾼다**(0 을 돌려준다).
+    """
+    if not want or want <= 0 or want != want:            # NaN 포함
+        return 0.0
+    lo, hi = TILT_LO, TILT_HI
+
+    def ratio(t: float) -> float:
+        got, _ = _sim_at(box, base, t, axis2=False, axis3=False)
+        return (got.home / got.away) if got.away > 0 else float("inf")
+
+    # 🔴 단조다(기울기가 커지면 홈 비가 커진다) — 바깥이면 끝값으로 잘린다
+    if ratio(lo) >= want:
+        return lo
+    if ratio(hi) <= want:
+        return hi
+    for _ in range(SOLVE_STEPS):
+        mid = (lo + hi) / 2.0
+        if ratio(mid) < want:
+            lo = mid
+        else:
+            hi = mid
+    return (lo + hi) / 2.0
+
+
+def form_tilt(box: dict) -> float:
+    """🔴 축1 — **보정 폼 차이**가 만드는 기울기. ⚠️ 계수 0.25 는 **임시값**이다."""
+    form = dict(box.get("form") or {})
+    h = form.get("home").index() if form.get("home") else None
+    a = form.get("away").index() if form.get("away") else None
+    if h is None or a is None:
+        return 0.0
+    return max(-0.4, min(0.4, 0.25 * (float(h) - float(a))))
+
+
+def final_sim(ref: MatchRef, facts: Facts, box: dict, *, state: RunState,
+              ours, before, turnover: dict | None = None) -> dict:
+    """🔴🔴 ④ — **최종 확률을 내는 시뮬레이션** + 축별 기여(합이 정확히 맞는다).
+
+    돌려주는 것: `s2e` 의 `sim` 칸에 그대로 들어가는 표. 🔴 그 안의 `home/draw/
+    away` 가 **최종 확률**이고, `share` 가 `잠정→최종` 의 축별 분해다.
+
+    ⚠️ `ours` 가 없으면 **기울기를 폼으로만** 세운다(옛 모양) — 그 사실을 적는다.
+    """
     base = dict(getattr(facts, "standings", None) or {}).get(
         "match_total_baseline")
     if base is None:
         said = "🔴 이 경기 총골 기준이 없다 — §4 시뮬레이션을 안 돈다"
         state.note(f"s2e {said}")
         return {"why": said}
-    form = dict(box.get("form") or {})
-    h = form.get("home").index() if form.get("home") else None
-    a = form.get("away").index() if form.get("away") else None
-    # 🔴 **기준 총골을 둘로 나눈다** — 폼 지수 차이로 기울인다
-    #    ⚠️ 기울이는 계수(0.25)는 **임시값**이다(적합 전 · 카드가 적는다)
-    tilt = 0.0
-    if h is not None and a is not None:
-        tilt = max(-0.4, min(0.4, 0.25 * (float(h) - float(a))))
-    lam_h = float(base) * (0.5 + tilt / 2.0)
-    lam_a = float(base) * (0.5 - tilt / 2.0)
-    args = _g.sim_input(box, lam_home=lam_h, lam_away=lam_a)
-    got = _sim.run(args["lam_home"], args["lam_away"],
-                   late_home=args["late_home"], late_away=args["late_away"],
-                   lead_mul=args["lead_mul"])
+    base = float(base)
+    f_tilt = form_tilt(box)
+    t_fin = (solve_tilt(box, base, _ratio(ours)) if ours is not None else 0.0)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **선수단 교체 — 기준 약함**(사용자 지시 2026-10-10 지적 ③)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 기준(Elo)·폼·골 내용은 **전역 이전 기록**이므로 "선수단 교체 — 기준 약함"
+    #  > 표시, **가중을 낮춘다**(적합 전 임시값 표시).
+    #
+    #  🔴 낮추는 자리는 **기울기**다 — 기울기가 ①②③ 전부(Elo·라인업·변수·전략)를
+    #     한 수로 들고 있으므로, 그것을 0 쪽으로 당기면 *"기준이 약하다"* 가 그대로
+    #     확률에 들어간다. ⚠️ 비율은 **임시값**이고 카드가 그 사실을 적는다.
+    weak_said = ""
+    box_t = dict(turnover or {})
+    if any(dict(v).get("on") for v in box_t.values()):
+        from app.core import turnover as _turn
+        w = _turn.weaken()
+        keep = float(w.get("elo") or 1.0)
+        t_fin, f_tilt = t_fin * keep, f_tilt * keep
+        who = [k for k, v in box_t.items() if dict(v).get("on")]
+        weak_said = (f" · {_turn.WEAK_MARK}({who}) — 기울기를 ×{keep} 로 "
+                     f"낮췄다 · {_turn.PROVISIONAL}: {w.get('why')}")
+        state.note(f"§4 선수단 교체 — 기준 약함{weak_said}")
+    t_bef = (solve_tilt(box, base, _ratio(before)) if before is not None
+             else t_fin)
+    # 🔴 단계를 쌓는다 — 합이 정확히 맞는 기여 분해가 여기서 나온다
+    p0, _ = _sim_at(box, base, t_bef, axis2=False, axis3=False)   # 잠정
+    p1, _ = _sim_at(box, base, t_bef + f_tilt, axis2=False, axis3=False)
+    p2, _ = _sim_at(box, base, t_fin + f_tilt, axis2=False, axis3=False)
+    p3, _ = _sim_at(box, base, t_fin + f_tilt, axis2=True, axis3=False)
+    got, args = _sim_at(box, base, t_fin + f_tilt, axis2=True, axis3=True)
+    share = {"폼": round((p1.home - p0.home) * 100.0, 2),
+             "전술": round((p3.home - p1.home) * 100.0, 2),
+             "골 내용": round((got.home - p3.home) * 100.0, 2)}
+    state.note(
+        f"§4 확률 한 곳 — 시뮬이 최종이다 · 홈 {got.home:.1%} · 기울기 "
+        f"확률 {t_fin:+.3f} + 폼 {f_tilt:+.3f} · 기여 {share}"
+        f"(합 {sum(share.values()):+.2f}%p = 잠정→최종)")
+    logger.info("[s2e] ④ 최종=시뮬 — 홈 %.3f 무 %.3f 원정 %.3f · 기여 %s",
+                got.home, got.draw, got.away, share)
     return {"home": got.home, "draw": got.draw, "away": got.away,
             "over": got.over, "first_wins": got.first_wins,
             "scores": dict(list(got.scores.items())[:40]),
             "lam": [args["lam_home"], args["lam_away"]],
-            "tilt": round(tilt, 3),
+            "tilt": round(t_fin + f_tilt, 3),
+            "tilt_prob": round(t_fin, 3), "tilt_form": round(f_tilt, 3),
+            "before": {"home": p0.home, "draw": p0.draw, "away": p0.away},
+            "share": share,
             "why": (f"총골 기준 {base} → λ {args['lam_home']}/"
-                    f"{args['lam_away']}(폼 차로 기울임 {tilt:+.2f} · "
-                    f"{_g.PROVISIONAL}) · {args['why']} · {got.why}")}
+                    f"{args['lam_away']} · 기울기 확률 {t_fin:+.3f}"
+                    f"(③ 비를 맞춰 풀었다) + 폼 {f_tilt:+.3f}"
+                    f"(임시값 0.25) · {args['why']} · {got.why}{weak_said}"),
+            "weak": weak_said}
+
+
+def _ratio(p) -> float:
+    """🔴 그 확률의 **홈/원정 비**. ⚠️ 원정이 0 이면 비를 못 만든다(0)."""
+    if p is None:
+        return 0.0
+    away = float(getattr(p, "away", 0.0) or 0.0)
+    return (float(getattr(p, "home", 0.0) or 0.0) / away) if away > 0 else 0.0
