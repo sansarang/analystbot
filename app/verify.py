@@ -448,7 +448,8 @@ def slate_date_ok(page_dates: list, slate: date, *,
 
     🔴 연도 없는 표기(`09.27 일`)는 **못 읽는 것으로 본다** — fail-closed.
     """
-    now = now or datetime.now(KST)
+    from app import window as _w
+    now = now or _w.now_utc().astimezone(KST)
     if not page_dates:
         return Verdict(False, "페이지에서 날짜를 못 찾았다", unknown=True,
                        hardness="soft")

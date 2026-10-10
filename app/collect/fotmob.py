@@ -2181,7 +2181,8 @@ async def _sitemap_index(net, what: str, *, day: date | None = None,
     ⚠️ 하위 쪽 하나라도 못 받으면 **그만큼만** 돌려준다 — 그리고 그 사실이
        로그에 남는다(#3 조용한 0 금지). 받은 쪽 수를 세어 적는다.
     """
-    day = day or date.today()
+    from app import window as _w
+    day = day or _w.now_utc().date()      # 🔴 §4 — 고정 시계를 따른다
     p = _index_path(what, day)
     if p.is_file():
         try:

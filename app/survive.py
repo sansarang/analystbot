@@ -425,7 +425,8 @@ def started(kickoff, now=None) -> tuple[bool, str]:
         k = kickoff.astimezone(_dt.timezone.utc)
     except (AttributeError, ValueError, TypeError):
         return False, ""
-    t = (now or _dt.datetime.now(_dt.timezone.utc))
+    from app import window as _w
+    t = (now or _w.now_utc())
     try:
         t = t.astimezone(_dt.timezone.utc)
     except (AttributeError, ValueError, TypeError):

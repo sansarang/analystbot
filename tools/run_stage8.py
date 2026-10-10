@@ -55,9 +55,24 @@ class _Msg:
         print(str(body), flush=True)
 
 
+def _as_of(said: str) -> datetime:
+    """🔴 §4 — `YYYY-MM-DDTHH:MMZ`(또는 `...:SSZ`·오프셋) → tz 있는 시각.
+
+    ⚠️ 시간대가 없으면 **거부한다** — 조용히 UTC 로 보면 KST 로 적은 시각이
+       9시간 어긋난 채 통과하고, 그것이 이 기능이 막으려는 종류의 버그다.
+    """
+    got = str(said or "").strip().replace("Z", "+00:00")
+    when = datetime.fromisoformat(got)
+    if when.tzinfo is None:
+        raise SystemExit(f"🔴 `--as-of` 에 시간대가 없다: `{said}` "
+                         f"(`2026-10-10T05:00Z` 꼴로 적는다)")
+    return when
+
+
 async def main(argv: list[str]) -> int:
     if len(argv) < 2:
-        print('쓰는 법: tools/run_stage8.py "<팀> vs <상대>" [--at HH:MM(KST)]')
+        print('쓰는 법: tools/run_stage8.py "<팀> vs <상대>" [--at HH:MM(KST)]'
+              ' [--as-of 2026-10-10T05:00Z]')
         return 2
     arg = argv[1]
     at = ""
@@ -80,6 +95,21 @@ async def main(argv: list[str]) -> int:
         _os.environ[cassette.FALLTHROUGH_ENV] = "1"
         print("[run_stage8] 🔴 fallthrough — 없는 요청만 라이브로 간다",
               flush=True)
+    # ══════════════════════════════════════════════════════════════
+    # 🔴🔴 **`--as-of` — 재현 모드**(사용자 지시 2026-10-10(재작성) §4)
+    # ══════════════════════════════════════════════════════════════
+    #
+    #  > 모든 창(경기 찾기·72시간·라인업 상태·"이미 시작")은 현재 시각 기준.
+    #  > 테스트용 `--as-of "YYYY-MM-DDTHH:MMZ"` 를 붙이면 **그 시각 기준**.
+    #
+    #  🔴 시계는 `app/window.set_clock` 하나다 — 운영 코드(`app/`)가 그것을
+    #     부르면 계약이 빨개진다. 🔴 **도구 입구만** 부른다(여기가 그 자리다).
+    if "--as-of" in argv:
+        said = argv[argv.index("--as-of") + 1]
+        from app import window as _w
+        _w.set_clock(_as_of(said))
+        print(f"[run_stage8] 🕒 `--as-of` {_w.now_utc():%Y-%m-%d %H:%M}Z — "
+              f"모든 창이 이 시각 기준이다", flush=True)
     if at:
         hh, mm = (int(x) for x in at.split(":"))
         now = datetime.now(KST)

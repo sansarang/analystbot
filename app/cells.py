@@ -1915,7 +1915,8 @@ def lag_minutes(q: Question, when: datetime | None = None) -> int | None:
     """
     if q.deadline is None:
         return None
-    now = when or datetime.now(timezone.utc)
+    from app import window as _w
+    now = when or _w.now_utc()
     if q.deadline.tzinfo is None or now.tzinfo is None:
         return None                     # 🔴 tz 없이 빼지 않는다 — 9시간 어긋난다
     return int((q.deadline - now).total_seconds() // 60)

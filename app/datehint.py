@@ -145,7 +145,9 @@ def too_old(url: object, snippet: object = "", *, now: dt.datetime | None = None
        `False`(받는다) — 지시 원문: *"날짜 힌트가 없으면 받는다."*
     ⚠️ 미래 날짜는 **버리지 않는다** — 예고 기사·일정 페이지가 그렇다.
     """
-    when = (now or dt.datetime.now(dt.timezone.utc))
+    # 🔴 "지금"은 `app/window.now_utc` 하나다(§4 `--as-of` 가 그것을 고정한다)
+    from app import window as _w
+    when = (now or _w.now_utc())
     if when.tzinfo is None:                     # §8-7 — naive 는 안 받는다
         when = when.replace(tzinfo=dt.timezone.utc)
     got, why = hint_of(url, snippet)

@@ -977,7 +977,8 @@ def lineup_cell(*, team: str, league: str, day: date, game_id: int | None,
                 budget=budget_for(len(srcs), fetches=3 + len(extra or []),
                                   mode=mode))
     opens = queries.lineup_opens_before_min()
-    left = (starts - (now or datetime.now(timezone.utc))).total_seconds() / 60
+    from app import window as _w
+    left = (starts - (now or _w.now_utc())).total_seconds() / 60
     if left > opens:
         cell.tried.append(
             f"§13-b 공개 전(T-{int(left)}분 · 공개는 T-{opens}분)")

@@ -444,10 +444,31 @@ def premature_result(body: str, ref: MatchRef) -> tuple[bool, str]:
             continue
         low = line.lower()
         said = next((w for w in RESULT_WORDS if w.lower() in low), "")
-        if said:
-            return True, (f"킥오프 전인데 최종 스코어를 적는다 — "
-                          f"`{hit.group(0)}` + `{said}` · \"{line.strip()[:70]}\"")
+        if not said:
+            continue
+        # 🔴🔴 **이 경기 두 팀이 그 문장에 다 있어야** 버린다
+        #
+        #  ⚠️ 실사고 2026-10-10: 이 검사를 넣자 고정물(한국–우즈벡)에서 멀쩡한
+        #     **미리보기 기사 3건**이 날아갔다 — *"Korea drew 0-0 … against
+        #     **Venezuela**"* 는 **지난 경기** 얘기다. 그것은 가짜 결과가 아니다.
+        #  🔴 사용자가 든 예시는 *"선전 1-0 허난"* — **이 경기 두 팀**을 적는다.
+        #     그래서 두 팀이 다 있을 때만 *"이 경기의 결과를 말한다"* 로 읽는다.
+        if not _both_teams(line, ref):
+            continue
+        return True, (f"킥오프 전인데 **이 경기** 최종 스코어를 적는다 — "
+                      f"`{hit.group(0)}` + `{said}` · \"{line.strip()[:70]}\"")
     return False, ""
+
+
+def _both_teams(line: str, ref: MatchRef) -> bool:
+    """🔴 그 문장에 **이 경기 두 팀**이 다 있나 — 이름 대조는 `verify` 가 원본이다.
+
+    ⚠️ 여기서 이름 규칙을 다시 쓰지 않는다(사본 금지) — `verify.mentions_team`
+       이 별칭·현지 표기를 아는 곳이다.
+    """
+    from app import verify
+    return all(verify.mentions_team(line, str(nm), None)
+               for nm in (ref.home_name, ref.away_name) if str(nm or "").strip())
 
 
 async def regather(ref: MatchRef, sid: str, words: list[str], *,

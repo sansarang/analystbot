@@ -306,33 +306,48 @@ def test_v6_번호가_글자를_이긴다():
 
 
 def test_v6_경기전_최종스코어_기사는_버린다():
-    """🔴🔴 §6 — *"경기 전 기사에 결과 스코어가 적혀 있으면 그 문서는 버린다"*.
+    """🔴🔴 §3-3 — *"기사 시각 < 킥오프인데 **최종 스코어를 말하면** 버린다
+    (소후 가짜 결과 기사)"*.
 
-    ⚠️ 돌연변이: `premature_result` 가 **스코어 숫자만** 보고 버리면 — 배당
-       `2-1`·시각 `20:00` 기사가 통째로 날아간다. 🔴 그래서 **종료 낱말**이
-       같은 문장에 있을 때만 버린다. 둘 다 센다.
+    🔴 **두 조건이 다 있어야** 버린다:
+      ① 종료를 말하는 낱말(배당 `2-1`·시각 `20:00` 은 같은 숫자 꼴이다)
+      ② **이 경기 두 팀**이 그 문장에 다 있다
+
+    ⚠️ 돌연변이 ①: 종료 낱말 검사를 지우면 배당 기사가 날아간다.
+    ⚠️ 돌연변이 ②: 두 팀 검사를 지우면 **멀쩡한 미리보기**가 날아간다 — 실사고
+       2026-10-10: *"Korea drew 0-0 … against **Venezuela**"*(지난 경기 얘기)로
+       고정물의 문서 3건이 버려지고 기사 변수가 **0개**가 됐다.
     """
     from datetime import datetime, timedelta, timezone
+    from app.core.schema import DropReason, MatchRef
     from app.core.stages.s3_docs import premature_result
-    from app.core.schema import DropReason
 
-    class _R:
-        kickoff_utc = datetime.now(timezone.utc) + timedelta(hours=5)
-        sport = "soccer"
+    def _ref(home: str, away: str, *, past: bool = False) -> MatchRef:
+        gap = timedelta(hours=-5 if past else 5)
+        return MatchRef(id="x:1", sport="soccer", competition="c",
+                        competition_short="c", home="team:000001",
+                        away="team:000002", home_name=home, away_name=away,
+                        kickoff_utc=datetime.now(timezone.utc) + gap)
 
     assert DropReason.PREMATURE_RESULT.value == "premature_result"
-    bad, why = premature_result("전북이 대전을 2-1로 꺾고 경기 종료.", _R())
+    # 🔴 §5-D — 소후 가짜 결과 기사 꼴
+    bad, why = premature_result("선전이 허난을 1-0으로 꺾고 경기 종료.",
+                                _ref("선전", "허난"))
     assert bad and "경기 종료" in why, why
-    # 🔴 **버리지 말아야 하는 것** — 종료 낱말이 없다
-    for ok_body in ("배당은 2-1 수준으로 홈 우세다.",
-                    "킥오프는 20:00 이며 맞대결은 팽팽했다."):
-        got, said = premature_result(ok_body, _R())
-        assert not got, f"🔴 멀쩡한 기사를 버렸다 — {ok_body} · {said}"
+    # 🔴 **버리지 말아야 하는 것** 셋
+    keep = [
+        ("배당은 2-1 수준으로 홈 우세다.", _ref("선전", "허난")),
+        ("킥오프는 20:00 이며 맞대결은 팽팽했다.", _ref("선전", "허난")),
+        # 🔴 지난 경기 결과를 말하는 **미리보기**(상대가 다르다)
+        ("Korea drew 0-0 against Venezuela on the weekend.",
+         _ref("South Korea", "Uzbekistan")),
+    ]
+    for body, ref in keep:
+        got, said = premature_result(body, ref)
+        assert not got, f"🔴 멀쩡한 기사를 버렸다 — {body} · {said}"
     # 🔴 킥오프가 **지난** 경기에는 검사하지 않는다(결과 기사가 정상이다)
-
-    class _Past(_R):
-        kickoff_utc = datetime.now(timezone.utc) - timedelta(hours=5)
-    assert not premature_result("최종 스코어 2-1.", _Past())[0]
+    assert not premature_result("선전 1-0 허난, 경기 종료.",
+                                _ref("선전", "허난", past=True))[0]
 
 
 def test_v6_교체주력의_선발제외는_결장이_아니다():

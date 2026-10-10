@@ -72,7 +72,20 @@ def replaying():
     os.environ[cassette.RUN_ENV] = RUN_ID
     # 🔴 **빗나가면 실패다** — 몰래 망으로 넘어가지 않는다(§5 `replay_miss`)
     os.environ.pop(cassette.FALLTHROUGH_ENV, None)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **시계를 못 박는다** — 실사고 2026-10-10
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 이 고정물이 **날짜가 흐르자 빨개졌다**(세 건). 까닭은 수집 회귀가
+    #     아니었다 — `datehint.too_old` 가 **실제 오늘**로 창을 재서
+    #     `주소 날짜 2026-09-30 … 지금보다 10일 전` 으로 문서 **13건을 버렸다**.
+    #     고정물의 킥오프는 10-06 이므로 그 문서들은 창 **안**이다.
+    #  🔴 재생은 **시각까지 재생**이어야 한다(사용자 지시 §4: 모든 창은 현재
+    #     시각 기준 · `--as-of` 로 고정). 시계는 `window.set_clock` 하나다.
+    from app import window as _w
+    _w.set_clock(NOW)
     yield
+    _w.set_clock(None)
     for k, v in old.items():
         if v is None:
             os.environ.pop(k, None)

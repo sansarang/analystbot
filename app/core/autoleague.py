@@ -30,6 +30,12 @@ NEED: tuple[str, ...] = ("competition_key", "source", "checked_at", "ccode",
 WEAK_AT = 30
 
 
+def _wnow() -> datetime:
+    """🔴 "지금" — `app/window.now_utc` 하나다(§4 `--as-of` 가 고정한다)."""
+    from app import window as _w
+    return _w.now_utc()
+
+
 def path_of(key: str) -> Path:
     """🔴 그 리그의 파일 — 열쇠의 `:` 를 `_` 로 바꾼다(파일 이름이 된다)."""
     said = str(key or "").replace(":", "_").replace("/", "_")
@@ -162,7 +168,9 @@ def build(*, competition_key: str, meta: dict, teams: list[str],
         "competition_key": str(competition_key or ""),
         # 🔴 출처 — **리그 id 와 주소 둘 다**(§1 셋째 줄)
         "source": {"fotmob_league_id": lid, "url": str(meta.get("url") or "")},
-        "checked_at": str((when or datetime.now(timezone.utc).date()).isoformat()),
+        # 🔴 확인일도 **고정 시계**를 따른다(§4 — 재현 모드에서 날짜가 흔들리면
+        #    그 등록 파일이 매 실행 달라진다)
+        "checked_at": str((when or _wnow().date()).isoformat()),
         "ccode": ccode,
         # 🔴 팀 목록 출처 — 이미 만든 통로 이름 그대로(§3 첫 줄)
         # 🔴 팀 목록을 **어디서** 받았나 — 순위표냐 일정이냐가 다르다(컵대회)

@@ -157,7 +157,9 @@ def window(day: date | None, *, today: date | None = None) -> list[date]:
     """🔴 §2 ① — 날짜가 없으면 **오늘~+2일**."""
     if day is not None:
         return [day]
-    base = today or date.today()
+    # 🔴 "지금"은 `app/window.now_utc` 하나다(§4 `--as-of`)
+    from app import window as _w
+    base = today or _w.now_utc().date()
     return [base + timedelta(days=i) for i in range(WINDOW_DAYS + 1)]
 
 
@@ -372,7 +374,8 @@ async def register(net, *, league_id: object, league_name: str = "",
     key = f"league:fotmob{league_id}"
     # 🔴 **이미 오늘 확인했고 이 글자도 담겨 있으면 다시 받지 않는다**(§2: 갱신만).
     #    ⚠️ 분석마다 리그 표·일정을 다시 받으면 그 호스트에 실례다.
-    today = (when or date.today()).isoformat()
+    from app import window as _w
+    today = (when or _w.now_utc().date()).isoformat()
     have = al.load(key)
     if (have.get("checked_at") == today
             and str(league_name or "") in (have.get("seen") or [])):
