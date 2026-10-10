@@ -152,7 +152,7 @@ async def _try(pool: Any, team: str, opp: str, *, state: RunState, net: Any,
 
 
 async def _openworld(pool: Any, q: Question, *, state: RunState,
-                     net: Any) -> MatchRef | None:
+                     net: Any, board_text: str = "") -> MatchRef | None:
     """🔴 **두 번째 ⑥단 부품** — `findgame` 이 `fotmob …` 질의를 만든다.
 
     ⚠️ 찾으면 `games` 표에 적고(`find_and_store`) **입구를 다시 돌린다** — 그러면
@@ -162,7 +162,9 @@ async def _openworld(pool: Any, q: Question, *, state: RunState,
     from app import findgame, queries, resolve
     try:
         found = await findgame.find_and_store(
-            pool, team=q.team or q.raw, opponent=q.opponent or "", net=net)
+            pool, team=q.team or q.raw, opponent=q.opponent or "", net=net,
+            # 🔴 §1-1 ① — **보드가 가장 정확한 단서**다(날짜·시각·두 팀·리그)
+            board_text=board_text)
     except Exception as exc:                                # noqa: BLE001
         state.note(f"s1 ⑥(findgame) 터졌다 — {exc!r}")
         return None
@@ -192,7 +194,7 @@ async def _openworld(pool: Any, q: Question, *, state: RunState,
 
 
 async def run(q: Question, *, pool: Any, state: RunState,
-              net: Any = None) -> MatchRef | Ambiguous:
+              net: Any = None, board_text: str = "") -> MatchRef | Ambiguous:
     """🔴 질문 → 그 경기 하나. ⚠️ 못 고르면 `Ambiguous`(예외를 안 던진다)."""
     from app import queries, resolve
     try:
@@ -221,7 +223,7 @@ async def run(q: Question, *, pool: Any, state: RunState,
         if got is not None:
             return got
         # 🔴 ② 그래도 없으면 `findgame` 의 ⑥단(`fotmob …` 질의)
-        got = await _openworld(pool, q, state=state, net=net)
+        got = await _openworld(pool, q, state=state, net=net, board_text=board_text)
         if got is not None:
             return got
         reason = getattr(getattr(look, "reason", None), "value", "?")

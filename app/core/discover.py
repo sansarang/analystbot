@@ -52,8 +52,11 @@ from datetime import date, timedelta
 
 logger = logging.getLogger(__name__)
 
-#: 🔴 §2 ① — 날짜가 없으면 **오늘~+2일**
-WINDOW_DAYS = 2
+#: 🔴 §1-1 ② — 날짜가 없으면 **오늘~+3일**(사용자 지시 2026-10-10 재작성).
+#  ⚠️ 종전 2일에서 늘렸다 — 그 지시가 "오늘~+3일"로 적었다.
+WINDOW_DAYS = 3
+#: 🔴 §1-1 ② — **보드 시각이 있으면 ±3시간** 안으로 좁힌다
+BOARD_HOURS = 3
 #: 🔴 §2 ④ — 못 찾았을 때 보일 후보 수(사용자가 적은 3)
 SHOW_CANDS = 3
 #: 🔴 색인에서 집어 올리는 팀 후보 상한 — 한 이름이 수십 팀에 걸릴 수 있다.
@@ -75,6 +78,8 @@ class Found:
     league_name: str = ""
     #: 🔴 그 경기의 나라 코드 — **컵대회는 순위표가 안 준다**(실측 2026-10-10)
     ccode: str = ""
+    #: 🔴 §1-1 ① — 보드에서 읽은 경기 단서(없으면 `None`)
+    hint: object = None
     #: 🔴 어느 칸에서 찾았나 — 보고가 이것을 적는다(§4 "출처")
     rung: str = ""
 
@@ -174,28 +179,73 @@ def _slug_hit(index: dict[str, str], name: str) -> list[tuple[str, str]]:
         return []
     exact = [(i, s) for i, s in index.items() if norm_name(s) == want]
     loose = [(i, s) for i, s in index.items()
-             if norm_name(s) != want and covers(s, name)]
+             if norm_name(s) != want and same_team(s, name)]
     return [*sorted(exact), *sorted(loose)]
 
 
 async def find(net, *, home: str, away: str, day: date | None = None,
-               league: str = "", today: date | None = None) -> Found:
-    """🔴🔴 §2 — 사다리 ②③ 을 순서대로. ⚠️ **리그를 묻지 않는다**.
+               league: str = "", board_text: str = "",
+               today: date | None = None) -> Found:
+    """🔴🔴 §1-1 — 사다리 ①②③. ⚠️ **리그를 묻지 않는다**.
 
-    ④(검색 단)는 부르는 쪽이 잇는다(`app/findgame.py` 가 그 통로다) — 여기서
-    검색을 다시 짜면 통로가 둘이 된다(사본 금지).
+    | 칸 | 무엇 |
+    |---|---|
+    | ① | **보드**가 있으면 보드의 날짜·시각·두 팀·리그 표기를 **먼저** 읽는다 |
+    | ② | fotmob 팀 색인(sitemap) → 팀 일정 HTML |
+    | ③ | fotmob 리그 색인 → 리그 일정 HTML |
+
+    ④(ESPN 경기 HTML)·⑤(리그 공식)는 부르는 쪽이 잇는다(`app/findgame.py` 가 그
+    통로다) — 여기서 검색을 다시 짜면 통로가 둘이 된다(사본 금지).
     """
     got = Found()
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 ① **보드가 가장 정확한 단서다**(§1-1 ①)
+    # ══════════════════════════════════════════════════════════════════
+    if str(board_text or "").strip():
+        from app.core import board as _b
+        hint = _b.hint_of(board_text, today=today)
+        got.hint = hint
+        got.tried.append(f"① 보드 단서 — {hint.why}")
+        # 🔴 보드가 적은 것이 **질문보다 정확하다**(사용자가 그렇게 적었다)
+        home = hint.home or home
+        away = hint.away or away
+        league = hint.league or league
+        day = hint.day or day
     days = window(day, today=today)
-    out = await _by_team(net, home=home, away=away, days=days, got=got)
+    at = got.hint.hhmm if got.hint else ""
+    out = await _by_team(net, home=home, away=away, days=days, got=got, at=at)
     if out.match:
         return out
     out = await _by_league(net, home=home, away=away, days=days, got=got,
-                           league=league)
+                           league=league, at=at)
     if out.match:
         return out
     got.why = miss_line(got)
     return got
+
+
+def near_time(utc: str, at: str, *, hours: int = BOARD_HOURS) -> bool:
+    """🔴 §1-1 ② — 보드 시각 `HH:MM`(KST)의 **±hours** 안인가.
+
+    ⚠️ 보드 시각은 **사용자가 보는 시각**이므로 KST 다(절대규칙 2: 표시만 KST).
+       🔴 경기 시각은 UTC 로 들고 있으므로 KST 로 바꿔 비교한다.
+    ⚠️ 시각을 못 읽으면 **좁히지 않는다**(`True`) — 모르는 것으로 버리지 않는다.
+    """
+    if not at or not utc:
+        return True
+    from app import timefmt
+    from datetime import datetime, timezone
+    try:
+        hh, mm = (int(x) for x in str(at).split(":"))
+        when = datetime.fromisoformat(str(utc).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return True
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=timezone.utc)
+    k = timefmt.kst(when)
+    gap = abs((k.hour * 60 + k.minute) - (hh * 60 + mm))
+    gap = min(gap, 24 * 60 - gap)       # 🔴 자정을 넘는 차이도 짧은 쪽으로
+    return gap <= hours * 60
 
 
 def miss_line(got: Found) -> str:
@@ -213,7 +263,7 @@ def miss_line(got: Found) -> str:
 
 
 async def _by_team(net, *, home: str, away: str, days: list[date],
-                   got: Found) -> Found:
+                   got: Found, at: str = "") -> Found:
     """🔴 §2 ② — 팀 색인에서 id 를 풀고, **그 팀 일정**에서 상대를 맞춘다.
 
     🔴 **한쪽만 풀려도 된다** — 실측 2026-10-10: `Union de Santa Fe` 는 색인에
@@ -244,7 +294,9 @@ async def _by_team(net, *, home: str, away: str, days: list[date],
             # 🔴 날짜 창 **안에서** 상대가 맞는 경기를 **전부** 모은다
             fit = [m for m in rows
                    if str(m.get("utc") or "")[:10] in want
-                   and (alike(m["home"], other) or alike(m["away"], other))]
+                   and near_time(str(m.get("utc") or ""), at)
+                   and (same_team(m["home"], other, loose=True)
+                        or same_team(m["away"], other, loose=True))]
             for m in fit:
                 got.candidates.append({"team": slug, "id": tid,
                                        "match": f"{m['home']} vs {m['away']}",
@@ -295,7 +347,7 @@ def team_fixtures(text: str, team_id: str) -> list[dict]:
 
 
 async def _by_league(net, *, home: str, away: str, days: list[date],
-                     got: Found, league: str = "") -> Found:
+                     got: Found, league: str = "", at: str = "") -> Found:
     """🔴 §2 ③ 대체 — **리그 색인**에서 이름이 걸리는 리그의 일정을 본다.
 
     ⚠️ 리그 색인은 431개다 — 전부 열지 않는다. 🔴 질문의 **두 팀 이름 조각**이
@@ -328,8 +380,10 @@ async def _by_league(net, *, home: str, away: str, days: list[date],
         # 🔴 리그 전체는 **넓은 목록**이다 — 여기서는 `covers`(방향 있는 검사)만
         #    쓴다. ⚠️ 느슨하게 보면 같은 도시·같은 이름의 다른 팀이 붙는다.
         fit = [m for m in rows if str(m.get("utc") or "")[:10] in want
-               and ((covers(m["home"], home) and covers(m["away"], away))
-                    or (covers(m["home"], away) and covers(m["away"], home)))]
+               and near_time(str(m.get("utc") or ""), at)
+               and ((same_team(m["home"], home) and same_team(m["away"], away))
+                    or (same_team(m["home"], away)
+                        and same_team(m["away"], home)))]
         if len(fit) > 1:
             got.tried.append(f"🔴 `{slug}` 에서 후보 {len(fit)}건 — 고르지 않는다")
             continue
@@ -421,3 +475,24 @@ def load_seen(key: str) -> list[str]:
     갱신만"*). ⚠️ 덮어쓰면 어제 본 표기가 사라지고 같은 오진이 다시 난다."""
     from app.core import autoleague as al
     return [str(x) for x in (al.load(key).get("seen") or [])]
+
+
+def same_team(said: object, want: object, *, loose: bool = False) -> bool:
+    """🔴🔴 §1-2 — **팀 이름 대조의 입구 하나**. `(출처가 적은 이름, 사용자가 적은 이름)`.
+
+    > 정규화 함수 하나(`same_team`). **방향 있는 대조**, 리그 id·나라·날짜로
+    > 좁힌 자리에서만 **느슨한 대조**.
+
+    | `loose` | 무엇 | 어디서 쓰나 |
+    |---|---|---|
+    | `False`(기본) | `covers` — **출처가 사용자 낱말을 전부 담을 때만** | 넓은 목록(리그 전체·색인) |
+    | `True` | `alike` — 한쪽이 다른 쪽을 담으면 | 날짜·기준 팀이 **이미 좁힌** 자리 |
+
+    🔴 왜 방향이 필요한가(실측 2026-10-10): 양방향으로 품게 하면
+       `Cong An Hanoi`→`ha-noi-fc`(**다른 구단**) · `Union de Santa Fe`→
+       `santa-fe`(**콜롬비아**)가 붙는다. 🔴 느슨한 쪽은 fotmob 이 **더 짧게**
+       적는 경우(`Unión` ↔ `Union de Santa Fe`)를 잡으려고만 쓴다.
+    ⚠️ 느슨한 자리에서 걸린 경기가 **둘 이상이면 고르지 않는다**(§1-3) — 그
+       규율은 부르는 쪽(`_by_team`)이 지킨다.
+    """
+    return alike(said, want) if loose else covers(said, want)

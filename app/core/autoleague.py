@@ -91,10 +91,19 @@ def langs_with_why(ccode: str) -> tuple[list[str], str]:
     cc = str(ccode or "").strip().upper()
     if not cc:
         return ["en"], "🔴 나라 코드가 비었다 — 영어만"
+    # 🔴🔴 §1-5 — **ISO 국가가 아닌 축구협회 넷**은 언어를 바로 적었다
+    said = fifa_table().get("langs") or {}
+    if cc in said:
+        out = [str(x) for x in (said[cc] or [])] or ["en"]
+        return out, f"§1-5 — `{cc}` 는 ISO 국가가 아닌 축구협회다 → {out}"
     two = cc if len(cc) == 2 else _alpha2(cc)
     if not two:
-        return ["en"], (f"🔴 `{cc}` 는 **FIFA 코드**다 — CLDR(ISO)에 없다 · "
-                        f"영어만으로 찾는다(현지어 기사를 놓칠 수 있다)")
+        miss = (fifa_table().get("unmatched") or {}).get(cc)
+        where = (f"`{FIFA_CONF}` 가 **못 맞춘 코드**다(`unmatched`)" if miss
+                 else f"`{FIFA_CONF}` 에 **없는 코드**다")
+        return ["en"], (f"🔴 `{cc}`" + (f"({miss})" if miss else "")
+                        + f" 를 ISO 로 못 바꿨다 — {where} · 영어만으로 "
+                        f"찾는다(현지어 기사를 놓친다)")
     try:
         import babel.core as bc
         box = (bc.get_global("territory_languages") or {}).get(two) or {}
@@ -111,24 +120,49 @@ def langs_with_why(ccode: str) -> tuple[list[str], str]:
     return out, f"CLDR — `{cc}`→`{two}` 공식 언어 {out}"
 
 
-def _alpha2(cc3: str) -> str:
-    """🔴🔴 ISO 3글자 → 2글자 — **CLDR 이 그 표를 들고 있다**(손으로 안 적는다).
+#: 🔴🔴 §1-5 — **FIFA 코드 → ISO** 표. 도구가 만들고 사람이 손대지 않는다.
+FIFA_CONF = "data/fifa_to_iso.yaml"
 
-    🔴 실측 2026-10-10: `babel.core.get_global("territory_aliases")` 에
-       `ARG → ['AR']` · `TUR → ['TR']` · `SGP → ['SG']` 가 있다(640줄).
-    ⚠️ **앞 두 글자를 떼지 않는다** — `AUS`→`AU` 는 맞지만 `CHE`→`CH`(스위스)는
-       그 방식으로 틀린다(`CH` 가 아니라 `CHE` 가 따로 있다). 표가 답이다.
-    ⚠️ 표에 없으면 **빈 글자**다 → 등록이 실패하고 그 사실이 사유에 남는다.
+
+def fifa_table() -> dict:
+    """🔴 `data/fifa_to_iso.yaml` — 출처·확인일이 머리에 적혀 있다(§1-5).
+
+    🔴 만든 도구는 `tools/build_fifa_iso.py` 다 — **손으로 늘리지 않는다**
+       (CLAUDE.md #1). ⚠️ 파일이 없으면 **빈 표**이고 그 사실이 사유에 남는다.
     """
+    from app import rules
+    try:
+        return dict(rules._load(FIFA_CONF) or {})
+    except Exception:                                       # noqa: BLE001
+        return {}
+
+
+def _alpha2(cc3: str) -> str:
+    """🔴🔴 세 글자 코드 → ISO 두 글자. 못 바꾸면 **빈 글자**(지어내지 않는다).
+
+    | 순서 | 어디서 |
+    |---|---|
+    | ① | **`data/fifa_to_iso.yaml`**(§1-5 · 공개 목록 → CLDR 로 맞춘 233개) |
+    | ② | CLDR `territory_aliases`(ISO3→ISO2 · 표에 없는 코드를 메운다) |
+
+    🔴 ① 이 먼저인 까닭: fotmob 이 주는 것은 **FIFA 코드**이고 그 표가 그것을
+       안다(`SUI`→`CH`). ⚠️ CLDR 은 FIFA 를 모른다(babel 전수 조사 2026-10-10).
+    ⚠️ **앞 두 글자를 떼지 않는다** — `AUS`→`AU` 는 맞지만 `CHE`→`CH` 는 그
+       방식으로 틀린다. 표가 답이다.
+    """
+    said = str(cc3 or "").strip().upper()
+    got = str((fifa_table().get("iso") or {}).get(said) or "").strip().upper()
+    if len(got) == 2:
+        return got
     try:
         import babel.core as bc
-        box = (bc.get_global("territory_aliases") or {}).get(str(cc3).upper())
+        box = (bc.get_global("territory_aliases") or {}).get(said)
     except Exception:                                       # noqa: BLE001
         return ""
     for x in (box or []):
-        said = str(x).strip().upper()
-        if len(said) == 2:
-            return said
+        one = str(x).strip().upper()
+        if len(one) == 2:
+            return one
     return ""
 
 

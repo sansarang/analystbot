@@ -107,7 +107,7 @@ def _queries(team: str, opponent: str, day: date, league: str = "") -> list[str]
 
 async def find(*, team: str, opponent: str = "", day: date | None = None,
                league: str = "", net: Net | None = None, search=None,
-               ) -> Found:
+               board_text: str = "") -> Found:
     """🔴 **봇이 검색으로 경기 페이지를 찾아 슬레이트 행을 만든다.** 저장은 안 한다.
 
     ⚠️ 경기를 **고르지 않는다** — 맞는 것이 여럿이면 전부 돌려주고 고르는 것은
@@ -169,7 +169,7 @@ async def find(*, team: str, opponent: str = "", day: date | None = None,
     #  ⚠️ 색인이 찾아도 **행은 같은 곳에서 만든다**(`reader.slate_row`) — 행 만드는
     #     길을 둘로 두면 한쪽만 고쳐진다(사본 금지).
     found = await _by_index(net, team=team, opponent=opponent, day=day,
-                           league=league, got=got)
+                           league=league, got=got, board_text=board_text)
     if found is not None:
         got.rows.append(found)
         return got
@@ -277,6 +277,25 @@ async def find(*, team: str, opponent: str = "", day: date | None = None,
                         row["starts_kst"], url)
         if got.rows:
             break                 # 🔴 찾았으면 더 던지지 않는다(§19-b 예산)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 §1-3 — **0개인데 보드가 있으면 보드로 경기를 만든다**
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 0개인데 보드가 있다 → 보드로 경기를 만든다(`source=user_board`):
+    #  > 대회명은 **보드 표기 그대로**, 공식 일정 출처 **없음 표시**, 분석은
+    #  > 그대로 진행.
+    #
+    #  🔴 터키컵·세리에D 처럼 fotmob 에 **자료가 없는** 경기가 이 길로 돈다
+    #     (실측 2026-10-10: 그 둘은 팀 색인·리그 색인 어디에도 없다).
+    if not got.rows and str(board_text or "").strip():
+        row = _board_row(board_text, day=day)
+        if row is not None:
+            got.rows.append(row)
+            got.tried.append(f"🟡 **보드로 경기를 만들었다**(`user_board`) — "
+                             f"{row['home']} vs {row['away']} · "
+                             f"`{row['league']}` · {row['starts_kst']} KST")
+            logger.info("[findgame] 보드로 경기를 만들었다 — %s vs %s · %s",
+                        row["home"], row["away"], row["league"])
     if not got.rows:
         from app.matchref import Reason as _R2
         got.reason = _R2.MATCH_NOT_FOUND
@@ -288,8 +307,54 @@ async def find(*, team: str, opponent: str = "", day: date | None = None,
                    + f" · {day} 창\n"
                    + "\n".join(f"· {x}" for x in got.tried[:SHOW_TRIED])
                    + (f"\n⚠️ 시도 {len(got.tried)}건 중 {SHOW_TRIED}건만 적었다"
-                      if len(got.tried) > SHOW_TRIED else ""))
+                      if len(got.tried) > SHOW_TRIED else "")
+                   # 🔴 §1-3 — **사용자에게 한 번 물어서라도 찾는다**
+                   + "\n\n🙋 **보드 캡처나 날짜·시각·리그를 보내 달라** — "
+                   + "그것으로 다시 찾는다(추측해서 다른 경기를 붙이지 않는다)")
     return got
+
+
+def _board_row(board_text: str, *, day: date) -> dict | None:
+    """🔴🔴 §1-3 — **보드 → 슬레이트 한 줄**(`source=user_board`). 못 만들면 `None`.
+
+    🔴 **대회명은 보드 표기 그대로** 쓴다(사용자가 그렇게 적었다) — 우리가 리그를
+       고르지 않는다. ⚠️ 그래서 기준 모델이 없고, 그 사실이 카드에 적힌다.
+    🔴 킥오프는 보드의 날짜+시각을 **KST 로** 읽는다(사용자가 보는 시각이다) —
+       절대규칙 2 대로 UTC 와 KST 를 **둘 다** 담는다.
+    ⚠️ 시각이 없으면 **만들지 않는다** — 시각 없는 행은 `ingest._slate` 가 버리고,
+       무엇보다 *"이미 시작했나"* 를 셀 수 없다.
+    """
+    from app.core import board as _b
+    hint = _b.hint_of(board_text)
+    if not (hint.has_match() and hint.hhmm):
+        logger.info("[findgame] 보드로 경기를 못 만든다 — %s", hint.why)
+        return None
+    hh, mm = (int(x) for x in hint.hhmm.split(":"))
+    when_kst = datetime(
+        (hint.day or day).year, (hint.day or day).month, (hint.day or day).day,
+        hh, mm, tzinfo=KST)
+    return {
+        "sport": "soccer",
+        # 🔴 **보드 표기 그대로** — 대회를 우리가 고르지 않는다(§1-3)
+        "league": hint.league or "보드(대회 표기 없음)",
+        # 🔴 열쇠에 **출처를 적는다** — 카드·원장이 공식 일정이 아님을 안다
+        "ext_id": f"user_board-{when_kst:%Y%m%d%H%M}-"
+                  f"{_slug(hint.home)}-{_slug(hint.away)}",
+        "home": hint.home, "away": hint.away, "venue": None,
+        "starts_utc": when_kst.astimezone(timezone.utc),
+        "starts_kst": when_kst, "starts_local": None,
+        "status": "scheduled", "round_note": None,
+        "home_score": None, "away_score": None,
+        # 🔴 §1-3 — *"공식 일정 출처 없음 표시"*
+        "source": "user_board",
+        "source_note": f"🟡 **보드로 만든 경기** — 공식 일정 출처 없음 · {hint.why}",
+    }
+
+
+def _slug(said: str) -> str:
+    """🔴 열쇠에 넣을 꼴 — 이름 정규화는 `discover.norm_name` 하나다(사본 금지)."""
+    from app.core import discover
+    return discover.norm_name(said)[:20] or "x"
 
 
 def _reader_for(url: str):
@@ -329,14 +394,15 @@ def _mentions(name: str, want: str) -> bool:
 
 async def find_and_store(pool, *, team: str, opponent: str = "",
                          day: date | None = None, league: str = "",
-                         net: Net | None = None, search=None) -> Found:
+                         net: Net | None = None, search=None,
+                         board_text: str = "") -> Found:
     """찾아서 **`games` 표에 적는다.** 🔴 적는 SQL 은 `ingest` 가 원본이다.
 
     ⚠️ 한 행만 적지 않는다 — 여럿이면 전부 적는다. 고르는 것은 사용자 몫이고,
        표에 있으면 `slate.find` 가 그 목록을 보여 준다.
     """
     got = await find(team=team, opponent=opponent, day=day, league=league,
-                     net=net, search=search)
+                     net=net, search=search, board_text=board_text)
     if not got.rows:
         return got
     from app.collect.ingest import _UPSERT_GAME
@@ -359,7 +425,8 @@ async def find_and_store(pool, *, team: str, opponent: str = "",
 
 
 async def _by_index(net, *, team: str, opponent: str, day: date,
-                    got: Found, league: str = "") -> dict | None:
+                    got: Found, league: str = "",
+                    board_text: str = "") -> dict | None:
     """🔴🔴 §2 ②③ — **색인으로 찾는다**. 찾으면 슬레이트 한 줄, 못 찾으면 `None`.
 
     🔴 자동 등록도 **여기서 건다**(§2 마지막 줄: *"경기를 찾으면 그 경기의 리그
@@ -370,7 +437,7 @@ async def _by_index(net, *, team: str, opponent: str, day: date,
     from app.core import discover
     try:
         out = await discover.find(net, home=team, away=opponent, day=None,
-                                  league=league)
+                                  league=league, board_text=board_text)
     except Exception as exc:                            # noqa: BLE001
         got.tried.append(f"색인 사다리가 죽었다(검색 단으로 간다) — {exc!r}")
         return None
@@ -383,6 +450,24 @@ async def _by_index(net, *, team: str, opponent: str, day: date,
         page_url = fotmob.BASE + page_url
     if not fotmob.is_match_page(page_url):
         got.tried.append(f"색인이 준 주소가 경기 페이지가 아니다 — `{page_url}`")
+        return None
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 §1-3 — **찾았는데 이미 시작했으면 그렇게 말한다**
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 이미 킥오프 지남 → *"이미 시작한 경기 — 예측 아님"*(등급 없음).
+    #  > 결과가 나왔으면 결과를 보여 준다.
+    #
+    #  ⚠️ 종전에는 창 검사가 조용히 버려 *"못 찾았다"* 가 됐다 — 실측 2026-10-10
+    #     (우니온–데펜사: 사다리가 **찾았는데** 18분 전에 킥오프했다). 🔴 찾은
+    #     것과 못 찾은 것은 다른 말이다.
+    said_when = str(out.match.get("utc") or "")
+    if _started(said_when):
+        from app.matchref import Reason as _R3
+        got.reason = _R3.ALREADY_STARTED
+        got.why = _started_line(out.match)
+        got.tried.append(f"⏱ 이미 시작했다 — {said_when}")
+        logger.info("[findgame] 찾았지만 이미 시작했다 — %s", got.why)
         return None
     page = await net.get(page_url)
     row = fotmob.slate_row(page, day=day) if page.ok else None
@@ -426,3 +511,41 @@ async def _register(net, out) -> tuple[dict, str]:
                                        ccode=str(out.ccode or ""))
     except Exception as exc:                            # noqa: BLE001
         return {}, f"🔴 등록 중 죽었다 — {exc!r}"
+
+
+def _started(utc: str) -> bool:
+    """🔴 그 경기가 **이미 시작했나**. ⚠️ "지금"은 `window.now_utc` 하나다(§4)."""
+    from app import window as _w
+    if not str(utc or "").strip():
+        return False
+    try:
+        when = datetime.fromisoformat(str(utc).replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=timezone.utc)
+    return _w.now_utc() >= when
+
+
+def _started_line(match: dict) -> str:
+    """🔴 §1-3 — *"이미 시작한 경기 — 예측 아님"* + **결과가 있으면 결과**."""
+    said = (f"⏱ **이미 시작한 경기 — 예측 아님**(등급 없음) · "
+            f"{match.get('home')} vs {match.get('away')}")
+    try:
+        when = datetime.fromisoformat(str(match.get("utc") or "")
+                                      .replace("Z", "+00:00"))
+        # 🔴 절대규칙 2 — **tz 없는 시각은 쓰지 않는다**(조용히 UTC 로 보지 않는다)
+        if when.tzinfo is None:
+            when = when.replace(tzinfo=timezone.utc)
+        said += f" · 킥오프 {timefmt.kst_label(when)}"
+    except ValueError:
+        pass
+    # 🔴 결과가 왔으면 **그것을 보여 준다**(지시서가 그렇게 적었다)
+    score = str(match.get("score") or match.get("scoreStr") or "").strip()
+    if match.get("finished") and score:
+        said += f"\n🏁 **결과** {score}"
+    elif match.get("finished"):
+        said += "\n🏁 **끝난 경기**다 — 스코어는 그 페이지가 안 줬다"
+    else:
+        said += "\n⏳ **진행 중**이다"
+    return said

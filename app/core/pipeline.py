@@ -48,23 +48,33 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
                                  s7_judge)
     st = state if state is not None else RunState()
     q = _question(raw, now=now)
-    ref = await s1_resolve.run(q, pool=pool, state=st, net=net)
-    if isinstance(ref, Ambiguous):
-        return ref
-    st.match_key = ref.id
-    # 🔴🔴 **보드를 먼저 읽는다** — 사용자 보드가 ④(s2c)의 **입력**이다(§2-6).
-    #    ⚠️ 실측 2026-10-06: s2c 를 먼저 돌려 사용자 보드 열이 통째로 비었다.
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **보드를 s1 보다 먼저 읽는다** — 사용자 지시 2026-10-10(재작성) §1-1 ①
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 보드가 있으면 보드의 날짜·시각·두 팀·리그 표기를 **먼저 읽는다**
+    #  > (이게 가장 정확한 단서다).
+    #
+    #  ⚠️ 종전에는 OCR 이 **s1 뒤**였다 — 그러면 캡처가 가진 가장 정확한 단서를
+    #     경기 찾기가 **못 쓴다**. 🔴 캡처 → 글자 → s1 순서로 바꿨다.
     got_board, extra, bad, ocr_text = board, [], [], ""
     if board_image.strip() and not board_text.strip():
         from app.core import ocr as _ocr
         got_board, extra, bad, ocr_text = _ocr.board_of(board_image.strip())
         st.note(f"보드 캡처 — 로컬 OCR {len(ocr_text)}자 · "
                 f"{len(getattr(got_board, 'lines', []) or [])}줄 · 못 읽음 {len(bad)}")
+        # 🔴 OCR 글자가 **경기 찾기의 단서**다(§1-1 ①)
+        board_text = ocr_text or board_text
     elif board_text.strip():
         from app.core import board as _board
         got_board, extra, bad = _board.parse(board_text)
         st.note(f"보드 {len(got_board.lines)}줄 · 추가 {len(extra)} · "
                 f"못 읽음 {len(bad)}")
+    ref = await s1_resolve.run(q, pool=pool, state=st, net=net,
+                               board_text=board_text)
+    if isinstance(ref, Ambiguous):
+        return ref
+    st.match_key = ref.id
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **네 층**(네 층 지시서 §1) — ①② 는 s2b, ④ 는 s2c(s2 와 병렬)
     # ══════════════════════════════════════════════════════════════════

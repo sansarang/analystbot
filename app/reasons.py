@@ -68,6 +68,14 @@ class Reason(Enum):
     MATCH_NOT_FOUND = ("match_not_found", "수집", "verdict")
     NOT_COLLECTED = ("not_collected", "수집", "bug")
     OUT_OF_WINDOW = ("out_of_window", "수집", "ask")
+    #: 🔴🔴 **이미 킥오프했다** — 사용자 지시 2026-10-10(재작성) §1-3
+    #
+    #  > 이미 킥오프 지남 → *"이미 시작한 경기 — 예측 아님"*(등급 없음).
+    #  > 결과가 나왔으면 결과를 보여 준다.
+    #
+    #  ⚠️ `OUT_OF_WINDOW`(창 밖 — 너무 먼 미래)와 **다른 일**이다. 섞으면 사용자가
+    #     *"날짜를 지정해 다시 물어라"* 를 듣는데, 그래도 그 경기는 지났다.
+    ALREADY_STARTED = ("already_started", "수집", "ask")
     AMBIGUOUS = ("ambiguous", "이름표", "ask")
 
     # ── §4 검색·읽기 도구
@@ -248,6 +256,9 @@ SAY: dict[Reason, str] = {
         "(자료가 없는 것과 다르다). ⚠️ 다시 물어도 같다",
     Reason.OUT_OF_WINDOW:
         "🔴 찾았는데 **질문 창 밖**이다 — 날짜를 지정해 다시 물어라",
+    Reason.ALREADY_STARTED:
+        "⏱ **이미 시작한 경기다 — 예측이 아니다**(등급 없음). "
+        "🔴 경기 전에 적지 않은 것을 뒤에 적으면 그것은 예측이 아니다(§3 불변)",
     Reason.AMBIGUOUS:
         "🔴 **여러 경기가 맞는다** — 하나를 지목해라(§17-g-3)",
     Reason.QUERY_TOO_BARE:

@@ -95,6 +95,16 @@ def warn_lines(card: Card) -> list[str]:
     if key.startswith("league:fotmob"):
         from app.core import autoleague
         out.append(autoleague.line(key))
+    # 🔴🔴 §1-3 — **보드로 만든 경기**는 공식 일정 출처가 없다(2026-10-10 재작성)
+    #
+    #  > 0개인데 보드가 있다 → 보드로 경기를 만든다(`source=user_board`): 대회명은
+    #  > 보드 표기 그대로, **공식 일정 출처 없음 표시**, 분석은 그대로 진행.
+    #
+    #  🔴 신호는 **경기 열쇠**다(`user_board-…`) — `findgame._board_row` 가 그
+    #     접두를 넣는다. ⚠️ 새 DB 칸을 만들지 않았다(열쇠가 이미 말한다).
+    if str(card.match.id or "").split(":")[-1].startswith("user_board-"):
+        out.append("🟡 **보드로 만든 경기** — 공식 일정 출처 **없음**(대회명·시각은 "
+                   "보드 표기 그대로다) · 기준 모델·리그 평균이 **비었다**")
     return out
 
 
