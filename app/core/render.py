@@ -63,6 +63,8 @@ def card_text(card: Card, *, debug: bool = False) -> str:
             out.append("\n" + vars_long(card))
             # 🔴🔴 **상성·검증·분포·적합**(상성 엔진 §3 긴 카드)
             out.append("\n" + matchup_report_long(card))
+            # 🔴🔴 **상성에서 나온 확률**(사용자 질문 2026-10-11) — 축 바로 뒤다
+            out.append("\n" + prob_long(card))
             out.append("\n" + score_grid(card))
             out.append("\n" + verify_long(card))
             out.append("\n" + fit_long(card))
@@ -1454,6 +1456,70 @@ MATCHUP_LONG_HEAD = "⚔️ MatchupReport (전체)"
 VERIFY_LONG_HEAD = "🔎 VerificationTable"
 GRID_HEAD = "🎲 시뮬 스코어 상위 10"
 FIT_HEAD = "🧮 적합 정보"
+
+
+def prob_long(card: Card) -> str:
+    """🔴🔴 **S3 확률(상성에서 나온 수)** — λ·유도 사슬·축별 기여·오버.
+
+    ══════════════════════════════════════════════════════════════════
+    🔴 왜 이 블록이 생겼나 — 사용자 질문 2026-10-11
+    ══════════════════════════════════════════════════════════════════
+
+    > 상성에서 나온 확률은 없냐???
+
+    🔴 **있었다** — 7b 의 `우리` 열이 그것이다(상성 → λ → 시뮬). 그런데 긴 카드가
+       **유도 사슬을 안 적었다**: λ 두 수·홈 배율·축 종합×β·규칙 λ 가 **로그에만**
+       있었고, 축별 기여(3-4)는 **1겹에만** 있었다. 그래서 카드만 보면 그 수가
+       어디서 나왔는지 보이지 않았다.
+    🔴 수를 **다시 세지 않는다** — `S3`(`probmodel.run`)이 낸 `ProbOut` 을 적는다.
+    """
+    from app.core import turnover as _turn
+    box = dict(getattr(card, "matchup", None) or {})
+    # 🔴 **시뮬 표를 읽는다**(`ProbOut.as_sim`) — ⚠️ 카드가 저장을 지나면 그
+    #    데이터클래스가 살아 있지 않을 수 있다(실측 2026-10-11: 스냅샷에서
+    #    `prob` 칸이 비어 ⬜ 로 떨어졌다). 🔴 **같은 수**가 `sim` 에 다 있다
+    #    (`home·draw·away·lam·xg·over·share·why`) — 그것을 쓴다(사본 아님).
+    sim = dict(box.get("sim") or {})
+    got = box.get("prob")
+    if not sim and got is None:
+        return "**🎯 상성 확률 (S3)** — ⬜ 안 돌렸다(사유 없음)"
+    pull = (lambda k: (sim.get(k) if sim.get(k) is not None
+                       else getattr(got, k, None)))
+    if pull("home") is None:
+        return ("**🎯 상성 확률 (S3)** — ⬜ "
+                + str(pull("why") or "안 돌렸다(사유 없음)"))
+    lam = dict(pull("lam") or {})
+    out = ["**🎯 상성 확률 (S3)** — "
+           + " · ".join(f"{nm} {float(v):.0%}" for nm, v in
+                        (("홈", pull("home")), ("무", pull("draw")),
+                         ("원정", pull("away")))
+                        if v is not None)
+           + (f" · {_turn.PROVISIONAL}"
+              if getattr(got, "provisional", True) else "")]
+    if lam:
+        out.append("- λ(기대 득점) — "
+                   + " · ".join(f"{k} {float(v):.3f}" for k, v in lam.items()))
+    if pull("why"):
+        out.append(f"- 유도 — {pull('why')}")
+    share = dict(box.get("share") or pull("share") or {})
+    refs = dict(box.get("share_refs") or {})
+    if share:
+        out.append("- 기여(리그 평균 대비) — "
+                   + " · ".join(f"{k} {float(v):+.1f}%p"
+                                for k, v in share.items()))
+        said = [f"{k.replace('axis', '축')} {','.join(list(v)[:3])}"
+                for k, v in refs.items() if v]
+        if said:
+            out.append("    주요 변수 " + " · ".join(said))
+    over = dict(pull("over") or {})
+    if over:
+        out.append("- 오버 — " + " · ".join(
+            f"{k} {float(v):.0%}" for k, v in sorted(over.items())))
+    xg = dict(pull("xg") or {})
+    if xg:
+        out.append("- 기대 득점(분포 평균) — "
+                   + " · ".join(f"{k} {float(v):.3f}" for k, v in xg.items()))
+    return "\n".join(out)
 
 
 def matchup_report_long(card: Card) -> str:

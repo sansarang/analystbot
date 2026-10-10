@@ -896,3 +896,39 @@ def test_v7_질의_0건도_수로_적는다():
     assert '("queries", "hits", "kept_date")' in said, "🔴 0 을 적지 않는다"
     # 🔴 카드는 그 네 칸을 그대로 보인다(깔때기 계약이 칸 이름을 정한다)
     assert "queries" in inspect.getsource(_r.new_facts_block)
+
+
+def test_v7_카드가_상성_확률의_유도를_적는다():
+    """🔴🔴 **사용자 질문 2026-10-11** — *"상성에서 나온 확률은 없냐???"*
+
+    🔴 있었다 — 7b 의 `우리` 열이 그것이다(상성 → λ → 시뮬). 그런데 긴 카드가
+       **유도 사슬을 안 적었다**: λ 두 수·홈 배율·축 종합×β·규칙 λ 는 **로그에만**
+       있었고 축별 기여(3-4)는 **1겹에만** 있었다 → 카드만 보면 그 수가 어디서
+       나왔는지 보이지 않았다.
+    ⚠️ 돌연변이: `prob_long` 을 카드에서 빼면 그 사슬이 다시 로그로 숨는다.
+    🔴 수를 **다시 세지 않는다** — `ProbOut.as_sim()` 의 그 수를 적는다.
+    """
+    import inspect
+
+    from app.core import render as _r
+
+    said = inspect.getsource(_r.card_text)
+    assert "prob_long(" in said, "🔴 긴 카드가 S3 확률 블록을 안 싣는다"
+    body = inspect.getsource(_r.prob_long)
+    for want in ("lam", "why", "share", "over"):
+        assert want in body, f"🔴 `{want}` 를 안 적는다"
+    # 🔴 **시뮬 표를 읽는다** — 카드가 저장을 지나면 데이터클래스가 없을 수 있다
+    assert '"sim"' in body, "🔴 `sim` 표를 안 본다(객체 생존에 기댄다)"
+
+    # 🔴 **실물로 센다** — 수가 셋 다 나오고 λ 가 적히는가
+    class _Box:
+        matchup = {"sim": {"home": 0.36, "draw": 0.24, "away": 0.40,
+                           "lam": {"home": 1.398, "away": 1.456},
+                           "over": {"2.5": 0.62}, "why": "유도 사슬",
+                           "share": {"axis0": -1.2}},
+                   "share": {"axis0": -1.2}, "share_refs": {"axis0": ["IR02"]}}
+
+    got = _r.prob_long(_Box())
+    assert "36%" in got and "24%" in got and "40%" in got, got
+    assert "1.398" in got and "1.456" in got, got
+    assert "유도 사슬" in got and "axis0" in got, got
