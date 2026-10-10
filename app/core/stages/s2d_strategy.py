@@ -66,7 +66,8 @@ def run(ref: MatchRef, facts: Facts, *, state: RunState,
         logger.info("[s2d] **버렸다** — %s", bad)
         return StrategyOut(audit="버렸다", violations=bad, facts=box)
     # 🔴🔴 지적 ③ — **선수단 교체는 로테이션이 아니다**. LLM 판정을 덮는다.
-    lines = _turn_lines(got.lines, ref, turnover, state=state, box=box)
+    lines = _turn_lines(got.lines, ref, turnover, state=state, box=box,
+                        reads=reads)
     got = got.model_copy(update={"lines": lines})
     shape = _st.shape_of(_side(got.lines, "home"), _side(got.lines, "away"),
                          home_name=ref.home_name, away_name=ref.away_name)
@@ -88,7 +89,7 @@ def run(ref: MatchRef, facts: Facts, *, state: RunState,
 
 
 def _turn_lines(lines: list, ref: MatchRef, turnover: dict | None, *,
-                state: RunState, box: dict) -> list:
+                state: RunState, box: dict, reads: dict | None = None) -> list:
     """🔴🔴 지적 ③ — 선수단이 교체된 팀의 판정을 **`squad_turnover` 로 바꾼다**.
 
     🔴 근거 id 는 LLM 이 댄 것을 **그대로 들고 간다**(새 id 를 짓지 않는다) —
@@ -119,8 +120,20 @@ def _turn_lines(lines: list, ref: MatchRef, turnover: dict | None, *,
             out.append(one)
             continue
         name = str(getattr(ref, f"{side}_name", "") or "")
-        why = (f"{name} — **선수단 교체**({got.get('why')}). 바뀐 자리는 체력 "
-               f"관리가 아니라 그 선수들이 **이 팀에 없어서**다 "
+        # 🔴🔴 **바뀐 자리가 0 개면 "바뀐 자리는…" 이라고 쓰지 않는다**
+        #    ⚠️ 실사고 2026-10-11(올랜도): 같은 카드가 `L2 평소 XI 대비 바뀐 자리
+        #       0개` 라고 적고 바로 아래서 *"바뀐 자리는 체력 관리가 아니라…"* 라고
+        #       했다 — **가리키는 자리가 없는 문장**이다(모순).
+        #    🔴 둘은 같이 성립한다: 최근 선발 5명이 명단에 없고, **평소 XI 자체가
+        #       그 선수들이 빠진 뒤의 것**이면 오늘 XI 는 평소와 같다. 그 말을 쓴다.
+        chg = getattr(dict(reads or {}).get(side), "changed", None)
+        gone = len(list(got.get("off_squad") or []))
+        tail = (f"바뀐 자리는 체력 관리가 아니라 그 선수들이 **이 팀에 없어서**다"
+                if chg else
+                f"오늘 XI 는 **평소와 같다**(바뀐 자리 {0 if chg == 0 else '미상'}개)"
+                f" — 그런데 최근 선발 {gone}명이 오늘 명단에 없다. 즉 **평소 XI "
+                f"자체가 그 선수들이 빠진 뒤의 것**이다")
+        why = (f"{name} — **선수단 교체**({got.get('why')}). {tail} "
                f"(원래 판정 `{getattr(one, 'strategy', '')}` 을 덮었다)")
         out.append(one.model_copy(update={"strategy": _turn.VERDICT,
                                           "why": why}))

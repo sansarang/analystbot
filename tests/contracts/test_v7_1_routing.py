@@ -762,3 +762,29 @@ def test_v7_2군_슬러그를_뺀다():
     # 🔴 **사용자가 2군을 적었으면 그대로 본다**(공백 표기도 같은 꼬리로 읽는다)
     assert ("722266", "orlando-city-b") in _d._slug_hit(idx, "Orlando City B")
     assert ("1348126", "columbus-crew-2") in _d._slug_hit(idx, "Columbus Crew 2")
+
+
+def test_v7_전역을_안_박는다_그리고_바뀐_자리_0개면_그렇게_쓴다():
+    """🔴🔴 **실사고 2026-10-11**(올랜도 vs 크루) — 카드가 **두 번 거짓말**을 했다.
+
+    ① 양상 — *"Orlando City 선수단 교체(**전역**·이적)"*. 올랜도는 **미국 클럽**
+       이고 전역 주기 팀이 아니다 — 깃발은 ①(최근 선발 5명이 오늘 명단에 없다)로
+       켜졌다. 🔴 까닭은 깃발이 **재서** `why` 에 적는다(①②③).
+    ② 같은 카드가 `L2 평소 XI 대비 바뀐 자리 **0개**` 라고 적고 바로 아래서
+       *"**바뀐 자리는** 체력 관리가 아니라…"* 라고 했다 — 가리키는 자리가 없다.
+    ⚠️ 돌연변이: `VERDICT_KO` 에 `전역` 을 되넣거나 `chg` 가름을 지우면 되돌아간다.
+    """
+    import inspect
+
+    from app.core import turnover as _turn
+    from app.core.stages import s2d_strategy as _s2d
+
+    assert "전역" not in _turn.VERDICT_KO, _turn.VERDICT_KO
+    assert _turn.VERDICT_KO == "선수단 교체"
+    said = inspect.getsource(_s2d._turn_lines)
+    assert "chg" in said and "changed" in said, (
+        "🔴 바뀐 자리 수를 보지 않는다 — `바뀐 자리는…` 이 0개일 때도 나간다")
+    assert "평소 XI \n" not in said
+    assert "평소 XI " in said and "그 선수들이 빠진 뒤의 것" in said
+    # 🔴 `reads` 를 **받아야** 그 수를 안다
+    assert "reads" in inspect.signature(_s2d._turn_lines).parameters
