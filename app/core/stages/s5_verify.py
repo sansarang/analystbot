@@ -331,6 +331,20 @@ def _one(c: VarCandidate, ref: MatchRef, by_id: dict[str, Doc], *,
         state.drop(what, DropReason.NO_INFO, said_i[:120])
         return None
     # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **"선발 제외"는 주전에게만 결장이다**(사용자 결정 2026-10-10 §6)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 선발 제외를 결장으로 보지 않는다 — 그 선수의 시즌 **선발 비율이 30%
+    #  > 미만**이면. (실례: **가시와 세가와**는 교체로 7골을 넣었다.)
+    #
+    #  🔴 교체로 나오는 선수가 선발에서 빠진 것은 **평소**다 — 그것을 결장으로
+    #     읽으면 매 경기 그 팀에 불리한 변수가 하나 생긴다.
+    if kind in ABSENCE_KINDS:
+        ok_b, said_b = bench_regular(c.claim, target, facts)
+        if ok_b:
+            state.drop(what, DropReason.BENCH_REGULAR, said_b[:130])
+            return None
+    # ══════════════════════════════════════════════════════════════════
     # 🔴 ③ **`stakes` 는 구체적 동기가 있을 때만**(사용자 지시 ③)
     # ══════════════════════════════════════════════════════════════════
     if kind == "stakes":
@@ -1780,3 +1794,58 @@ def _three_in_window(ref: MatchRef, facts: Facts) -> dict[str, str]:
                              f"{len(days) + 1}번째 경기"
                              f"(직전 {sorted(days)}일 전)")
     return out
+
+
+#: 🔴🔴 §6 — **선발 비율 문턱**(사용자가 적은 30%)
+STARTER_SHARE = 0.30
+#: 🔴 "선발에서 빠졌다"를 말하는 꼴 — ⚠️ `결장`·`부상`·`징계` 는 **여기 없다**
+#   (그것들은 선발 비율과 무관하게 결장이다).
+BENCH_SAID = (
+    "선발 제외", "선발에서 제외", "선발 명단 제외", "라인업 제외", "엔트리 제외",
+    "벤치", "교체 명단", "dropped to the bench", "benched", "left out of the",
+    "not in the starting", "ベンチスタート", "先発外れ", "先発落ち", "suplente",
+)
+
+
+def bench_regular(claim: str, target: str, facts: Facts) -> tuple[bool, str]:
+    """🔴🔴 §6 — **선발 비율이 낮은 선수의 "선발 제외"인가**. `(버리나, 왜)`.
+
+    > 선발 제외를 결장으로 보지 않는다 — 그 선수의 시즌 **선발 비율이 30% 미만**
+    > 이면(가시와 **세가와**는 교체로 7골을 넣었다).
+
+    🔴 재는 자료는 `facts.past_xi` 다 — s2 가 받아 둔 **과거 경기 선발 명단**
+       (최대 5경기 · `s2_facts.FOLLOW_CAP`). ⚠️ 시즌 전체가 아니다. 그래서
+       **표본 수를 사유에 적는다**(#3 — 모른 척하지 않는다).
+    ⚠️ 그 자료가 **없으면 버리지 않는다** — 못 잰 것과 낮은 것은 다른 일이다.
+       🔴 그 사실은 사유에 남고, 변수는 그대로 선다(조용히 떨어뜨리지 않는다).
+    🔴 **`결장`·`부상`·`징계` 는 이 검사를 안 탄다**(`BENCH_SAID` 에 없다) —
+       그것들은 선발 비율과 무관하게 결장이다.
+    """
+    low = str(claim or "")
+    if not any(w.lower() in low.lower() for w in BENCH_SAID):
+        return False, ""
+    who = str(target or "").strip()
+    if not who:
+        return False, ""
+    rows = [x for box in (facts.past_xi or {}).values() for x in box]
+    if not rows:
+        return False, ""
+    n = len(rows)
+    # 🔴 **두 칸을 다 본다** — `XI` 는 선발을 `players`(이름)와 `lineup`(선수
+    #    객체) 두 꼴로 들 수 있다(어댑터에 따라 다르다). 한 칸만 보면 **표본이
+    #    0**이 되고, 0이면 이 검사가 아무도 안 거른다(조용한 0 · #3).
+    starts = sum(1 for xi in rows if who in _xi_names(xi))
+    share = starts / n if n else 0.0
+    if share >= STARTER_SHARE:
+        return False, ""
+    return True, (f"`{who}` 는 최근 {n}경기 중 **{starts}경기만 선발**"
+                  f"({share:.0%} < {STARTER_SHARE:.0%}) — 선발 제외가 **평소**다"
+                  f"(§6 · 교체 주력은 결장이 아니다)")
+
+
+def _xi_names(xi: Any) -> set[str]:
+    """🔴 그 선발 명단의 **이름들** — `players`(이름)와 `lineup`(객체)을 합친다."""
+    out = {str(x) for x in (getattr(xi, "players", None) or [])}
+    out |= {str(getattr(p, "name", "")) for p in (getattr(xi, "lineup", None)
+                                                  or [])}
+    return {x for x in out if x}

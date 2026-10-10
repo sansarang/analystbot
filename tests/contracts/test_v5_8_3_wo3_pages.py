@@ -303,3 +303,63 @@ def test_v6_번호가_글자를_이긴다():
     assert fns and "league_id=" in ast.unparse(fns[0]), (
         "🔴 `adapt.facts_of` 가 `league_id` 를 `Facts` 에 안 싣는다 — "
         "`s2_facts` 가 담아도 판정까지 오지 않는다")
+
+
+def test_v6_경기전_최종스코어_기사는_버린다():
+    """🔴🔴 §6 — *"경기 전 기사에 결과 스코어가 적혀 있으면 그 문서는 버린다"*.
+
+    ⚠️ 돌연변이: `premature_result` 가 **스코어 숫자만** 보고 버리면 — 배당
+       `2-1`·시각 `20:00` 기사가 통째로 날아간다. 🔴 그래서 **종료 낱말**이
+       같은 문장에 있을 때만 버린다. 둘 다 센다.
+    """
+    from datetime import datetime, timedelta, timezone
+    from app.core.stages.s3_docs import premature_result
+    from app.core.schema import DropReason
+
+    class _R:
+        kickoff_utc = datetime.now(timezone.utc) + timedelta(hours=5)
+        sport = "soccer"
+
+    assert DropReason.PREMATURE_RESULT.value == "premature_result"
+    bad, why = premature_result("전북이 대전을 2-1로 꺾고 경기 종료.", _R())
+    assert bad and "경기 종료" in why, why
+    # 🔴 **버리지 말아야 하는 것** — 종료 낱말이 없다
+    for ok_body in ("배당은 2-1 수준으로 홈 우세다.",
+                    "킥오프는 20:00 이며 맞대결은 팽팽했다."):
+        got, said = premature_result(ok_body, _R())
+        assert not got, f"🔴 멀쩡한 기사를 버렸다 — {ok_body} · {said}"
+    # 🔴 킥오프가 **지난** 경기에는 검사하지 않는다(결과 기사가 정상이다)
+
+    class _Past(_R):
+        kickoff_utc = datetime.now(timezone.utc) - timedelta(hours=5)
+    assert not premature_result("최종 스코어 2-1.", _Past())[0]
+
+
+def test_v6_교체주력의_선발제외는_결장이_아니다():
+    """🔴🔴 §6 — *"선발 제외를 결장으로 보지 않는다 — 선발 비율 30% 미만이면"*.
+
+    실례: **가시와 세가와** — 교체로 7골.
+
+    ⚠️ 돌연변이 ①: 문턱을 지우면 교체 주력의 선발 제외가 매 경기 결장 변수가 된다.
+    ⚠️ 돌연변이 ②: `결장`·`부상` 까지 이 검사를 태우면 **진짜 결장**이 사라진다 —
+       그래서 `BENCH_SAID` 에 그 낱말이 **없어야** 한다. 둘 다 센다.
+    """
+    from app.core.stages.s5_verify import (BENCH_SAID, STARTER_SHARE,
+                                           bench_regular)
+    from app.core.schema import Facts, XI
+    assert STARTER_SHARE == 0.30
+    for word in ("결장", "부상", "징계", "말소"):
+        assert not any(word in w for w in BENCH_SAID), (
+            f"🔴 `{word}` 가 선발비율 검사를 탄다 — **진짜 결장**이 사라진다")
+    def _xi(name: str) -> XI:
+        return XI(team="team:000001", state="confirmed", players=[name])
+    five = [_xi("다른 선수") for _ in range(4)] + [_xi("세가와")]
+    facts = Facts(past_xi={"team:000001": five})
+    bad, why = bench_regular("세가와가 선발 제외됐다", "세가와", facts)
+    assert bad and "1경기만 선발" in why, why
+    # 🔴 주전이면 **버리지 않는다**
+    many = [_xi("세가와") for _ in range(4)]
+    assert not bench_regular("세가와가 선발 제외됐다", "세가와",
+                             Facts(past_xi={"t": many}))[0]
+    # 🔴 **못 잰 것**은 버리지 않는다(자료 없음 ≠ 비율 낮음)
+    assert not bench_regular("세가와가 선발 제외됐다", "세가와", Facts())[0]

@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from datetime import timedelta
 from typing import Any
 
@@ -397,9 +398,56 @@ async def _fetch(sub: Any, ref: MatchRef, kept: list[tuple[Any, str]], *,
                        f"발행일 {doc.published_at:%Y-%m-%d} · 창 "
                        f"{_window_days()}일")
             continue
+        # 🔴🔴 **킥오프 전인데 최종 스코어를 적는 글은 버린다**(§6 · 2026-10-10)
+        bad_r, said_r = premature_result(str(body), ref)
+        if bad_r:
+            state.drop(f"s3/{name}/{url[:40]}", DropReason.PREMATURE_RESULT,
+                       said_r[:120])
+            continue
         cache[url] = doc
         out.append(doc)
     return out
+
+
+#: 🔴 **끝난 경기를 말하는 낱말** — 스코어 숫자 하나로는 모자란다(배당·시각·
+#   순위도 `2-1` 꼴로 적힌다). 🔴 그래서 **스코어 + 종료 낱말**을 함께 본다.
+RESULT_WORDS = (
+    "최종 스코어", "경기 종료", "풀타임", "승리를 거뒀", "패배를 안", "무승부로",
+    "final score", "full-time", "full time", "ft:", "beat ", "defeated ",
+    "won ", "drew ", "試合終了", "勝利", "敗れ", "引き分け",
+    "resultado final", "venció", "empató", "derrotó",
+)
+#: 🔴 스코어 꼴 — `2-1`·`2 : 1`·`2–1`(en dash). ⚠️ 앞뒤가 숫자면 안 센다(날짜·시각)
+_SCORE = re.compile(r"(?<![\d:.])([0-9])\s*[-–:]\s*([0-9])(?![\d:.])")
+
+
+def premature_result(body: str, ref: MatchRef) -> tuple[bool, str]:
+    """🔴🔴 §6 — **킥오프 전인데 최종 스코어를 적는 글인가**. `(버리나, 왜)`.
+
+    > 경기 전 기사에 **결과 스코어가 적혀 있으면** 그 문서는 버린다.
+
+    🔴 **스코어 숫자만으로는 안 버린다** — `2-1` 꼴은 배당·시각·순위에도 나온다.
+       종료를 말하는 낱말(`RESULT_WORDS`)이 **같은 문장**에 있어야 버린다.
+    ⚠️ 킥오프가 **이미 지난** 경기에는 이 검사를 안 쓴다 — 그때는 결과 기사가
+       정상이다(그 경기는 채점 쪽 일이다).
+    🔴 왜(사용자 결정 2026-10-10 §6): 그런 글은 **다른 경기**의 결과이거나 예측
+       사이트의 모의 스코어다. 사실로 읽으면 카드가 이미 끝난 경기를 분석한다.
+    """
+    # 🔴 "지금"은 `app/window.now_utc` 하나다(사본 금지 — 고정물 재생도 그것을 본다)
+    from app import window as _w
+    when = ref.kickoff_utc
+    if when is None or _w.now_utc() >= when:
+        return False, ""
+    for line in re.split(r"(?<=[.!?。])\s+|\n+", str(body or "")):
+        hit = _SCORE.search(line)
+        if not hit:
+            continue
+        low = line.lower()
+        said = next((w for w in RESULT_WORDS if w.lower() in low), "")
+        if said:
+            return True, (f"킥오프 전인데 최종 스코어를 적는다 — "
+                          f"`{hit.group(0)}` + `{said}` · \"{line.strip()[:70]}\"")
+    return False, ""
 
 
 async def regather(ref: MatchRef, sid: str, words: list[str], *,
