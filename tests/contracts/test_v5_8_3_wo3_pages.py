@@ -234,21 +234,63 @@ def test_v6_자동등록은_손표_열쇠로_쓰지_않는다():
         f"`config/competitions.yaml` 의 열쇠를 덮으면 그 리그 판정이 거짓이 된다")
 
 
-def test_v6_정확일치가_품는일치를_이긴다():
-    """🔴 ②b — 자동 등록이 **본 글자**와 정확히 같으면 손 표보다 먼저다.
+def test_v6_대회_글자가_겹치면_고르지_않는다():
+    """🔴🔴 실사고 2026-10-10(두 번째) — **인도네시아 경기가 스위스 리그로 붙었다**.
 
-    ⚠️ 돌연변이: `key_of` 의 ②b 블록을 지우면 — 카드 쪽(리그 id 없음)이 다시
-       엘살바도르를 라리가로 판정한다. 🔴 등록 파일이 있을 때만 세는 계약이므로
-       파일이 없으면 **건너뛴 사실을 적는다**(#3).
+    둘 다 대회 이름이 `Super League` 다. 🔴 대회 이름은 **나라를 넘어 겹친다**
+    (첫 번째 사고는 엘살바도르 `Primera Division` ↔ 스페인 라리가였다).
+
+    | 증거 | 무엇을 한다 |
+    |---|---|
+    | **리그 번호**가 있다 | 번호가 글자를 **이긴다** |
+    | 글자뿐이고 **한 곳**에 걸린다 | 그 열쇠로 선다 |
+    | 글자뿐이고 **여러 곳**에 걸린다 | 🔴 **고르지 않는다**(빈 글자) |
+
+    ⚠️ 돌연변이: `autoleague.key_by_seen` 에서 애매함 검사를 지우면 — 두 리그 중
+       **먼저 읽힌 쪽**이 이기고, 그 리그의 기준·홈 이점으로 남의 경기를 판정한다.
+    🔴 빈 글자가 **맞다** — 카드가 *"대회를 알아보지 못했다"* 를 띄우고 등급을
+       보류하는 쪽이, 틀린 기준으로 판정하는 것보다 낫다.
     """
     from app.core import autoleague as al
+    from app.core import competition as comp
     rows = [(k, al.load(k)) for k in al.registered()]
-    seen = [(k, s) for k, b in rows for s in (b.get("seen") or [])]
+    seen: dict[str, set[str]] = {}
+    for key, box in rows:
+        for s in (box.get("seen") or []):
+            seen.setdefault(comp._norm(s), set()).add(key)
     if not seen:
         import pytest
         pytest.skip("🔴 자동 등록 파일이 아직 없다 — 셀 것이 없다(인수 실행 전)")
-    from app.core import competition as comp
-    bad = [f"{s} → {comp.key_of(competition=s)[0]} (기대 {k})"
-           for k, s in seen if comp.key_of(competition=s)[0] != k]
-    assert not bad, ("🔴 자동 등록이 **본 글자**인데 열쇠가 다른 데로 갔다:\n  "
-                     + "\n  ".join(bad))
+    bad: list[str] = []
+    for said, keys in seen.items():
+        got, why = comp.key_of(competition=said)
+        if len(keys) == 1:
+            want = next(iter(keys))
+            # ⚠️ 손 표가 그 글자를 **더 좁게** 아는 경우는 손 표가 이긴다 —
+            #    그때는 자동 등록 열쇠가 아니어도 틀린 것이 아니다.
+            if got and got != want and got.startswith("league:fotmob"):
+                bad.append(f"`{said}` → {got} (기대 {want} · {why})")
+        elif got:
+            bad.append(f"🔴 `{said}` 는 {len(keys)}곳에 걸리는데 {got} 를 "
+                       f"골랐다 — 고르지 말아야 한다({sorted(keys)})")
+    assert not bad, ("🔴 대회 글자 판정이 틀렸다:\n  " + "\n  ".join(bad))
+
+
+def test_v6_번호가_글자를_이긴다():
+    """🔴 §2 — **리그 번호가 있으면 번호가 판정한다**(이름은 겹친다).
+
+    ⚠️ 돌연변이: `s5_verify.comp_kind` 에서 `league_id=` 인자를 지우면 —
+       인도네시아 경기가 다시 스위스 리그로 붙는다. 🔴 `Facts.league_id` 가
+       그 번호를 들고 오는 칸이고, 그 칸이 **있어야** 한다.
+    """
+    from app.core import schema
+    assert "league_id" in schema.Facts.model_fields, (
+        "🔴 `Facts.league_id` 가 없다 — 대회 판정이 글자로만 간다")
+    import ast
+    said = ast.parse((ROOT / "app" / "core" / "stages"
+                      / "s5_verify.py").read_text(encoding="utf-8"))
+    hit = [n for n in ast.walk(said) if isinstance(n, ast.Call)
+           and ast.unparse(n.func).endswith("kind_of")
+           and any(k.arg == "league_id" for k in n.keywords)]
+    assert hit, ("🔴 `comp_kind` 가 `kind_of` 에 `league_id` 를 안 넘긴다 — "
+                 "대회 이름은 나라를 넘어 겹친다(실사고 2026-10-10)")

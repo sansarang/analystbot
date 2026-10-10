@@ -161,7 +161,7 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
     #  🔴 실사고 2026-10-09(가시마–감바): 경기 페이지가 폼을 안 줘 `recent` 가
     #     **0건**이었다 — 득점 흐름 변수가 하나도 없었고 이유 문단이 템플릿이 됐다.
     #  ⚠️ **폼이 이미 있으면 팀 페이지를 안 받는다**(통신 예산 · §19-b).
-    await _auto_register(ref, state=state, net=net, pages=raw_pages)
+    await _auto_register(ref, box, state=state, net=net, pages=raw_pages)
     await _fill_form(ref, box, state=state, net=net, pages=raw_pages)
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **라인업 사다리**(사용자 지시 2026-10-10 A-1) — 경기 페이지가 못 줄 때
@@ -486,8 +486,8 @@ async def _fill_official(ref: MatchRef, box: dict, *, state: RunState,
                f"({said['players_why']}) · 구단 SNS {len(sns)}곳")
 
 
-async def _auto_register(ref: MatchRef, *, state: RunState, net: Any,
-                         pages: list[str]) -> None:
+async def _auto_register(ref: MatchRef, box: dict, *, state: RunState,
+                         net: Any, pages: list[str]) -> None:
     """🔴🔴 **리그 자동 등록은 분석마다 걸린다** — 사용자 결정 2026-10-10 §2.
 
     > 경기를 찾으면 그 경기의 리그 id로 자동 등록을 건다(**이미 있으면 갱신만**).
@@ -510,6 +510,8 @@ async def _auto_register(ref: MatchRef, *, state: RunState, net: Any,
     if not lid:
         state.note("s2 자동 등록 — 🔴 경기 페이지가 리그 id 를 안 준다")
         return
+    # 🔴🔴 **번호를 사실에 담는다** — 대회 판정이 글자로만 가지 않게(실사고 두 번)
+    box["league_id"] = str(lid)
     _box, why = await discover.register(
         net, league_id=lid, league_name=str(ref.competition or ""),
         ccode=fm.ccode_of(j))

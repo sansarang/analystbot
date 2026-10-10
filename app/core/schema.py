@@ -321,6 +321,15 @@ class Facts(Frozen):
     #     없어 **비율로만** 쓴다 — 카드에 통화 기호를 붙이지 않는다.
     player_value: dict[str, float] = Field(default_factory=dict)
     match_format: MatchFormat = "unknown"
+    #: 🔴🔴 **그 경기의 fotmob 리그 id**(`general.parentLeagueId`) — 대회 판정의
+    #
+    #  ⚠️ 실사고 2026-10-10: 대회를 **글자**로만 판정하다 두 번 틀렸다.
+    #     ① 엘살바도르 `Primera Division - Apertura` → 스페인 **라리가**
+    #     ② 인도네시아 `Super League` → **스위스** 수퍼리그
+    #     대회 이름은 **나라를 넘어 겹친다**. 🔴 번호는 겹치지 않는다.
+    #  🔴 그래서 `s2_facts` 가 경기 페이지에서 읽어 여기 담고, `comp_kind` 가
+    #     그것을 `competition.key_of` 에 넘긴다(판정점은 그대로 하나다).
+    league_id: str = ""
     extra_time: bool | None = None
     #: 🔴 1차전/2차전(§3 IR07) — 모르면 `None`
     leg: int | None = None

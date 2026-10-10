@@ -1600,8 +1600,11 @@ def comp_kind(ref: MatchRef, facts: Facts) -> str:
     #     `league:jpn.1` 처럼 **받은 글자를 그대로 키로 썼고**, 그래서 기준·홈
     #     이점·리그 평균이 조용히 비었다(실사고 2026-10-09 가시마–감바).
     from app.core import competition as _comp
-    got, _why = _comp.kind_of(competition=said, friendly=friendly,
-                              national=_is_national(ref))
+    #  🔴 **번호가 있으면 번호가 글자를 이긴다** — 대회 이름은 나라를 넘어
+    #     겹친다(실사고 2026-10-10: `Super League` 가 스위스·인도네시아 둘이다).
+    got, _why = _comp.kind_of(competition=said,
+                              league_id=(str(facts.league_id or "") or None),
+                              friendly=friendly, national=_is_national(ref))
     return got
 
 

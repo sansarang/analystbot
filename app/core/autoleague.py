@@ -301,6 +301,13 @@ def key_by_name(said: str) -> str:
     if not cand:
         return ""
     cand.sort(key=lambda x: -x[0])
+    # 🔴 **가장 긴 일치가 여럿이면 고르지 않는다** — 이름이 나라를 넘어 겹친다
+    best = cand[0][0]
+    keys = {k for n, k in cand if n == best}
+    if len(keys) > 1:
+        logger.info("[autoleague] 🔴 `%s` 가 자동 등록 %d곳에 같은 길이로 "
+                    "걸린다 — 고르지 않는다 %s", said, len(keys), sorted(keys))
+        return ""
     return cand[0][1]
 
 
@@ -316,8 +323,17 @@ def key_by_seen(said: str) -> str:
     want = comp._norm(said)
     if not want:
         return ""
-    for key in registered():
-        for word in (load(key).get("seen") or []):
-            if comp._norm(word) == want:
-                return key
+    hit = {key for key in registered()
+           for word in (load(key).get("seen") or [])
+           if comp._norm(word) == want}
+    if len(hit) == 1:
+        return hit.pop()
+    if hit:
+        # 🔴🔴 **애매하면 고르지 않는다**(실사고 2026-10-10 두 번째): 스위스와
+        #    인도네시아가 둘 다 `Super League` 다. 인도네시아 경기가 **스위스
+        #    리그**로 붙어 기준·홈 이점이 통째로 남의 것이 됐다.
+        #  🔴 빈 글자를 주면 카드가 *"대회를 알아보지 못했다"* 를 띄우고 등급을
+        #     보류한다 — **그 쪽이 맞다**(틀린 기준으로 판정하는 것보다 낫다).
+        logger.info("[autoleague] 🔴 `%s` 가 자동 등록 %d곳에 걸린다 — "
+                    "고르지 않는다 %s", said, len(hit), sorted(hit))
     return ""
