@@ -221,3 +221,23 @@ def report() -> str:
         return "🆕 자동 등록된 리그 0개 — 아직 아무 경기도 새 리그를 안 열었다"
     return (f"🆕 자동 등록된 리그 {len(keys)}개\n"
             + "\n".join(line(k) for k in keys))
+
+
+def key_by_name(said: str) -> str:
+    """🔴🔴 **대회 글자 → 자동 등록 열쇠**. 없으면 `""`.
+
+    ⚠️ 실사고 2026-10-10: 등록은 됐는데 카드가 *"대회를 알아보지 못했다"* 를
+       띄웠다 — `s2b` 는 `MatchRef.competition`(**글자** `Serie B`)만 주고 리그
+       id 를 안 주기 때문이다. 🔴 그래서 **이름으로도** 찾는다.
+    🔴 대조는 `competition._norm` 하나다(사본 금지) — 거기서 글자를 다듬는다.
+    """
+    from app.core import competition as comp
+    want = comp._norm(said)
+    if not want:
+        return ""
+    for key in registered():
+        box = load(key)
+        for word in (str(box.get("name") or ""), short_of(key)):
+            if word and comp._norm(word) == want:
+                return key
+    return ""

@@ -387,11 +387,26 @@ async def _by_index(net, *, team: str, opponent: str, day: date,
     if row is None:
         got.tried.append(f"{page_url} 슬레이트 행을 못 만들었다({page.reason})")
         return None
+    # 🔴🔴 **리그 id 는 경기 페이지에서 읽는다** — 팀 일정은 글자만 준다.
+    #    ⚠️ 실사고 2026-10-10: `tournament` 가 `"Serie B"` 글자라 `league_id` 가
+    #       `None` 이었고, 자동 등록이 *"리그 id 를 못 받았다"* 로 실패했다.
+    #       카드는 *"대회를 알아보지 못했다"* 를 띄웠다 — 등록이 안 됐으니 맞는
+    #       말이었지만 **까닭이 로그에 없었다**(#3). 둘 다 고쳤다.
+    if not out.league_id:
+        said = fotmob.league_id_of(fotmob.payload(page.text or "") or {})
+        if said:
+            out.league_id = said
+            got.tried.append(f"리그 id 를 경기 페이지에서 읽었다 — `{said}`")
+        else:
+            got.tried.append("🔴 리그 id 를 경기 페이지도 안 준다 — 등록 못 한다")
     logger.info("[findgame] 색인으로 찾았다(%s) — %s @ %s · %s",
                 out.rung, row["away"], row["home"], row["league"])
     # 🔴 §2 마지막 줄 — **리그 자동 등록**
     box, why = await _register(net, out)
     got.tried.append(f"자동 등록 — {why}")
+    # 🔴 **사유를 로그에도 적는다** — 실사고 2026-10-10: 등록이 실패했는데
+    #    `tried` 에만 있어서 로그를 봐도 **왜 실패했는지 안 보였다**(#3).
+    logger.info("[findgame] 자동 등록 — %s", why)
     if box:
         row["auto_league"] = box.get("competition_key")
     return row

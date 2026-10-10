@@ -116,11 +116,17 @@ def key_of(*, competition: str = "", league_id: object = None,
     #     자리). 🔴 `data/leagues_auto/` 를 본다.
     #  🔴 손 표(`competitions.yaml`)가 **먼저**다 — 거기엔 기준 모델·분할 규칙이
     #     달려 있고 자동 등록은 그만큼 못 안다.
+    from app.core import autoleague
     if lid:
-        from app.core import autoleague
         key = f"league:fotmob{lid}"
         if autoleague.load(key):
             return key, f"**자동 등록** 리그 — fotmob 리그 id `{lid}`"
+    # 🔴 **글자로도 찾는다** — `s2b` 는 리그 id 를 안 주고 대회 **이름**만 준다
+    #    (실사고 2026-10-10: 등록은 됐는데 카드가 "대회를 알아보지 못했다"였다).
+    if said:
+        key = autoleague.key_by_name(competition)
+        if key:
+            return key, f"**자동 등록** 리그 — 표기 `{competition}`"
     got = str(competition or code or lid or "")
     return "", f"{UNKNOWN_HEAD} — 받은 표기 `{got or '없음'}`"
 

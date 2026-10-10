@@ -2292,3 +2292,18 @@ async def league_season_rows(net, league_id: object) -> list[dict]:
                     "away_score": int(hit.group(2)),
                     "utc": str(st.get("utcTime") or "")})
     return out
+
+
+def league_id_of(j: dict) -> str:
+    """🔴🔴 경기 페이지가 말하는 **그 경기의 리그 id**(`parentLeagueId`).
+
+    ⚠️ **팀 일정은 리그 id 를 주지 않는다** — 실측 2026-10-10: 팀 일정의
+       `tournament` 는 `"Serie B"` 라는 **글자**이고 id 가 없다. 그래서 자동
+       등록이 *"리그 id 를 못 받았다"* 로 조용히 실패했다.
+    🔴 경기 페이지는 준다: `general.parentLeagueId = 86` · `leagueId = 941726`
+       (뒤 숫자는 **그 시즌**이다 — 대회가 아니다). 🔴 **앞을 쓴다.**
+    ⚠️ 실사고 2026-10-09 에 J1 을 `9134`(NWSL)로 적은 적이 있다 — 리그 id 는
+       **추측하지 않고 이 칸에서** 읽는다.
+    """
+    gen = (_page(j or {}).get("general") or {})
+    return str(gen.get("parentLeagueId") or gen.get("leagueId") or "").strip()
