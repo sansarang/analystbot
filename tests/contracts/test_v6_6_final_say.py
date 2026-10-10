@@ -370,6 +370,34 @@ def test_v6_1겹_최종평이_보드_판정_바로_위다():
     assert said.count("\n · ") >= 3, "🔴 주장 세 줄이 안 나왔다"
 
 
+def test_v6_1겹_최종평이_줄마다_잘린다():
+    """🔴🔴 1겹 상한 — ⚠️ 실측 2026-10-10: 메커니즘 한 줄이 **250자**였다.
+
+    셋이면 그것만 750자로 1겹 상한(`CAP_ALL` 900)을 혼자 먹는다. 🔴 1겹은 자른
+    글이고 **긴 카드가 전문**을 든다. ⚠️ `_cap` 이 자른 사실을 `…` 로 남긴다(#3).
+    """
+    from app.core import layer1
+    from app.core.schema import KeyPoint
+    long = "가" * 400
+    say = _say(audit="통과",
+               one_line=long,
+               key_points=[KeyPoint(claim=long, mechanism=long,
+                                    refs=["X1", "X2"]) for _ in range(3)],
+               flow_first=long, flow_second=long,
+               decisive_moment=long, flip_condition=long)
+    said = layer1.say_block(_card().model_copy(update={"say": say}))
+    # 🔴 상한의 합 — 한 줄 140 + 주장 3×120 + 흐름(120+승부처 60) + 조건 90 +
+    #    머리글. ⚠️ 글이 아무리 길어도 블록은 이 안에 든다.
+    budget = (layer1.SAY_CAP_ONE + 3 * layer1.SAY_CAP_LINE
+              + layer1.SAY_CAP_LINE + 60 + 90 + 120)
+    assert len(said) <= budget, f"🔴 최종 평 블록이 {len(said)}자다(상한 {budget})"
+    assert "…" in said, "🔴 자른 사실을 글자로 안 남겼다(#3)"
+    # 🔴 **긴 카드는 안 자른다** — 전문이 거기 있다
+    from app.core import render
+    full = render.say_long(_card().model_copy(update={"say": say}))
+    assert ("가" * 300) in full, "🔴 긴 카드가 전문을 안 들었다"
+
+
 def test_v6_긴카드가_근거id와_원사실과_검열결과를_낸다():
     """🔴 §4 — *"긴 카드: key_point마다 **근거 id와 원 사실**, **검열 결과**"*."""
     from app.core import render, saybundle

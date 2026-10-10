@@ -1087,6 +1087,12 @@ def _sim_line(box: dict) -> str:
 SAY_HEAD = "🧑‍🏫 **최종 평**"
 #: 🔴 1겹에 올리는 주장 수 — 지시서 §4 가 보인 모양(점 셋)
 SAY_POINTS = 3
+#: 🔴🔴 1겹 한 줄 상한 — ⚠️ 실측 2026-10-10(강원–부천): 메커니즘이 한 줄에 **250자**
+#  였다. 셋이면 그것만 750자이고 1겹 상한(`CAP_ALL` 900)을 혼자 다 먹는다.
+#  🔴 **긴 카드가 전문을 든다**(`render.say_long`) — 1겹은 자른 글이고, `_cap` 이
+#     자른 사실을 `…` 로 남긴다(#3 조용히 줄이지 않는다).
+SAY_CAP_LINE = 120
+SAY_CAP_ONE = 140
 
 
 def say_block(card: Card) -> str:
@@ -1106,13 +1112,15 @@ def say_block(card: Card) -> str:
         head += "  ⬜ **템플릿**(검열이 LLM 평을 버렸다)"
     out = [head]
     if str(got.one_line or ""):
-        out.append(f" {got.one_line}")
+        out.append(f" {_cap(got.one_line, SAY_CAP_ONE)}")
     for kp in list(got.key_points or [])[:SAY_POINTS]:
-        out.append(f" · {kp.claim} — {kp.mechanism}")
+        out.append(f" · {_cap(f'{kp.claim} — {kp.mechanism}', SAY_CAP_LINE)}")
     if str(got.flow_first or "") or str(got.flow_second or ""):
-        out.append(f" 📈 흐름: {got.flow_first} / {got.flow_second}"
-                   + (f"   ⏱ 승부처: {got.decisive_moment}"
+        out.append(" 📈 흐름: "
+                   + _cap(f"{got.flow_first} / {got.flow_second}",
+                          SAY_CAP_LINE)
+                   + (f"   ⏱ 승부처: {_cap(got.decisive_moment, 60)}"
                       if str(got.decisive_moment or "") else ""))
     if str(got.flip_condition or ""):
-        out.append(f" 🔄 뒤집히는 조건: {got.flip_condition}")
+        out.append(f" 🔄 뒤집히는 조건: {_cap(got.flip_condition, 90)}")
     return "\n".join(out)
