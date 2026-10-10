@@ -329,6 +329,25 @@ def test_v6_주장수와_빈칸을_센다():
 # 🔴🔴 §3 마지막 줄 — **템플릿 평**
 # ══════════════════════════════════════════════════════════════════
 
+def test_v6_팀이름_표기를_사실로_준다():
+    """🔴🔴 **음역 금지** — ⚠️ 실측 2026-10-10(재현): 평이 `FC Anyang` 을
+    **"애냥"** 이라고 적었다(입력에 한국어 표기가 없어 지어냈다).
+
+    🔴 이제 묶음이 별칭표의 한국어 표기를 `P0` 으로 주고, 프롬프트가 *"그 글자를
+       그대로 쓰라"* 고 못 박는다. ⚠️ 표기가 없으면 **그 사실을 적는다**(#3).
+    """
+    from app.core import saybundle
+    from app.core.stages import s9_say
+    card = _card()
+    box = saybundle.build(card)
+    one = box.items.get("P0")
+    assert one is not None, "🔴 팀 이름 표기 항목이 없다"
+    assert "음역" in one.text and card.match.home_name in one.text
+    msgs = s9_say._prompt(card, box)
+    said = " ".join(str(m.content) for m in msgs)
+    assert "음역을 지어내지 않는다" in said, "🔴 프롬프트가 음역을 안 막는다"
+
+
 def test_v6_두번_위반이면_코드_템플릿_평이_나온다():
     """🔴 §3 — *"또 위반이면 **코드 템플릿 평**(사실 묶음 상위 근거 셋 + 확률 방향)"*.
 

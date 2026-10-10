@@ -542,6 +542,13 @@ def shape_of(home: str, away: str, *, home_name: str = "홈",
     if rot in (a, b):
         who = home_name if a == rot else away_name
         return f"{who} 로테이션"
+    # 🔴🔴 **선수단 교체는 그 말로** 적는다(지적 ③) — ⚠️ 실측 2026-10-10: 양상
+    #    줄에 열거값 `squad_turnover` 가 **그대로 새어 나왔다**.
+    from app.core import turnover as _turn
+    if _turn.VERDICT in (a, b):
+        who = home_name if a == _turn.VERDICT else away_name
+        other = b if a == _turn.VERDICT else a
+        return f"{who} {_turn.VERDICT_KO} vs {other}"
     return f"{a} vs {b}"
 
 

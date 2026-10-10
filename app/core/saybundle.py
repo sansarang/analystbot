@@ -85,6 +85,7 @@ def build(card) -> Bundle:
     _motive(card, got)          # 1-5
     _absence(card, got)         # 1-6
     _probs(card, got)           # 1-7
+    _names_item(card, got)      # 🔴 팀 이름 표기(음역 금지)
     return got
 
 
@@ -531,6 +532,27 @@ def _absence(card, got: Bundle) -> None:
 # ══════════════════════════════════════════════════════════════════
 # 🔴🔴 §1-7 — **확률**
 # ══════════════════════════════════════════════════════════════════
+
+def _names_item(card, got: Bundle) -> None:
+    """🔴🔴 **팀 이름의 한국어 표기**를 사실로 넣는다.
+
+    ⚠️ 실측 2026-10-10(재현): 평이 `FC Anyang` 을 **"애냥"** 이라고 적었다 —
+       입력에 한국어 표기가 없어 모델이 **음역을 지어냈다**. 🔴 별칭표가 아는
+       표기를 주고, 프롬프트가 *"그 글자를 그대로 쓰라"* 고 못 박는다.
+    ⚠️ 별칭표에 한국어가 없으면 **그 사실을 적는다**(지어내지 않는다 · #3).
+    """
+    from app.core import discover as _d
+    rows = []
+    for side in ("home", "away"):
+        name = str(getattr(card.match, f"{side}_name", "") or "")
+        ko = [x for x in _d.aliases_of(name)
+              if any("가" <= ch <= "힣" for ch in str(x))]
+        rows.append(f"{name} = " + (" · ".join(sorted(set(ko))[:3]) if ko
+                                    else "한국어 표기 없음"))
+    _put(got, Item(id="P0", kind="team_names",
+                   text=("팀 이름 표기(이 글자를 그대로 쓴다 · 음역을 지어내지 "
+                         "않는다) — " + " / ".join(rows))))
+
 
 def _probs(card, got: Bundle) -> None:
     """🔴 §1-7 — 최종 승무패·오버·잠정→최종·축별 기여·예상 스코어 상위 3."""
