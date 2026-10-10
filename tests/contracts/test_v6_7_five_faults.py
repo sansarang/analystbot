@@ -371,6 +371,41 @@ def test_v7_전역_주기_팀은_고정_질의를_받는다():
         "🔴 전역 주기 팀일 때 고정 질의를 안 넣는다")
 
 
+def test_v7_전역_질의가_실제로_나간다():
+    """🔴🔴 **실사고 2026-10-10** — 개념을 **뒤에** 붙였더니 질의가 한 번도 안
+    나갔다. 질의 계획이 개념을 **둘까지만** 쓴다(하위당 검색 3회 상한)인데
+    `squad_turnover` 가 여섯째였다 — 김천 새 사실 **0건**의 원인이다.
+
+    🔴 이제 **맨 앞**에 넣고, 그 개념은 **한 팀 질의**(`{팀} 전역`)로 던진다
+    (구단 공지에는 상대 팀 이름이 없다).
+    """
+    import dataclasses as _dc
+    from datetime import datetime, timedelta, timezone
+
+    from app.core.schema import MatchRef
+    from app.core.stages import s3_docs
+    from app.research import subtasks as _st
+    ref = MatchRef(id="x:1", sport="soccer", competition="K-League 1",
+                   competition_short="K리그1", home="team:000318",
+                   away="team:000320", home_name="Gimcheon Sangmu",
+                   away_name="FC Anyang",
+                   kickoff_utc=datetime.now(timezone.utc) + timedelta(hours=2))
+    subs = [x for x in _st.split(s3_docs._RefShim(ref)) if x.group == "F"]
+    assert subs, "🔴 하위 F 가 없다"
+    said = _dc.replace(subs[0], words=("squad_turnover",) + tuple(subs[0].words))
+    got = s3_docs.queries_for(said, ref)
+    ko = [q for q, lang in got if lang == "ko"]
+    assert any("전역" in q for q in ko), got
+    # 🔴 **한 팀 질의**다 — 상대 팀 이름이 그 줄에 없다
+    one = [q for q in ko if "전역" in q][0]
+    assert "안양" not in one, one
+    # 🔴 s3 가 **앞에** 넣는다(뒤에 붙이면 상한에 걸려 안 나간다)
+    src = (ROOT / "app" / "core" / "stages"
+           / "s3_docs.py").read_text(encoding="utf-8")
+    assert "box[str(sub.group)] + tuple(sub.words)" in src, (
+        "🔴 개념을 뒤에 붙이고 있다 — 질의가 안 나간다")
+
+
 def test_v7_전역_새사실이_깃발을_켠다():
     """🔴 (a)② — 전역 주기 팀 + **전역 새 사실**이면 켠다. ⚠️ 다른 팀은 아니다."""
     from app.core import turnover as _turn

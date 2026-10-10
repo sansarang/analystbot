@@ -131,8 +131,17 @@ def queries_for(sub: Any, ref: MatchRef) -> list[tuple[str, str]]:
     #  ⚠️ 상한을 넘기지 않는다: 1차 영어 + 현지어 둘 = 3회.
     said_cap = int(_sub_cfg().get("search") or 3)
     if lang and declared(lang):
-        for one_word in declared(lang)[:max(0, said_cap - len(out))]:
+        # 🔴🔴 **선수단 교체 개념은 한 팀 질의**다(사용자 결정 2026-10-10(3):
+        #    *"`{팀} 전역`·`{팀} 신병 합류`"*). ⚠️ 두 팀 이름을 같이 넣으면 구단
+        #    공지가 안 걸린다(그 글에는 상대 팀 이름이 없다).
+        solo = (str((getattr(sub, "words", None) or ("",))[0])
+                == "squad_turnover")
+        for i, one_word in enumerate(declared(lang)[:max(0,
+                                                         said_cap - len(out))]):
             a, b = _st.local_name(mine, lang), _st.local_name(other, lang)
+            if solo and i == 0:
+                out.append((" ".join(x for x in (a, one_word) if x), lang))
+                continue
             out.append((" ".join(x for x in (a, b, one_word) if x), lang))
         return out[:said_cap]
     if lang and lang != one and word(lang):
@@ -324,7 +333,10 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, chain: Any,
         import dataclasses as _dc
         box = {str(k): tuple(str(x) for x in v)
                for k, v in dict(extra_words).items()}
-        subs = [(_dc.replace(sub, words=tuple(sub.words) + box[str(sub.group)])
+        # 🔴🔴 **맨 앞에** 넣는다 — ⚠️ 실사고 2026-10-10: 뒤에 붙였더니 질의
+        #    계획이 개념을 **둘까지만** 쓰므로(하위당 검색 3회 상한) 여섯째였던
+        #    `squad_turnover` 가 **한 번도 안 나갔다**(김천 새 사실 0건의 원인).
+        subs = [(_dc.replace(sub, words=box[str(sub.group)] + tuple(sub.words))
                  if str(getattr(sub, "group", "")) in box else sub)
                 for sub in subs]
         state.note(f"s3 개념 추가 — {box}(선수단 교체 의심)")
