@@ -475,6 +475,8 @@ def card_of(ref: MatchRef, facts: Facts, variables: list[Variable],
         strategy=box.get("strategy"),
         prob_before=box.get("prob_before"),
         matchup=dict(box.get("matchup") or {}),
+        # 🔴🔴 **가설 검증표**(순서 재편 §4-5) — 최종 평이 `supported` 만 쓴다
+        check=dict(box.get("check") or {}),
         match=ref, facts=facts, variables=variables,
         drops=[*state.drops, *hypo.drops], hypo=hypo, evals=said.evals,
         direction=said.direction, conclusion=said.conclusion,

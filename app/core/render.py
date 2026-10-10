@@ -59,6 +59,8 @@ def card_text(card: Card, *, debug: bool = False) -> str:
             out.append("\n" + tactic_long(card))
             # 🔴🔴 §5(셋째) — **상성 자세히**는 그 예측의 재료다(바로 뒤)
             out.append("\n" + matchup_long(card))
+            # 🔴🔴 **가설 검증표**(순서 재편 §4-5) — 최종 평의 재료다(바로 앞)
+            out.append("\n" + check_long(card))
             # 🔴🔴 §4(넷째) — **최종 평 자세히**(근거 id · 원 사실 · 검열 결과)
             out.append("\n" + say_long(card))
         # 🔴 **결론 바로 아래**가 논평 자리다(지시 ④)
@@ -1329,4 +1331,53 @@ def say_long(card: Card) -> str:
     # 🔴 **버린 평도 보인다** — 템플릿으로 내려간 이유를 사람이 추적하게(#3)
     for one in list(getattr(got, "dropped", None) or [])[:6]:
         out.append(f"    🗑 버린 평 — {one}")
+    return "\n".join(out)
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **긴 카드의 가설 검증표** — 순서 재편 지시서 §4-5·카드
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 긴 카드: **가설 검증표 전체**, **재실행 여부와 이유**, **시나리오별 지지 가설**.
+
+CHECK_LONG_HEAD = "🧪 가설 검증표 (자세히)"
+
+
+def check_long(card: Card) -> str:
+    """🔴 §4-5 — 가설·신호·시뮬 값·판정·반박 원인 + 재실행 + 시나리오별 근거."""
+    box = dict(getattr(card, "check", None) or {})
+    rows = list(box.get("rows") or [])
+    if not rows:
+        return (f"**{CHECK_LONG_HEAD}** — ⬜ "
+                + str(box.get("why") or "검증을 안 돌렸다"))
+    from app.core import signals as _sg
+    counts = dict(box.get("counts") or {})
+    out = [f"**{CHECK_LONG_HEAD}** — 지지 {int(counts.get(_sg.OK, 0))} · 반박 "
+           f"{int(counts.get(_sg.NO, 0))} · 판단 불가 "
+           f"{int(counts.get(_sg.NA, 0))}"]
+    if str(box.get("stale") or ""):
+        out.append(f"- {box['stale']}")
+    # 🔴 **재실행 여부와 이유**(§4-3) — 0회도 적는다(#3)
+    out.append("- 재실행 — "
+               + (str(box["rerun"]) if str(box.get("rerun") or "")
+                  else "⬜ **0회**(조건이 성립하지 않았다)"))
+    for one in rows:
+        said = dict(one)
+        mark = {_sg.OK: "✅", _sg.NO: "❌"}.get(str(said.get("verdict")), "⬜")
+        out.append(f"- {mark} **{said.get('side')}/{said.get('kind')}** "
+                   f"{said.get('text')}")
+        out.append(f"    신호 {said.get('signal')} · 시뮬 {said.get('value')}"
+                   f" · 기준 {said.get('want')} · 근거 변수 "
+                   f"{list(said.get('var_ids') or [])}")
+        out.append(f"    판정 **{said.get('verdict')}**"
+                   + (f" · 원인 **{said.get('cause')}**"
+                      if said.get("cause") else "")
+                   + f" · {said.get('why')}")
+    # 🔴 **시나리오별 지지 가설**(§카드) — 시나리오의 근거는 지지된 변수뿐이다
+    scen = list(getattr(getattr(card, "hypo", None), "scenarios", None) or [])
+    if scen:
+        out.append("- **시나리오별 근거**(§4-4 — 지지된 가설의 변수만)")
+        for one in scen:
+            out.append(f"    `{one.id}` {one.outcomes} — 근거 "
+                       f"{list(one.driver_vars)} · {one.mechanism[:70]}")
     return "\n".join(out)

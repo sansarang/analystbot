@@ -631,6 +631,11 @@ def text(card: Card, *, buttons: bool = True) -> str:
         if said_block:
             out.append(said_block)
     out.append(f"🎯 예상 {_scores(card)}")
+    # 🔴🔴 **🧪 가설 검증**(순서 재편 지시서 2026-10-10 다섯째) — 카드 순서:
+    #    헤드라인 → 📊 확률(시뮬) → ⚔️ 상성 → **🧪 가설 검증** → 🧑‍🏫 최종 평 → 보드
+    said_chk = check_block(card)
+    if said_chk:
+        out.append(said_chk)
     # 🔴🔴 **최종 평**(2026-10-10 넷째 §4) — *"1겹 맨 끝, **보드 판정 위에**"*
     said_say = say_block(card)
     if said_say:
@@ -1227,4 +1232,45 @@ def say_block(card: Card) -> str:
                       if str(got.decisive_moment or "") else ""))
     if str(got.flip_condition or ""):
         out.append(f" 🔄 뒤집히는 조건: {_cap(got.flip_condition, 90)}")
+    return "\n".join(out)
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **🧪 가설 검증 블록** — 순서 재편 지시서(2026-10-10 다섯째)
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 1겹: … ⚔️ 상성 → **🧪 가설 검증(지지 n · 반박 n — 한 줄씩 상위 3개)** →
+#  > 🧑‍🏫 최종 평 → 보드 판정.
+#
+#  🔴 **셋까지**다(1겹 상한) — 전체 표는 긴 카드가 든다(`render.check_long`).
+
+CHECK_HEAD = "🧪 **가설 검증**"
+#: 🔴 1겹에 올리는 줄 수(지시서가 적은 상위 3개)
+CHECK_LINES = 3
+
+
+def check_block(card: Card) -> str:
+    """🔴 §카드 — 지지·반박 수와 상위 세 줄. ⚠️ 검증을 안 했으면 **빈 글자**."""
+    box = dict(getattr(card, "check", None) or {})
+    rows = list(box.get("rows") or [])
+    if not rows:
+        return ""
+    from app.core import signals as _sg
+    counts = dict(box.get("counts") or {})
+    head = (f"{CHECK_HEAD} — 지지 {int(counts.get(_sg.OK, 0))} · 반박 "
+            f"{int(counts.get(_sg.NO, 0))} · 판단 불가 "
+            f"{int(counts.get(_sg.NA, 0))}")
+    if str(box.get("stale") or ""):
+        head += f"  {_cap(str(box['stale']), 90)}"
+    out = [head]
+    # 🔴 **지지 → 반박** 순으로 올린다(평이 쓰는 것이 먼저다)
+    want = [r for r in rows if dict(r).get("verdict") == _sg.OK]
+    want += [r for r in rows if dict(r).get("verdict") == _sg.NO]
+    for one in want[:CHECK_LINES]:
+        said = dict(one)
+        mark = "✅" if said.get("verdict") == _sg.OK else "❌"
+        out.append(f" {mark} {_cap(str(said.get('text') or ''), 70)}"
+                   f" — {_cap(str(said.get('signal') or ''), 40)}"
+                   f" · 시뮬 {said.get('value')}"
+                   + (f" · {said.get('cause')}" if said.get("cause") else ""))
     return "\n".join(out)

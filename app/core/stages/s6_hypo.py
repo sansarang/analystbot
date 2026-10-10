@@ -107,8 +107,10 @@ def _clean_signals(rows: list[Hypothesis], *, drops: list[Drop],
                 said = _sg.bad_signal(line.signal)
                 if said:
                     bad += 1
-                    drops.append(Drop(where="s6/signal", reason="schema",
-                                      detail=f"{said} · `{line.text[:40]}`"))
+                    # 🔴 사유는 **열거값**이다 — `llm_schema`(모델이 칸을 안 줬다)
+                    drops.append(Drop(what=f"s6/signal:{line.text[:30]}",
+                                      reason=DropReason.LLM_SCHEMA,
+                                      detail=said))
                     kept.append(line.model_copy(update={"signal": None}))
                 else:
                     kept.append(line)

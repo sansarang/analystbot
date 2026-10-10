@@ -85,6 +85,7 @@ def build(card) -> Bundle:
     _motive(card, got)          # 1-5
     _absence(card, got)         # 1-6
     _probs(card, got)           # 1-7
+    _checked(card, got)         # 🔴 단계 5 — 지지/반박된 가설
     _names_item(card, got)      # 🔴 팀 이름 표기(음역 금지)
     return got
 
@@ -557,6 +558,49 @@ def _names_item(card, got: Bundle) -> None:
     _put(got, Item(id="P0", kind="team_names",
                    text=("팀 이름 표기(이 글자를 그대로 쓴다 · 음역을 지어내지 "
                          "않는다) — " + " / ".join(rows))))
+
+
+def _checked(card, got: Bundle) -> None:
+    """🔴🔴 **단계 5** — 검증을 통과한 가설만 평의 재료다(순서 재편 §5).
+
+    > 최종 평은 **지지된 가설과 그 근거만** 쓴다. 반박된 가설은 "🔄 뒤집히는
+    > 조건" 후보로만. **판단 불가 가설은 평에 쓰지 않는다.**
+    > 기준 낡음 의심이 있으면 **평 첫 줄에** 그 사실을 적는다.
+
+    🔴 id 앞글자는 `H`(지지)·`R`(반박 — 뒤집히는 조건 후보)다. ⚠️ `판단 불가` 는
+       **묶음에 넣지 않는다** — 넣으면 모델이 그것을 근거로 쓴다.
+    """
+    from app.core import signals as _sg
+    box = dict(getattr(card, "check", None) or {})
+    rows = list(box.get("rows") or [])
+    if not rows:
+        _none(got, "가설 검증표", str(box.get("why") or "가설이 없다"))
+        return
+    n_ok = n_no = 0
+    for one in rows:
+        said = dict(one)
+        if str(said.get("verdict")) == _sg.OK:
+            n_ok += 1
+            _put(got, Item(id=f"H{n_ok}", kind="supported",
+                           side=str(said.get("side") or ""),
+                           text=(f"**지지된 가설** — {said.get('text')} · 신호 "
+                                 f"{said.get('signal')} · 시뮬 "
+                                 f"{said.get('value')}(기준 {said.get('want')})"
+                                 f" · 근거 변수 {said.get('var_ids')}")))
+        elif str(said.get("verdict")) == _sg.NO:
+            n_no += 1
+            _put(got, Item(id=f"R{n_no}", kind="refuted",
+                           side=str(said.get("side") or ""),
+                           text=(f"**반박된 가설**(뒤집히는 조건 후보) — "
+                                 f"{said.get('text')} · {said.get('why')}")))
+    if not n_ok:
+        _none(got, "지지된 가설", "하나도 없다 — 평은 수치만으로 쓴다")
+    # 🔴 §5 — **기준 낡음**은 평 첫 줄에 적어야 한다(프롬프트가 그렇게 시킨다)
+    if str(box.get("stale") or ""):
+        _put(got, Item(id="H0", kind="stale", text=str(box["stale"])))
+    if str(box.get("rerun") or ""):
+        _put(got, Item(id="H00", kind="rerun",
+                       text=f"재실행 — {box['rerun']}"))
 
 
 def _probs(card, got: Bundle) -> None:
