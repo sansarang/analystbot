@@ -168,6 +168,55 @@ class Net:
         return rp
 
     # ── 열기 ──────────────────────────────────────────────────────
+    async def post(self, url: str, *, json: dict | None = None,
+                   form: dict | None = None,
+                   headers: dict | None = None) -> tuple[int, str]:
+        """🔴🔴 **POST** — 공식 XHR 이 POST 만 받는 곳이 있다(지시 2026-10-10 A-1 ③).
+
+        `(상태, 본문)`. ⚠️ 실패하면 `(0, "")`.
+
+        🔴 **robots·UA·간격을 `get` 과 같은 규칙으로** 지난다 — 그래서 수집기가
+           망에 직접 나가지 않는다(§7 계약: `app/core/` 는 망 금지, 수집은 여기).
+        🔴 카세트에도 **담는다** — 재생이 POST 를 못 재현하면 "네트워크 없이 재현"이
+           POST 쓰는 리그에서만 거짓이 된다.
+        ⚠️ 열쇠는 **본문**이다(같은 주소에 다른 인자를 보낸다).
+        """
+        import json as _json
+
+        body = (_json.dumps(json, sort_keys=True) if json is not None
+                else cassette.query_string(form))
+        if cassette.mode() == cassette.REPLAY:
+            got = self._from_cassette(url, f"POST {body}")
+            if got.ok:
+                return int(got.status or 200), str(got.text or "")
+            if not cassette.fallthrough():
+                return 0, ""
+            logger.info("[net] 재생 미스(POST) → **라이브로 한 번** %s", url)
+        ok, why = await self.allowed(url)
+        if not ok:
+            logger.info("[net] POST 건너뛴다 %s — %s", url, why)
+            return 0, ""
+        host = _host(url)
+        wait = self.min_interval - (time.time() - self._last.get(host, 0.0))
+        if wait > 0:
+            await asyncio.sleep(wait)
+        head = {"User-Agent": self.ua, **(headers or {})}
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout, headers=head,
+                                         follow_redirects=True) as cli:
+                r = (await cli.post(url, json=json) if json is not None
+                     else await cli.post(url, data=form or {}))
+        except Exception as exc:                            # noqa: BLE001
+            self._last[host] = time.time()
+            logger.info("[net] POST 실패 %s — %r", url, exc)
+            return 0, ""
+        self._last[host] = time.time()
+        if cassette.mode() in (cassette.RECORD, cassette.REPLAY):
+            cassette.save("fetch", url, f"POST {body}",
+                          {"headers": _kept_headers(r), "ok": r.status_code < 400,
+                           "status": r.status_code, "text": r.text, "reason": ""})
+        return int(r.status_code), (r.text if r.status_code < 400 else "")
+
     async def get(self, url: str, *, params: dict | None = None,
                   headers: dict | None = None) -> Fetched:
         # 🔴 **카세트 재생은 robots 보다 먼저다.** 저장된 응답을 쓰는 것은

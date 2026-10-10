@@ -16,6 +16,7 @@
 """
 from __future__ import annotations
 
+import json
 import logging
 import re
 from datetime import date, datetime, timedelta, timezone
@@ -156,3 +157,111 @@ def sources_slate(day: date) -> list[Source]:
                tier=verify.TIER_PRIMARY, parse=parse_postponed, verify=True),
     ]
     return srcs
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **K리그 공식 매치센터 XHR** — 사용자 지시 2026-10-10 A-1 ③
+# ══════════════════════════════════════════════════════════════════
+#
+#  🔴 **관찰한 것만 적는다**(금지 조항: 관찰하지 않은 엔드포인트 추측).
+#     주소·인자를 **어디서 봤나**는 `config/lineup_sources.yaml` 의 `observed` 칸에
+#     있다 — 사이트 자기 inline `$.ajax` 에서 읽었다(2026-10-10).
+#  🔴 수집은 `app/collect/` 의 일이다 — `app/core/` 는 망에 못 나간다(§7 계약).
+#     ⚠️ 처음에 `app/core/lineups.py` 에 두었다가 그 계약이 빨개졌다.
+
+BASE = "https://www.kleague.com"
+SCHEDULE = "/getScheduleList.do"
+MATCH_INFO = "/api/ddf/match/matchInfo.do"
+RECORD_ALL = "/api/ddf/match/getMatchRecordAllDetail.do"
+
+
+async def _post(net, path: str, data: dict, *, as_json: bool) -> tuple[int, str]:
+    """🔴 `app.net` 으로 POST 한다 — robots·UA 는 그 모듈이 든다(절대규칙 3)."""
+    if as_json:
+        return await net.post(BASE + path, json=data)
+    return await net.post(BASE + path, form=data)
+
+
+async def official_schedule(net, *, year: int, month: int,
+                            league_id: int = 1) -> dict:
+    """🔴🔴 월간 일정 + 구단 목록. `{"games": [...], "clubs": [...], "why": …}`.
+
+    🔴 **관찰한 호출**: `POST /getScheduleList.do` JSON `{year, month, leagueId}`
+       (`schedule.do` inline `$.ajax` · 2026-10-10).
+    🔴 실측 2026-10-10(2026·10월·leagueId 1): 일정 **18줄** · 구단 **12줄**
+       (구단 줄에 **공식 SNS 주소**가 있다 — 사용자가 SNS 를 허용했다).
+    """
+    st, txt = await _post(net, SCHEDULE,
+                          {"year": str(year), "month": f"{month:02d}",
+                           "leagueId": str(league_id)}, as_json=True)
+    if st != 200 or not txt:
+        return {"games": [], "clubs": [], "why": f"HTTP {st}"}
+    try:
+        box = (json.loads(txt).get("data") or {})
+    except ValueError:
+        return {"games": [], "clubs": [], "why": "JSON 이 아니다"}
+    return {"games": list(box.get("scheduleList") or []),
+            "clubs": list(box.get("clubList") or []),
+            "why": "K리그 공식 일정"}
+
+
+def official_find(games: list[dict], *, home: str, away: str) -> dict:
+    """🔴 그 두 팀의 줄. ⚠️ 공식 표기는 **짧은 이름**이다(`강원`·`부천`)."""
+    def _has(a: str, b: str) -> bool:
+        x, y = " ".join(str(a or "").split()), " ".join(str(b or "").split())
+        return bool(x) and bool(y) and (x in y or y in x)
+
+    for r in games:
+        h, a = str(r.get("homeTeamName") or ""), str(r.get("awayTeamName") or "")
+        if (_has(h, home) and _has(a, away)) or (_has(h, away) and _has(a, home)):
+            return dict(r)
+    return {}
+
+
+async def official_players(net, *, year: int, meet_seq: int,
+                           game_id: int) -> dict:
+    """🔴🔴 공식 선수 기록 — **선발을 주는지 실측으로 확인한다**.
+
+    ⚠️ **실측 2026-10-10**(gameId 182 강원–부천): 200 이지만 `listH`/`listA` 가
+       **0줄**이었다. 🔴 그래서 빈 목록과 **사유**를 돌려주고 사다리는 다음 칸으로
+       간다 — 없는 것을 있다고 하지 않는다.
+    """
+    st, txt = await _post(net, RECORD_ALL,
+                          {"year": str(year), "meetSeq": str(meet_seq),
+                           "gameId": str(game_id)}, as_json=False)
+    if st != 200 or not txt:
+        return {"home": [], "away": [], "why": f"HTTP {st}"}
+    try:
+        box = (json.loads(txt).get("data") or {})
+    except ValueError:
+        return {"home": [], "away": [], "why": "JSON 이 아니다"}
+
+    def _names(rows) -> list[str]:
+        out: list[str] = []
+        for r in (rows or []):
+            nm = str(dict(r).get("playerName") or dict(r).get("name") or "")
+            if nm and nm not in out:
+                out.append(nm)
+        return out
+
+    home, away = _names(box.get("listH")), _names(box.get("listA"))
+    return {"home": home, "away": away,
+            "why": ("공식 XHR 이 이 인자로는 0줄이다(실측 2026-10-10)"
+                    if not (home or away) else "K리그 공식 선수 기록")}
+
+
+async def official_timeline(net, *, year: int, meet_seq: int,
+                            game_id: int) -> dict:
+    """🔴 타임라인(교체·경고·득점자). 🔴 선발을 **지어내지 않는다** — 사실로만 쓴다.
+
+    🔴 실측 2026-10-10: `firstHalf` 12줄 · `secondHalf` 41줄 · 득점자 2줄.
+    """
+    st, txt = await _post(net, MATCH_INFO,
+                          {"year": str(year), "meetSeq": str(meet_seq),
+                           "gameId": str(game_id)}, as_json=False)
+    if st != 200 or not txt:
+        return {}
+    try:
+        return dict(json.loads(txt).get("data") or {})
+    except ValueError:
+        return {}

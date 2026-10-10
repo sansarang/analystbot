@@ -193,6 +193,19 @@ def _head(card: Card) -> str:
     if not card.market.probs and not card.user_market.probs:
         head += ("\n📋 **시장 피드에 없는 경기 — 보드 캡처를 보내 달라**"
                  "(보드가 없으면 등급을 못 붙인다)")
+    # 🔴🔴 A-3 — `📋 라인업 {확정|예상|없음} · 출처 {이름} · {HH:MM}`
+    if card.facts.xi:
+        from app.core import lineups as _ln
+        kinds = {str(v.state or "") for v in card.facts.xi.values()} - {""}
+        got_src = sorted({str(getattr(v, "source_url", "") or "").split("/")[2]
+                          for v in card.facts.xi.values()
+                          if str(getattr(v, "source_url", "") or "")})
+        when = next((getattr(v, "fetched_at", None)
+                     for v in card.facts.xi.values()
+                     if getattr(v, "fetched_at", None)), None)
+        head += "\n" + _ln.status_line(
+            state=("확정" if kinds == {"확정"} else "예상"),
+            source=" · ".join(got_src) or "미상", when=when)
     said_xi = {v.state for v in (card.facts.xi or {}).values()}
     if said_xi and "confirmed" not in said_xi:
         from datetime import timedelta
@@ -237,10 +250,11 @@ def _b1(card: Card) -> str:
     #  ⚠️ 그래서 **그 사실을 맨 위에 적는다** — 확정 XI 가 없는 까닭이 *"아직
     #     안 나왔다"* 가 아니라 *"받을 통로가 없다"* 일 때 둘은 다르다.
     if not (card.facts.xi or {}):
-        out.append("🔴🔴 **XI 출처 없음** — 경기 페이지가 라인업을 주지 않았고 "
-                   "**두 번째 출처가 아직 없다**(`kleague.com` 은 JS 렌더링 · "
-                   "엔드포인트 미확인 2026-10-09) → ② 라인업 보정·IR02·IR03 이 "
-                   "돌지 못한다")
+        # 🔴 글은 **사다리가 짓는다**(A-3) — 무엇을 돌았고 무엇이 막혔는지 그 표가
+        #    안다. ⚠️ 여기 베끼면 출처가 늘 때 이 줄이 따라가지 못한다(#1).
+        from app.core import lineups as _ln
+        out.append(_ln.none_line(comp_key(card))
+                   + " → ② 라인업 보정·IR02·IR03 이 돌지 못한다")
     if card.started:
         out.append("🔴 **이미 시작한 경기다 — 예측이 아니다**(등급을 내지 않는다)")
     by: dict[str, int] = {}

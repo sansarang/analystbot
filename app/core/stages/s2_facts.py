@@ -162,6 +162,15 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
     #     **0건**이었다 — 득점 흐름 변수가 하나도 없었고 이유 문단이 템플릿이 됐다.
     #  ⚠️ **폼이 이미 있으면 팀 페이지를 안 받는다**(통신 예산 · §19-b).
     await _fill_form(ref, box, state=state, net=net, pages=raw_pages)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **라인업 사다리**(사용자 지시 2026-10-10 A-1) — 경기 페이지가 못 줄 때
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 순서는 `config/lineup_sources.yaml` 의 `ladder` 가 든다. ⚠️ 여기서 그
+    #     순서를 다시 적지 않는다(사본 금지) — 사다리를 **읽어서** 돈다.
+    #  🔴 지금 이 자리가 채우는 것은 **공식 출처의 사실**이다(일정·구단 SNS·
+    #     타임라인). 선발 11명을 주는 칸은 실측으로 **아직 없다**(표에 적었다).
+    await _fill_official(ref, box, state=state, net=net)
     # 🔴🔴 **선수 → 시장가치 표**(② 라인업 전력 · 네 층 지시서 §4-3)
     #
     #  🔴 경기 페이지가 이미 들고 온다 — 새 출처를 붙이지 않는다(실측 2026-10-06:
@@ -410,6 +419,70 @@ async def _day_page(net: Any, url: str, *, state: RunState, team: str):
     except OSError as exc:
         state.note(f"s2 ⑦ 하루 캐시를 못 적었다 — {exc}")
     return page
+
+
+async def _fill_official(ref: MatchRef, box: dict, *, state: RunState,
+                         net: Any) -> None:
+    """🔴🔴 A-1 ③ — **리그 공식 출처**에서 받을 수 있는 것을 받는다.
+
+    🔴 사다리에 `kleague_official` 이 있는 리그만 돈다(표가 정한다). ⚠️ 선발을
+       주는 칸은 실측으로 **아직 없다** — 그래서 여기서 받는 것은 **일정·구단
+       공식 SNS·타임라인**이고, 그 사실이 `box["official"]` 에 남는다.
+    ⚠️ 실패해도 **분석을 막지 않는다**(곁딸린 사실이다).
+    """
+    from app.core import competition as _comp
+    from app.core import lineups as _ln
+    key, _why = _comp.key_of(competition=str(ref.competition or ""))
+    ids = [str(x.get("id")) for x in _ln.ladder(key)]
+    if "kleague_official" not in ids:
+        return
+    from app.collect import kleague as _kl
+    when = ref.kickoff_utc
+    if when is None:
+        return
+    got = await _kl.official_schedule(net, year=when.year, month=when.month)
+    if not got.get("games"):
+        state.note(f"s2 A-1 K리그 공식 — 일정을 못 받았다({got.get('why')})")
+        return
+    row = _kl.official_find(got["games"], home=ref.home_name,
+                            away=ref.away_name)
+    if not row:
+        state.note("s2 A-1 K리그 공식 — 일정에서 이 경기를 못 찾았다"
+                   f"(일정 {len(got['games'])}줄)")
+        return
+    said = {"game_id": row.get("gameId"), "meet_seq": row.get("meetSeq"),
+            "round": row.get("roundId"), "status": row.get("gameStatus"),
+            "field": row.get("fieldNameFull") or row.get("fieldName")}
+    # 🔴 **구단 공식 SNS**(사용자가 SNS 수집을 허용했다) — 주소를 공식 API 가 준다
+    sns: dict[str, dict] = {}
+    for c in got.get("clubs") or []:
+        nm = str(c.get("teamName") or "")
+        if nm and (nm in ref.home_name or nm in ref.away_name
+                   or str(c.get("teamNameShort") or "") in
+                   (row.get("homeTeamName"), row.get("awayTeamName"))):
+            sns[nm] = {k: c.get(k) for k in
+                       ("clubInstagram", "clubTwitter", "clubFacebook",
+                        "homepage") if c.get(k)}
+    if sns:
+        said["club_sns"] = sns
+    pl = await _kl.official_players(net, year=when.year,
+                                   meet_seq=int(row.get("meetSeq") or 1),
+                                   game_id=int(row.get("gameId") or 0))
+    said["players_why"] = pl.get("why")
+    if pl.get("home") or pl.get("away"):
+        said["players"] = {"home": pl["home"], "away": pl["away"]}
+    tl = await _kl.official_timeline(net, year=when.year,
+                                     meet_seq=int(row.get("meetSeq") or 1),
+                                     game_id=int(row.get("gameId") or 0))
+    if tl:
+        said["timeline_rows"] = (len(tl.get("firstHalf") or [])
+                                 + len(tl.get("secondHalf") or []))
+        said["scorers"] = {"home": tl.get("homeScorer") or [],
+                           "away": tl.get("awayScorer") or []}
+    box["official"] = said
+    state.note(f"s2 A-1 K리그 공식 — gameId {said['game_id']} · 선발 "
+               f"{'받았다' if said.get('players') else '못 받았다'}"
+               f"({said['players_why']}) · 구단 SNS {len(sns)}곳")
 
 
 async def _fill_form(ref: MatchRef, box: dict, *, state: RunState, net: Any,

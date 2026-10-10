@@ -179,6 +179,16 @@ keys:
       fotmob_ids: [223]
       fotmob_names: ["J. League"]
     baseline: {elo: fotmob, fit: "league:J1"}
+  league:ARG1:
+    # 🔴 받아서 확인했다(2026-10-10): fotmob `112` → `leagueName: "Liga Profesional"`
+    #    · `ccode: ARG`. ⚠️ ESPN 슬러그는 확인하지 않았다(적지 않는다).
+    names: ["liga profesional", "아르헨티나", "리가 프로페시오날"]
+    sources:
+      fotmob_ids: [112]
+      fotmob_names: ["Liga Profesional"]
+    # ⚠️ **기준 모형이 없다** — 자체 Elo 도 적합도 안 돌렸다(기준 열은 빈다)
+    baseline: {}
+
   league:MLS:
     names: ["major league soccer", "mls"]
     sources:

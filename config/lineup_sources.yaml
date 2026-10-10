@@ -134,3 +134,92 @@ teams:
     media_token: CPBL
     query: "{隊} 先發打序 {月日}"
     lang: zh
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **출처 사다리** — 사용자 지시 2026-10-10 A-1
+# ══════════════════════════════════════════════════════════════════
+#
+# > 리그마다 순서대로. 각 출처는 **robots·약관 확인 결과와 확인일**을 적고,
+# > **금지면 쓰지 않는다.**
+#
+# 🔴 `observed` — 그 주소를 **어디서 봤나**다. ⚠️ 관찰하지 않은 엔드포인트를
+#    적지 않는다(금지 조항). 사이트 자기 소스에서 읽은 것만 적는다.
+# 🔴 `measured` — 받아 본 결과다(상태·무엇이 들어 있었나). 확인일과 함께.
+# ⚠️ `use: false` 는 **쓰지 않는다**는 뜻이고 까닭이 `why` 에 있다.
+ladder:
+  checked_at: "2026-10-10"
+  default:
+    - id: fotmob_match
+      what: 경기 페이지(지금 것)
+      use: true
+      robots: "fotmob.com robots 200 → 해당 경로 허용(기존 수집기가 이미 쓴다)"
+      measured: "라인업·포메이션·벤치를 준다(기존 `fotmob.parse_lineup`)"
+    - id: espn_summary_json
+      what: ESPN 경기 요약 JSON(site.api.espn.com … /summary?event=)
+      use: false
+      why: 🔴 **막혔다** — 추측이 아니라 받아서 확인했다
+      measured: |
+        2026-10-10 실측:
+          site.api.espn.com/apis/site/v2/sports/soccer/kor.1/scoreboard → **403**
+          site.web.api.espn.com/… /scoreboard → **400**
+          sports.core.api.espn.com/robots.txt → **403**(robots 조차 못 읽는다)
+        ⚠️ robots 를 못 읽는 호스트는 쓰지 않는다(절대규칙 3 의 뜻).
+    - id: espn_match_html
+      what: ESPN 경기 **HTML** 페이지(www.espn.com/soccer/match/_/gameId/…)
+      use: true
+      robots: "www.espn.com robots 200 → 그 경로 허용(기존 `espn` 수집기가 쓴다)"
+      measured: |
+        2026-10-10 실측(gameId 401877610): HTTP 200 · 782KB ·
+        본문에 `lineup` 53회 · `formation` 59회. ⚠️ 내장 JSON(`__espnfitt__`)에서
+        찾은 `lineups` 키는 **광고 배너 칸**이었다 — 선수 목록은 아직 못 짚었다.
+        🔴 그래서 **글자 추출**로 쓴다(아래 `article` 과 같은 길).
+    - id: article
+      what: 기사 — 두 매체 이상 일치하면 `confirmed`
+      use: true
+      robots: "매체별로 `app/robots.py` 가 매 요청에 확인한다(거부 도메인은 dead)"
+      measured: "기존 §13-b 표의 검색어를 쓴다(이 파일 위쪽)"
+  leagues:
+    KL1:
+      - id: kleague_official
+        what: K리그 공식 매치센터 XHR
+        use: true
+        robots: "www.kleague.com/robots.txt → **404**(= allow · 2026-10-10)"
+        observed: |
+          🔴 **사이트 자기 코드에서 읽었다**(추측 아님 · 2026-10-10):
+            · `schedule.do` inline: `$.ajax({url:"/getScheduleList.do", type:"post",
+              contentType:"application/json", data:JSON.stringify({year,month,leagueId})})`
+            · `schedule.do` inline: `onMatchCenterClicked(year,leagueId,gameId,meetSeq,tabIdx)`
+              → `/match.do?year=&leagueId=&gameId=&meetSeq=&startTabNum=`
+            · `match.do` inline(12개): `/api/ddf/match/matchInfo.do` ·
+              `matchRecord.do` · `getMatchRecordAllDetail.do` ·
+              `getMatchRecordPlayerDetail.do` · `getRoundGameList.do` ·
+              `possession.do` · `getShootData.do` · `getPassData.do` ·
+              `getHeatmapData.do` · `getAttackDirection.do` · `matchBCInfo.do` ·
+              `getRoundList.do`
+            · `updateMatchInfo(year, meetSeq, gameId)` →
+              `POST /api/ddf/match/matchInfo.do` form `{year, meetSeq, gameId}`
+        measured: |
+          2026-10-10 실측(2026 · leagueId 1 · gameId 182 강원–부천):
+            `getScheduleList.do` → 200 · `scheduleList` 18줄(gameId·meetSeq·
+              roundId·gameStatus·점수) + `clubList` 12줄(**구단 공식 SNS 주소**)
+            `matchInfo.do` → 200 · `firstHalf` 12줄 · `secondHalf` 41줄
+              (타임라인 사건 · `backNo`·`eventName`·`gubunSubNm`) · 득점자
+            `getMatchRecordAllDetail.do` → 200 이지만 `listH`/`listA` **0줄**
+          🔴 **선발 11명을 주는 칸을 아직 못 찾았다** — 위 인자로는 빈 목록이다.
+          ⚠️ 그래서 이 출처는 **일정·구단 SNS·타임라인**에 쓰고, 선발은 사다리의
+             `article` 로 간다. 더 찾으면 여기 적는다(추측으로 붙이지 않는다).
+        gives: [schedule, club_sns, timeline]
+      - id: club_sns
+        what: 구단 공식 SNS(사용자가 허용)
+        use: true
+        robots: "주소는 `getScheduleList.do` 의 `clubList` 가 준다(공식 값)"
+        measured: |
+          2026-10-10 실측: 강원FC → instagram.com/gangwon_fc ·
+          twitter.com/gwfc2008 · facebook.com/gangwonfc · gangwon-fc.com
+        gives: [lineup_post]
+    J1:
+      - id: jleague_official
+        what: J리그 공식 경기 페이지「スタメン」
+        use: false
+        why: 🔴 **아직 관찰하지 않았다** — 경로를 추측해 적지 않는다
+        measured: "2026-10-10: 미확인(시간이 모자랐다 · 다음에 관찰해 채운다)"

@@ -78,8 +78,11 @@ def bet_words(card: Card) -> str:
         return "이미 시작 — 예측 아님"
     named = graded(card)
     if named:
+        # 🔴🔴 A-4 — **확정 XI 전 등급은 `잠정`** 이다(라인업 없는 경기의 등급은
+        #    의미가 없다 · 사용자 원칙). 등급 확정은 확정 XI 뒤 재분석에서만.
+        from app.core import lineups as _ln
         best = named[0]
-        return f"{line_name(best)} {best.grade}"
+        return f"{line_name(best)} {_ln.grade_word(xi_confirmed(card), best.grade)}"
     if str(card.board_source or "none") == "none":
         return "보드를 주면 판정"
     return "이 경기는 걸지 않는다"
@@ -87,6 +90,13 @@ def bet_words(card: Card) -> str:
 
 #: 🔴 등급 **없음**을 뜻하는 글자들 — 표는 `schema.Grade` 가 든다(사본 금지)
 NO_GRADE: tuple[str, ...] = ("없음", "보류", "자료부족")
+
+
+def xi_confirmed(card: Card) -> bool:
+    """🔴 A-4 — **확정 XI 인가**(둘 다 확정일 때만 참)."""
+    kinds = {str(getattr(v, "state", "") or "")
+             for v in (card.facts.xi or {}).values()} - {""}
+    return bool(kinds) and kinds == {"확정"}
 
 
 def graded(card: Card) -> list:
@@ -687,8 +697,12 @@ def _board(card: Card) -> str:
     """🔴 §1 `🎯 보드 판정` — 등급이 없으면 **이유 한 줄**."""
     named = graded(card)
     if named:
-        return " / ".join(f"{plain_line(e, card)} **{e.grade}**"
-                          for e in named[:3])
+        from app.core import lineups as _ln
+        ok = xi_confirmed(card)
+        return (_ln.conclusion_prefix(ok)
+                + " / ".join(f"{plain_line(e, card)} "
+                             f"**{_ln.grade_word(ok, e.grade)}**"
+                             for e in named[:3]))
     if str(card.board_source or "none") == "none":
         return "걸 줄 없음 — 보드가 없다(보드를 주면 판정한다)"
     if card.started:

@@ -365,7 +365,45 @@ async def _from_fdorg(spec: str, net=None) -> tuple[list[str], str]:
 #      search_all_teams.php?l=Japanese J1 League → **10팀**(J1 은 20팀)
 #      lookup_all_teams.php?id=4633·4830·4424    → 🔴 **셋 다 영국 2부 24팀**
 #  ⚠️ 24팀이 돌아온다는 사실만 보고 썼다면 거짓 명단으로 리그를 판정했을 것이다.
-ROSTER_SOURCES: tuple[str, ...] = ("adapter", "url", "fdorg")
+ROSTER_SOURCES: tuple[str, ...] = ("adapter", "url", "fdorg", "fotmob")
+
+
+async def _from_fotmob(spec: str, net=None) -> tuple[list[str], str]:
+    """🔴🔴 `fotmob:<리그번호>` — **리그 표 페이지의 팀 명단**(지시 2026-10-10).
+
+    > 목표: **모든 경기에서** 봇이 … 확정 라인업으로 판정한다.
+
+    🔴 왜 이 꼴이 필요한가 — 실사고 2026-10-10(우니온–데펜사): 아르헨티나
+       `Liga Profesional` 이 명부에 없어 팀 이름이 안 풀렸고, `findgame` 이
+       *"리그 미상 · 나라도 모른다(클럽이다) — 영어만"* 으로 떨어져 **카드가 아예
+       안 나왔다**. ⚠️ 같은 병으로 터키컵·이탈리아 세리에D·애들레이드·라이언시티가
+       전부 실패했다(2026-10-07~08).
+    🔴 번호는 **받아서 확인한 값**만 쓴다(`config/competitions.yaml` 의
+       `fotmob_ids`). ⚠️ 추측한 번호를 적으면 다른 리그가 온다(실사고: J1 을
+       `9134` 로 적었는데 그 번호는 **NWSL** 이었다).
+    """
+    from app.collect import fotmob as fm
+    lid = spec.split(":", 1)[1].strip() if ":" in spec else ""
+    if not lid:
+        return [], f"🔴 `{spec}` 에 리그 번호가 없다"
+    url = f"{fm.BASE}/leagues/{lid}/table/x"
+    got = await (net.get(url) if net is not None else _plain_get(url))
+    j = fm.payload(getattr(got, "text", "") or "")
+    if not j:
+        return [], f"fotmob {lid} 표 페이지를 못 받았다(HTTP {getattr(got, 'status', '?')})"
+    ids = fm.team_ids(j)
+    if not ids:
+        return [], f"fotmob {lid} 표에 팀 줄이 없다"
+    for name, tid in ids.items():
+        # 🔴 **번호를 버리지 않는다** — 이름은 언어마다 달라지지만 번호는 안 변한다
+        _EXT_IDS.setdefault(norm(name), f"fotmob:{tid}")
+    return sorted(ids), f"fotmob `{lid}` {len(ids)}팀"
+
+
+async def _plain_get(url: str):
+    """🔴 `net` 을 안 받았을 때의 길 — ⚠️ robots 는 `app.net` 이 본다(여기 아니다)."""
+    from app import net as _net
+    return await _net.Net().get(url)
 
 
 async def _from_tsdb(spec: str, net=None) -> tuple[list[str], str]:
@@ -397,6 +435,8 @@ async def roster_from(spec: str, net=None) -> tuple[list[str], str]:
         return await _from_fdorg(spec, net=net)
     if head == "tsdb":
         return await _from_tsdb(spec, net=net)
+    if head == "fotmob":
+        return await _from_fotmob(spec, net=net)
     return [], (f"🔴 모르는 `teams_from` 꼴: {spec} — §8-4 가 허용한 것은 "
                 f"{list(ROSTER_SOURCES)} 다")
 
