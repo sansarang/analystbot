@@ -75,7 +75,16 @@ def of(hypo: HypoSet | None) -> dict:
         why = (f"문턱을 넘은 양상이 없다(저득점 {low:.0%}<{lo_at:.0%} · "
                f"난타전 {high:.0%}<{hi_at:.0%} · 한쪽 우세 {one:.0%}<{one_at:.0%})")
     top = sorted(spots.items(), key=lambda kv: -kv[1])[:3]
+    # 🔴🔴 **오버 비중**(사용자 지시 2026-10-10(둘째) §4 — `오버 1.5/2.5/3.5`)
+    #
+    #  🔴 여기서 센다 — 스코어 비중을 나누는 규칙이 **이 함수 하나**이기 때문이다
+    #     (카드가 따로 세면 같은 수를 두 곳에서 짓는다 · 사본 금지).
+    #  ⚠️ `오버 2.5` 는 **총골 ≥ 3** 이다(2.5 를 넘는 정수는 3 부터다).
+    over = {f"{x}": round(sum(v for (h, a), v in spots.items()
+                              if (h + a) > x) / total, 4)
+            for x in (0.5, 1.5, 2.5, 3.5, 4.5)}
     return {"shape": shape, "low": round(low, 4), "high": round(high, 4),
+            "over": over,
             "one_sided": round(one, 4), "close": round(close, 4),
             "top_scores": [(f"{h}-{a}", round(v, 3)) for (h, a), v in top],
             "why": why, "total": round(total, 3)}

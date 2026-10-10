@@ -589,6 +589,39 @@ class RedTeamOut(Frozen):
     lines: list[RedTeamLine] = Field(default_factory=list)
 
 
+class StrategyLine(Frozen):
+    """🔴🔴 §2-2 — **한 팀의 전략 판정**. ⚠️ 모델이 수치를 적을 칸은 **없다**.
+
+    > 팀마다 `strategy` ∈ {공격 위주, 수비 위주(잠그기), 역습, 로테이션·체력
+    > 관리, 실험, 평소 그대로} + **근거 사실 id 2개 이상** + 한 줄 이유.
+
+    🔴 **확률 칸이 없다** — 이동량은 `config/strategy_effects.yaml` 과 코드가
+       정한다(절대규칙 5: `direction`·`weight`·`strength`·`survival`·`verdict`
+       에 LLM 출력이 닿으면 계약 실패).
+    """
+
+    side: Literal["home", "away"]
+    #: 🔴 여섯 가지뿐이다 — `enum` 으로 박아 모델이 다른 말을 못 하게 한다
+    strategy: Literal["공격 위주", "수비 위주", "역습",
+                      "로테이션·체력 관리", "실험", "평소 그대로"]
+    #: 🔴 §2-2 — **근거 사실 id 2개 이상**(`app/core/strategy.py` 가 발급한 `L*`)
+    fact_refs: list[str] = Field(default_factory=list)
+    why: str = ""
+
+
+class StrategyOut(Frozen):
+    """🔴 s2d 산출 — 두 팀 전략 + 양상 + **코드 검사 결과**(§7 타입 하나)."""
+
+    lines: list[StrategyLine] = Field(default_factory=list)
+    #: 🔴 §2-3 — 코드가 정한 맞대결 양상(모델이 적지 않는다)
+    shape: str = ""
+    #: 🔴 `통과`·`버렸다`·`확정 XI 전`·`안 돌았다`
+    audit: str = "안 돌았다"
+    violations: list[str] = Field(default_factory=list)
+    #: 🔴 §2-1 사실 — 카드·검열이 id 로 되찾는다
+    facts: dict = Field(default_factory=dict)
+
+
 class SpellOut(Frozen):
     """🔴 오픈월드 ⑥-1 — 철자 후보. ⚠️ 이것도 구조화 출력이다(§5 s1)."""
 
@@ -965,6 +998,14 @@ class Card(Frozen):
     #        "other": [라운드 다른 경기], "final": 최종 확정인가}`
     #  ⚠️ 비면 *"경우의 수를 못 센다"* 다(순위표가 없다 — 지어내지 않는다).
     outlook: dict = Field(default_factory=dict)
+    #: 🔴🔴 **확정 라인업 전략**(사용자 지시 2026-10-10(둘째) §2) — `StrategyOut`
+    #
+    #  ⚠️ 확정 XI 가 아니면 `audit="확정 XI 전"` 이고 카드가 그 사실을 적는다.
+    strategy: StrategyOut | None = None
+    #: 🔴 §4 — **잠정 확률**(전략을 반영하기 전). `our_prob` 가 **최종**이다.
+    #
+    #  🔴 둘이 같으면 전략이 확률을 못 움직인 것이고, 카드가 그것도 적는다.
+    prob_before: ProbTriple | None = None
     #: 🔴🔴 **③ 이 움직인 양**(사용자 지시 2026-10-06(6차) ③) — 변수별 로그 오즈 이동
     #
     #  ⚠️ 비면 *"③ 이동 없음 — 우리 열 = 기준"* 을 적는다(빈 줄은 "안 봤다"와 같다).

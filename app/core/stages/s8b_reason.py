@@ -84,7 +84,7 @@ def _prompt(card: Card, box: dict[str, dict]) -> list:
         "**하나 이상** 적는다(id 를 글에 적지는 말고 칸에만).\n"
         "🔴 문단에는 **서로 다른 종류**의 고유 사실이 최소 셋 들어가야 한다"
         "(선수 이름 · 결장·징계 · 순위·동기 · 맞대결 수치 · 폼 수치 중 셋)."
-        + _new_rule(card))
+        + _new_rule(card) + _plan_rule(card))
     return [
         llm.Message(role="system",
                     content=("너는 축구 분석 카드의 **이유 문단**을 쓴다. "
@@ -113,6 +113,23 @@ def _new_rule(card: Card) -> str:
     said = " · ".join(f"`{v.id}` {v.claim}" for v in got[:4])
     return ("\n🔴🔴 **새 사실(72시간)이 있다 — 최소 한 문장은 이것을 쓴다**"
             f"(§3-5): {said}")
+
+
+def _plan_rule(card: Card) -> str:
+    """🔴🔴 §4 — **전략 판정이 있으면 한 문장은 그것을 쓰라고** 적는다.
+
+    ⚠️ 검열(`s9_audit.strategy_check`)만 넣으면 모델이 계속 걸려 템플릿으로
+       떨어진다 — 쓸 수 있게 프롬프트가 먼저 말해야 한다.
+    """
+    plan = getattr(card, "strategy", None)
+    if str(getattr(plan, "audit", "") or "") != "통과":
+        return ""
+    said = " · ".join(
+        f"{x.side} **{x.strategy}**({str(x.why or '')[:60]})"
+        for x in (getattr(plan, "lines", None) or []))
+    return ("\n🔴🔴 **확정 라인업 전략이 있다 — 최소 한 문장은 이것을 쓴다**"
+            f"(§4): {said}"
+            + (f" · 양상 {plan.shape}" if getattr(plan, "shape", "") else ""))
 
 
 def template(card: Card) -> ReasonPara:

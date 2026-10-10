@@ -53,6 +53,8 @@ def card_text(card: Card, *, debug: bool = False) -> str:
         #    ⚠️ 왜 거기인가: 새 사실의 대부분이 **결장·복귀**라 같이 읽힌다.
         if num == "2b":
             out.append("\n" + new_facts_block(card))
+            # 🔴🔴 §4 — **전략 블록**은 기준 XI·결장 바로 뒤다(같은 명단 얘기다)
+            out.append("\n" + strategy_long(card))
         # 🔴 **결론 바로 아래**가 논평 자리다(지시 ④)
         if num == "8":
             out.append(_comment(card, debug=debug))
@@ -227,8 +229,12 @@ def _head(card: Card) -> str:
         when = next((getattr(v, "fetched_at", None)
                      for v in card.facts.xi.values()
                      if getattr(v, "fetched_at", None)), None)
+        # 🔴 상태 글자는 `layer1.xi_state` 하나가 정한다(사본 금지)
+        #    ⚠️ 실사고 2026-10-10: 여기서 `kinds == {"확정"}` 로 비교했는데
+        #       `XI.state` 는 **영어**(`confirmed`)라 **늘 `예상`** 이었다.
+        from app.core import layer1 as _l1
         head += "\n" + _ln.status_line(
-            state=("확정" if kinds == {"확정"} else "예상"),
+            state=_l1.xi_state(card),
             source=" · ".join(got_src) or "미상", when=when)
     said_xi = {v.state for v in (card.facts.xi or {}).values()}
     if said_xi and "confirmed" not in said_xi:
@@ -312,7 +318,13 @@ def _b1(card: Card) -> str:
 
 
 #: 🔴 상태 글자 — 사람이 읽는 꼴(§5 블록 2)
-_XI_KO = {"confirmed": "확정", "predicted": "예상", "none": "없음"}
+#: 🔴 상태 글자 표 — `layer1.XI_KO` 가 **원본**이다(사본 금지)
+#  ⚠️ 여기 또 적어 뒀더니 `layer1` 쪽만 고쳐져 두 곳이 갈렸다(2026-10-10).
+
+
+def _xi_ko() -> dict:
+    from app.core import layer1
+    return dict(layer1.XI_KO)
 
 
 def _b2(card: Card) -> str:
@@ -324,7 +336,7 @@ def _b2(card: Card) -> str:
         who = _who(card, key)
         coach = card.facts.coach.get(key)
         head = (f"- **{who}** {xi.formation or '포메이션 미상'} "
-                f"[{_XI_KO.get(xi.state, xi.state)}]")
+                f"[{_xi_ko().get(xi.state, xi.state)}]")
         if coach is not None:
             head += f" 감독 {coach.name}" + (" (임시)" if coach.interim else "")
         out.append(head)
@@ -620,6 +632,12 @@ def _standings_line(card: Card) -> str:
     out: list[str] = []
     # 🔴🔴 **경기당 총골**(지시 2026-10-09(5차) ②·③) — 블록 3 이 적을 칸이다
     tot = dict(said.get("team_totals") or {})
+    # 🔴🔴 §3-2 — **전략이 그 기준을 움직였으면** 그 수를 함께 적는다
+    #    ⚠️ `if tot:` **밖에서** 정의한다 — 안에 두면 아래 줄이 이름을 못 찾는다
+    #       (계약이 `UnboundLocalError` 로 잡았다 · 2026-10-10)
+    said_t = dict((getattr(getattr(card, "strategy", None), "facts", None)
+                   or {}).get("TOTAL") or {})
+    moved_t = said_t.get("value")
     if tot:
         base = box.get("match_total_baseline")
         out.append("- 경기당 총골 — "
@@ -627,7 +645,13 @@ def _standings_line(card: Card) -> str:
                                 f"({v.get('goals_for')}득 {v.get('goals_against')}실"
                                 f" {v.get('played')}경기)"
                                 for k, v in tot.items())
-                   + (f" → **이 경기 기준 {base}**" if base else ""))
+                   + (f" → **이 경기 기준 {base}**" if base else "")
+                   # 🔴 §3-2 — 전략이 움직였으면 **움직인 수**를 함께 적는다
+                   + (f" → 전략 반영 **{moved_t}**"
+                      if moved_t is not None and base is not None
+                      and abs(float(moved_t) - float(base)) >= 0.005 else ""))
+    if moved_t is not None and tot:
+        out.append(f"    {said_t.get('text')}")
     # 🔴 **핵심 선수** — 시즌 득점·도움 상위(§2 셋째 줄)
     kp = dict(said.get("key_players") or {})
     for key, rows in kp.items():
@@ -1026,4 +1050,69 @@ def new_facts_block(card: Card) -> str:
     out = [NEW_HEAD]
     for v in rows:
         out.append(f"· {v.claim} — 출처 {len(v.doc_ids)}곳 · [{v.id}]")
+    return "\n".join(out)
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 §4 긴 카드 — **자리별 비교표 · ΔA·ΔD · 전략 변수와 이동량**
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 긴 카드: 자리별 비교표, ΔA·ΔD 계산, 적용된 전략 변수와 이동량, 감독 패턴 표.
+
+STRATEGY_HEAD = "🧠 라인업 전략 (자세히)"
+
+
+def strategy_long(card: Card) -> str:
+    """🔴 §4 — 긴 카드의 전략 블록. **확정 XI 가 아니면 그 사실 한 줄**이다."""
+    from app.core import strategy as _st
+    plan = getattr(card, "strategy", None)
+    said = str(getattr(plan, "audit", "") or "")
+    if plan is None or said in ("", "안 돌았다"):
+        return f"**{STRATEGY_HEAD}**\n- ⬜ 전략 판정을 안 돌렸다"
+    out = [f"**{STRATEGY_HEAD}** — 판정 `{said}`"]
+    if said == "확정 XI 전":
+        out += [f"- 🔴 {x}" for x in (getattr(plan, "violations", None) or [])]
+        return "\n".join(out)
+    if said == "버렸다":
+        out.append("- 🔴 **수치와 반대인 판정이라 버렸다**(§2-2) — 확률은 "
+                   "**잠정 그대로**다")
+        out += [f"    · {x}" for x in (getattr(plan, "violations", None) or [])]
+        return "\n".join(out)
+    # ── §2-1 사실표(자리별 교체·ΔA·ΔD 가 여기 들어 있다)
+    box = dict(getattr(plan, "facts", None) or {})
+    m = card.match
+    for side, name in (("home", m.home_name), ("away", m.away_name)):
+        rows = [(k, v) for k, v in box.items() if dict(v).get("side") == side]
+        one = None
+        for line in (getattr(plan, "lines", None) or []):
+            if str(getattr(line, "side", "")) == side:
+                one = line
+        out.append(f"- **{name}** — "
+                   + (f"`{one.strategy}` · 근거 {list(one.fact_refs)} · "
+                      f"{one.why}" if one is not None else "판정 없음"))
+        for k, v in rows:
+            said_v = dict(v)
+            out.append(f"    `{k}` [{said_v.get('kind')}] {said_v.get('text')}")
+    if getattr(plan, "shape", ""):
+        out.append(f"- 양상(§2-3): **{plan.shape}**")
+    # ── §3-2 적용된 이동량 — `moves` 에서 전략 줄만 고른다
+    rows = [dict(x) for x in (card.moves or [])
+            if str(dict(x).get("type") or "") == "strategy_intent"]
+    if rows:
+        out.append("- **적용된 전략 변수와 이동량**(③ 로그 오즈)")
+        for one in rows:
+            out.append(f"    {one.get('id')} `{one.get('strategy')}` → "
+                       f"{one.get('side')} {float(one.get('logodds') or 0):+.3f}"
+                       f" · {one.get('why')}")
+    else:
+        out.append("- **적용된 전략 변수 없음** — 이동량 0(표에 계수가 없거나 "
+                   "`평소 그대로`다)")
+    said_cap, said_lam = _st.caps()
+    out.append(f"- 상한 — 로그 오즈 ±{said_cap} · λ ±{said_lam:.0f}%"
+               f"(`{_st.CONF}`)")
+    # ── §3-3 감독 패턴 — 표본이 모자라면 **표시만** 한다
+    out.append(f"- 감독 패턴(§3-3) — ⬜ **아직 없다**(같은 감독·같은 조건의 과거 "
+               f"경기를 받는 통로가 없다 · 표본 "
+               f"{dict(_st.effects().get('coach_pattern') or {}).get('min_sample')}"
+               f"경기 미만이면 확률은 안 움직인다)")
     return "\n".join(out)

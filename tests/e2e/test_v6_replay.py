@@ -102,8 +102,8 @@ def card(replaying) -> Card:
     from app.core import reweight as _reweight
     from app.core import shape as _shape
     from app.core.stages import (s2_facts, s2b_base, s2c_market, s3_docs,
-                                 s4_extract, s5_verify, s6_hypo, s7_judge,
-                                 s9_audit)
+                                 s2d_strategy, s4_extract, s5_verify, s6_hypo,
+                                 s7_judge, s9_audit)
     BOARD, _extra, _bad = _board.parse(BOARD_TEXT)
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **재정렬을 예열한다** — 실측 2026-10-06
@@ -133,11 +133,19 @@ def card(replaying) -> Card:
                                      net=net, cache=cache)
         docs = list(cache.values()) or docs
         variables = s5_verify.run(ref, facts, docs, cands, state=state)
+        # 🔴🔴 **확정 라인업 전략**(사용자 지시 2026-10-10(둘째)) — 이 고정물의
+        #    XI 는 `none` 이므로 `확정 XI 전` 이 나와야 한다(§1). 그것이 바로
+        #    *"예상 XI 로는 전략을 추론하지 않는다"* 를 재생이 세는 자리다.
+        plan = s2d_strategy.run(ref, facts, state=state)
         hypo = s6_hypo.run(ref, facts, variables, state=state)
         # 🔴🔴 **파이프라인과 같은 순서**(2026-10-07 재가중 ①) — 우리 열 → 재가중 →
         #    생존. ⚠️ 순서가 다르면 재생이 운영을 흉내낸 것이 아니다.
+        before_layers = pipeline._layers(ref, facts, variables, hypo, base_p,
+                                        adj_p, feed_mk, user_mk, state=state)
         layers = pipeline._layers(ref, facts, variables, hypo, base_p, adj_p,
-                                 feed_mk, user_mk, state=state)
+                                 feed_mk, user_mk, state=state, strategy=plan)
+        layers["strategy"] = plan
+        layers["prob_before"] = before_layers.get("ours")
         hypo = _reweight.of(hypo, layers.get("ours"), ref=ref, state=state)
         said = s7_judge.run(ref, facts, variables, hypo, state=state, now=NOW,
                             board=BOARD, board_source="user_board")
@@ -771,9 +779,19 @@ def test_1겹_카드가_새_순서와_상한을_지킨다(card):
     assert rest[0].startswith("【헤드라인】"), rest[0]
     assert rest[1].startswith("【이유】"), rest[1]
     # ⚠️ `⚠️` 는 **두 코드포인트**다(U+26A0 U+FE0F) — `x[0]` 으로 세면 깨진다
+    # 🔴🔴 **§4 블록 둘이 확률 줄 뒤에 끼어들 수 있다**(2026-10-10(둘째)):
+    #    `🧠 라인업 전략` · `📊 확률 변화`. **확정 XI 일 때만** 나온다.
+    #    🔴 등뼈는 그대로다 — 확률 → 스코어 → 보드 → 뒤집히는 길.
+    spine = [x for x in rest[2:]
+             if not x.startswith("🧠") and not x.startswith("📊 **확률 변화")
+             and not x.startswith(" ")]
     want = ("📊", "🎯", "🎯", "⚠")
-    got = tuple(x[:1] for x in rest[2:2 + len(want)])
+    got = tuple(x[:1] for x in spine[:len(want)])
     assert got == want, got
+    # 🔴 전략 블록이 있으면 **확률 줄 바로 뒤**다(떨어져 있으면 못 잇는다)
+    heads = [i for i, x in enumerate(rest) if x.startswith("🧠")]
+    if heads:
+        assert rest[heads[0] - 1].startswith("📊"), rest[heads[0] - 1]
     assert lines[-1].startswith("[📖 자세히]"), lines[-1]
     # ── §5 상한
     assert len(said) <= layer1.CAP_ALL, len(said)

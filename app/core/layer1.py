@@ -92,11 +92,39 @@ def bet_words(card: Card) -> str:
 NO_GRADE: tuple[str, ...] = ("없음", "보류", "자료부족")
 
 
-def xi_confirmed(card: Card) -> bool:
-    """🔴 A-4 — **확정 XI 인가**(둘 다 확정일 때만 참)."""
+#: 🔴🔴 **`XI.state` 는 영어다** — `Literal["confirmed","predicted","none"]`.
+#
+#  ⚠️⚠️ 실사고 2026-10-10: 이 파일과 `render.py` 가 그 칸을 **`"확정"`(한국어)**
+#     과 비교했다. 그 비교는 **영원히 거짓**이므로
+#       · 라인업 줄이 늘 `예상` 이었고
+#       · 등급이 늘 `잠정` 이었고
+#       · 새로 넣은 전략 단계가 **한 번도 돌 수 없었다**.
+#     🔴 내가 넣은 계약(`tests/contracts/test_v6_4_strategy.py`)이 그것을 잡았다.
+#  🔴 그래서 **옮기는 자리를 하나로** 둔다 — 아래 `XI_KO` 와 `xi_state` 다.
+#     ⚠️ `render._XI_KO` 와 같은 표다(사본) — 거기서 이것을 쓰게 고쳤다.
+XI_KO: dict[str, str] = {"confirmed": "확정", "predicted": "예상",
+                         "none": "없음"}
+
+
+def xi_state(card: Card) -> str:
+    """🔴 그 카드의 **라인업 상태 한 글자**(`확정`·`예상`·`없음`).
+
+    🔴 둘 다 확정일 때만 `확정` 이다(A-4) — 한쪽만 확정이면 `예상` 이다.
+    ⚠️ 칸이 비면 `없음`.
+    """
     kinds = {str(getattr(v, "state", "") or "")
              for v in (card.facts.xi or {}).values()} - {""}
-    return bool(kinds) and kinds == {"확정"}
+    if not kinds:
+        return "없음"
+    if kinds == {"confirmed"}:
+        return "확정"
+    return XI_KO.get(next(iter(sorted(kinds))), "예상") if len(kinds) == 1 \
+        else "예상"
+
+
+def xi_confirmed(card: Card) -> bool:
+    """🔴 A-4 — **확정 XI 인가**(둘 다 확정일 때만 참)."""
+    return xi_state(card) == "확정"
 
 
 def graded(card: Card) -> list:
@@ -590,6 +618,17 @@ def text(card: Card, *, buttons: bool = True) -> str:
     out.append(f"【헤드라인】 {headline(card)}")
     out.append(f"【이유】 {reason_text(card)}")
     out.append(_probs(card))
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 §4 — **확정 XI 일 때만** 전략·확률 변화 블록
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 자리는 **확률 줄 바로 뒤**다 — `잠정 → 최종` 이 그 확률을 설명하는 줄이라
+    #     떨어져 있으면 읽는 사람이 둘을 잇지 못한다.
+    #  ⚠️ **빈 글자는 넣지 않는다** — 넣으면 빈 줄이 생기고 §1 순서 계약이
+    #     그것을 센다(실측 2026-10-10: `('📊','🎯','📊',' ')` 로 빨개졌다).
+    for said_block in (plan_block(card), move_block(card)):
+        if said_block:
+            out.append(said_block)
     out.append(f"🎯 예상 {_scores(card)}")
     out.append(f"🎯 보드 판정: {_board(card)}")
     out.append(f"⚠️ 뒤집히는 길: {_flip(card)}")
@@ -609,7 +648,12 @@ def text(card: Card, *, buttons: bool = True) -> str:
     # 🔴 **이유 문단을 줄인다** — 나머지 줄은 버튼 뒤의 깊은 카드가 든다(§5)
     over = len(said) - CAP_ALL
     short = _cap(reason_text(card), max(80, CAP_REASON - over - 1))
-    out[4] = f"【이유】 {short}"
+    # 🔴 **자리 번호로 찾지 않는다** — 블록을 더하면 그 번호가 밀린다
+    #    (⚠️ 실사고가 될 자리였다: §4 블록 둘을 넣자 `out[4]` 가 확률 줄이 됐다)
+    for i, line in enumerate(out):
+        if str(line or "").startswith("【이유】"):
+            out[i] = f"【이유】 {short}"
+            break
     return "\n".join(x for x in out if x is not None)
 
 
@@ -626,13 +670,8 @@ def _when(card: Card) -> str:
 
 def _xi(card: Card) -> str:
     """🔴 `확정|예상` — 둘 중 하나다. ⚠️ 못 받으면 그 사실을 적는다."""
-    kinds = {str(getattr(v, "state", "") or "")
-             for v in (card.facts.xi or {}).values()}
-    kinds -= {""}
-    if not kinds:
-        return "없음"
-    # 🔴 글자는 `XIState` 가 든다 — 둘 다 `확정` 일 때만 확정이다
-    return "확정" if kinds == {"확정"} else "예상"
+    # 🔴 판정은 `xi_state` 하나다(사본 금지) — 그 함수가 영어 칸을 옮긴다
+    return xi_state(card)
 
 
 def _again(card: Card) -> str:
@@ -772,3 +811,98 @@ def _new_facts(card: Card) -> str:
     more = f" (+{len(rows) - NEW_SHOW}건은 `📖 자세히`)" if len(rows) > NEW_SHOW \
         else ""
     return f"{render.NEW_HEAD} {said}{more}"
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 §4 **라인업 전략 · 확률 변화** — 사용자 지시 2026-10-10(둘째)
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 1겹에 새 블록(**확정 XI일 때만**):
+#  > 🧠 라인업 전략 / {홈}: {전략} — {근거 한 줄} / {원정}: … / 양상: …
+#  > 📊 확률 변화   잠정 → 최종 …
+
+PLAN_HEAD = "🧠 **라인업 전략**"
+MOVE_HEAD = "📊 **확률 변화** 잠정 → 최종"
+#: 🔴 §4 — 오버 줄에 적는 총점 선들(앞 지시가 1.5/2.5/3.5 로 되돌렸다)
+OVER_LINES: tuple[float, ...] = (1.5, 2.5, 3.5)
+
+
+def plan_block(card: Card) -> str:
+    """🔴🔴 §4 — `🧠 라인업 전략` 블록. **확정 XI 가 아니면 빈 글자**(§1).
+
+    ⚠️ 빈 글자를 돌려주는 것은 *"조용한 0"* 이 아니다 — §1 이 *"예상 XI 로는 전략을
+       추론하지 않는다"* 고 적었고, 그 사실은 📋 라인업 줄이 이미 말한다.
+       🔴 다만 **판정을 버린 경우**(수치와 반대)는 그 사실을 적는다(#3).
+    """
+    plan = getattr(card, "strategy", None)
+    said = str(getattr(plan, "audit", "") or "")
+    if plan is None or said in ("", "안 돌았다"):
+        return ""
+    if said == "확정 XI 전":
+        return ""
+    if said == "버렸다":
+        bad = list(getattr(plan, "violations", None) or [])
+        return (f"{PLAN_HEAD} — 🔴 **판정을 버렸다**(수치와 반대다 · §2-2): "
+                + " / ".join(bad[:2]))
+    m = card.match
+    out = [PLAN_HEAD]
+    for side, name in (("home", m.home_name), ("away", m.away_name)):
+        one = _line_of(plan, side)
+        if one is None:
+            out.append(f" {name}: ⬜ 판정 없음")
+            continue
+        out.append(f" {name}: **{one.strategy}** — {_cap(str(one.why or ''), 90)}")
+    if getattr(plan, "shape", ""):
+        out.append(f" 양상: {plan.shape}")
+    return "\n".join(out)
+
+
+def _line_of(plan, side: str):
+    for one in (getattr(plan, "lines", None) or []):
+        if str(getattr(one, "side", "")) == side:
+            return one
+    return None
+
+
+def move_block(card: Card) -> str:
+    """🔴🔴 §4 — `📊 확률 변화 잠정 → 최종`. 둘이 같으면 **그 사실을 적는다**.
+
+    🔴 오버 줄은 **총골 분포**에서 온다(`shape`) — 없으면 그 칸만 빠진다.
+    """
+    # 🔴🔴 §4 — 이 블록은 **확정 XI 일 때만** 나간다(전략 블록과 한 묶음이다).
+    #    ⚠️ 그렇지 않으면 전략이 없는 카드에도 `잠정 → 최종` 이 찍히고, 그 둘은
+    #       늘 같은 수다(읽는 사람에게 거짓 신호다 · 2026-10-10 에 잡았다).
+    if str(getattr(getattr(card, "strategy", None), "audit", "") or "") != "통과":
+        return ""
+    old, new = getattr(card, "prob_before", None), card.our_prob
+    if old is None or new is None:
+        return ""
+    m = card.match
+    same = (round(old.home, 4), round(old.draw, 4), round(old.away, 4)) == \
+        (round(new.home, 4), round(new.draw, 4), round(new.away, 4))
+    out = [MOVE_HEAD + ("  ⬜ **바뀐 것 없다**(전략이 확률을 못 움직였다)"
+                        if same else "")]
+    out.append(f" {m.home_name} 승 {old.home:.0%} → **{new.home:.0%}** · "
+               f"무 {old.draw:.0%} → **{new.draw:.0%}** · "
+               f"{m.away_name} 승 {old.away:.0%} → **{new.away:.0%}**")
+    said = _over_line(card)
+    if said:
+        out.append(f" {said}")
+    return "\n".join(out)
+
+
+def _over_line(card: Card) -> str:
+    """🔴 §4 — `오버 1.5 / 2.5 / 3.5 nn→nn` 줄. 분포가 없으면 빈 글자.
+
+    ⚠️ **잠정 쪽 오버를 따로 세지 않는다** — 총골 분포는 재가중된 시나리오에서
+       나오고, 그 재가중은 최종 확률로 한 번만 돈다. 🔴 그래서 지금 적을 수 있는
+       것은 **최종 오버**뿐이고, 그 사실을 글자로 말한다(#3 조용히 넘기지 않는다).
+    """
+    box = dict(getattr(card, "shape", None) or {})
+    over = dict(box.get("over") or {})
+    if not over:
+        return ""
+    said = " · ".join(f"{x} {float(over.get(str(x), 0.0)):.0%}"
+                      for x in OVER_LINES if str(x) in over)
+    return (f"오버 {said} (최종만 — 총골 분포는 재가중을 한 번만 돈다)"
+            if said else "")

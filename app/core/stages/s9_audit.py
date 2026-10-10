@@ -546,7 +546,51 @@ def reason_check(said, *, card) -> list[str]:
     #  ⚠️ 새 사실이 **0건이면 이 항목은 아무것도 세지 않는다** — 없는 것을
     #     쓰라고 할 수는 없다(그 0건은 §3-4 가 카드에 적는다).
     bad += new_fact_check(rows, card=card)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **(p) 전략이 있으면 이유 문단이 한 문장은 쓴다**(§4 · 2026-10-10 둘째)
+    # ══════════════════════════════════════════════════════════════════
+    bad += strategy_check(rows, card=card)
     return bad
+
+
+def strategy_check(rows: list, *, card) -> list[str]:
+    """🔴🔴 **(p) §4** — 전략 판정이 있으면 **이유 문단에 전략 문장 최소 1개**.
+
+    > 헤드라인·이유 문단·예상 스코어·보드 판정은 **최종 확률로 다시 만든다**.
+    > 이유 문단에 **전략 문장 최소 1개**(검열 항목 추가).
+    > 계약: … **전략 문장이 최종 확률과 같은 방향**.
+
+    🔴 두 가지를 센다:
+      ① 전략 낱말(`공격 위주`·`수비 위주` …)이나 그 팀 이름+전략 뜻이 한 문장에 있나
+      ② 그 문장이 **최종 확률의 방향과 같은 쪽**인가
+         ⚠️ 방향은 `layer1.dir_side`(최종 확률을 보는 함수) 하나가 정한다.
+    ⚠️ 전략 판정이 **`통과` 가 아니면 아무것도 세지 않는다**(없는 것을 쓰라고 할
+       수는 없다 — 그 사실은 카드가 이미 적는다).
+    """
+    plan = getattr(card, "strategy", None)
+    if str(getattr(plan, "audit", "") or "") != "통과":
+        return []
+    from app.core import layer1
+    words = {str(getattr(x, "strategy", "")) for x in
+             (getattr(plan, "lines", None) or [])} - {""}
+    if not words:
+        return []
+    hit = [str(getattr(line, "text", "") or "") for line in (rows or [])
+           if any(w in str(getattr(line, "text", "") or "") for w in words)]
+    if not hit:
+        return [f"(p) 전략 판정 {sorted(words)} 이 있는데 이유 문단이 **하나도 "
+                f"안 썼다** — §4(이유 문단에 전략 문장 최소 1개)"]
+    # 🔴 ② **최종 확률과 같은 방향**인가 — 반대 팀만 앞세우면 위반
+    side = layer1.dir_side(card)
+    if not side:
+        return []
+    who = (card.match.home_name if side == "home" else card.match.away_name)
+    other = (card.match.away_name if side == "home" else card.match.home_name)
+    for said in hit:
+        if other in said and who not in said:
+            return [f"(p) 전략 문장이 **최종 확률 방향({who})과 다른 쪽**만 "
+                    f"말한다 — {said[:60]}"]
+    return []
 
 
 def new_fact_check(rows: list, *, card) -> list[str]:

@@ -122,8 +122,18 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #  ⚠️ 종전 순서는 s7(생존) → `_layers`(우리 열)였다. 그래서 **생존·양상·논평이
     #     우리 열과 다른 수**에서 나왔다(실측: 홈 73% 인데 논평이 원정 승).
     #  🔴 재가중은 **한 곳**이다(`reweight.of`) — 아래 모두가 그 결과를 쓴다.
+    # 🔴🔴 **확정 라인업 전략**(사용자 지시 2026-10-10(둘째) §1·§3) — 확정 XI 일
+    #    때만 판정이 나온다. 🔴 **잠정 확률을 먼저 세고** 최종과 나란히 든다(§4).
+    from app.core.stages import s2d_strategy as _s2d
+    plan = _s2d.run(ref, facts, state=st,
+                    news=[v for v in variables
+                          if str(getattr(v, "subtask", "") or "").startswith("F-")])
+    before_layers = _layers(ref, facts, variables, hypo, base_p, adj_p, feed_mk,
+                            user_mk, state=st, outlook=look)
     layers = _layers(ref, facts, variables, hypo, base_p, adj_p, feed_mk,
-                     user_mk, state=st, outlook=look)
+                     user_mk, state=st, outlook=look, strategy=plan)
+    layers["strategy"] = plan
+    layers["prob_before"] = before_layers.get("ours")
     layers["ocr_text"] = ocr_text
     from app.core import reweight as _reweight
     hypo = _reweight.of(hypo, layers.get("ours"), ref=ref, state=st)
@@ -236,9 +246,28 @@ async def reanalyze(raw: str, *, pool: Any, net: Any, chain: Any,
         from app.core.schema import Board as _Board
         got_board = _Board(lines=_odds.lines_from(feed_mk))
         board_src = "feed"
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **확정 라인업 전략**(사용자 지시 2026-10-10(둘째) §1·§3)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 라인업 상태가 **확정**(또는 두 매체 이상 보도)일 때만. 예상 XI 로는 전략을
+    #  > 추론하지 않는다. … 라인업 전 확률은 **잠정**, 확정 라인업 반영 확률이 **최종**.
+    #
+    #  🔴 **잠정 확률을 먼저 센다**(전략 없이) — 그래야 카드가 `잠정 → 최종` 을
+    #     나란히 적을 수 있다. ⚠️ 두 번 세는 것이 아니라 **같은 함수를 두 입력으로**
+    #     부른다(규칙이 하나다).
+    from app.core.stages import s2d_strategy as _s2d
+    plan = _s2d.run(ref, facts, state=st,
+                    news=[v for v in variables
+                          if str(getattr(v, "subtask", "") or "").startswith("F-")])
+    before_layers = _layers(ref, facts, variables, hypo, base_p, adj_p, feed_mk,
+                            user_mk, state=st, outlook=look)
     # 🔴 재분석도 **같은 순서**다 — 우리 열 → 재가중 → 생존(재가중 ①)
     layers = _layers(ref, facts, variables, hypo, base_p, adj_p, feed_mk,
-                     user_mk, state=st, outlook=look)
+                     user_mk, state=st, outlook=look, strategy=plan)
+    layers["strategy"] = plan
+    # 🔴 §4 — **잠정 → 최종**. ⚠️ 전략이 없으면 둘이 같다(그 사실도 적는다)
+    layers["prob_before"] = before_layers.get("ours")
     from app.core import reweight as _reweight
     hypo = _reweight.of(hypo, layers.get("ours"), ref=ref, state=st)
     said = s7_judge.run(ref, facts, variables, hypo, state=st, board=got_board,
@@ -346,6 +375,9 @@ def card_of(ref: MatchRef, facts: Facts, variables: list[Variable],
         comment_violations=[str(x) for x in
                             (box.get("comment_violations") or [])],
         outlook=dict(box.get("outlook") or {}),
+        # 🔴 §2·§4 — 전략 판정과 **잠정 확률**(최종은 `our_prob`)
+        strategy=box.get("strategy"),
+        prob_before=box.get("prob_before"),
         match=ref, facts=facts, variables=variables,
         drops=[*state.drops, *hypo.drops], hypo=hypo, evals=said.evals,
         direction=said.direction, conclusion=said.conclusion,
@@ -447,7 +479,8 @@ def _comment_layers(got, shape: dict) -> dict:
 def _layers(ref: MatchRef, facts: Facts, variables: list[Variable],
             hypo: HypoSet, base_p: BaseProb, adj_p: AdjProb,
             feed_mk: MarketProb, user_mk: MarketProb, *,
-            state: RunState, outlook: dict | None = None) -> dict:
+            state: RunState, outlook: dict | None = None,
+            strategy: object = None) -> dict:
     """🔴 ③ 우리 확률 + §6 세 열 비교를 만든다. ⚠️ 못 만든 열은 **사유만** 남는다."""
     from app.core import compare
     from app.core.stages import s2c_market
@@ -456,7 +489,7 @@ def _layers(ref: MatchRef, facts: Facts, variables: list[Variable],
     start = adj_p.probs if adj_p.probs is not None else base_p.probs
     ours, why = compare.our_prob(hypo, start=start, variables=variables,
                                  adjusted=bool(adj_p.moved), ref=ref,
-                                 outlook=outlook)
+                                 outlook=outlook, strategy=strategy)
     # 🔴 §6 은 *"기준(**②반영**)·우리·시장"* 을 나란히 놓으라고 했다 — 그래서 비교도
     #    ② 를 반영한 수로 한다(카드 표와 **같은 수**여야 설명이 맞는다).
     base_for_compare = (base_p.model_copy(update={"probs": start})

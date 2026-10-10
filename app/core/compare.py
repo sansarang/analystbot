@@ -53,7 +53,8 @@ def move_rules() -> dict:
 def our_prob(hypo: HypoSet | None, *, start: ProbTriple | None = None,
              variables: list[Variable] | None = None,
              adjusted: bool = False, ref: MatchRef | None = None,
-             outlook: dict | None = None) -> tuple[ProbTriple | None, str]:
+             outlook: dict | None = None,
+             strategy: object = None) -> tuple[ProbTriple | None, str]:
     """🔴🔴 ③ 우리 확률 — **기준에서 출발한다**(사용자 지시 2026-10-06(6차) ①).
 
     ══════════════════════════════════════════════════════════════════
@@ -185,6 +186,21 @@ def our_prob(hypo: HypoSet | None, *, start: ProbTriple | None = None,
         MOVES.append({"id": v.id, "type": v.type, "favors": v.favors,
                       "side": side, "weight": float(v.weight or 0.0),
                       "logodds": round(step, 4)})
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **전략 이동**(사용자 지시 2026-10-10(둘째) §3-2)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 승무패: 잠그기 → 그 팀 **패↓·무승부↑** / 공격 위주 → 그 팀 **승·패 둘 다↑**
+    #  > (무승부↓) / 로테이션 → 그 팀 **승↓** / 실험 → **무승부↑**.
+    #
+    #  🔴 방향은 지시서가 글자로 줬고 **크기는 `config/strategy_effects.yaml`** 이
+    #     든다(적합 못 한 값은 `임시값` 으로 표시된다 · 카드가 적는다).
+    #  🔴 **확정 XI 일 때만** 온다 — `s2d_strategy` 가 예상 XI 면 판정을 안 낸다.
+    #  ⚠️ 아래 **같은 상한(±0.5)** 에 함께 걸린다(새 상한을 만들지 않는다).
+    for said in _strategy_moves(strategy, ref):
+        shift[said["side"]] += float(said["logodds"])
+        used.append(f"{said['id']}({said['type']}·{said['logodds']:+.3f})")
+        MOVES.append(said)
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **상한은 경기당 합계다**(사용자 지시 2026-10-06(9차) ①)
     # ══════════════════════════════════════════════════════════════════
@@ -585,3 +601,38 @@ def _team_in(v: Variable, ref: MatchRef | None) -> str:
     if str(v.subject) == str(ref.away):
         return ref.away_name
     return ""
+
+
+def _strategy_moves(strategy: object, ref: MatchRef | None) -> list[dict]:
+    """🔴🔴 §3-2 — 전략 판정 → **③ 이동 줄들**. 판정이 없으면 빈 목록.
+
+    한 줄 꼴은 `MOVES` 와 같다(`id`·`type`·`favors`·`side`·`weight`·`logodds`) —
+    카드 7b 의 *"③ 이 움직인 양"* 이 그 목록을 그대로 적는다.
+
+    🔴 `own_win`·`own_loss`·`draw` 를 **그 팀 자리로** 옮긴다: 홈 팀의 `own_win` 은
+       `home`, `own_loss` 는 `away`(상대가 이긴다는 뜻이다), `draw` 는 `draw`.
+    ⚠️ **판정이 `통과` 가 아니면 아무것도 안 움직인다**(버려진 판정·확정 XI 전).
+    """
+    from app.core import strategy as _st
+    if str(getattr(strategy, "audit", "") or "") != "통과":
+        return []
+    out: list[dict] = []
+    for line in (getattr(strategy, "lines", None) or []):
+        side = str(getattr(line, "side", ""))
+        said = str(getattr(line, "strategy", ""))
+        box, why = _st.move_of(said)
+        if not box:
+            continue
+        other = "away" if side == "home" else "home"
+        for key, where in (("own_win_logodds", side),
+                           ("own_loss_logodds", other),
+                           ("draw_logodds", "draw")):
+            step = float(box.get(key) or 0.0)
+            if step == 0.0 or where not in ("home", "draw", "away"):
+                continue
+            out.append({"id": f"전략:{side}", "type": "strategy_intent",
+                        "favors": ("both" if where == "draw" else where),
+                        "side": where, "weight": 1.0,
+                        "logodds": round(step, 4), "why": why,
+                        "strategy": said})
+    return out
