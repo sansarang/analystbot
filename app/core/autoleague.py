@@ -150,7 +150,8 @@ def baseline_of(rows: list[dict]) -> dict:
 
 def build(*, competition_key: str, meta: dict, teams: list[str],
           baseline: dict, seen: list[str] | None = None,
-          when: date | None = None) -> tuple[dict, str]:
+          teams_from: str = "", when: date | None = None,
+          ) -> tuple[dict, str]:
     """🔴🔴 §1 — 등록할 표를 **만든다**. `(표, 사유)` · 필수 칸이 없으면 `({}, 사유)`.
 
     ⚠️ **실패를 조용히 넘기지 않는다** — 사유에 무엇이 없는지 이름으로 적는다.
@@ -164,7 +165,8 @@ def build(*, competition_key: str, meta: dict, teams: list[str],
         "checked_at": str((when or datetime.now(timezone.utc).date()).isoformat()),
         "ccode": ccode,
         # 🔴 팀 목록 출처 — 이미 만든 통로 이름 그대로(§3 첫 줄)
-        "teams_from": f"fotmob:{lid}" if lid else "",
+        # 🔴 팀 목록을 **어디서** 받았나 — 순위표냐 일정이냐가 다르다(컵대회)
+        "teams_from": str(teams_from or (f"fotmob:{lid}" if lid else "")),
         "langs": langs_of(ccode),
         # 🔴 §3 — 언어를 **어떻게 정했나**. FIFA 코드라 영어만 쓴 경우가 여기 남는다
         "langs_why": langs_with_why(ccode)[1],

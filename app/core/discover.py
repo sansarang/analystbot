@@ -333,13 +333,23 @@ async def register(net, *, league_id: object, league_name: str = "",
     page = await net.get(f"{fm.BASE}/leagues/{league_id}/table/x")
     teams = sorted(fm.team_ids(fm.payload(getattr(page, "text", "") or "")
                                or {}))
+    whence = f"fotmob:{league_id}/table"
+    if not teams:
+        # 🔴🔴 **컵대회는 순위표가 없다** — 실측 2026-10-10: 호주컵 등록이
+        #    *"필수 칸이 없다: ['teams']"* 로 실패했다. 🔴 그 대회의 **일정**이
+        #    참가 팀을 전부 들고 있다(홈·원정 이름). 이름만 있고 번호는 없다 —
+        #    그 사실을 `teams_from` 에 적는다(#3 조용히 메우지 않는다).
+        fx = await fm.league_matches(net, league_id)
+        teams = sorted({str(x[k]) for x in fx for k in ("home", "away")
+                        if str(x.get(k) or "").strip()})
+        whence = f"fotmob:{league_id}/matches (이름만 — 순위표가 없는 대회다)"
     rows = await fm.league_season_rows(net, league_id)
     # 🔴 **경기 페이지가 적은 글자**를 함께 담는다 — 카드 쪽이 그 글자만 받는다
     seen = [str(league_name or ""), str(meta.get("name") or "")]
     old_seen = load_seen(key)
     box, why = al.build(competition_key=key, meta=meta, teams=teams,
                         baseline=al.baseline_of(rows), seen=[*old_seen, *seen],
-                        when=when)
+                        teams_from=whence, when=when)
     if not box:
         return {}, why
     p, said = al.save(box)

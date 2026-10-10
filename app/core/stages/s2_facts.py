@@ -161,6 +161,7 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
     #  🔴 실사고 2026-10-09(가시마–감바): 경기 페이지가 폼을 안 줘 `recent` 가
     #     **0건**이었다 — 득점 흐름 변수가 하나도 없었고 이유 문단이 템플릿이 됐다.
     #  ⚠️ **폼이 이미 있으면 팀 페이지를 안 받는다**(통신 예산 · §19-b).
+    await _auto_register(ref, state=state, net=net, pages=raw_pages)
     await _fill_form(ref, box, state=state, net=net, pages=raw_pages)
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **라인업 사다리**(사용자 지시 2026-10-10 A-1) — 경기 페이지가 못 줄 때
@@ -485,6 +486,37 @@ async def _fill_official(ref: MatchRef, box: dict, *, state: RunState,
                f"({said['players_why']}) · 구단 SNS {len(sns)}곳")
 
 
+async def _auto_register(ref: MatchRef, *, state: RunState, net: Any,
+                         pages: list[str]) -> None:
+    """🔴🔴 **리그 자동 등록은 분석마다 걸린다** — 사용자 결정 2026-10-10 §2.
+
+    > 경기를 찾으면 그 경기의 리그 id로 자동 등록을 건다(**이미 있으면 갱신만**).
+
+    ⚠️ 실사고 2026-10-10 ①: `findgame` 에만 걸어 뒀더니 **표에 이미 있는 경기**는
+       등록이 안 걸렸다 — 엘살바도르 경기 재실행에서 카드가 대회를 **라리가**로
+       판정했고 경고조차 없었다(이름이 나라를 넘어 겹친다).
+    ⚠️ 실사고 2026-10-10 ②: 이 일을 `_fill_form`(폼 보완) **안에** 뒀더니
+       **컵대회에서 안 걸렸다** — 그 함수는 리그 표 주소가 없으면 일찍 돌아가고,
+       호주컵은 순위표가 없다. 🔴 그래서 **자기 함수**다. 한 함수가 두 일을 하면
+       한쪽의 퇴로가 다른 쪽을 삼킨다.
+    🔴 리그 id·나라 코드는 **`general`** 에서 읽는다 — 순위표 칸(`content.table`)은
+       컵대회에서 `False` 다(실측). `general` 은 둘 다 준다(`9471`·`AUS`).
+    🔴 하루 한 번만 받는다(`discover.register` 안의 신선도 검사).
+    """
+    from app.collect import fotmob as fm
+    from app.core import discover
+    j = next((fm.payload(x) for x in pages if fm.payload(x)), None) or {}
+    lid = fm.league_id_of(j)
+    if not lid:
+        state.note("s2 자동 등록 — 🔴 경기 페이지가 리그 id 를 안 준다")
+        return
+    _box, why = await discover.register(
+        net, league_id=lid, league_name=str(ref.competition or ""),
+        ccode=fm.ccode_of(j))
+    state.note(f"s2 자동 등록 — {why}")
+    logger.info("[s2] 자동 등록 — %s", why)
+
+
 async def _fill_form(ref: MatchRef, box: dict, *, state: RunState, net: Any,
                      pages: list[str]) -> None:
     """🔴🔴 §2 — **폼·총골·핵심 선수**를 보완한다. ⚠️ `box` 를 제자리에서 채운다.
@@ -550,23 +582,6 @@ async def _fill_form(ref: MatchRef, box: dict, *, state: RunState, net: Any,
     # ③ 핵심 선수 — 리그 통계 페이지 + 전체 목록
     lid = str((((fm._page(fm.payload(pages[0]) or {}).get("content") or {})
                 .get("table") or {}).get("parentLeagueId")) or "") if pages else ""
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **리그 자동 등록은 분석마다 걸린다** — 사용자 결정 2026-10-10 §2
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  > 경기를 찾으면 그 경기의 리그 id로 자동 등록을 건다(**이미 있으면 갱신만**).
-    #
-    #  ⚠️ 실사고 2026-10-10: `findgame` 에만 걸어 뒀더니 **표에 이미 있는 경기**는
-    #     등록이 안 걸렸다(엘살바도르 경기 재실행 — 그 카드는 대회를 **라리가**로
-    #     판정했고 경고조차 없었다). 🔴 그래서 **이 자리**다 — 경기 페이지를
-    #     이미 열어 뒀고 리그 id·나라 코드가 둘 다 여기 있다.
-    #  🔴 하루 한 번만 받는다(`discover.register` 안의 신선도 검사).
-    if lid:
-        from app.core import discover
-        _box, _why = await discover.register(
-            net, league_id=lid, league_name=str(ref.competition or ""),
-            ccode=fm.ccode_of(fm.payload(pages[0]) or {}))
-        state.note(f"s2 자동 등록 — {_why}")
     if not lid:
         return
     sp = await _day_page(net, fm.league_stats_url(lid, "x"), state=state,
