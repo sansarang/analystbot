@@ -110,6 +110,44 @@ def line_name(ev) -> str:
     return " ".join(x for x in bits if x) or "줄 미상"
 
 
+def plain_line(ev, card: Card) -> str:
+    """🔴🔴 **보드 줄을 사람 말로**(사용자 지시 2026-10-10 D-3).
+
+    > 핸디 +1.5 는 *"{팀} +1.5 = 상대가 2골 차 이상으로 못 이긴다 nn%"*.
+    > *"가장 두꺼운 줄"* 이 **방향과 반대 팀 이름**이면 그 뜻을 괄호로 풀어 쓴다.
+
+    ⚠️ 실사고 2026-10-09(강원–부천): 방향은 **강원**인데 가장 두꺼운 줄이
+       `handicap Bucheon FC 1995 0.955` 였다 — 한 줄만 읽으면 **반대로 보인다**.
+    """
+    ln = getattr(ev, "line", None)
+    kind = str(getattr(ln, "market", "") or "")
+    side = str(getattr(ln, "side", "") or "")
+    point = getattr(ln, "point", None)
+    sv = float(getattr(ev, "survival", 0) or 0)
+    said = line_name(ev)
+    if kind == "handicap" and point is not None:
+        other = (card.match.away_name if side == card.match.home_name
+                 else card.match.home_name)
+        n = abs(float(point))
+        if float(point) > 0:
+            said = (f"{side} +{n:g} = **{other}가 {int(n) + 1}골 차 이상으로 "
+                    f"못 이긴다** {sv:.0%}")
+        else:
+            said = (f"{side} −{n:g} = **{side}가 {int(n) + 1}골 차 이상으로 "
+                    f"이긴다** {sv:.0%}")
+    elif kind in ("total", "over", "under") and point is not None:
+        said = f"{said} = **총 {point:g}골 {'넘는다' if 'over' in (side or kind) else '안 넘는다'}** {sv:.0%}"
+    # 🔴 방향과 **반대 팀 이름**이면 그 사실을 괄호로 적는다
+    want = dir_side(card)
+    if want:
+        who = (card.match.home_name if want == "home" else card.match.away_name)
+        foe = (card.match.away_name if want == "home" else card.match.home_name)
+        if foe and foe in said and who not in said:
+            said += f" (⚠️ 방향은 **{who}** 다 — 이 줄은 {foe} 이름이 붙지만 "
+            said += "그 팀이 **이긴다는 말이 아니다**)"
+    return said
+
+
 def _nm(card: Card, key: object) -> str:
     """🔴 팀 열쇠 → 보일 이름(열쇠를 글에 적지 않는다)."""
     if str(key) == str(card.match.home):
@@ -649,7 +687,8 @@ def _board(card: Card) -> str:
     """🔴 §1 `🎯 보드 판정` — 등급이 없으면 **이유 한 줄**."""
     named = graded(card)
     if named:
-        return " / ".join(f"{line_name(e)} **{e.grade}**" for e in named[:3])
+        return " / ".join(f"{plain_line(e, card)} **{e.grade}**"
+                          for e in named[:3])
     if str(card.board_source or "none") == "none":
         return "걸 줄 없음 — 보드가 없다(보드를 주면 판정한다)"
     if card.started:

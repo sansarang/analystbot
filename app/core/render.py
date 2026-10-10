@@ -743,8 +743,17 @@ def _comment(card: Card, *, debug: bool = False) -> str:
         out.append(body)
     if said.flow:
         out.append(f"📈 **예상 흐름**: {said.flow}")
-    if said.score_range:
-        out.append(f"🎯 **예상 스코어**: {' · '.join(said.score_range)}")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **예상 스코어는 한 곳에서 나온다**(사용자 지시 2026-10-10 D-2)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 1겹·긴 카드 **모두** `top_scores` 하나에서. `0-0` 이면 근거 id 를 양쪽에.
+    #
+    #  ⚠️ 종전엔 긴 카드가 `commentary.score_range`(작성자가 고른 것)를 썼고 1겹만
+    #     무게에서 뽑았다 — 같은 카드가 **두 수**를 말했다.
+    #  🔴 `said.score_range` 가 비어도 적는다 — 무게는 작성자와 무관하다.
+    from app.core import layer1 as _l1
+    out.append(f"🎯 **예상 스코어**: {_l1._scores(card)}")
     if said.lean:
         # ⚠️ 등급이 없으면 *"추천"* 이 아니라 **기울기**다(코드가 그것을 검사했다)
         out.append(f"↗️ **기울기**: {said.lean}")

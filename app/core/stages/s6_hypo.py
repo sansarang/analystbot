@@ -493,6 +493,8 @@ REGRESSION_WORDS: tuple[str, ...] = (
     "제자리로", "원래 수준")
 #: 🔴 §2 — 그 주장을 받쳐야 하는 **해석 규칙 id**(사용자가 적은 넷 그대로)
 REGRESSION_RULES: tuple[str, ...] = ("IR04", "IR06", "IR10", "IR12")
+#: 🔴 D-1 — 근거가 다 빠진 갈래의 **문장**(그 주장을 글로 남기지 않는다)
+FLOOR_MECH = "[보강] 근거 없는 갈래 — 저무게"
 
 
 def _regression_fit(scen: list, variables: list[Variable], *,
@@ -536,7 +538,15 @@ def _regression_fit(scen: list, variables: list[Variable], *,
             f"{dropped} 에 해석 규칙({'·'.join(REGRESSION_RULES)})이 없다 → "
             + (f"그 근거를 뺀다(남은 {keep})" if keep
                else f"근거가 다 빠져 **바닥값**으로 둔다(`{origin}`)"))
+        # 🔴🔴 **빠진 주장을 글로 남기지 않는다**(사용자 지시 2026-10-10 D-1)
+        #    > 근거가 다 빠져 바닥값이 된 갈래는 mechanism 문장도 바꾼다:
+        #    > "[보강] 근거 없는 갈래 — 저무게" 한 줄로.
+        #    ⚠️ 실사고 2026-10-09(강원–부천): 무게는 0.2075 로 내렸는데 *"평균 쪽으로
+        #       되돌아오는 반등"* 이라는 **문장은 카드에 그대로 남았다** — 읽는 사람은
+        #       그 주장을 본다.
+        mech_new = (FLOOR_MECH if not keep else said)
         out.append(s_.model_copy(update={
+            "mechanism": mech_new,
             "driver_vars": keep,
             # 🔴 근거가 다 빠지면 **바닥 출처**로 바꾼다 — `_strength` 가 그때
             #    yaml 의 바닥값을 쓴다(우리가 수를 짓지 않는다)
