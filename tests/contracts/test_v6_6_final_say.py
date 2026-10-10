@@ -265,6 +265,37 @@ def test_v6_v_운요소_득점을_득점력의_근거로_못_쓴다():
         refs=[gid, "X1"])
     ok = s9_say.check(_say(key_points=[far] * 3), card=card, box=box)
     assert not any("(v)" in x for x in ok), ok
+    # 🔴🔴 **부정문은 위반이 아니다** — 실측 2026-10-10: 평이 *"운 요소라 득점력
+    #    근거로 **쓰지 않고** 경로·시간대만 근거로 삼는다"* 고 적었는데 검열이
+    #    그것을 잡아 좋은 평을 버렸다. ⚠️ 그 문장은 지시서가 **요구하는** 태도다.
+    deny = KeyPoint(
+        claim="강원은 세트피스·후반 경로에서 골을 만든다",
+        mechanism=("다만 강원 득점의 50%는 운 요소(자책골·PK)라 득점력 근거로 "
+                   "쓰지 않고, 경로·시간대만 근거로 삼는다"),
+        refs=[gid, "X1"])
+    ok2 = s9_say.check(_say(key_points=[deny] * 3), card=card, box=box)
+    assert not any("(v)" in x for x in ok2), ok2
+
+
+def test_v6_s_전략사실도_자리_근거로_센다():
+    """🔴🔴 (s) — 자리 근거는 **id 앞글자가 아니라 사실의 종류**로 센다.
+
+    ⚠️ 실측 2026-10-10(강원–부천): 평이 측면 얘기에 **전략 사실**(`A6`·`A9` —
+       `swap`·`key_player`)을 근거로 댔는데 검열이 `X*`·`F*` 앞글자만 받아
+       **거짓 위반**을 냈다 — 그래서 좋은 평이 템플릿으로 떨어졌다.
+    """
+    from app.core import saybundle
+    from app.core.schema import KeyPoint
+    from app.core.stages import s9_say
+    card = _card()
+    box = saybundle.build(card)
+    swap = [x.id for x in box.items.values() if x.kind == "swap"]
+    assert swap, "🔴 시험 재료 — 자리별 교체 사실이 없다"
+    one = KeyPoint(claim="부천은 측면 공격 자원이 사라졌다",
+                   mechanism="그 자리에 중앙 자원을 넣었다",
+                   refs=[swap[0], "P1"])
+    bad = s9_say.check(_say(key_points=[one] * 3), card=card, box=box)
+    assert not any("(s)" in x for x in bad), bad
 
 
 def test_v6_근거없는_감성어를_잡는다():

@@ -32,6 +32,13 @@ PATH_WORDS = ("필드골", "세트피스", "코너", "프리킥", "역습", "PK"
 #: 🔴 §3 (v) — 운 요소 득점을 **득점력의 근거로 쓰지 않는다**
 LUCK_WORDS = ("PK", "페널티", "자책골")
 POWER_WORDS = ("득점력", "결정력", "화력", "공격력")
+#: 🔴 §3 (s) — **자리·측면 사실의 종류**(§1-1·1-2 에서 온 것). `s2d` 의 `L*`·`A*`
+#  도 여기 든다 — 그것이 §1-1 *"자리별 교체"* 사실이다.
+SPOT_KINDS = ("xi", "rotation", "swap", "flank_share", "flank_duel",
+              "formation", "backline", "front", "key_player", "bench_regular")
+#: 🔴 §3 (v) — **부정 표지**. 이 말이 있으면 그 문장은 운 요소를 **배제**한 것이다
+DENY_WORDS = ("쓰지 않", "삼지 않", "아니", "없", "제외", "빼고", "빼면",
+              "안 쓴", "말고")
 #: 🔴 §2 — 근거 없는 감성어(사실 id 가 없으면 쓰지 않는다 · 금지 조항)
 MOOD_WORDS = ("기세", "정신력", "투혼", "집중력", "자신감", "분위기", "사기")
 
@@ -143,11 +150,15 @@ def check(got: SayOut, *, card: Card, box: Bundle) -> list[str]:
             if nm not in names:
                 out.append(f"🔴 (r) **없는 선수 이름**({nm}) — `{said[:40]}`")
                 break
-        # (s) 측면·자리
+        # (s) 측면·자리 — 🔴 **id 앞글자가 아니라 사실의 종류**로 센다
+        #
+        #  ⚠️ 실측 2026-10-10(강원–부천): 평이 자리 근거로 **전략 사실**(`A6`·
+        #     `A9` — `swap`·`key_player`)을 댔는데, 검열이 `X*`·`F*` 앞글자만
+        #     받아 **거짓 위반**을 냈다. 🔴 `s2d` 의 `L*`·`A*` 도 §1-1 사실이다.
         if any(w in said for w in FLANK_WORDS):
             flanks = [r for r in refs
-                      if str(r).startswith(("X", "F"))
-                      and box.items.get(str(r)) is not None]
+                      if box.items.get(str(r)) is not None
+                      and box.items[str(r)].kind in SPOT_KINDS]
             if not flanks:
                 out.append(f"🔴 (s) 측면·자리 주장에 **1-1·1-2 근거가 없다** — "
                            f"근거 {refs} · `{said[:60]}`")
@@ -170,11 +181,17 @@ def check(got: SayOut, *, card: Card, box: Bundle) -> list[str]:
         #  ⚠️ 실측 2026-10-10(강원–부천): 한 주장 안에서 앞은 *"강원 득점 유형은
         #     세트피스"*, 뒤는 *"부천 실점에 PK 비중"* 이었는데 **거짓 위반**으로
         #     걸려 좋은 평이 템플릿으로 떨어졌다 — 글 전체를 한 덩이로 봤기 때문이다.
+        #    🔴 **부정문은 위반이 아니다** — ⚠️ 실측 2026-10-10(강원–부천): 평이
+        #       *"운 요소라 **득점력 근거로 쓰지 않고** 경로·시간대만 근거로
+        #       삼는다"* 고 적었는데 검열이 그것을 위반으로 잡았다. 그 문장은
+        #       지시서가 **요구하는** 바로 그 태도다.
         hit = (any(w in kp.claim for w in POWER_WORDS)
-               and any(w in said for w in LUCK_WORDS))
+               and any(w in said for w in LUCK_WORDS)
+               and not _denied(kp.claim))
         if not hit:
             hit = any(any(w in one for w in LUCK_WORDS)
                       and any(w in one for w in POWER_WORDS)
+                      and not _denied(one)
                       for one in _sentences(kp.mechanism))
         if hit:
             out.append(f"🔴 (v) **운 요소 득점을 득점력의 근거로 썼다** — "
@@ -211,6 +228,11 @@ def check(got: SayOut, *, card: Card, box: Bundle) -> list[str]:
 
 #: 🔴 문장 끝 — 한국어 종결·마침표·중점으로 가른다
 _SENT = re.compile(r"[.!?。]\s*|(?<=다)\s+|,\s*")
+
+
+def _denied(said: str) -> bool:
+    """🔴 (v) — 그 문장이 운 요소를 **배제**했나(그러면 위반이 아니다)."""
+    return any(w in str(said or "") for w in DENY_WORDS)
 
 
 def _sentences(said: str) -> list[str]:
