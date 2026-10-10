@@ -30,6 +30,9 @@ def run(ref: MatchRef, facts: Facts, *, state: RunState,
     """🔴🔴 §2-2 — 전략 판정 한 번. ⚠️ 못 하면 **사유를 담은 빈 산출**이다."""
     from app.core import strategy as _st
     reads = {side: _st.read(ref, facts, side=side) for side in ("home", "away")}
+    logger.info("[s2d] 전략 입력 — 확정 %s · 사실 %s",
+                {s: g.confirmed for s, g in reads.items()},
+                {s: len(g.facts) for s, g in reads.items()})
     box: dict[str, dict] = {}
     for side, got in reads.items():
         for f in got.facts:
@@ -43,6 +46,7 @@ def run(ref: MatchRef, facts: Facts, *, state: RunState,
         said = " · ".join(f"{s}: {g.why}" for s, g in reads.items()
                           if not g.confirmed)
         state.note(f"s2d 전략 — {said}")
+        logger.info("[s2d] **확정 XI 전** — %s", said[:160])
         return StrategyOut(audit="확정 XI 전",
                            violations=[said], facts=box)
     got = _ask(ref, facts, reads, box, state=state, news=news)
@@ -53,6 +57,7 @@ def run(ref: MatchRef, facts: Facts, *, state: RunState,
     if bad:
         # 🔴 §2-2 — **수치와 반대면 버린다**(다시 묻지 않는다 · 비용·결정성)
         state.note(f"s2d 전략 **버렸다** — {bad}")
+        logger.info("[s2d] **버렸다** — %s", bad)
         return StrategyOut(audit="버렸다", violations=bad, facts=box)
     shape = _st.shape_of(_side(got.lines, "home"), _side(got.lines, "away"),
                          home_name=ref.home_name, away_name=ref.away_name)
@@ -67,6 +72,8 @@ def run(ref: MatchRef, facts: Facts, *, state: RunState,
     box["TOTAL"] = _total_fact(got, reads, facts)
     state.note(f"s2d 전략 — 홈 `{_side(got.lines, 'home')}` · 원정 "
                f"`{_side(got.lines, 'away')}` · 양상 `{shape}`")
+    logger.info("[s2d] 전략 — 홈 `%s` · 원정 `%s` · 양상 `%s`",
+                _side(got.lines, "home"), _side(got.lines, "away"), shape)
     return StrategyOut(lines=list(got.lines), shape=shape, audit="통과",
                        facts=box)
 
@@ -173,6 +180,8 @@ def _ask(ref: MatchRef, facts: Facts, reads: dict, box: dict, *,
         return got
     state.note(f"s2d 전략 — LLM 실패({getattr(got, 'reason', '?')} · "
                f"{getattr(got, 'detail', '')[:80]})")
+    logger.info("[s2d] 🔴 LLM 실패 — %s · %s", getattr(got, "reason", "?"),
+                str(getattr(got, "detail", ""))[:200])
     return None
 
 

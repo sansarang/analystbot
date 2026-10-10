@@ -461,20 +461,52 @@ def missing_of(team: dict) -> list[dict]:
     return out
 
 
+#: 🔴🔴 **발표된 라인업의 표식** — 실측 2026-10-10(세레소–마리노스 T-15분)
+#
+#  ══════════════════════════════════════════════════════════════════
+#  ⚠️⚠️ **여기 적혀 있던 것은 추측이었다**(2026-10-06 주석)
+#  ══════════════════════════════════════════════════════════════════
+#
+#  전에 이렇게 적혀 있었다: *"발표되면 fotmob 이 `lineupType` 을 바꾼다
+#  (`confirmed`·`lineup`)."* 🔴 **그 두 값은 아무도 본 적이 없다** — 그래서
+#  `confirmed` 가 **한 번도 나온 적이 없고**, 확정 XI 경로(등급 확정·전략 분석)가
+#  통째로 죽어 있었다.
+#
+#  🔴 실측 2026-10-10 — 세 상태를 받아서 비교했다:
+#
+#  | 상태 | `lineupType` | `source` | 선발 |
+#  |---|---|---|---|
+#  | 라인업 전(먼 경기 3건) | `None` | `None` | 0 |
+#  | **발표됨**(T-15분) | **`standard`** | **`enetpulse`** | **11** |
+#
+#  ⚠️ `predicted`·`confirmed` 는 페이지에 **번역 사전**으로만 있다
+#     (`probable_lineup: "Predicted lineup"` · `lineup_confirmed: "Lineup
+#     confirmed"`) — **깃발이 아니다**.
+#  🔴 그래서 **셋을 함께** 요구한다: `lineupType` 가 알려진 값 · `source` 가 있다 ·
+#     선발이 11명. ⚠️ fotmob 이 **자기 예측**을 같은 값으로 줄 수도 있다 — 그래서
+#     `source`(자료 제공자)를 함께 본다. 그 값이 더 보이면 여기 늘린다(실측으로).
+LINEUP_PUBLISHED: tuple[str, ...] = ("standard", "confirmed", "lineup",
+                                     "official", "starting")
+#: 🔴 라인업이 아직 없을 때 본 값들(실측 2026-10-06 · 2026-10-10)
+LINEUP_NONE: tuple[str, ...] = ("unavailable", "")
+
+
 def lineup_kind_of(j: dict) -> str:
     """🔴🔴 **확정이냐 예상이냐 — 경기 페이지의 표식만 본다**(§2 · 금지 항목).
 
     > 확정은 **경기 페이지의 확정 표식만**(기사로 XI 를 확정 상태로 표시 금지).
 
-    🔴 실측 2026-10-06: 라인업이 아직 없으면 `lineupType: "unavailable"` 이다.
-       발표되면 fotmob 이 `lineupType` 을 바꾼다(`confirmed`·`lineup`).
+    🔴 판정 재료는 위 `LINEUP_PUBLISHED` 주석의 **실측 표**다.
     ⚠️ 모르면 `predicted` 다 — **확정이라고 적지 않는다**(fail-closed).
     """
     lu = ((_page(j).get("content") or {}).get("lineup") or {})
     said = str(lu.get("lineupType") or "").strip().lower()
-    if said in ("unavailable", ""):
+    if said in LINEUP_NONE:
         return "none"
-    if "confirm" in said or said in ("lineup", "official", "starting"):
+    n = max(len((dict(lu.get(k) or {})).get("starters") or [])
+            for k in ("homeTeam", "awayTeam"))
+    if said in LINEUP_PUBLISHED and str(lu.get("source") or "").strip() \
+            and n >= 11:
         return "confirmed"
     return "predicted"
 
