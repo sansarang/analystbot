@@ -965,9 +965,25 @@ def _form_line(box: dict, card: Card) -> str:
 
 
 def _tactic_line(box: dict) -> str:
-    """🔴 §5 — 전술 줄. ⚠️ 축2 가 안 돌면 **그 사실을 적는다**(#3)."""
-    said = str(box.get("axis2_why") or "")
-    return said or "⬜ 축2 자료 없음"
+    """🔴🔴 §5 — 전술 줄: **무기→약점 · 꺼진 무기 · 후반 무기**.
+
+    > 전술: {무기→약점 한 줄, **꺼진 무기·후반 무기 포함**}
+
+    ⚠️ 축2 가 안 돌면 **그 사실을 적는다**(#3 조용한 0 금지).
+    """
+    rows = [f for f in (box.get("fired2") or []) if not f.watch_only]
+    if not rows:
+        rows = list(box.get("fired2") or [])
+    if not rows:
+        return str(box.get("axis2_why") or "") or "⬜ 축2 자료 없음"
+    said = " / ".join(f"[{f.rule}] {f.side} {f.text}" for f in rows[:3])
+    off = {k: v for k, v in dict(box.get("off") or {}).items() if v}
+    late = {k: v for k, v in dict(box.get("late") or {}).items() if v}
+    if off:
+        said += f" · 🔴 꺼진 무기 {off}"
+    if late:
+        said += f" · ⏱ 후반 무기 {late}"
+    return said
 
 
 def _goal_line(box: dict, card: Card) -> str:

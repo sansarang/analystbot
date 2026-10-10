@@ -445,7 +445,9 @@ def sim_input(box: dict, *, lam_home: float, lam_away: float) -> dict:
     ⚠️ 배율의 크기(0.85·1.2)는 **임시값**이다 — 적합 전이고 카드가 그것을 적는다.
     """
     _cap_lo, cap_pct = _caps()
-    fired = [f for f in (box.get("fired") or []) if not f.watch_only]
+    # 🔴🔴 **축2(T1~T6)와 축3(T9~T13)을 함께** 센다 — 상한은 하나다(±15%)
+    fired = [f for f in [*(box.get("fired") or []), *(box.get("fired2") or [])]
+             if not f.watch_only]
     lam = {"home": float(lam_home), "away": float(lam_away)}
     late = {"home": 0.0, "away": 0.0}
     pct = {"home": 0.0, "away": 0.0}
@@ -456,6 +458,12 @@ def sim_input(box: dict, *, lam_home: float, lam_away: float) -> dict:
         if eff.get("lambda_own"):
             pct[side] += float(eff["lambda_own"]) * 100.0
             said.append(f"[{f.rule}] {side} λ {float(eff['lambda_own']):+.0%}")
+        if eff.get("lambda_opp"):
+            # 🔴 T6 처럼 **상대 λ 를 깎는** 규칙이 있다
+            other = "away" if side == "home" else "home"
+            pct[other] += float(eff["lambda_opp"]) * 100.0
+            said.append(f"[{f.rule}] {other} λ "
+                        f"{float(eff['lambda_opp']):+.0%}(상대 몫)")
         if eff.get("lambda_own_late"):
             late[side] += float(eff["lambda_own_late"])
             said.append(f"[{f.rule}] {side} 후반 λ "

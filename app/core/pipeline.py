@@ -174,6 +174,10 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     # 🔴🔴 **1겹 이유 문단**(사용자 지시 2026-10-09(3차) §3·§4) — 카드가 다 선 뒤다
     #    ⚠️ 작성자 입력이 **카드의 사실 목록**이라 카드보다 **뒤**에 와야 한다.
     card = with_reason(card, state=st)
+    # 🔴🔴 **전술 전문가 예측**(사용자 지시 2026-10-10(셋째) §6) — **확률을 다 센
+    #    뒤**다. ⚠️ *"이야기(LLM 문장)는 확률을 움직이지 못한다"*(§4) — 그래서
+    #    카드가 완성된 다음에 글만 더한다.
+    card = with_tactic(card, state=st)
     # 🔴 **마지막 실행을 기억한다** — 재분석이 s3·s4 를 다시 돌지 않게(§4-1)
     _LAST[ref.id] = {"at": (now or datetime.now(timezone.utc)), "ref": ref,
                      "docs": docs, "cands": cands, "card": card,
@@ -618,3 +622,20 @@ def _axis_share(ref, facts, variables, hypo, base_p, adj_p, feed_mk, user_mk,
     if said:
         state.note(f"§4 기여 분해 — {said}(합 = 잠정→최종 변화)")
     return said
+
+
+def with_tactic(card: Card, *, state: RunState) -> Card:
+    """🔴🔴 §6 — **전술 예측을 카드에 더한다**. ⚠️ 확률은 **건드리지 않는다**.
+
+    🔴 확정 XI 가 아니면 돌리지 않는다 — 입력에 *"오늘 XI 변화"* 가 있어야 한다
+       (§6 입력 목록). ⚠️ 그 사실을 산출에 적는다.
+    """
+    from app.core import layer1
+    from app.core.schema import TacticOut
+    from app.core.stages import s2f_tactic
+    if not layer1.xi_confirmed(card):
+        said = "🔴 확정 XI 전 — 전술 예측을 돌리지 않는다(§6 입력에 XI 변화가 든다)"
+        state.note(f"s2f {said}")
+        return card.model_copy(update={
+            "tactic": TacticOut(audit="확정 XI 전", violations=[said])})
+    return card.model_copy(update={"tactic": s2f_tactic.run(card, state=state)})

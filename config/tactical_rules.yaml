@@ -119,3 +119,97 @@ rules:
     needs: [aerial_duel_win_pct]
     fit: {n: 0, provisional: true,
           why: "🔴 공중볼 승률을 받는 통로가 없다 — 이 규칙은 **안 돈다**"}
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **축2 — 스타일 프로필 6축**(사용자 지시 2026-10-10(셋째) §2)
+# ══════════════════════════════════════════════════════════════════
+#
+# > 스타일 프로필(6축) + 오늘 XI 변화로 "A의 무기 → B의 약점", "B의 무기 → A의
+# > 약점" 두 방향을 각각 판정(규칙 T1~T8).
+#
+# 🔴 **재료는 경기 페이지 통계다**(robots 허용 HTML) — 실측 2026-10-10
+#    (강원–부천): `content.stats.Periods.All.stats` 에 **28칸**이 있었다.
+#    ⚠️ `key` 를 코드에 박지 않는다 — 받은 글자를 **여기** 적는다(실측 목록):
+#      blocked_shots · clearances · corners · dribbles_succeeded · duel_won ·
+#      expected_goals · expected_goals_non_penalty · expected_goals_on_target ·
+#      expected_goals_open_play · expected_goals_set_play · fouls ·
+#      ground_duels_won · interceptions · keeper_saves · long_balls_accurate ·
+#      matchstats.headers.tackles · opposition_half_passes · own_half_passes ·
+#      passes · player_throws · red_cards · shot_blocks · shots_inside_box ·
+#      shots_outside_box · shots_woodwork · total_shots · touches_opp_box ·
+#      yellow_cards
+#    🔴 `BallPossesion` 은 이 경기에서 안 왔다 — `opposition_half_passes ÷
+#       passes` 로 **전진성**을 대신 센다(점유율을 지어내지 않는다).
+#    🔴 **`aerials_won` 이 있다** — T13(공중볼 약점)이 그것을 기다렸다.
+#      ⚠️ 이 경기 표에는 안 보였다(그룹에는 있었다) — 받는 경기마다 다르므로
+#         **없으면 그 축을 비운다**(0 으로 메우지 않는다).
+
+style:
+  #: 🔴 6축 — 각 축은 `{키: 무게}` 의 합을 `per`(분모 키)로 나눈 비율이다.
+  #  ⚠️ 축 이름은 사람이 읽을 말이고, 수는 **받은 칸**에서만 나온다.
+  axes:
+    # ① 전진성 — 상대 진영에서 공을 얼마나 돌리나
+    forward:
+      num: {opposition_half_passes: 1.0}
+      per: passes
+      why: "상대 진영 패스 비중 — 점유율이 안 오는 경기가 있어 이것으로 센다"
+    # ② 박스 침투 — 상대 박스 안 터치
+    box_entry:
+      num: {touches_opp_box: 1.0}
+      per: total_shots
+      why: "슈팅 하나당 박스 터치 — 높으면 박스 안에서 만들어 쏜다"
+    # ③ 롱볼·크로스 — 직선적인가
+    direct:
+      num: {long_balls_accurate: 1.0, accurate_crosses: 1.0}
+      per: passes
+      why: "정확한 롱볼·크로스 비중 — 높으면 직선적이고 제공권 싸움이 많다"
+    # ④ 압박 — 상대 진영에서 끊나
+    press:
+      num: {"matchstats.headers.tackles": 1.0, interceptions: 1.0}
+      per: passes
+      why: "태클+인터셉트를 패스 수로 나눈 것 — 높으면 많이 끊는다"
+    # ⑤ 블록 깊이 — 걷어내기·블록이 많으면 깊게 선다
+    low_block:
+      num: {clearances: 1.0, shot_blocks: 1.0, blocked_shots: 1.0}
+      per: passes
+      why: "걷어내기·블록 비중 — 높으면 뒤로 물러서 버틴다"
+    # ⑥ 세트피스 비중 — xG 중 세트플레이 몫
+    setpiece:
+      num: {expected_goals_set_play: 1.0}
+      per: expected_goals
+      why: "세트플레이 xG 비중 — 축3 의 세트피스 득점 비중과 짝이다"
+
+  #: 🔴 공중볼 — T13 이 쓴다(없으면 그 규칙은 **안 돈다**)
+  aerial_key: aerials_won
+  #: 🔴 §2 — 몇 경기를 섞나(축1·축3 과 같은 10경기)
+  back: 10
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴 T1~T8 — §2 가 *"규칙 T1~T8"* 이라고만 적었다
+# ══════════════════════════════════════════════════════════════════
+#
+# ⚠️ **지시서가 T1~T8 의 내용을 주지 않았다** — T9~T13 은 글자로 줬다.
+# 🔴 그래서 **지어내지 않고**, §2 가 말한 꼴(*"A의 무기 → B의 약점"*)을 위 6축으로
+#    짝지은 **대칭 규칙 여섯**만 둔다. 이름은 T1~T6 으로 붙이고, 빈 T7·T8 은
+#    **비워 둔다**(사용자가 그 둘을 주면 여기 적는다).
+# 🔴 방향은 *"내 축이 높고 상대의 **짝 축**이 낮으면 내 무기가 열린다"* 하나다.
+#    ⚠️ 크기는 전부 **임시값**이다.
+matchups:
+  T1: {mine: forward,   theirs: press,     effect: {lambda_own: 0.06},
+       why: "상대 진영에서 돌리는 팀 ↔ 끊지 못하는 상대 → 공격이 자리를 잡는다"}
+  T2: {mine: direct,    theirs: aerial,    effect: {lambda_own: 0.07},
+       why: "롱볼·크로스 팀 ↔ 공중볼 약한 상대 → 그 경로가 그대로 열린다"}
+  T3: {mine: box_entry, theirs: low_block, effect: {lambda_own: 0.05},
+       why: "박스 안에서 만드는 팀 ↔ 깊게 서지 못하는 상대"}
+  T4: {mine: press,     theirs: forward,   effect: {lambda_own: 0.05},
+       why: "많이 끊는 팀 ↔ 상대 진영에서 돌리려는 상대 → 역습 기회가 늘어난다"}
+  T5: {mine: setpiece,  theirs: aerial,    effect: {lambda_own: 0.06},
+       why: "세트플레이 xG 가 큰 팀 ↔ 공중볼 약한 상대(축3 T9 와 짝이다)"}
+  T6: {mine: low_block, theirs: box_entry, effect: {lambda_opp: -0.06},
+       why: "깊게 서는 팀 ↔ 박스 안에서 만들어야 하는 상대 → 상대 λ 를 깎는다"}
+  # T7·T8 — 🔴 **비워 둔다**(지시서가 내용을 주지 않았다 · 지어내지 않는다)
+
+matchup_fit: {n: 0, provisional: true,
+              why: "적합 못 했다 — 리그 전체 경기 통계를 쌓아 둔 자리가 없다"}
+#: 🔴 발동 문턱 — 내 축이 상대 짝 축보다 이 비율 이상 높아야 한다(임시값)
+matchup_gap: 0.25

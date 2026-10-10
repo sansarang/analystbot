@@ -2424,3 +2424,66 @@ def goals_of(j: dict) -> list[dict]:
         })
     out.sort(key=lambda r: (r["minute"], r["added"]))
     return out
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **경기 통계** — 축2(스타일 프로필 6축)의 재료. 실측 2026-10-10
+# ══════════════════════════════════════════════════════════════════
+#
+#  🔴 경기 페이지 `content.stats.Periods.{All,FirstHalf,SecondHalf}.stats` 에
+#     그룹별 표가 있다(실측: 강원–부천). 받은 `key` 들:
+#       Top stats  — `BallPossesion`·`expected_goals`·`total_shots`·
+#                    `ShotsOnTarget`·`touches_opp_box`·`big_chance`·
+#                    `accurate_passes`
+#       Shots      — `shots_off_target`·`blocked_shots`·`shots_inside_box` …
+#       xG         — `xg_open_play`·`xg_set_play`·`xg_non_penalty`·`xgot`
+#       Passes     — `own_half_passes`·`opposition_half_passes`·
+#                    `long_balls_accurate`·`accurate_crosses`·`player_throws`
+#       Defence    — `tackles`·`interceptions`·`shot_blocks`·`clearances`
+#       Duels      — `duel_won`·`ground_duels_won`·**`aerials_won`**·
+#                    `dribbles_succeeded`
+#       Discipline — `yellow_cards`·`fouls`
+#  🔴 **`aerials_won` 이 있다** — §3-3 **T13**(공중볼 약점)이 그것을 기다렸다.
+#  ⚠️ 값 꼴이 섞여 있다: `20`(수) · `'544 (87%)'`(수+백분율) · `None`(그룹 머리).
+#     🔴 그래서 **수와 백분율을 따로** 뽑고 못 읽으면 `None` 이다(0 으로 안 메운다).
+
+
+def stats_of(j: dict, *, period: str = "All") -> dict:
+    """🔴🔴 그 경기의 **통계 표** — `{key: (홈, 원정)}`. 없으면 빈 표.
+
+    값은 `{"n": 수|None, "pct": 백분율|None}` 꼴이다.
+    `period` 는 `All`·`FirstHalf`·`SecondHalf`(§3-2 시간대와 잇는다).
+
+    ⚠️ 그룹 머리 줄(`[None, None]`)은 **버린다** — 값이 아니다.
+    """
+    box = ((_page(j or {}).get("content") or {}).get("stats") or {})
+    rows = ((box.get("Periods") or {}).get(str(period)) or {}).get("stats") or []
+    out: dict[str, tuple] = {}
+    for grp in rows:
+        for one in (dict(grp).get("stats") or []):
+            said = dict(one)
+            key = str(said.get("key") or "")
+            vals = list(said.get("stats") or [])
+            if not key or len(vals) != 2 or all(v is None for v in vals):
+                continue
+            out[key] = tuple(_num(v) for v in vals)
+    return out
+
+
+def _num(said: object) -> dict:
+    """🔴 `20` · `'544 (87%)'` · `'5 (29%)'` → `{"n", "pct"}`. 못 읽으면 둘 다 `None`."""
+    if said is None:
+        return {"n": None, "pct": None}
+    if isinstance(said, (int, float)):
+        return {"n": float(said), "pct": None}
+    text = str(said)
+    hit = re.match(r"\s*([0-9]+(?:\.[0-9]+)?)\s*(?:\(\s*([0-9]+(?:\.[0-9]+)?)\s*%\s*\))?",
+                   text)
+    if not hit:
+        # ⚠️ `'87%'` 처럼 백분율만 오는 칸도 있다
+        got = re.match(r"\s*([0-9]+(?:\.[0-9]+)?)\s*%", text)
+        return {"n": None, "pct": float(got.group(1))} if got else \
+            {"n": None, "pct": None}
+    n = float(hit.group(1))
+    pct = float(hit.group(2)) if hit.group(2) else None
+    return {"n": n, "pct": pct}

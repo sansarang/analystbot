@@ -622,6 +622,31 @@ class StrategyOut(Frozen):
     facts: dict = Field(default_factory=dict)
 
 
+class TacticLine(Frozen):
+    """🔴🔴 §6 — **전술 예측 한 줄**. ⚠️ 모델이 수를 적을 칸은 **없다**.
+
+    > 출력: 팀별 예상 운영, 예상 흐름(전반/후반), **승부처 1개**,
+    > **문장마다 근거 id**.
+
+    🔴 확률·λ 칸이 없다 — *"이야기(LLM 문장)는 확률을 움직이지 못한다"*(§4).
+    """
+
+    #: 🔴 `운영:home`·`운영:away`·`흐름:전반`·`흐름:후반`·`승부처`
+    slot: Literal["운영:home", "운영:away", "흐름:전반", "흐름:후반", "승부처"]
+    text: str
+    #: 🔴 §6 — **문장마다 근거 id**(`L*`·`A*`·`T9`·`T1` …)
+    refs: list[str] = Field(default_factory=list)
+
+
+class TacticOut(Frozen):
+    """🔴 s2f 산출 — 전술 예측 + **검열 결과**(§7 타입 하나)."""
+
+    lines: list[TacticLine] = Field(default_factory=list)
+    #: 🔴 `통과`·`재작성 후 통과`·`버렸다`·`확정 XI 전`·`안 돌았다`
+    audit: str = "안 돌았다"
+    violations: list[str] = Field(default_factory=list)
+
+
 class SpellOut(Frozen):
     """🔴 오픈월드 ⑥-1 — 철자 후보. ⚠️ 이것도 구조화 출력이다(§5 s1)."""
 
@@ -1012,6 +1037,10 @@ class Card(Frozen):
     #      `share`(기여 분해) · `why`
     #  ⚠️ 못 모은 축은 **사유 글자**가 들어 있다(조용히 비우지 않는다).
     matchup: dict = Field(default_factory=dict)
+    #: 🔴🔴 **전술 전문가 예측**(사용자 지시 2026-10-10(셋째) §6) — `TacticOut`
+    #
+    #  ⚠️ **글뿐이다** — 확률 칸이 없다(*"이야기는 확률을 움직이지 못한다"* §4).
+    tactic: TacticOut | None = None
     #: 🔴🔴 **③ 이 움직인 양**(사용자 지시 2026-10-06(6차) ③) — 변수별 로그 오즈 이동
     #
     #  ⚠️ 비면 *"③ 이동 없음 — 우리 열 = 기준"* 을 적는다(빈 줄은 "안 봤다"와 같다).

@@ -30,9 +30,7 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
     """🔴🔴 세 축을 모은다. ⚠️ 못 모은 축은 **사유를 담아** 돌려준다."""
     from app.core import form as _form
     from app.core import goals as _goals
-    out: dict = {"axis2_why": ("🔴 축2(전술 상성 T1~T8)는 **스타일 프로필 6축** "
-                               "자료가 없어 돌지 않는다 — 점유율·패스·압박 지표를 "
-                               "받는 통로가 아직 없다(실측 2026-10-10)")}
+    out: dict = {}
     rows = {}
     for side in ("home", "away"):
         name = str(getattr(ref, f"{side}_name", "") or "")
@@ -42,6 +40,7 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
             continue
         rows[side] = got
     if len(rows) != 2:
+        out["axis2_why"] = "🔴 두 팀 과거 경기를 다 못 받아 축2 를 안 센다"
         out["why"] = "🔴 두 팀 과거 경기를 다 못 받아 **상성을 안 센다**"
         state.note(f"s2e 상성 — {out['why']}")
         return out
@@ -52,6 +51,31 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
     rest = {side: _rest_days(facts, getattr(ref, side)) for side in
             ("home", "away")}
     fired = _goals.fire(prof["home"], prof["away"], rest=rest)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **축2 — 스타일 프로필 6축 + T1~T6**(사용자 지시 §2)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 재료는 **같은 경기 페이지의 통계**다(새 통신이 없다) — 실측 2026-10-10
+    #     에 그 표가 28칸이었다(`expected_goals_set_play`·`aerials_won` 포함).
+    #  🔴 **꺼진 무기**(§2 둘째 줄)는 `strategy.read` 의 핵심 선수 상태로 센다 —
+    #     확정 XI 가 아니면 빈 목록이다(그 사실이 사유에 남는다).
+    from app.core import strategy as _strat
+    from app.core import style as _style
+    styles = {side: _style.profile_of(
+        str(getattr(ref, f"{side}_name", "")), rows[side])
+        for side in ("home", "away")}
+    reads = {side: _strat.read(ref, facts, side=side)
+             for side in ("home", "away")}
+    offs = {side: _style.off_weapons(reads[side], styles[side])
+            for side in ("home", "away")}
+    late = {side: _style.late_weapons(reads[side]) for side in ("home", "away")}
+    fired2 = _style.fire(styles["home"], styles["away"], off=offs)
+    out.update({"style": styles, "fired2": fired2, "off": offs, "late": late,
+                "axis2_why": (
+                    " · ".join(f"{s} {one.why}" for s, one in styles.items())
+                    + f" · 발동 {len(fired2)}건"
+                    + (f" · 꺼진 무기 {offs}" if any(offs.values()) else "")
+                    + (f" · 후반 무기 {late}" if any(late.values()) else ""))})
     # ── 축1 보정 폼(운 요소 할인은 축3 의 T12 가 준다)
     elo = _elo_of(ref, rows)
     cut = {side: _luck_cut(fired, side) for side in ("home", "away")}
@@ -117,7 +141,9 @@ async def _history(net: Any, name: str, *, state: RunState
             them = _d.same_any(str(m["away"]), _d.aliases_of(name), loose=True)
             out.append({"home_name": m["home"], "away_name": m["away"],
                         "mine_home": (mine if mine != them else None),
-                        "goals": fm.goals_of(j)})
+                        "goals": fm.goals_of(j),
+                        # 🔴 §2 — **6축 재료**(경기 통계 · 같은 페이지에서 온다)
+                        "stats": fm.stats_of(j)})
         return out or None
     except Exception as exc:                                # noqa: BLE001
         state.note(f"s2e 과거 경기 — 🔴 터졌다({name}): {exc!r}")

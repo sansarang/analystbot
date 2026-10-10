@@ -55,6 +55,8 @@ def card_text(card: Card, *, debug: bool = False) -> str:
             out.append("\n" + new_facts_block(card))
             # 🔴🔴 §4 — **전략 블록**은 기준 XI·결장 바로 뒤다(같은 명단 얘기다)
             out.append("\n" + strategy_long(card))
+            # 🔴🔴 §6 — 전술 예측은 전략 블록 바로 뒤다(같은 명단 얘기다)
+            out.append("\n" + tactic_long(card))
         # 🔴 **결론 바로 아래**가 논평 자리다(지시 ④)
         if num == "8":
             out.append(_comment(card, debug=debug))
@@ -1115,4 +1117,26 @@ def strategy_long(card: Card) -> str:
                f"경기를 받는 통로가 없다 · 표본 "
                f"{dict(_st.effects().get('coach_pattern') or {}).get('min_sample')}"
                f"경기 미만이면 확률은 안 움직인다)")
+    return "\n".join(out)
+
+
+TACTIC_HEAD = "🎓 전술 전문가 예측"
+
+
+def tactic_long(card: Card) -> str:
+    """🔴🔴 §6 — 긴 카드의 전술 예측. **글뿐이다**(확률을 안 움직인다).
+
+    ⚠️ 못 돌았거나 버린 경우 **그 사유를 적는다**(#3 조용한 0 금지).
+    """
+    got = getattr(card, "tactic", None)
+    said = str(getattr(got, "audit", "") or "")
+    if got is None or said in ("", "안 돌았다"):
+        return f"**{TACTIC_HEAD}** — ⬜ 안 돌렸다"
+    out = [f"**{TACTIC_HEAD}** — 판정 `{said}`"]
+    if said in ("확정 XI 전", "버렸다"):
+        out += [f"- 🔴 {x}" for x in
+                (getattr(got, "violations", None) or [])[:4]]
+        return "\n".join(out)
+    for one in (getattr(got, "lines", None) or []):
+        out.append(f"- **{one.slot}** — {one.text} · 근거 {list(one.refs)}")
     return "\n".join(out)
