@@ -30,24 +30,29 @@ DIRS = (">", "<", ">=", "<=")
 # ══════════════════════════════════════════════════════════════════
 #
 #  칸 뜻: `side` 가 참이면 팀을 지정해야 한다 · `arg` 는 덧붙는 인자의 뜻이다.
+#  🔴🔴 `unit` — **골 수**(`goals`)인가 **확률**(`prob`)인가. ⚠️ 실사고
+#     2026-10-10: 모델이 `무득점확률 > 리그평균` 을 냈고 검증이 **0.20 > 1.26** 을
+#     견주어 *"반박"* 이라 적었다 — 단위가 다르면 그 비교는 **뜻이 없다**.
 METRICS: dict[str, dict] = {
-    "기대득점": {"side": True, "arg": "",
+    "기대득점": {"side": True, "arg": "", "unit": "goals",
                  "why": "그 팀 기대 득점(분포 평균)"},
-    "무득점확률": {"side": True, "arg": "",
+    "무득점확률": {"side": True, "arg": "", "unit": "prob",
                    "why": "그 팀이 **한 골도 못 넣을** 확률"},
     "구간득점": {"side": True, "arg": "구간(`0-30`·`31-60`·`61-90+`)",
-                 "why": "그 팀의 **그 구간** 기대 득점"},
-    "선제골후승리": {"side": True, "arg": "",
+                 "unit": "goals", "why": "그 팀의 **그 구간** 기대 득점"},
+    "선제골후승리": {"side": True, "arg": "", "unit": "prob",
                      "why": "그 팀이 **선제골을 넣었을 때** 이길 확률"},
-    "승무패": {"side": False, "arg": "`home`·`draw`·`away`",
+    "승무패": {"side": False, "arg": "`home`·`draw`·`away`", "unit": "prob",
                "why": "그 결과의 확률"},
-    "오버": {"side": False, "arg": "줄(`1.5`·`2.5`·`3.5`)",
+    "오버": {"side": False, "arg": "줄(`1.5`·`2.5`·`3.5`)", "unit": "prob",
              "why": "총골이 그 줄을 넘을 확률"},
-    "스코어": {"side": False, "arg": "스코어(`1-0`)",
+    "스코어": {"side": False, "arg": "스코어(`1-0`)", "unit": "prob",
                "why": "그 스코어의 확률"},
 }
 #: 🔴 기준에 쓸 수 있는 **말**(수 말고)
 REFS = ("상대", "리그평균")
+#: 🔴🔴 `리그평균` 은 **골 단위 지표에만** 쓴다(그 수가 경기당 한 팀 기대 득점이다)
+LEAGUE_OK = tuple(k for k, v in METRICS.items() if v["unit"] == "goals")
 
 
 def menu() -> str:
@@ -59,6 +64,10 @@ def menu() -> str:
     return ("\n".join(rows)
             + f"\n- 기준(`ref`)은 **수**(`0.35`) 또는 {', '.join(REFS)} 이고, "
               "`리그평균*0.7` 처럼 곱해 쓸 수 있다.\n"
+              f"- 🔴🔴 `리그평균` 은 **{' · '.join(LEAGUE_OK)}** 에만 쓴다"
+              "(그 수는 **경기당 한 팀 기대 득점**이다). **확률 지표**"
+              "(무득점확률·승무패·오버·스코어·선제골후승리)에는 쓰지 마라 — "
+              "단위가 달라 버려진다. 확률에는 **수**(`0.35`)나 `상대` 를 쓴다.\n"
               f"- 방향(`direction`)은 {' · '.join(DIRS)} 중 하나다.")
 
 
@@ -83,8 +92,13 @@ def bad_signal(sig) -> str:
         return f"🔴 `{metric}` 은 **팀을 지정**해야 한다(`home`·`away`)"
     if box["arg"] and not str(getattr(sig, "arg", "") or ""):
         return f"🔴 `{metric}` 은 인자가 있어야 한다 — {box['arg']}"
-    if not str(getattr(sig, "ref", "") or ""):
+    said = str(getattr(sig, "ref", "") or "")
+    if not said:
         return "🔴 기준(`ref`)이 비었다"
+    # 🔴🔴 **단위가 맞아야 한다** — `리그평균`(골 수)을 확률 지표에 쓰지 않는다
+    if "리그평균" in said and metric not in LEAGUE_OK:
+        return (f"🔴 **단위가 다르다** — `리그평균` 은 경기당 한 팀 **기대 득점**"
+                f"이고 `{metric}` 은 **확률**이다. 확률에는 수나 `상대` 를 쓴다")
     return ""
 
 

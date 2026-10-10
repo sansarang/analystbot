@@ -1204,6 +1204,19 @@ SAY_CAP_LINE = 120
 SAY_CAP_ONE = 140
 
 
+def _unlabel(said: object, label: str) -> str:
+    """🔴 글 앞에 모델이 **스스로 붙인 딱지**를 뗀다(`뒤집히는 조건: …`).
+
+    ⚠️ 글자를 고치는 것이 아니다 — **중복된 딱지만** 떼고 나머지는 그대로다.
+    """
+    got = str(said or "").strip()
+    for head in (f"{label}:", f"{label} —", f"{label} -", f"{label}은",
+                 f"{label}는"):
+        if got.startswith(head):
+            return got[len(head):].strip(" :—-")
+    return got
+
+
 def say_block(card: Card) -> str:
     """🔴🔴 §4 — 최종 평 블록. ⚠️ 못 돌았으면 **빈 글자**(사유는 긴 카드가 적는다).
 
@@ -1226,12 +1239,18 @@ def say_block(card: Card) -> str:
         out.append(f" · {_cap(f'{kp.claim} — {kp.mechanism}', SAY_CAP_LINE)}")
     if str(got.flow_first or "") or str(got.flow_second or ""):
         out.append(" 📈 흐름: "
-                   + _cap(f"{got.flow_first} / {got.flow_second}",
+                   + _cap(f"{_unlabel(got.flow_first, '흐름')} / "
+                          f"{_unlabel(got.flow_second, '흐름')}",
                           SAY_CAP_LINE)
-                   + (f"   ⏱ 승부처: {_cap(got.decisive_moment, 60)}"
+                   + (f"   ⏱ 승부처: "
+                      f"{_cap(_unlabel(got.decisive_moment, '승부처'), 60)}"
                       if str(got.decisive_moment or "") else ""))
     if str(got.flip_condition or ""):
-        out.append(f" 🔄 뒤집히는 조건: {_cap(got.flip_condition, 90)}")
+        # 🔴 **딱지를 두 번 안 적는다** — ⚠️ 실측 2026-10-10: 모델이 글 앞에
+        #    `뒤집히는 조건:` 을 스스로 붙여 `🔄 뒤집히는 조건: 뒤집히는 조건: …`
+        #    이 됐다. 같은 일이 흐름·승부처에도 날 수 있어 한 곳에서 떼어 낸다.
+        out.append(f" 🔄 뒤집히는 조건: "
+                   f"{_cap(_unlabel(got.flip_condition, '뒤집히는 조건'), 90)}")
     return "\n".join(out)
 
 

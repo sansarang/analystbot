@@ -135,6 +135,35 @@ def test_v6_시뮬_표가_검증이_읽는_네_칸을_든다():
         assert said["verdict"] != _sg.NA, (sig.metric, said["why"])
 
 
+def test_v6_단위가_다른_기준을_버린다():
+    """🔴🔴 **실사고 2026-10-10** — 모델이 `무득점확률 > 리그평균` 을 냈고 검증이
+    **0.20 > 1.26** 을 견주어 *"반박"* 이라 적었다.
+
+    `리그평균` 은 **경기당 한 팀 기대 득점**(골 수)이고 `무득점확률` 은 **확률**이다
+    — 단위가 다르면 그 비교는 **뜻이 없다**(지지도 반박도 아니다).
+    ⚠️ 돌연변이: `LEAGUE_OK` 검사를 지우면 그 거짓 판정이 돌아온다.
+    """
+    from app.core import signals as _sg
+    from app.core.schema import Signal
+    assert set(_sg.LEAGUE_OK) == {"기대득점", "구간득점"}
+    for metric, arg in (("무득점확률", ""), ("승무패", "home"),
+                        ("오버", "2.5"), ("선제골후승리", "")):
+        sig = Signal(metric=metric, direction=">", ref="리그평균",
+                     side="home", arg=arg)
+        said = _sg.bad_signal(sig)
+        assert "단위가 다르다" in said, (metric, said)
+        got = _sg.check(sig, {"home": 0.4, "no_goal": {"home": 0.2}},
+                        league={"per_team": 1.25})
+        assert got["verdict"] == _sg.NA, (metric, got)
+    # 🔴 골 단위 지표에는 **그대로 쓴다**
+    ok = Signal(metric="기대득점", direction=">", ref="리그평균*0.8",
+                side="home")
+    assert _sg.bad_signal(ok) == ""
+    # 🔴 프롬프트가 그 규칙을 **말한다**
+    from app.core.stages import s6_hypo
+    assert "확률 지표" in s6_hypo.system_prompt()
+
+
 def test_v6_신호없는_줄은_판단_불가다():
     """🔴 §2-2·§4-1 — 신호가 없으면 **줄은 남고** 판정이 `판단 불가` 다.
 

@@ -348,6 +348,18 @@ def test_v6_팀이름_표기를_사실로_준다():
     assert "음역을 지어내지 않는다" in said, "🔴 프롬프트가 음역을 안 막는다"
 
 
+def test_v6_딱지를_두_번_안_적는다():
+    """🔴 ⚠️ 실측 2026-10-10: 모델이 글 앞에 `뒤집히는 조건:` 을 스스로 붙여
+    카드가 `🔄 뒤집히는 조건: 뒤집히는 조건: …` 이 됐다."""
+    from app.core import layer1
+    say = _say(audit="통과", flip_condition="뒤집히는 조건: 김천이 밀리면",
+               flow_first="흐름: 전반 탐색", decisive_moment="승부처: 60분")
+    said = layer1.say_block(_card().model_copy(update={"say": say}))
+    assert "조건: 뒤집히는 조건" not in said, said
+    assert "흐름: 흐름" not in said and "승부처: 승부처" not in said, said
+    assert "김천이 밀리면" in said and "전반 탐색" in said
+
+
 def test_v6_두번_위반이면_코드_템플릿_평이_나온다():
     """🔴 §3 — *"또 위반이면 **코드 템플릿 평**(사실 묶음 상위 근거 셋 + 확률 방향)"*.
 
