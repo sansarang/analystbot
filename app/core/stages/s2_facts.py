@@ -313,11 +313,36 @@ async def _depth(ref: MatchRef, *, net: Any, search: Any,
     if net is None:
         return []
     fn = ingest.context_of(ref.competition, ref.id)
-    if not callable(fn):
-        return []
-    try:
-        raw = fn(ref.id)
-    except Exception:                                       # noqa: BLE001
+    raw: Any = []
+    if callable(fn):
+        try:
+            raw = fn(ref.id)
+        except Exception:                                   # noqa: BLE001
+            raw = []
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **다른 출처로 확정한 축구 경기도 fotmob 깊이를 받는다**
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실사고 2026-10-10(제노아 vs 피오렌티나): S0 가 **fdorg 슬레이트**로
+    #     확정해 `ext_id = fdorg:558588` 이었고, fotmob 깊이는 `fotmob:` 접두만
+    #     받으므로 이 자리가 **빈 목록**을 냈다 → XI·폼·맞대결·순위표가 전부 0,
+    #     **축0 ⬜**(백필이 예측력을 잰 유일한 축)이었다.
+    #  🔴 자료가 없는 것이 아니라 **열쇠가 없었다**(#2 배선). 번호를 푸는 통로는
+    #     `discover.fotmob_id` 다 — 주소·사다리를 여기 적지 않는다(사본 금지).
+    #  ⚠️ **조용히 하지 않는다**(#3) — 이었는지 못 이었는지 보고에 남는다.
+    if not raw and str(getattr(ref, "sport", "") or "") == "soccer":
+        from app.core import discover as _disc
+        try:
+            mid, why = await _disc.fotmob_id(
+                net, home=ref.home_name, away=ref.away_name,
+                day=(ref.kickoff_utc.date() if ref.kickoff_utc else None))
+        except Exception as exc:                            # noqa: BLE001
+            mid, why = "", f"🔴 fotmob 번호 풀이가 죽었다 — {exc!r}"
+        state.note(f"s2 깊이 — 어댑터(`{ref.id}`)가 깊이를 안 준다 → {why}")
+        if mid:
+            from app.collect import fotmob as _fm
+            raw = _fm.sources_context(f"fotmob:{mid}")
+    if not raw:
         return []
     # 🔴 **부품이 무엇을 돌려줄지 타입으로 모른다** — `Iterable` 인지 확인하고 센다.
     #    ⚠️ 모르는 것을 `list()` 에 넣으면 strict 가 맞게 막는다(그 자리가 ① 결함의

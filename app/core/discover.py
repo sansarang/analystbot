@@ -453,6 +453,38 @@ async def _by_team(net, *, home: str, away: str, days: list[date],
     return got
 
 
+async def fotmob_id(net, *, home: str, away: str, day: date | None = None,
+                    ) -> tuple[str, str]:
+    """🔴🔴 **fotmob 경기 번호를 이어 준다** — `(번호, 사유)`.
+
+    ══════════════════════════════════════════════════════════════════
+    🔴 왜 이 함수가 생겼나 — 실사고 2026-10-10 (제노아 vs 피오렌티나)
+    ══════════════════════════════════════════════════════════════════
+
+    S0 가 그 경기를 **fdorg 슬레이트**로 확정했다(`ext_id = fdorg:558588`).
+    그런데 fotmob 깊이(`fotmob.sources_context`)는 **`fotmob:` 접두만** 받는다 →
+    `ingest.context_of` 가 `fdorg` 어댑터를 주고 그 어댑터에는 깊이 함수가 **없다**
+    → `_depth` 가 **빈 목록**을 냈다. 카드 실측:
+
+        XI 없음 · 결장 명단 미확보 · 감독 미확보 · 순위표 없음 · 폼 없음 ·
+        맞대결 없음 · 직전 경기 XI 없음 → **축0 ⬜**(선수 가치 0명)
+
+    🔴 축0 은 백필이 **유일하게 예측력을 잰 축**이다. 즉 fdorg 로 확정된 경기는
+       (= 해외축구 슬레이트의 **거의 전부**) 상성 엔진의 그 축을 통째로 잃었다.
+    ⚠️ 그런데 자료가 **없는 것이 아니었다** — fotmob 에 그 경기 페이지가 있고,
+       봇은 같은 팀의 **과거** 경기 페이지를 11개나 열었다. 열쇠만 없었다(#2 배선).
+
+    🔴 여기서 하는 일은 **번호를 푸는 것뿐**이다(② 사다리를 다시 쓴다 — 사본 금지).
+    """
+    out = await _by_team(net, home=home, away=away,
+                         days=window(day), got=Found(), at="")
+    mid = str((out.match or {}).get("id") or "")
+    if mid:
+        return mid, (f"✅ fotmob 경기 번호 `{mid}` — {out.rung}")
+    return "", ("🔴 fotmob 경기 번호를 못 풀었다 — "
+                + " · ".join(out.tried[-2:] or ["시도 기록 없음"]))
+
+
 def _kicked(m: dict) -> bool:
     """🔴 그 경기는 **이미 킥오프가 지났나**. ⚠️ 시각을 못 읽으면 `False`(안 버린다).
 

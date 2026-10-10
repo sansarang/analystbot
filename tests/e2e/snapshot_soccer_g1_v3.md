@@ -30,23 +30,23 @@
 
 **🔢 변수 (배치 자리)** — 변수 11개 — axis0 1 · axis1 4 · axis2 2 · lambda_const 2 · V2 1 · V3 1 · V4 1 · hypo 10
 - `R1` [absence] hard 무게 1 · 자리 ['axis0', 'axis2', 'hypo']
-    Kim Min-jae is unlikely to play in Tuesday's friendly against Uzbekistan after missing tea · 축0(오늘 XI 전력: 빠진 선수 가치) · 축2(그 선수가 쥔 무기 꺼짐)
+    Kim Min-jae is unlikely to play in Tuesday's friendly against Uzbekistan after missing tea…(잘림) · 축0(오늘 XI 전력: 빠진 선수 가치) · 축2(그 선수가 쥔 무기 꺼짐)
 - `R2` [individual_title] hard 무게 1 · 자리 ['V4', 'hypo']
-    Son Heung-min scored his 59th goal, surpassing Cha Bum-keun to rank No. 1 in the most A-ma · V4 기타
+    Son Heung-min scored his 59th goal, surpassing Cha Bum-keun to rank No. 1 in the most A-ma…(잘림) · V4 기타
 - `R3` [team_stats] soft 무게 0.7 · 자리 ['axis1', 'axis2', 'hypo']
-    The Korean national team started under interim coach Moreno and made a fresh start with a  · 축1 또는 축2 — 내용에 따라(둘 다 열어 두고 축이 쓸 것을 고른다)
+    The Korean national team started under interim coach Moreno and made a fresh start with a …(잘림) · 축1 또는 축2 — 내용에 따라(둘 다 열어 두고 축이 쓸 것을 고른다)
 - `R5` [stakes] soft 무게 0.7 · 자리 ['V2', 'hypo']
     한국은 우즈베키스탄전에서 Son Heung-min이 한 골만 넣으면 남자 대표팀 최다 득점 단독 1위 기록을 달성할 수 있다. · 상성 밖 — V2 동기
 - `R6` [regression] soft 무게 0.7 · 자리 ['axis1', 'hypo']
     한국은 9월 두 경기에서 4-4-2로 1-1을 기록했으며, 로베르토 모레노 감독이 이번 두 경기에서 전술·선수 구성 또는 둘 다의 변화를 줄지 주목된다. · 축1 — 운 요소·xG 대비 성과 보정
 - `S01-home` [recent_pattern] soft 무게 0.7 · 자리 ['axis1', 'hypo']
-    최근 5경기 L L W L D · 득점 평균 0.8(보정 0.25) · 기준 팀당 1.2662골(대회 national_friendly) 대비 득점 적다 · 실점  · 축1 — 보정 폼
+    최근 5경기 L L W L D · 득점 평균 0.8(보정 0.25) · 기준 팀당 1.2662골(대회 national_friendly) 대비 득점 적다 · 실점 …(잘림) · 축1 — 보정 폼
 - `S01-away` [recent_pattern] soft 무게 0.7 · 자리 ['axis1', 'hypo']
-    최근 5경기 L L L W W · 득점 평균 1.8(보정 1.25) · 기준 팀당 1.2662골(대회 national_friendly) 대비 득점 보통 · 실점  · 축1 — 보정 폼
+    최근 5경기 L L L W W · 득점 평균 1.8(보정 1.25) · 기준 팀당 1.2662골(대회 national_friendly) 대비 득점 보통 · 실점 …(잘림) · 축1 — 보정 폼
 - `S02` [h2h_pattern] soft 무게 0.7 · 🔴 **근거 불가**(맥락) · 자리 ['hypo']
     맞대결 9경기 South Korea 6승 3무 0패(상대 0승) · 평균 3.0골 · 상성 밖 — V5 맞대결
 - `S03` [home_field] soft 무게 0.4 · 자리 ['lambda_const']
-    South Korea 홈 경기 — 홈 이점 **수치 없음**(대회 유형 `national_friendly` 의 표가 없다 · 다른 대회 숫자를 빌리지 않는다) · 리그 홈 이점(λ 상수) — 가설 근거로도 쓰지 않는다(지시서 표의 `—`)
+    South Korea 홈 경기 — 홈 **승률** 수치 없음(대회 유형 `national_friendly` 의 승률 표가 없다 · 다른 대회 숫자를 빌리지 않는다…(잘림) · 리그 홈 이점(λ 상수) — 가설 근거로도 쓰지 않는다(지시서 표의 `—`)
 - `S04` [match_type] soft 무게 0.4 · 자리 ['lambda_const', 'hypo']
     친선 — 실험 라인업·교체 다수 가능 · 대회 유형 상수(λ·무승부)
 - `IR11-home` [fatigue] soft 무게 0.7 · 자리 ['V3', 'hypo']
@@ -68,7 +68,7 @@
 - 발동 규칙 0건 — ⬜ **0건**
 - r 가중 {'home': 1.0, 'away': 1.0} · 꺼진 무기 {} · 후반 무기 {}
 
-**🎲 시뮬 스코어 상위 10** — 1-1 12.9% · 0-1 10.0% · 1-0 10.0% · 1-2 8.2% · 2-1 8.2% · 0-0 7.8% · 0-2 6.4% · 2-0 6.4% · 2-2 5.2% · 1-3 3.4%
+**🎲 시뮬 스코어 상위 10** — 1-1 11.6% · 2-1 9.4% · 1-0 9.0% · 1-2 7.3% · 2-0 7.3% · 0-1 7.0% · 2-2 6.0% · 0-0 5.5% · 3-1 5.1% · 0-2 4.5%
 
 **🔎 VerificationTable** — ⬜ 검증 출처가 없다
 
@@ -115,7 +115,7 @@
 - `R6` [regression] 한국은 9월 두 경기에서 4-4-2로 1-1을 기록했으며, 로베르토 모레노 감독이 이번 두 경기에서 전술·선수 구성 또는 둘 다의 변화를 줄지 주목된다. — 승패 **both** · 득점 - · soft · 출처 1곳 · 대상 `formation`
 - `S01-home` [recent_pattern] 최근 5경기 L L W L D · 득점 평균 0.8(보정 0.25) · 기준 팀당 1.2662골(대회 national_friendly) 대비 득점 적다 · 실점 평균 1.2(보통) — 승패 **home** · 득점 ↓ · soft · 출처 구조 사실 · 대상 `recent` · [규칙 S01]
 - `S01-away` [recent_pattern] 최근 5경기 L L L W W · 득점 평균 1.8(보정 1.25) · 기준 팀당 1.2662골(대회 national_friendly) 대비 득점 보통 · 실점 평균 2.6(많다) — 승패 **away** · 득점 - · soft · 출처 구조 사실 · 대상 `recent` · [규칙 S01]
-- `S03` [home_field] South Korea 홈 경기 — 홈 이점 **수치 없음**(대회 유형 `national_friendly` 의 표가 없다 · 다른 대회 숫자를 빌리지 않는다) — 승패 **home** · 득점 - · soft · 출처 구조 사실 · 대상 `home_field` · [규칙 S03]
+- `S03` [home_field] South Korea 홈 경기 — 홈 **승률** 수치 없음(대회 유형 `national_friendly` 의 승률 표가 없다 · 다른 대회 숫자를 빌리지 않는다) · ⚠️ λ 홈 배율은 **득점 실측**을 쓴다(홈 팀 평균 1.6177 · 표본 5274) — 승패 **home** · 득점 - · soft · 출처 구조 사실 · 대상 `home_field` · [규칙 S03]
 - `S04` [match_type] 친선 — 실험 라인업·교체 다수 가능 — 승패 **both** · 득점 - · soft · 출처 구조 사실 · 대상 `match_type` · [규칙 S04]
 - `IR11-home` [fatigue] South Korea 일정 과부하 — 8일 안에 이번이 3번째 경기(직전 [4, 8]일 전) — 승패 **away** · 득점 - · soft · 출처 구조 사실 · 대상 `fatigue:IR11-home` · [규칙 IR11-home]
 
@@ -126,22 +126,22 @@
 - ⬜ 가설이 없다 — DeepSeek 단계가 못 돌았거나 근거 변수가 0개다
 
 **6. 시나리오**
-- **A** (1-0) blowout · 무게 0.1706 [보강] — 🔴 필수형(핸디 ±0.5 대응) — 그 줄의 반대는 상대가 **1점 차**로 이기는 것이다. 없으면 `+0.5` 가 죽을 자리가 없어 1.0 을 받는다 ← 근거 없음
-- **B** (2-0) blowout · 무게 0.1706 [보강] — 🔴 필수형(핸디 ±1.5 대응) — 그 줄의 반대는 상대가 **2점 차**로 이기는 것이다. 없으면 `+1.5` 가 죽을 자리가 없어 1.0 을 받는다 ← 근거 없음
-- **C** (1-1 · 0-0) lock · 무게 0.3762 [보강] — 🔴 축구 필수형(무승부) — 무승부 갈래가 **하나도 없었다** · 근거 S02, S04, IR11-home ← S04, IR11-home
-- **D** (2-1) conceding · 무게 0.1706 [보강] — 🔴 필수형(우세팀 실점 동반) — 우세팀이 이기면서 한 점을 준다. ⚠️ 이 갈래가 없으면 `언더`·`클린시트` 가 **공짜로** 1.0 을 받는다(표: 우세팀_실점_동반형) ← 근거 없음
-- **E** (0-2) away_win · 무게 0.5119 [보강] — 🔴 결과 덮기(away) — 우리 열이 그 결과에 **37%** 를 주는데 그 결과를 그린 갈래가 **하나도 없었다**. ⚠️ 근거 변수가 없어 **바닥값**이고, 모양은 필수형 표의 스코어다 ← 근거 없음
+- **A** (1-0) blowout · 무게 0.213 [보강] — 🔴 필수형(핸디 ±0.5 대응) — 그 줄의 반대는 상대가 **1점 차**로 이기는 것이다. 없으면 `+0.5` 가 죽을 자리가 없어 1.0 을 받는다 ← 근거 없음
+- **B** (2-0) blowout · 무게 0.213 [보강] — 🔴 필수형(핸디 ±1.5 대응) — 그 줄의 반대는 상대가 **2점 차**로 이기는 것이다. 없으면 `+1.5` 가 죽을 자리가 없어 1.0 을 받는다 ← 근거 없음
+- **C** (1-1 · 0-0) lock · 무게 0.3432 [보강] — 🔴 축구 필수형(무승부) — 무승부 갈래가 **하나도 없었다** · 근거 S02, S04, IR11-home ← S04, IR11-home
+- **D** (2-1) conceding · 무게 0.213 [보강] — 🔴 필수형(우세팀 실점 동반) — 우세팀이 이기면서 한 점을 준다. ⚠️ 이 갈래가 없으면 `언더`·`클린시트` 가 **공짜로** 1.0 을 받는다(표: 우세팀_실점_동반형) ← 근거 없음
+- **E** (0-2) away_win · 무게 0.4179 [보강] — 🔴 결과 덮기(away) — 우리 열이 그 결과에 **30%** 를 주는데 그 결과를 그린 갈래가 **하나도 없었다**. ⚠️ 근거 변수가 없어 **바닥값**이고, 모양은 필수형 표의 스코어다 ← 근거 없음
 
 **7b. 확률 세 열**
 - 시장 = 사용자 보드 · 업체 몫 8.6%
 
 | | 기준(②반영) | 우리 | 시장 |
 |---|---|---|---|
-| South Korea 승 | 54% | 37% | 55% (1.66) |
-| 무 | 29% | 27% | 24% (3.79) |
-| Uzbekistan 승 | 17% | 37% | 20% (4.55) |
+| South Korea 승 | 54% | 46% | 55% (1.66) |
+| 무 | 29% | 25% | 24% (3.79) |
+| Uzbekistan 승 | 17% | 30% | 20% (4.55) |
 - Shin 방식(괄호 비교용): 홈 57% · 무 24% · 원정 19%
-- ③ **이동 없음 — 우리 열 = 기준**
+- ③ **변수가 확률을 직접 미는 경로 없음**(C7) — 우리 열은 **S3(상성)** 이 낸 수다
 - 판정: **우리 없음**
     우리 확률을 못 만들었다(시나리오 없음)
     시장 열 — 사용자 보드(피드 없음 — 시장 없음 — odds_api_io — 키가 없다(`ODDS_API_IO_KEY` 비었다) · oddspapi — 키가 없다(`ODDSPAPI_KEY` 비었다) · the_odds_api — `Friendlies` 에 맞는 종목 열쇠가 표에 없다 — 이 피드는 대표팀 친선·CONCACAF·AFC 를 다루지 않는다(실측 2026-10-06))
@@ -156,24 +156,24 @@
 
 | 마켓 | A | B | C | D | E | 생존 | 상한 | 등급 |
 |---|---|---|---|---|---|---|---|---|
-| win home | ○ | ○ | ✗ | ○ | ✗ | 0.3656 | 0.8 | 자료부족 |
-| draw  | ✗ | ✗ | ○ | ✗ | ✗ | 0.2687 | 0.8 | 자료부족 |
-| win away | ✗ | ✗ | ✗ | ✗ | ○ | 0.3657 | 0.8 | 자료부족 |
-| total over 2.5 | ✗ | ✗ | ✗ | ○ | ✗ | 0.1219 | 0.8 | 자료부족 |
-| total under 2.5 | ○ | ○ | ○ | ✗ | ○ | 0.8781 | 0.8 | 자료부족 |
-| handicap home -0.5 | ○ | ○ | ✗ | ○ | ✗ | 0.3656 | 0.8 | 자료부족 |
-| handicap away 0.5 | ✗ | ✗ | ○ | ✗ | ○ | 0.6344 | 0.8 | 자료부족 |
+| win home | ○ | ○ | ✗ | ○ | ✗ | 0.4564 | 0.8 | 자료부족 |
+| draw  | ✗ | ✗ | ○ | ✗ | ✗ | 0.2451 | 0.8 | 자료부족 |
+| win away | ✗ | ✗ | ✗ | ✗ | ○ | 0.2985 | 0.8 | 자료부족 |
+| total over 2.5 | ✗ | ✗ | ✗ | ○ | ✗ | 0.1521 | 0.8 | 자료부족 |
+| total under 2.5 | ○ | ○ | ○ | ✗ | ○ | 0.8479 | 0.8 | 자료부족 |
+| handicap home -0.5 | ○ | ○ | ✗ | ○ | ✗ | 0.4564 | 0.8 | 자료부족 |
+| handicap away 0.5 | ✗ | ✗ | ○ | ✗ | ○ | 0.5436 | 0.8 | 자료부족 |
 
 **8. 결론**
 🔴 **등급 없음 — 자료 얇음**(시나리오 5개가 **전부 코드 보강**이다 — 분석이 그린 갈래가 0개다(가설 단계가 돌지 않았다))
 
 🧭 **종합 논평 — 저득점 — South Korea 쪽에 무게가 실린다**
 South Korea는 Kim Min-jae is unlikely to play in Tuesday's friendly against Uzbekistan after missing team training for a second consecutive day. South Korea Son Heung-min scored his 59th goal, surpassing Cha Bum-keun to rank No. 1 in the most A-match goals in Korean soccer history. South Korea의 일정은 South Korea 일정 과부하 — 8일 안에 이번이 3번째 경기(직전 [4, 8]일 전).
-📈 **예상 흐름**: 무게가 가장 두꺼운 스코어는 1-1 · 0-0 이고, South Korea 쪽이 앞서는 저득점 모양이다
-🎯 **예상 스코어**: 1-1 · 0-1 · 1-0 (시뮬 분포)
+📈 **예상 흐름**: 무게가 가장 두꺼운 스코어는 1-0 · 2-0 이고, South Korea 쪽이 앞서는 저득점 모양이다
+🎯 **예상 스코어**: 1-1 · 2-1 · 1-0 (시뮬 분포)
 
 **9. 방향 판정**
-방향: **South Korea** (세 열 중 2열이 0.15 이상 앞세운다) — 기준 홈 54%/원정 17% · 우리 홈 37%/원정 37% · 시장 홈 55%/원정 20%
+방향: **South Korea** (세 열 중 3열이 0.15 이상 앞세운다) — 기준 홈 54%/원정 17% · 우리 홈 46%/원정 30% · 시장 홈 55%/원정 20%
 
 **10. 방아쇠**
 - ① 확정 XI 에 **Kim Min-jae** 가 있으면 `R1` 가 사라져 → 다시 센다 · 10-06 19:00 KST (확정 XI 가 나오는 T-60분)

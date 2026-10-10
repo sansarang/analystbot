@@ -1086,11 +1086,21 @@ def _ir_home(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
         mine = dict(table.get(kind_of_comp) or {})
         said = mine.get("win_pct_delta")
         if said is None:
-            claim = (f"{ref.home_name} 홈 경기 — 홈 이점 **수치 없음**"
-                     f"(대회 유형 `{kind_of_comp}` 의 표가 없다 · 다른 대회 숫자를 "
-                     f"빌리지 않는다)")
-            state.note(f"s5 {rid} — `{kind_of_comp}` 표가 없다 → **수치 없이** "
-                       f"soft 변수로 둔다(③)")
+            # 🔴🔴 **어느 표가 없는지 적는다** — ⚠️ 실사고 2026-10-10(제노아):
+            #    이 줄이 *"대회 유형 `league:SA` 의 표가 없다"* 라고만 적었고,
+            #    같은 카드의 λ 줄은 **득점 실측**(`home_share 1.3185`)을 쓰고 있었다.
+            #    🔴 없는 것은 **홈 승률(`win_pct_delta`) 표**이고, 득점 쪽 실측은
+            #    **있을 수 있다** — 그 둘을 가려 적지 않으면 카드가 서로 반대로 읽힌다.
+            mine_goals = dict(rules.goal_baseline(kind_of_comp) or {})
+            said_goal = mine_goals.get("home_share")
+            extra = (f" · ⚠️ λ 홈 배율은 **득점 실측**을 쓴다"
+                     f"(홈 팀 평균 {said_goal:g} · 표본 {mine_goals.get('n', '?')})"
+                     if said_goal is not None else "")
+            claim = (f"{ref.home_name} 홈 경기 — 홈 **승률** 수치 없음"
+                     f"(대회 유형 `{kind_of_comp}` 의 승률 표가 없다 · 다른 대회 "
+                     f"숫자를 빌리지 않는다){extra}")
+            state.note(f"s5 {rid} — `{kind_of_comp}` **승률** 표가 없다 → "
+                       f"수치 없이 soft 변수로 둔다(③){extra}")
         else:
             claim = (f"{ref.home_name} 홈 경기 — 홈 이점 **기본값** +{said}%p"
                      f"(출처 대회 `{kind_of_comp}` · {mine.get('basis', '근거 미상')})")

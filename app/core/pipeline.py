@@ -230,6 +230,24 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
         edge["prob"] = prob
         # 🔴🔴 **S3 가 낸 수가 카드의 확률이다**(C2) — 뒤 단계는 안 바꾼다
         layers["ours"] = _PT(home=prob.home, draw=prob.draw, away=prob.away)
+        # 🔴🔴 **§6 판정을 다시 센다** — ⚠️ 실사고 2026-10-10: `_layers` 가 S3
+        #    **앞에서** 돌아 `ours=None` 으로 판정을 적었고, 여기서 수만 덮어
+        #    카드가 *"우리 없음 — 우리 확률을 못 만들었다"* 를 **35% 옆에** 적었다.
+        #    🔴 수를 덮으면 그 수로 **판정도 다시** 센다(한 함수다 · 사본 금지).
+        said6 = compare_block(
+            layers.get("base").model_copy(
+                update={"probs": (adj_p.probs if adj_p.probs is not None
+                                  else base_p.probs)}),
+            layers["ours"], layers.get("market"), hypo, variables,
+            measured=adj_p.measured,
+            label=str(layers.get("market_label") or ""))
+        layers["compare"] = said6["compare"]
+        layers["tilt"] = said6["tilt"]
+        # 🔴 시장 열 이름표는 첫 계산이 이미 붙였다 — 그 줄만 살려 이어 붙인다
+        layers["compare_lines"] = [*said6["_lines"],
+                                   *[x for x in (layers.get("compare_lines")
+                                                 or []) if "시장 열 —" in str(x)]]
+        st.note(f"§6 세 열 판정 **다시** — {said6['compare']}(S3 가 낸 우리 열로)")
         # 🔴 3-4 — 기여는 **리그 평균 대비**다. 그래서 `잠정` 열은 **리그 평균**
         #    확률이다(옛 `잠정`=전략 전 확률이 아니다 · §2: 옛 경로를 지웠다).
         base_sim = _pm.league_base(ref, facts, varset)
@@ -629,6 +647,33 @@ def _comment_layers(got, shape: dict) -> dict:
             "comment_violations": list(got.violations)}
 
 
+def compare_block(base_for_compare, ours, market, hypo,
+                  variables: list, *, measured: bool = False,
+                  label: str = "") -> dict:
+    """🔴🔴 **§6 세 열 판정 — 한 곳**. 카드 칸(`compare`·`compare_lines`·`tilt`).
+
+    ══════════════════════════════════════════════════════════════════
+    🔴 왜 함수로 뺐나 — 실사고 2026-10-10 (제노아 vs 피오렌티나)
+    ══════════════════════════════════════════════════════════════════
+
+    카드 7b 가 **서로 반대인 두 말**을 한 칸 안에서 했다:
+
+        | Genoa 승 | 26% | **35%** | 50% |   ← 우리 열에 수가 **있다**
+        판정: **우리 없음** — 우리 확률을 못 만들었다(시나리오 없음)
+
+    🔴 까닭: `_layers` 는 **S3 앞에서** 한 번 돌아(그때 `ours` 가 `None` 이다)
+       판정을 적고, S3 가 그 뒤에 `layers["ours"]` 만 덮었다. 판정·기울기는
+       **다시 세지 않았다** → 낡은 말이 새 수 옆에 남았다.
+    🔴 그래서 S3 뒤에 **이 함수를 다시 부른다**. 규칙은 한 곳이다(사본 금지).
+    """
+    from app.core import compare
+    verdict, lines = compare.verdict_of(base_for_compare, ours, market)
+    tilt = compare.tilt_reasons(ours, base_for_compare, hypo, variables,
+                                measured=measured)
+    return {"compare": verdict, "tilt": tilt, "_lines": lines,
+            "compare_lines": [*lines, (f"시장 열 — {label}" if label else "")]}
+
+
 def _layers(ref: MatchRef, facts: Facts, variables: list[Variable],
             hypo: HypoSet, base_p: BaseProb, adj_p: AdjProb,
             feed_mk: MarketProb, user_mk: MarketProb, *,
@@ -656,9 +701,9 @@ def _layers(ref: MatchRef, facts: Facts, variables: list[Variable],
     base_for_compare = (base_p.model_copy(update={"probs": start})
                         if start is not None else base_p)
     market, label = s2c_market.column(feed_mk, user_mk)
-    verdict, lines = compare.verdict_of(base_for_compare, ours, market)
-    tilt = compare.tilt_reasons(ours, base_for_compare, hypo, variables,
-                                measured=adj_p.measured)
+    said3 = compare_block(base_for_compare, ours, market, hypo, variables,
+                          measured=adj_p.measured, label=label)
+    verdict, lines, tilt = said3["compare"], said3["_lines"], said3["tilt"]
     reasons = compare.market_reasons(base_p, adj_p, market, variables, ref)
     # 🔴 §5 중복 금지 — ② 가 돌았으면 결장 계열 무게 0 · 전력/폼 절반
     _, notes = compare.weight_rules(variables, measured=adj_p.measured)

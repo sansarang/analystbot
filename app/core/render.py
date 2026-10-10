@@ -985,11 +985,15 @@ def _b7b(card: Card) -> str:
         tot = sum(abs(float(m.get("logodds") or 0)) for m in card.moves)
         rows.append(f"- ③ 이 움직인 양(로그 오즈 합 {tot:.3f}): {said}")
     else:
-        # 🔴 기준이 없으면 우리 열도 **비어 있다**(지시 2026-10-09 ③) — 종전 문구
-        #    *"기준도 없어 시나리오 비율이다"* 는 그 방식을 걷은 뒤로 **거짓**이다.
-        rows.append("- ③ **이동 없음 — 우리 열 = 기준**"
-                    if card.base_prob.probs is not None else
-                    "- ③ **우리 열이 비었다 — 기준이 없다**"
+        # 🔴🔴 **"우리 열 = 기준" 은 거짓이었다** — ⚠️ 실사고 2026-10-10(제노아):
+        #    기준 26/30/45 · 우리 35/30/35 가 **같은 표에** 적혀 있는데 그 아래
+        #    줄이 *"우리 열 = 기준"* 이라고 했다. 🔴 상성 엔진 뒤로 우리 열은
+        #    **S3(상성+시뮬)** 이 낸 수이고 기준(Elo)과 **다른 길**이다(C7: 변수가
+        #    로그 오즈를 미는 ③ 경로를 지웠다 — 그래서 `moves` 가 늘 비었다).
+        rows.append("- ③ **변수가 확률을 직접 미는 경로 없음**(C7) — "
+                    "우리 열은 **S3(상성)** 이 낸 수다"
+                    if card.our_prob is not None else
+                    "- ③ **우리 열이 비었다** — S3 가 확률을 못 셌다"
                     "(시나리오 비율을 우리 열로 쓰지 않는다 · 지시 ③)")
     if card.compare:
         rows.append(f"- 판정: **{card.compare}**")
@@ -1424,7 +1428,12 @@ def vars_long(card: Card) -> str:
             f"- `{one.id}` [{one.type}] {one.hardness} 무게 {one.weight:g}"
             + (" · 🔴 **근거 불가**(맥락)" if one.context_only else "")
             + f" · 자리 {one.places or '**없다**'}")
-        out.append(f"    {one.claim[:90]}"
+        # 🔴 **자른 자리를 말줄임으로 알린다** — ⚠️ 실측 2026-10-10: 90자 자리가
+        #    문장 가운데를 잘라 *"…다른 대회 숫자를 빌리지 않는다 · 리그 홈 이점"*
+        #    처럼 **괄호가 안 닫힌 채 완결된 문장처럼** 읽혔다(#3 조용한 잘림).
+        said_claim = str(one.claim or "")
+        out.append(f"    {said_claim[:90]}"
+                   + ("…(잘림)" if len(said_claim) > 90 else "")
                    + (f" · {one.why}" if one.why else ""))
     for said in got.fails:
         out.append(f"- {said}")

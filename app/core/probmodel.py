@@ -110,7 +110,7 @@ def league_mean(facts, *, ref=None) -> tuple[float | None, str]:
                   f"`{kind}` 표도 없다) — S3 를 안 돈다")
 
 
-def home_mul(facts, varset) -> tuple[float, str]:
+def home_mul(facts, varset, *, ref=None) -> tuple[float, str]:
     """🔴🔴 3-1 — **홈 이점(리그 실측)**. ⚠️ 없으면 **1.0**(다른 대회에서 안 빌린다).
 
     🔴 실측은 `config/goal_baselines.yaml` 의 `home_share` 다 — *"홈 개최 경기의
@@ -122,7 +122,13 @@ def home_mul(facts, varset) -> tuple[float, str]:
     from app import rules
     from app.core import matchup as _m
     box = dict(_m.table().get("lambda_model") or {})
-    kind = _kind(None, facts)
+    # 🔴🔴 **`ref` 를 받는다** — ⚠️ 실사고 2026-10-10(제노아 vs 피오렌티나):
+    #    `ref` 없이 부르면 `_RefShim` 이 대회 이름을 **빈 글자**로 주고, 그래서
+    #    리그 평균은 `league:SA`(표본 810)를 보는데 홈 배율은 `` 를 봤다 —
+    #    **같은 모형 안에서 열쇠가 둘**이었다. 실측 `home_share 1.3185 ÷ 1.2592
+    #    = ×1.047` 이 있었는데 *"실측 없음 → 1.0"* 으로 버려졌고, 카드의 S03 줄은
+    #    *"`league:SA` 의 표가 없다"* 라고 **거짓**을 적었다(표는 있다).
+    kind = _kind(ref, facts)
     said = rules.goal_baseline(kind)
     share, per = said.get("home_share"), rules.goal_share(kind)
     rows = [one for one in (varset.of("lambda_const") if varset else [])
@@ -157,7 +163,7 @@ def run(ref, facts, mr, varset, *, edge: dict | None = None,
     got.provisional = bool(fit.get("provisional", True))
     beta = float(conf.get("beta") or 0.0)
     cap = float(conf.get("cap_pct") or 35.0) / 100.0
-    mul, why_home = home_mul(facts, varset)
+    mul, why_home = home_mul(facts, varset, ref=ref)
     # 🔴 3-1 — 축 차 하나로 두 팀 λ 를 **반대 방향으로** 기울인다
     gaps = mr.gaps()
     weights = dict(_m.table().get("weights") or {})
@@ -249,6 +255,6 @@ def league_base(ref, facts, varset) -> dict | None:
     mean, _why = league_mean(facts, ref=ref)
     if mean is None:
         return None
-    mul, _said = home_mul(facts, varset)
+    mul, _said = home_mul(facts, varset, ref=ref)
     out = _sim.run(mean * mul, mean)
     return {"home": out.home, "draw": out.draw, "away": out.away}

@@ -609,3 +609,92 @@ def test_v7_창_안이_0건이면_다음_경기를_적는다(monkeypatch):
     said = " · ".join(out.tried)
     assert "창" in said and "0건" in said, said
     assert "Roma vs Genoa" in said, "🔴 다음 경기를 안 적었다"
+
+
+def test_v7_fdorg_로_확정한_축구_경기도_fotmob_깊이를_받는다(monkeypatch):
+    """🔴🔴 **실사고 2026-10-10**(제노아 vs 피오렌티나) — S0 가 **fdorg 슬레이트**로
+    확정해 `ext_id = fdorg:558588` 이었다. fotmob 깊이는 `fotmob:` 접두만 받으므로
+    `_depth` 가 **빈 목록**을 냈고, 카드가 이렇게 나왔다:
+
+        XI 없음 · 결장 명단 미확보 · 감독 미확보 · 순위표 없음 · 폼 없음 ·
+        맞대결 없음 → **축0 ⬜**(백필이 예측력을 잰 **유일한** 축)
+
+    🔴 자료가 없는 것이 아니라 **열쇠가 없었다**(#2 배선).
+    ⚠️ 돌연변이: `_depth` 의 fotmob 번호 풀이를 지우면 해외축구 슬레이트 경기가
+       다시 깊이 0 이 된다.
+    """
+    import inspect
+
+    from app.collect import fotmob as fm
+    from app.core import discover as _d
+    from app.core.stages import s2_facts
+
+    said = inspect.getsource(s2_facts._depth)
+    assert "discover" in said and "fotmob_id" in said, (
+        "🔴 `_depth` 가 fotmob 경기 번호 풀이를 안 부른다 — fdorg 로 확정한 "
+        "경기는 깊이가 0 이 된다")
+    assert "sport" in said, "🔴 축구에만 걸어야 한다(야구·하키에 축구 페이지 금지)"
+    # 🔴 **조용히 하지 않는다**(#3) — 이었는지 못 이었는지 보고에 남는다
+    assert "state.note" in said, "🔴 번호를 풀었는지 보고에 안 적는다"
+    # 🔴 번호 풀이는 **② 사다리를 다시 쓴다**(사본 금지)
+    bridge = inspect.getsource(_d.fotmob_id)
+    assert "_by_team" in bridge, "🔴 사다리를 베꼈다 — ② 를 다시 쓰지 않는다"
+    # 🔴 접두가 붙으면 fotmob 깊이가 **열린다**(그 둘이 맞물려야 고쳐진 것이다)
+    assert fm.sources_context("fdorg:558588") == []
+    got = fm.sources_context("fotmob:5181853")
+    assert got and "5181853" in got[0].url, got
+
+
+def test_v7_판정이_S3_의_우리_열로_다시_세진다():
+    """🔴🔴 **실사고 2026-10-10**(제노아) — 카드 7b 가 한 칸에서 서로 반대로 말했다:
+
+        | Genoa 승 | 26% | **35%** | 50% |   ← 우리 열에 수가 **있다**
+        판정: **우리 없음** — 우리 확률을 못 만들었다(시나리오 없음)
+
+    🔴 `_layers` 가 **S3 앞에서** 돌아(그때 `ours=None`) 판정을 적고, S3 는
+       `layers["ours"]` 만 덮었다. ⚠️ 돌연변이: S3 뒤의 `compare_block` 재계산을
+       지우면 그 모순이 **그대로 돌아온다**.
+    """
+    import inspect
+
+    from app.core import pipeline as _pl
+
+    said = inspect.getsource(_pl)
+    i_set = said.index('layers["ours"] = _PT(')
+    after = said[i_set:i_set + 1400]
+    assert "compare_block(" in after, (
+        "🔴 S3 가 우리 열을 덮은 뒤 §6 판정을 **다시 세지 않는다** — "
+        "낡은 '우리 없음' 이 새 수 옆에 남는다")
+    assert 'layers["compare"]' in after and 'layers["tilt"]' in after
+    # 🔴 규칙은 **한 곳**이다 — `_layers` 도 같은 함수를 쓴다(사본 금지)
+    assert "compare_block(" in inspect.getsource(_pl._layers)
+
+
+def test_v7_홈_배율이_리그_평균과_같은_열쇠를_본다():
+    """🔴🔴 **실사고 2026-10-10**(제노아) — 같은 모형 안에서 **열쇠가 둘**이었다.
+
+        [S3] 대회 유형 `league:SA` 실측 평균 2.5185(표본 810)
+             · 🔴 홈 이점 **실측 없음**(대회 ``) — 배율 1.0
+
+    🔴 `home_mul` 이 `ref` 없이 `_kind(None, …)` 를 불러 `_RefShim`(대회 이름이
+       **빈 글자**)을 썼다. 실측 `home_share 1.3185 ÷ 1.2592 = ×1.047` 이 있었는데
+       버려졌다. ⚠️ 돌연변이: `ref=ref` 를 떼면 다시 1.0 이 된다.
+    """
+    import inspect
+
+    from app import rules
+    from app.core import probmodel as _pm
+
+    # 🔴 **그 표가 있다**(없는 것을 고친 척하지 않는다 — 실측)
+    box = dict(rules.goal_baseline("league:SA") or {})
+    assert box.get("home_share"), box
+    per = rules.goal_share("league:SA")
+    assert per and abs(float(box["home_share"]) / float(per) - 1.047) < 0.01
+
+    assert "ref=None" in inspect.signature(_pm.home_mul).__str__() or (
+        "ref" in inspect.signature(_pm.home_mul).parameters)
+    said = inspect.getsource(_pm)
+    assert said.count("home_mul(facts, varset, ref=ref)") == 2, (
+        "🔴 `home_mul` 을 `ref` 없이 부르는 자리가 남았다 — 그 자리는 대회 이름이 "
+        "빈 글자가 되어 홈 이점을 **조용히 버린다**")
+    assert "_kind(ref, facts)" in inspect.getsource(_pm.home_mul)
