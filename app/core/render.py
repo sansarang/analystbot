@@ -57,6 +57,8 @@ def card_text(card: Card, *, debug: bool = False) -> str:
             out.append("\n" + strategy_long(card))
             # 🔴🔴 §6 — 전술 예측은 전략 블록 바로 뒤다(같은 명단 얘기다)
             out.append("\n" + tactic_long(card))
+            # 🔴🔴 §5(셋째) — **상성 자세히**는 그 예측의 재료다(바로 뒤)
+            out.append("\n" + matchup_long(card))
         # 🔴 **결론 바로 아래**가 논평 자리다(지시 ④)
         if num == "8":
             out.append(_comment(card, debug=debug))
@@ -1140,3 +1142,136 @@ def tactic_long(card: Card) -> str:
     for one in (getattr(got, "lines", None) or []):
         out.append(f"- **{one.slot}** — {one.text} · 근거 {list(one.refs)}")
     return "\n".join(out)
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 §5(셋째 지시서) — **긴 카드의 상성 자세히**
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 긴 카드: **골 목록 표(분·유형·상태·xG), 시간대 분포, 리드 유지력·추격력,
+#  > 발동 규칙과 적합 효과.**
+#
+#  🔴 네 덩이를 **그 순서로** 적는다. 수는 `s2e_matchup` 이 센 것뿐이고 여기서
+#     다시 세지 않는다(사본 금지).
+#  ⚠️ 못 모은 축은 **사유를 적는다**(#3 조용한 0 금지).
+
+EDGE_LONG_HEAD = "⚔️ 상성 세 축 (자세히)"
+#: 🔴 유형 어휘를 사람 말로 — ⚠️ `미상` 은 `미상` 으로 남긴다(open 으로 밀지 않는다)
+KIND_KO = {"open": "필드골", "counter": "역습", "setpiece": "세트피스",
+           "penalty": "PK", "own_goal": "자책골", "미상": "미상"}
+
+
+def matchup_long(card: Card) -> str:
+    """🔴🔴 §5 — 상성 네 덩이. **못 돌았으면 사유 한 줄**."""
+    box = dict(getattr(card, "matchup", None) or {})
+    if not box:
+        return f"**{EDGE_LONG_HEAD}** — ⬜ 안 돌렸다"
+    if not box.get("profile"):
+        return (f"**{EDGE_LONG_HEAD}** — ⬜ "
+                + str(box.get("why") or "세 축을 못 모았다"))
+    m = card.match
+    names = {"home": str(m.home_name or ""), "away": str(m.away_name or "")}
+    out = [f"**{EDGE_LONG_HEAD}**"]
+    out += _goal_table(box, names)
+    out += _bucket_rows(box, names)
+    out += _flow_rows(box, names)
+    out += _fired_rows(box, names)
+    return "\n".join(out)
+
+
+def _goal_table(box: dict, names: dict) -> list[str]:
+    """🔴 §5 ① **골 목록 표** — 분·유형·상태·xG. 경기별로 묶어 적는다."""
+    tab = dict(box.get("table") or {})
+    if not tab:
+        return ["- 골 목록 — ⬜ **표를 못 만들었다**(경기 페이지 타임라인 미확보)"]
+    out = []
+    for side in ("home", "away"):
+        rows = list(tab.get(side) or [])
+        if not rows:
+            out.append(f"- **{names[side]}** 골 목록 — ⬜ **0건**")
+            continue
+        out.append(f"- **{names[side]}** 골 {len(rows)}건 (분·유형·상태·xG)")
+        seen: list[str] = []
+        for one in rows:
+            key = f"{one.get('opp')}|{one.get('home')}"
+            if key not in seen:
+                seen.append(key)
+                out.append(f"    {'홈' if one.get('home') else '원정'} "
+                           f"vs {one.get('opp')}")
+            xg = one.get("xg")
+            out.append(
+                f"      {'득' if one.get('mine') else '실'} "
+                f"{int(one.get('minute') or 0)}' · "
+                f"{KIND_KO.get(str(one.get('kind')), str(one.get('kind')))} · "
+                f"{one.get('state')} · "
+                + (f"xG {float(xg):.2f}" if xg is not None else "xG 없음")
+                + (" · 🎲 운 요소" if one.get("lucky") else "")
+                + (" · 헤더" if one.get("header") else ""))
+    return out
+
+
+def _bucket_rows(box: dict, names: dict) -> list[str]:
+    """🔴 §5 ② **시간대 분포** — 0-30 / 31-60 / 61-90+ 득점·실점."""
+    prof = dict(box.get("profile") or {})
+    out = ["- **시간대 분포**(§3-2)"]
+    for side in ("home", "away"):
+        one = prof.get(side)
+        if one is None:
+            out.append(f"    {names[side]} — ⬜ 프로필 없음")
+            continue
+        for what, got in (("득점", one.scored), ("실점", one.conceded)):
+            if not got.n:
+                out.append(f"    {names[side]} {what} — ⬜ **0건**")
+                continue
+            said = " · ".join(
+                f"{k} {int(v)}건({float(v) / got.n:.0%})"
+                for k, v in sorted(dict(got.by_bucket).items()))
+            out.append(f"    {names[side]} {what} {got.n}골 — {said}")
+    return out
+
+
+def _flow_rows(box: dict, names: dict) -> list[str]:
+    """🔴 §5 ③ **리드 유지력 · 추격력** — 표본을 함께 적는다(§3-4)."""
+    prof = dict(box.get("profile") or {})
+    out = ["- **리드 유지력 · 추격력**(§3-2)"]
+    for side in ("home", "away"):
+        one = prof.get(side)
+        if one is None:
+            out.append(f"    {names[side]} — ⬜ 프로필 없음")
+            continue
+        hold, back = one.hold_rate(), one.comeback_rate()
+        out.append(
+            f"    {names[side]} — 리드 유지력 "
+            + (f"{hold:.0%} {dict(one.led_first)}" if hold is not None
+               else "⬜ **선제골 경기 0건**")
+            + " · 추격력 "
+            + (f"{back:.0%} {dict(one.trailed_first)}" if back is not None
+               else "⬜ **선실점 경기 0건**"))
+    return out
+
+
+def _fired_rows(box: dict, names: dict) -> list[str]:
+    """🔴 §5 ④ **발동 규칙과 적합 효과** — 축2(T1~T6)·축3(T9~T13) 둘 다.
+
+    🔴 `관찰만` 은 **확률을 안 움직인다**(§3-4) — 그 말을 그대로 적는다.
+    🔴 임시값 표시는 `Fired.why` 가 들고 온다(사본 금지 · 금지 조항: 적합 없는
+       계수를 표시 없이 쓰지 않는다).
+    """
+    out = ["- **발동 규칙과 적합 효과**(§2 T1~T6 · §3-3 T9~T13)"]
+    rows = list(box.get("fired2") or []) + list(box.get("fired") or [])
+    if not rows:
+        out.append("    ⬜ **발동 0건** — 두 팀 사이 비교에서 문턱을 넘은 규칙이 없다")
+    for one in rows:
+        moved = dict(one.moves())
+        out.append(
+            f"    `{one.rule}` {names.get(one.side, one.side)} — {one.text}"
+            + (f" · 효과 {moved}" if moved
+               else f" · **{goals_watch()}** — 확률 미반영")
+            + (f" · {one.why}" if one.why else ""))
+    return out
+
+
+def goals_watch() -> str:
+    """🔴 `관찰만` 글자는 `app/core/goals.py` 하나가 든다(사본 금지)."""
+    from app.core import goals as _g
+    return str(_g.WATCH_ONLY)

@@ -86,6 +86,10 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
     pool = [f.index() for f in form.values() if f.index() is not None]
     for side, one in form.items():
         one.pct_att = _form.percentile(one.index(), pool)
+    # 🔴🔴 §5 — 긴 카드가 적는 **골 목록 표**(분·유형·상태·xG). 같은 함수들로
+    #    세므로 표와 비중이 어긋나지 않는다(`goals.table_of`).
+    out["table"] = {side: _goals.table_of(rows[side])
+                    for side in ("home", "away")}
     out.update({"form": form, "profile": prof, "fired": fired, "rest": rest,
                 "why": (f"축1 폼 {', '.join(f'{s} {f.index()}' for s, f in form.items())}"
                         f" · 축3 발동 {len(fired)}건")})

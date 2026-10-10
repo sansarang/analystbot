@@ -186,6 +186,40 @@ def profile_of(team_name: str, rows: list[dict]) -> Profile:
     return got
 
 
+def table_of(rows: list[dict]) -> list[dict]:
+    """🔴🔴 §3-1 — **골 하나하나의 표**. 긴 카드(§5)가 그대로 적는다.
+
+    한 줄 꼴: `{opp, home, minute, kind, state, bucket, xg, mine, lucky,
+    header}` — `mine` 이 참이면 **우리 득점**, 거짓이면 **실점**이다.
+
+    🔴 유형·상태·시간대·운 판정은 **위 함수들 하나씩**이 든다(사본 금지) —
+       `profile_of` 가 세는 것과 **같은 함수**라 표와 비중이 어긋나지 않는다.
+    ⚠️ `mine_home` 이 없는 줄은 `profile_of` 와 **같이** 건너뛴다.
+    """
+    out: list[dict] = []
+    for row in (rows or []):
+        box = dict(row)
+        if box.get("mine_home") is None:
+            continue
+        mine_home = bool(box.get("mine_home"))
+        opp = str((box.get("away_name") if mine_home
+                   else box.get("home_name")) or "")
+        for g in list(box.get("goals") or []):
+            mine = bool(g.get("home")) == mine_home
+            # 🔴 자책골은 **들어간 쪽**의 실점이다(`_one_match` 와 같은 규칙)
+            if g.get("own_goal"):
+                mine = not mine
+            out.append({
+                "opp": opp, "home": mine_home,
+                "minute": int(g.get("minute") or 0),
+                "kind": kind_of(g), "state": state_of(g),
+                "bucket": bucket_of(g),
+                "xg": (None if g.get("xg") is None else float(g["xg"])),
+                "mine": mine, "lucky": is_lucky(g)[0],
+                "header": is_header(g)})
+    return out
+
+
 def _one_match(got: Profile, goals: list[dict], *, mine_home: bool) -> None:
     """🔴 한 경기의 골들을 프로필에 더한다 + 경기 흐름(선제골·선실점)을 센다."""
     first = None
