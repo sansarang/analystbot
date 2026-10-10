@@ -297,11 +297,43 @@ def _one(c: VarCandidate, ref: MatchRef, by_id: dict[str, Doc], *,
         state.drop(what, DropReason.DATE_MISSING,
                    f"{doc.id} 발행일이 없다({doc.url[:50]})")
         return None
-    post = verify.not_post_game(doc.title, doc.body)
-    if not getattr(post, "ok", True):
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **경기 후 기사인지는 날짜가 말한다 — 낱말이 아니다**
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실사고 2026-10-10: `verify.POST_GAME_MARKS` 에 맨 `승리`·`패배`·
+    #     `역전승` 이 들어 있어 **한국어 미리보기 기사가 전부 떨어졌다**
+    #     (*"무승 깨는 **대역전승**"* · *"서울전 2연승 도전"* 은 **지난 경기**
+    #     얘기다). FC서울–제주 실행에서 `post_match` **7건**이 그것이고, 그래서
+    #     🆕 새 사실이 0건이었다.
+    #  🔴 우리는 **발행일과 킥오프를 둘 다 안다**(위에서 발행일 없는 Doc 은 이미
+    #     버렸다). 발행이 킥오프보다 뒤면 경기 후 기사다 — 그것이 정확하다.
+    #  ⚠️ 발행일이 **날짜만**(시각 00:00)이면 그 비교로는 못 가른다 — 그때만
+    #     낱말 검사로 떨어진다(fail-closed).
+    said_when = doc.published_at
+    if said_when >= ref.kickoff_utc:
         state.drop(what, DropReason.POST_MATCH,
-                   str(getattr(post, "why", ""))[:110])
+                   f"발행 {said_when:%Y-%m-%d %H:%M}Z 가 킥오프 "
+                   f"{ref.kickoff_utc:%Y-%m-%d %H:%M}Z **뒤**다")
         return None
+    date_only = (said_when.hour == 0 and said_when.minute == 0
+                 and said_when.second == 0)
+    if date_only:
+        # 🔴🔴 **낱말만으로 버리지 않는다** — 두 팀 + 스코어 + 종료 낱말이 **한
+        #    문장에** 있어야 한다(규칙은 `verify.ended_this_match` 하나다).
+        #
+        #  ⚠️ 실사고 2026-10-10: `verify.not_post_game` 은 맨 `승리`·`패배`·
+        #     `역전승` 을 보고 버렸다 — 한국어 미리보기(*"무승 깨는 **대역전승**"*
+        #     는 **지난 경기** 얘기다)가 FC서울–제주 실행에서 **38건** 떨어졌고
+        #     그래서 🆕 새 사실이 0건이었다.
+        from app.core.stages.s3_docs import names_of
+        got, said = verify.ended_this_match(f"{doc.title}\n{doc.body}",
+                                            names_of(ref))
+        if got:
+            state.drop(what, DropReason.POST_MATCH,
+                       f"발행 시각이 **날짜뿐**이고 본문이 이 경기 결과를 "
+                       f"말한다 — {said[:80]}")
+            return None
     if not _mentions(c.subject, doc, ref):
         state.drop(what, DropReason.IDENTITY_MISMATCH,
                    f"{doc.id} 본문이 `{c.subject}` 를 말하지 않는다")

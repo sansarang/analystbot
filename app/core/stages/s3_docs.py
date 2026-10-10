@@ -75,6 +75,21 @@ def queries_for(sub: Any, ref: MatchRef) -> list[tuple[str, str]]:
                    if str(getattr(sub, "team_key", "")) == ref.home
                    else (ref.away_name, ref.home_name))
 
+    def declared(lang: str) -> list[str]:
+        """🔴🔴 §3-1 — 그 하위가 **표에 적어 둔** 개념 낱말들(그 언어로).
+
+        ⚠️ 실측 2026-10-10(FC서울–제주): 같은 경기에서 `결장` 은 **3건**인데
+           `복귀` 는 **18건** · `선발 명단` 은 16건이었다 — 개념에 따라 수확이
+           다섯 배 갈린다. 🔴 그래서 F 는 쓸 개념을 **표에 적고** 그 순서로 돈다.
+        ⚠️ 이 칸이 비면 아래 `word()` 가 `kinds` 에서 유도한다(A~D 가 그렇다).
+        """
+        out: list[str] = []
+        for concept in (getattr(sub, "words", None) or ()):
+            got = rules.local_words(str(concept), lang)
+            if got and str(got[0]) not in out:
+                out.append(str(got[0]))
+        return out
+
     def word(lang: str) -> str:
         # 🔴🔴 **카탈로그 이름으로 묻는다** — 실측 2026-10-06: 유형군 이름
         #    (`absence_def`)은 카탈로그에 없어서 개념 낱말이 **빈 글자**였고,
@@ -95,13 +110,28 @@ def queries_for(sub: Any, ref: MatchRef) -> list[tuple[str, str]]:
     #       달라져 녹음이 전부 빗나갔다(기사 변수 0개). 🔴 §4-4 의 *"한국 리그는
     #       한국어 허용"* 은 **2차 현지어 질의**가 이미 지킨다.
     one = "en"
+    # 🔴 표에 적힌 개념이 있으면 **1차(영어)도 그 개념**으로 묻는다(§3-1)
+    #    ⚠️ 없으면 `kinds` 에서 유도한다(A~D 가 그렇다 · 그 길은 그대로다)
+    said_one = (declared(one) or [word(one)])[0] if True else word(one)
     out: list[tuple[str, str]] = [
-        (" ".join(x for x in (mine, other, word(one)) if x), one)]
+        (" ".join(x for x in (mine, other, said_one) if x), one)]
     # 🔴 **현지어 질의의 언어**다(§4-4 의 1차 언어가 아니다 · §3-1 "현지어+영어").
     #    ⚠️ 실사고 2026-10-10: `first_lang` 을 썼더니 `K-League 1` 이 손 목록에
     #       없어 한국어 질의가 **안 나갔다**(새 사실 0건의 원인이었다).
     lang = _st.team_lang(mine) or _st.local_lang_of(
         league=ref.competition, teams=(mine, other))
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **표에 적힌 개념이 있으면 그것들로 돈다**(§3-1 · 하위 F)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 현지어로 **개념마다 한 줄** — 상한(하위당 검색 3회)까지.
+    #  ⚠️ 상한을 넘기지 않는다: 1차 영어 + 현지어 둘 = 3회.
+    said_cap = int(_sub_cfg().get("search") or 3)
+    if lang and declared(lang):
+        for one_word in declared(lang)[:max(0, said_cap - len(out))]:
+            a, b = _st.local_name(mine, lang), _st.local_name(other, lang)
+            out.append((" ".join(x for x in (a, b, one_word) if x), lang))
+        return out[:said_cap]
     if lang and lang != one and word(lang):
         out.append((" ".join(x for x in (mine, other, word(lang)) if x), lang))
         # ══════════════════════════════════════════════════════════════
@@ -502,80 +532,32 @@ async def _fetch(sub: Any, ref: MatchRef, kept: list[tuple[Any, str]], *,
     return out
 
 
-#: 🔴 **끝난 경기를 말하는 낱말** — 스코어 숫자 하나로는 모자란다(배당·시각·
-#   순위도 `2-1` 꼴로 적힌다). 🔴 그래서 **스코어 + 종료 낱말**을 함께 본다.
-RESULT_WORDS = (
-    "최종 스코어", "경기 종료", "풀타임", "승리를 거뒀", "패배를 안", "무승부로",
-    # 🔴🔴 **실측으로 늘렸다**(2026-10-10 · 강원–부천 실행에서 받은 실제 기사)
-    #
-    #  ⚠️ `news.jkn.co.kr/post/1014517` — *"강원, 후반 두 골로 부천 제압 … 부천FC를
-    #     **2-0으로 꺾었다**"*. 🔴 위 낱말 어느 것도 안 걸렸다 — 한국 매체는
-    #     *"꺾었다·제압·승리했다·무릎 꿇"* 으로 쓴다.
-    #  🔴 **기억으로 적지 않았다** — 받은 글에 있던 꼴만 넣고, 늘릴 때도 실측으로
-    #     한다(그 사실을 여기 적는다).
-    "꺾었", "제압", "승리했", "패했", "무승부를 기록", "역전승", "완승", "신승",
-    "final score", "full-time", "full time", "ft:", "beat ", "defeated ",
-    "won ", "drew ", "試合終了", "勝利", "敗れ", "引き分け",
-    "resultado final", "venció", "empató", "derrotó",
-)
-#: 🔴 스코어 꼴 — `2-1`·`2 : 1`·`2–1`(en dash). ⚠️ 앞뒤가 숫자면 안 센다(날짜·시각)
-_SCORE = re.compile(r"(?<![\d:.])([0-9])\s*[-–:]\s*([0-9])(?![\d:.])")
-
-
+#: 🔴 **끝난 경기를 말하는 낱말**과 "이 경기가 끝났다" 판정은 `app/verify.py` 가
+#   원본이다(사본 금지) — s3 와 s5 가 **같은 규칙**을 써야 한다.
+#   ⚠️ 종전엔 여기 `RESULT_WORDS` 가 따로 있어 s5 의 `POST_GAME_MARKS` 와 갈렸다.
 def premature_result(body: str, ref: MatchRef) -> tuple[bool, str]:
-    """🔴🔴 §6 — **킥오프 전인데 최종 스코어를 적는 글인가**. `(버리나, 왜)`.
+    """🔴🔴 §3-3 — **킥오프 전인데 이 경기 결과를 적는 글인가**. `(버리나, 왜)`.
 
-    > 경기 전 기사에 **결과 스코어가 적혀 있으면** 그 문서는 버린다.
+    > 기사 시각 < 킥오프인데 **최종 스코어를 말하면** 버린다(소후 가짜 결과 기사).
 
-    🔴 **스코어 숫자만으로는 안 버린다** — `2-1` 꼴은 배당·시각·순위에도 나온다.
-       종료를 말하는 낱말(`RESULT_WORDS`)이 **같은 문장**에 있어야 버린다.
-    ⚠️ 킥오프가 **이미 지난** 경기에는 이 검사를 안 쓴다 — 그때는 결과 기사가
+    🔴 판정 규칙은 `verify.ended_this_match` **하나**다(사본 금지) — s5 의
+       경기 후 검사도 같은 함수를 쓴다. ⚠️ 종전엔 이 파일에 낱말표가 따로 있어
+       s5 의 `POST_GAME_MARKS` 와 갈렸다.
+    🔴 셋이 **한 문장에** 있어야 버린다: **두 팀** · **스코어** · **종료 낱말**.
+       ⚠️ 실사고 2026-10-10: 두 팀 검사가 없을 때 *"Korea drew 0-0 … against
+          **Venezuela**"*(지난 경기)로 멀쩡한 미리보기 3건이 날아갔다.
+    ⚠️ 킥오프가 **이미 지난** 경기에는 검사하지 않는다 — 그때는 결과 기사가
        정상이다(그 경기는 채점 쪽 일이다).
-    🔴 왜(사용자 결정 2026-10-10 §6): 그런 글은 **다른 경기**의 결과이거나 예측
-       사이트의 모의 스코어다. 사실로 읽으면 카드가 이미 끝난 경기를 분석한다.
     """
-    # 🔴 "지금"은 `app/window.now_utc` 하나다(사본 금지 — 고정물 재생도 그것을 본다)
+    from app import verify
     from app import window as _w
     when = ref.kickoff_utc
     if when is None or _w.now_utc() >= when:
         return False, ""
-    for line in re.split(r"(?<=[.!?。])\s+|\n+", str(body or "")):
-        hit = _SCORE.search(line)
-        if not hit:
-            continue
-        low = line.lower()
-        said = next((w for w in RESULT_WORDS if w.lower() in low), "")
-        if not said:
-            continue
-        # 🔴🔴 **이 경기 두 팀이 그 문장에 다 있어야** 버린다
-        #
-        #  ⚠️ 실사고 2026-10-10: 이 검사를 넣자 고정물(한국–우즈벡)에서 멀쩡한
-        #     **미리보기 기사 3건**이 날아갔다 — *"Korea drew 0-0 … against
-        #     **Venezuela**"* 는 **지난 경기** 얘기다. 그것은 가짜 결과가 아니다.
-        #  🔴 사용자가 든 예시는 *"선전 1-0 허난"* — **이 경기 두 팀**을 적는다.
-        #     그래서 두 팀이 다 있을 때만 *"이 경기의 결과를 말한다"* 로 읽는다.
-        if not _both_teams(line, ref):
-            continue
-        return True, (f"킥오프 전인데 **이 경기** 최종 스코어를 적는다 — "
-                      f"`{hit.group(0)}` + `{said}` · \"{line.strip()[:70]}\"")
-    return False, ""
-
-
-def _both_teams(line: str, ref: MatchRef) -> bool:
-    """🔴 그 문장에 **이 경기 두 팀**이 다 있나.
-
-    🔴 이름은 **이름표가 든 별칭 전부**다(`names_of`) — 로마자만 보면 한국·일본
-       기사를 못 읽는다. ⚠️ 실사고 2026-10-10: 한국 결과 기사(*"부천FC를 2-0으로
-       꺾었다"*)가 `Gangwon FC`·`Bucheon FC 1995` 로만 대조돼 **안 걸렸다**.
-    🔴 최소 글자 수는 `_min_len` 하나다(한글 2 · 로마자 3 · 사본 금지).
-    """
-    low = str(line or "").lower()
-    for side in names_of(ref):
-        if not any(str(n or "").strip().lower() in low
-                   and len(str(n).strip()) >= _min_len(str(n))
-                   for n in side):
-            return False
-    return True
+    got, said = verify.ended_this_match(str(body or ""), names_of(ref))
+    if not got:
+        return False, ""
+    return True, f"킥오프 전인데 **이 경기** 최종 스코어를 적는다 — {said}"
 
 
 async def regather(ref: MatchRef, sid: str, words: list[str], *,

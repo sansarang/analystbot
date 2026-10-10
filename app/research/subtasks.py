@@ -106,6 +106,12 @@ class Subtask:
     budget: Budget = field(default_factory=lambda: Budget(0, 0, 0, 0))
     #: 🔴 2차 보충인가 — 리드가 `not_tried`·`empty` 칸만 다시 돌린다
     second: bool = False
+    #: 🔴🔴 **그 하위가 쓸 개념 낱말들**(`search_words.yaml` 의 열쇠) — §3-1
+    #
+    #  ⚠️ 비면 `kinds` 에서 유도한다(A~D 가 그렇다). 🔴 F 는 표에 적어 둔다 —
+    #     실측 2026-10-10: `결장` 은 3건인데 `복귀` 는 18건 · `선발 명단` 은
+    #     16건이었다(개념에 따라 **수확이 다섯 배** 갈린다).
+    words: tuple[str, ...] = ()
     #: 🔴🔴 **그 하위의 발행일 창(시간)** — 사용자 지시 2026-10-10(재작성) §3-1
     #
     #  > 하위 과제 F … 킥오프 기준 **72시간 안**.
@@ -190,8 +196,9 @@ def split(ref: Any) -> list[Subtask]:
                 langs=langs,
                 # 🔴 **자기 팀의 현지어**를 든다(§4-2)
                 local_lang=team_lang(team),
-                # 🔴 §3-1 — 그 하위의 발행일 창(F 는 72시간)
+                # 🔴 §3-1 — 그 하위의 발행일 창(F 는 72시간)과 개념 낱말
                 window_hours=int(row.get("window_hours") or 0),
+                words=tuple(str(x) for x in (row.get("words") or ())),
                 # 🔴 **하위마다 새 객체**(M59) — 공유하면 한쪽이 다 쓴다
                 budget=_budget()))
     logger.info("[subtasks] 하위 %d개 — %s", len(out),

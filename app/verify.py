@@ -554,3 +554,76 @@ def same_squad_kind(a: str, b: str) -> bool:
     ⚠️ 둘 다 표식이 없으면 같다고 본다(성인 남자/구단팀이 기본 표기다).
     """
     return squad_marks(a) == squad_marks(b)
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **"이 경기가 끝났다"를 말하는 글인가** — 규칙은 여기 하나다
+# ══════════════════════════════════════════════════════════════════
+#
+#  사용자 지시 2026-10-10(재작성) §3-3: *"premature_result: 기사 시각 < 킥오프인데
+#  **최종 스코어를 말하면** 버린다(소후 가짜 결과 기사)."*
+#
+#  ⚠️ 실사고 2026-10-10 — **낱말만 보면 미리보기가 전부 죽는다.**
+#     위 `POST_GAME_MARKS` 에 맨 `승리`·`패배`·`역전승` 이 있어서 한국어 미리보기
+#     (*"무승 깨는 **대역전승**"* · *"서울전 2연승 도전"* — **지난 경기** 얘기다)가
+#     `post_match` 로 떨어졌다. FC서울–제주 실행에서 그것만 **38건**이었고 그래서
+#     🆕 새 사실이 0건이었다.
+#  🔴 그래서 셋이 **한 문장에** 있어야 한다: **두 팀** · **스코어** · **종료 낱말**.
+#     (소후 가짜 기사 `선전 1-0 허난, 경기 종료` 가 바로 그 꼴이다.)
+
+#: 🔴🔴 **끝난 경기를 말하는 낱말** — `POST_GAME_MARKS` + 실측으로 늘린 것.
+#
+#  🔴 **기억으로 적지 않았다** — 아래 한국어 꼴은 2026-10-10 에 받은 실제 기사에
+#     있던 것이다(`news.jkn.co.kr/post/1014517`: *"부천FC를 **2-0으로 꺾었다**"*).
+#     ⚠️ `POST_GAME_MARKS` 어느 것도 거기 안 걸렸다.
+#  ⚠️ 이 목록만으로는 **버리지 않는다** — `ended_this_match` 가 **두 팀 + 스코어**
+#     를 같은 문장에서 함께 본다(맨 낱말로 버리면 미리보기가 죽는다).
+ENDED_WORDS: tuple[str, ...] = (
+    *POST_GAME_MARKS,
+    "최종 스코어", "경기 종료", "풀타임", "승리를 거뒀", "패배를 안",
+    "꺾었", "제압", "승리했", "패했", "무승부를 기록", "완승", "신승",
+    "full-time", "full time", "ft:", "beat ", "won ", "drew ",
+    "resultado final", "venció", "empató", "derrotó",
+)
+
+#: 🔴 스코어 꼴 — `2-1`·`2 : 1`·`2–1`. ⚠️ 앞뒤가 숫자면 안 센다(날짜·시각)
+_ENDED_SCORE = re.compile(r"(?<![\d:.])([0-9])\s*[-–:]\s*([0-9])(?![\d:.])")
+#: 🔴 문장 자르기 — 마침표·물음표·느낌표·한자 마침표·줄바꿈
+_SENT = re.compile(r"(?<=[.!?。])\s+|\n+")
+
+
+def ended_this_match(text: str, names: tuple | list, *,
+                     marks: tuple | list = ()) -> tuple[bool, str]:
+    """🔴🔴 그 글이 **이 경기의 결과**를 말하나. `(그렇다, 어느 문장)`.
+
+    `names` 는 `[[홈 이름들], [원정 이름들]]` — **별칭 전부**다(로마자만 보면
+    한국·일본 기사를 못 읽는다 · 실측 2026-10-10).
+
+    🔴 세 가지가 **한 문장에** 있어야 한다: 두 팀 · 스코어 · 종료 낱말.
+    ⚠️ 종료 낱말 목록을 여기 또 적지 않는다 — 부르는 쪽이 준다(`marks`). 비면
+       `POST_GAME_MARKS` 를 쓴다.
+    """
+    box = [list(x or []) for x in (names or [])]
+    words = [str(m) for m in (marks or ENDED_WORDS)]
+    for line in _SENT.split(str(text or "")):
+        hit = _ENDED_SCORE.search(line)
+        if not hit:
+            continue
+        low = line.lower()
+        said = next((w for w in words if str(w).lower() in low), "")
+        if not said:
+            continue
+        if not all(any(str(n or "").strip().lower() in low
+                       and len(str(n).strip()) >= (2 if _cjk(str(n)) else 3)
+                       for n in side) for side in box if side):
+            continue
+        return True, f"`{hit.group(0)}` + `{said}` · \"{line.strip()[:70]}\""
+    return False, ""
+
+
+#: 🔴 한글·한자·가나는 두 글자면 구체적이다(로마자는 세 글자) — `_min_len` 과 같은 뜻
+_CJK_RE = re.compile(r"[가-힣ぁ-んァ-ヴー一-龥]")
+
+
+def _cjk(said: str) -> bool:
+    return bool(_CJK_RE.search(str(said or "")))
