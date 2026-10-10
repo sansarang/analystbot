@@ -248,3 +248,62 @@ def test_v6_XI_상태를_영어_칸으로_본다():
                     bad.append(f"{path.relative_to(ROOT)}: {left} ? {said_r}")
     assert not bad, ("🔴 **원본 상태 칸을 한국어와 비교한다**(그 비교는 영원히 "
                      "거짓이다):\n  " + "\n  ".join(bad))
+
+
+def test_v6_발표된_라인업_표식은_실측으로만_늘린다():
+    """🔴🔴 **실사고 2026-10-10(둘째)** — `lineupType: simple` 을 놓쳤다.
+
+    김천–안양(T-48분)에서 fotmob 이 **`simple` + 선발 11명**(`source: enetpulse`)
+    을 받았는데 그 값이 목록에 없어 **`predicted`** 로 읽혔다 — 확정 XI 경로가
+    또 안 돌 뻔했다. 🔴 사용자가 **네이버 캡처**를 보내 그 구멍을 잡았다.
+
+    ⚠️ 실제로 본 값은 **둘뿐**이다: `standard`(formation 있음 · 벤치 9) ·
+       `simple`(formation `None` · 벤치 0). 둘 다 **선발 11명을 발표한 것**이다.
+    🔴 이 계약이 세는 것: ① 본 값 둘이 목록에 있다 ② 판정이 **셋을 함께**
+       요구한다(알려진 값 · `source` 있음 · 선발 11명) — 그래야 fotmob 자기
+       예측을 확정으로 읽지 않는다.
+    """
+    from app.collect import fotmob as fm
+    for said in ("standard", "simple"):
+        assert said in fm.LINEUP_PUBLISHED, (
+            f"🔴 실측으로 본 `{said}` 가 목록에 없다")
+
+    def _page(kind, source, n_home, n_away=11):
+        return {"props": {"pageProps": {"content": {"lineup": {
+            "lineupType": kind, "source": source,
+            "homeTeam": {"starters": [{"name": f"p{i}"} for i in range(n_home)]},
+            "awayTeam": {"starters": [{"name": f"q{i}"} for i in range(n_away)]},
+        }}}}}
+
+    assert fm.lineup_kind_of(_page("simple", "enetpulse", 11)) == "confirmed"
+    assert fm.lineup_kind_of(_page("standard", "enetpulse", 11)) == "confirmed"
+    # 🔴 **셋을 함께** 요구한다 — 하나라도 없으면 확정이 아니다
+    assert fm.lineup_kind_of(_page("simple", "", 11)) == "predicted"
+    assert fm.lineup_kind_of(_page("simple", "enetpulse", 7)) == "predicted"
+    assert fm.lineup_kind_of(_page("", "enetpulse", 11)) == "none"
+
+
+def test_v6_사람이_준_라인업은_등번호로_잇는다():
+    """🔴🔴 사용자 지시 2026-10-10 — *"데스크탑 라인업 캡쳐 확인해라"*.
+
+    🔴 캡처는 **한글**(`41 박만호`)이고 우리 명단은 **로마자**(`Man-Ho Park`)다.
+       ⚠️ 음차를 글자로 이으면 틀린다 — **등번호는 언어가 없다**.
+    ⚠️ 돌연변이: 이름으로 이으면 전원이 *"못 이었다"* 가 되고, 그 XI 로 전략을
+       읽으면 **바뀐 자리 11개**(헛소리)가 나온다.
+    """
+    from app.core import xicapture as cap
+    said = ("김천 4-4-2\n41 박만호\n42 홍시후  15 임덕근  5 김민규  44 박민서\n"
+            "54 윤재석  55 박태준  56 이강현  48 홍윤상\n47 이상헌  49 강민규")
+    assert cap.formation_of(said) == "4-4-2"
+    rows = cap.parse(said)
+    assert len(rows) == 11, rows
+    assert rows[0] == {"number": "41", "name": "박만호"}, rows[0]
+    # 🔴 번호표로 이으면 **로마자 정식 이름**이 들어간다
+    got, why = cap.to_xi(rows, {"41": "Man-Ho Park", "15": "Deok-Geun Lim"},
+                         team="team:000001", formation="4-4-2")
+    assert got.state == "confirmed" and got.source_url == "user_capture"
+    assert got.players[0] == "Man-Ho Park", got.players[:2]
+    assert got.lineup[0].number == 41
+    # 🔴 못 이은 선수는 **캡처 이름 그대로**(버리지 않는다) + 사유에 수가 적힌다
+    assert "박민서" in got.players or "못 이은" in why, why
+    assert "번호로 이은 선수 **2명**" in why, why

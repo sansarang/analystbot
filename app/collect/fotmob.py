@@ -485,8 +485,25 @@ def missing_of(team: dict) -> list[dict]:
 #  🔴 그래서 **셋을 함께** 요구한다: `lineupType` 가 알려진 값 · `source` 가 있다 ·
 #     선발이 11명. ⚠️ fotmob 이 **자기 예측**을 같은 값으로 줄 수도 있다 — 그래서
 #     `source`(자료 제공자)를 함께 본다. 그 값이 더 보이면 여기 늘린다(실측으로).
-LINEUP_PUBLISHED: tuple[str, ...] = ("standard", "confirmed", "lineup",
-                                     "official", "starting")
+#  🔴🔴 **2026-10-10 두 번째 실측 — `simple` 을 놓치고 있었다**
+#
+#  김천–안양(T-48분)에서 fotmob 이 `lineupType: **simple**` + **선발 11명**
+#  (`source: enetpulse`)을 받았는데 그 값이 목록에 없어 **`predicted`** 로 읽혔다.
+#  🔴 사용자가 **네이버 스포츠 캡처**를 보내 그 구멍을 잡았다 — 캡처와 fotmob 이
+#     **완전히 일치했다**(`41 Man-Ho Park`=박만호 · `33 Danny Bakker`=대니 바커).
+#  ⚠️ `standard` 와 `simple` 의 차이는 **포메이션·벤치의 유무**다(실측):
+#       `standard` — formation 있음 · 벤치 9명    (세레소–마리노스)
+#       `simple`   — formation `None` · 벤치 0명  (김천–안양)
+#     🔴 둘 다 **선발 11명을 발표한 것**이다. 그래서 둘 다 받는다.
+#  🔴 이 목록은 **실측으로만** 늘린다 — 추측해 넣지 않는다(`confirmed`·`lineup`·
+#     `official`·`starting` 은 아직 본 적이 **없다**. 그 사실을 적어 둔다).
+LINEUP_PUBLISHED: tuple[str, ...] = (
+    # ── 실제로 본 값(2026-10-10)
+    "standard", "simple",
+    # ── ⚠️ **아직 본 적 없다** — 전 주석이 추측으로 적어 둔 것이다. 지우지 않고
+    #    둔 까닭: 들어와도 해롭지 않고(선발 11 + source 를 함께 요구한다),
+    #    fotmob 이 꼴을 바꿀 때 바로 받는다.
+    "confirmed", "lineup", "official", "starting")
 #: 🔴 라인업이 아직 없을 때 본 값들(실측 2026-10-06 · 2026-10-10)
 LINEUP_NONE: tuple[str, ...] = ("unavailable", "")
 
@@ -503,7 +520,10 @@ def lineup_kind_of(j: dict) -> str:
     said = str(lu.get("lineupType") or "").strip().lower()
     if said in LINEUP_NONE:
         return "none"
-    n = max(len((dict(lu.get(k) or {})).get("starters") or [])
+    # 🔴🔴 **두 팀 다** 11명이어야 한다 — `max` 를 썼다가 계약이 잡았다
+    #    (한쪽만 7명이어도 통과했다 · 2026-10-10). ⚠️ 한쪽만 발표된 상태를
+    #    확정으로 읽으면 그 팀 전략이 **반쪽 명단**으로 읽힌다.
+    n = min(len((dict(lu.get(k) or {})).get("starters") or [])
             for k in ("homeTeam", "awayTeam"))
     if said in LINEUP_PUBLISHED and str(lu.get("source") or "").strip() \
             and n >= 11:
@@ -2487,3 +2507,31 @@ def _num(said: object) -> dict:
     n = float(hit.group(1))
     pct = float(hit.group(2)) if hit.group(2) else None
     return {"n": n, "pct": pct}
+
+
+def squad_numbers(j: dict) -> dict:
+    """🔴🔴 그 경기 페이지가 아는 **등번호 → 이름** 표(팀별). 없으면 빈 표.
+
+    `{"home": {"41": "Man-Ho Park", …}, "away": {…}}`
+
+    🔴 왜 필요한가(실측 2026-10-10 · 김천–안양): 사용자가 **네이버 스포츠 캡처**로
+       라인업을 줬는데 그 이름은 **한글**(`박만호`)이고 우리 명단은 **로마자**
+       (`Man-Ho Park`)다. ⚠️ 한글↔로마자를 글자로 이으면 틀린다(음차는 여러 꼴이다).
+    🔴 **등번호는 언어가 없다** — `41` 은 어디서나 `41` 이다. 그것으로 잇는다.
+    ⚠️ 그 경기 페이지에 라인업이 아직 없으면 **직전 경기 페이지**에서 받아야 한다
+       (부르는 쪽이 그 경기를 고른다).
+    """
+    lu = ((_page(j or {}).get("content") or {}).get("lineup") or {})
+    out: dict[str, dict] = {}
+    for side, key in (("home", "homeTeam"), ("away", "awayTeam")):
+        box = dict(lu.get(key) or {})
+        said: dict[str, str] = {}
+        for p in [*(box.get("starters") or []), *(box.get("subs") or [])]:
+            one = dict(p)
+            num = str(one.get("shirtNumber") or one.get("shirt") or "").strip()
+            nm = str(one.get("name") or "").strip()
+            if num and nm:
+                said[num] = nm
+        if said:
+            out[side] = said
+    return out

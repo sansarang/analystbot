@@ -162,6 +162,16 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
     #     **0건**이었다 — 득점 흐름 변수가 하나도 없었고 이유 문단이 템플릿이 됐다.
     #  ⚠️ **폼이 이미 있으면 팀 페이지를 안 받는다**(통신 예산 · §19-b).
     await _auto_register(ref, box, state=state, net=net, pages=raw_pages)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **사람이 준 라인업이 있으면 그것이 이긴다**(사용자 지시 2026-10-10)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 데스크탑 라인업 캡쳐 확인해라.. **네이버 스포츠에는 이미 떴다**..
+    #
+    #  🔴 실측 2026-10-10(김천–안양 T-50분): 네이버에는 확정 라인업이 떴는데
+    #     fotmob 은 아직이었다(사다리 다섯 칸 전부 `없음`). 사람이 준 글이
+    #     **유일한 통로**였다. ⚠️ 이름이 아니라 **등번호로** 잇는다(한글↔로마자).
+    await _fill_capture(ref, box, xi, state=state, net=net, pages=raw_pages)
     await _fill_form(ref, box, state=state, net=net, pages=raw_pages)
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **라인업 사다리**(사용자 지시 2026-10-10 A-1) — 경기 페이지가 못 줄 때
@@ -484,6 +494,42 @@ async def _fill_official(ref: MatchRef, box: dict, *, state: RunState,
     state.note(f"s2 A-1 K리그 공식 — gameId {said['game_id']} · 선발 "
                f"{'받았다' if said.get('players') else '못 받았다'}"
                f"({said['players_why']}) · 구단 SNS {len(sns)}곳")
+
+
+async def _fill_capture(ref: MatchRef, box: dict, xi: dict, *,
+                        state: RunState, net: Any, pages: list[str]) -> None:
+    """🔴🔴 **사람이 준 라인업 글 → 확정 XI**. 글이 없으면 아무것도 안 한다.
+
+    글은 `box["xi_capture"]` 에 있다(입구가 넣는다 — `{"home": 글, "away": 글}`).
+    🔴 **등번호로 잇는다** — 번호표는 경기 페이지(없으면 직전 경기)가 준다.
+    ⚠️ 상태는 `confirmed` 이고 출처는 **`user_capture`** 로 남긴다 — 카드가 그
+       사실을 적는다(fotmob 이 줬다고 말하지 않는다).
+    """
+    said = dict(box.get("xi_capture") or {})
+    if not said:
+        return
+    from app.collect import fotmob as fm
+    from app.core import xicapture as _cap
+    nums: dict = {}
+    for text in pages:
+        got = fm.squad_numbers(fm.payload(text) or {})
+        for side, table in got.items():
+            nums.setdefault(side, {}).update(table)
+    for side in ("home", "away"):
+        text = str(said.get(side) or "")
+        if not text.strip():
+            continue
+        rows = _cap.parse(text)
+        if len(rows) < 11:
+            state.note(f"s2 캡처 XI({side}) — 🔴 줄이 {len(rows)}개다(11 미만) "
+                       f"— 쓰지 않는다")
+            continue
+        key = str(getattr(ref, side))
+        one, why = _cap.to_xi(rows, nums.get(side) or {}, team=key,
+                              formation=_cap.formation_of(text))
+        xi[key] = one
+        state.note(f"s2 캡처 XI({side}) — {why}")
+        logger.info("[s2] 사람이 준 라인업(%s) — %s", side, why)
 
 
 async def _auto_register(ref: MatchRef, box: dict, *, state: RunState,
