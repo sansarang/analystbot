@@ -334,125 +334,6 @@ def test_v6_교체_의심이면_새사실을_찾는다():
     assert "extra_words" in s3, "🔴 s3 가 개념을 안 받는다"
 
 
-def test_v6_교체팀은_기준_약함을_표시한다():
-    """🔴 ③ — *"기준(Elo)·폼·골 내용은 전역 이전 기록이므로 '선수단 교체 — 기준
-    약함' 표시, 가중을 낮춘다(적합 전 임시값 표시)"*."""
-    from app.core import turnover as _turn
-    w = _turn.weaken()
-    assert 0.0 < w["elo"] < 1.0, w
-    assert w["provisional"] and w["why"], w
-    src = (ROOT / "app" / "core" / "stages"
-           / "s2e_matchup.py").read_text(encoding="utf-8")
-    assert "WEAK_MARK" in src and "weaken()" in src, "🔴 약화를 안 쓴다"
-    # 🔴 1겹 카드가 그 표시를 낸다
-    l1 = (ROOT / "app" / "core" / "layer1.py").read_text(encoding="utf-8")
-    assert '.get("weak")' in l1, "🔴 1겹이 기준 약함을 안 적는다"
-
-
-# ══════════════════════════════════════════════════════════════════
-# ④ 확률은 한 곳
-# ══════════════════════════════════════════════════════════════════
-
-def test_v6_최종확률은_시뮬레이션_결과다():
-    """🔴🔴 ④ — *"최종 확률 = **시뮬레이션(묶인 분포) 결과**. 카드의 '시뮬' 줄과
-    최종 숫자가 **다르면 계약 실패**"*.
-
-    ⚠️ 실사고 2026-10-10: 시뮬 **52%** · 최종 **38%** — 한 카드가 두 답을 냈다.
-    """
-    from app.core import layer1
-    from app.core.schema import Card, Facts, ProbTriple
-    sim = {"home": 0.41, "draw": 0.27, "away": 0.32,
-           "over": {"1.5": 0.7, "2.5": 0.45, "3.5": 0.24},
-           "first_wins": 0.66, "why": "시험"}
-    card = Card(match=_ref(), facts=Facts(),
-                matchup={"profile": {"home": 1, "away": 1}, "sim": sim},
-                our_prob=ProbTriple(home=0.41, draw=0.27, away=0.32))
-    said = layer1._sim_line(card.matchup)
-    # 🔴 시뮬 줄의 세 수가 **최종 확률과 같아야** 한다
-    for want in (f"{sim['home']:.0%}", f"{sim['draw']:.0%}",
-                 f"{sim['away']:.0%}"):
-        assert want in said, (want, said)
-    probs = layer1._probs(card)
-    for want in ("41%", "27%", "32%"):
-        assert want in probs, (want, probs)
-    # 🔴 파이프라인이 **시뮬 결과로 `ours` 를 덮는다**(그래야 둘이 같다)
-    src = (ROOT / "app" / "core" / "pipeline.py").read_text(encoding="utf-8")
-    assert 'layers["ours"] = _PT(home=said_sim["home"]' in src, (
-        "🔴 최종 확률이 시뮬에서 안 온다")
-
-
-def test_v6_시뮬_기울기가_확률에서_나온다():
-    """🔴🔴 ④ — λ 기울기를 **확률층의 홈/원정 비를 맞춰** 푼다(계수가 없다).
-
-    ⚠️ 돌연변이: `solve_tilt` 를 지우고 폼 차만 쓰면 — 시뮬이 ①②③(Elo·라인업·
-       변수·전략)을 **전혀 모르는** 수를 내고 최종과 갈라진다.
-    """
-    from app.core.stages import s2e_matchup as _s2e
-    box: dict = {"fired": [], "fired2": [], "form": {}}
-    base = 2.6
-    for want in (1.0, 1.6, 0.6):
-        t = _s2e.solve_tilt(box, base, want)
-        got, _ = _s2e._sim_at(box, base, t, axis2=False, axis3=False)
-        assert abs((got.home / got.away) - want) < 0.02, (want, t,
-                                                          got.home / got.away)
-    # 🔴 비가 1 이면 기울기는 0 쪽이다(홈 이점을 지어내지 않는다)
-    assert abs(_s2e.solve_tilt(box, base, 1.0)) < 0.01
-
-
-def test_v6_기여분해_합이_잠정에서_최종까지와_같다():
-    """🔴🔴 ④ — *"잠정→최종 변화는 축별 기여(폼·전술·골 내용)로 분해해 **합이
-    맞게**"*. 🔴 단계를 쌓아 재므로 잔차가 **0** 이다."""
-    from app.core.schema import Facts, ProbTriple
-    from app.core.stages import s2e_matchup as _s2e
-    from app.core.state import RunState
-    facts = Facts(standings={"match_total_baseline": 2.6})
-    box: dict = {"fired": [], "fired2": [], "form": {}}
-    st = RunState(match_key="x:1")
-    got = _s2e.final_sim(_ref(), facts, box, state=st,
-                         ours=ProbTriple(home=0.45, draw=0.27, away=0.28),
-                         before=ProbTriple(home=0.40, draw=0.28, away=0.32))
-    share = dict(got["share"])
-    total = (float(got["home"]) - float(got["before"]["home"])) * 100.0
-    assert abs(sum(share.values()) - total) < 0.03, (share, total)
-    assert set(share) == {"폼", "전술", "골 내용"}, share
-
-
-def test_v6_얹는_몫이_상한_반_로그오즈를_넘지_않는다():
-    """🔴🔴 ④ — 폼·축2·축3 을 **합친 몫**이 경기당 ±0.5 로그 오즈 안이다.
-
-    ⚠️ 실측 2026-10-10(재현): 폼 기울기를 그냥 얹으니 홈 승이 42% → **58%**
-       (+0.72 로그 오즈)로 움직였다 — 상한의 한 배 반이다.
-    ⚠️ 돌연변이: `_within_cap` 을 지우면 이 줄이 빨개진다.
-    """
-    import math
-
-    from app.core import form as _form
-    from app.core import strategy as _st
-    from app.core.schema import Facts, ProbTriple
-    from app.core.stages import s2e_matchup as _s2e
-    from app.core.state import RunState
-    cap, _pct = _st.caps()
-    facts = Facts(standings={"match_total_baseline": 2.5})
-    # 🔴 그 경기 그대로 — 폼 차 1.13(홈 −0.17 · 원정 −1.30)
-    box: dict = {"fired": [], "fired2": [],
-                 "form": {"home": _form.TeamForm(team="H", n=10, adj_gf=10.0,
-                                                 adj_ga=11.7),
-                          "away": _form.TeamForm(team="A", n=10, adj_gf=10.0,
-                                                 adj_ga=23.0)}}
-    ours = ProbTriple(home=0.42, draw=0.27, away=0.31)
-    got = _s2e.final_sim(_ref(), facts, box, state=RunState(match_key="x"),
-                         ours=ours, before=ours)
-
-    def logit(x):
-        return math.log(x / (1 - x))
-
-    # 🔴 확률층만 쓴 시뮬과의 차가 상한 안이다
-    t = _s2e.solve_tilt(box, 2.5, 0.42 / 0.31)
-    ref_got, _ = _s2e._sim_at(box, 2.5, t, axis2=False, axis3=False)
-    moved = logit(float(got["home"])) - logit(ref_got.home)
-    assert abs(moved) <= cap + 1e-6, (moved, cap)
-    assert got["cut"], "🔴 잘렸는데 그 사실을 안 적었다(#3)"
-    assert "상한" in got["cut"]
 
 
 def test_v6_오버도_시뮬에서_나온다():
@@ -500,23 +381,6 @@ def test_v6_예상스코어도_시뮬에서_나온다():
     assert "어긋난다" not in said, "🔴 같은 분포에서 왔는데 어긋난다고 적었다"
 
 
-def test_v6_시뮬_스코어는_무게_큰_순으로_든다():
-    """🔴 ④ — ⚠️ 열쇠 순으로 40칸을 자르면 **상위 스코어가 사라진다**."""
-    from app.core.schema import Facts, ProbTriple
-    from app.core.stages import s2e_matchup as _s2e
-    from app.core.state import RunState
-    facts = Facts(standings={"match_total_baseline": 2.6})
-    got = _s2e.final_sim(_ref(), facts, {"fired": [], "fired2": [], "form": {}},
-                         state=RunState(match_key="x"),
-                         ours=ProbTriple(home=0.45, draw=0.27, away=0.28),
-                         before=ProbTriple(home=0.45, draw=0.27, away=0.28))
-    rows = list(dict(got["scores"]).items())
-    assert rows, "🔴 스코어 분포가 비었다"
-    vals = [float(v) for _k, v in rows]
-    assert vals == sorted(vals, reverse=True), "🔴 무게 순이 아니다"
-    # 🔴 가장 무거운 스코어가 **한 자리 수 득점**이다(열쇠 순이면 `0-0` 쪽만 남는다)
-    (h, a), top = rows[0]
-    assert (h + a) <= 4, (h, a, top)
 
 
 def test_v6_자리글자가_붙은_이름을_없는_이름이라_하지_않는다():
@@ -603,3 +467,148 @@ def test_v6_골내용_지표는_분모를_함께_쓴다():
     rows2 = {f.rule: f for f in _g.fire(thin, theirs, rest={})}
     if "T11" in rows2:
         assert rows2["T11"].watch_only and rows2["T11"].moves() == {}
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 ④ **다시 쓴 계약** — 확률의 출처가 **상성**으로 바뀌었다
+# ══════════════════════════════════════════════════════════════════
+#
+#  옛 계약 다섯(`final_sim`·`solve_tilt`·`_within_cap`·`기준 약함 ×0.5`)은 상성
+#  엔진 지시서 §2 가 **지운 경로**를 세고 있었다. 🔴 그 자리를 새 경로로 바꿨다
+#  (§2 마지막 줄: *"옛 기능을 지울 때 그걸 쓰던 계약·테스트는 새 계약으로
+#  바꾼다(빨간 채로 두지 않는다)"*).
+
+def _probset():
+    """🔴 S2·S3 를 돌릴 **최소 재료** — 가치·XI·리그 평균."""
+    from app.core import matchup as _mu
+    from app.core import routing
+    from app.core.schema import Facts, Variable, XI
+    ref = _ref()
+    xi = {ref.home: XI(team=ref.home, state="confirmed",
+                       players=[f"H{i}" for i in range(11)]),
+          ref.away: XI(team=ref.away, state="confirmed",
+                       players=[f"A{i}" for i in range(11)])}
+    facts = Facts(xi=xi, standings={"match_total_baseline": 2.6},
+                  player_value={**{f"H{i}": 1_000_000 for i in range(11)},
+                                **{f"A{i}": 700_000 for i in range(11)}})
+    vs = routing.place([Variable(id="S03", type="home_field", subject=ref.home,
+                                 favors="home", hardness="soft", weight=0.4,
+                                 claim="홈 이점 수치 없음", quote="q")])
+    box = {"form": {}, "style": {}, "profile": {}, "fired": [], "fired2": [],
+           "off": {}, "late": {}}
+    return ref, facts, vs, box, _mu.report(ref, facts, box, vs)
+
+
+def test_v7_C1_S3_입력에_상성_밖_정보가_없다():
+    """🔴 C1 — *"S3 입력에 Elo·동기·일정(T2 제외)·감독 발언·맞대결·시장·LLM
+    문장이 **없다**"*.
+
+    ⚠️ 돌연변이: `probmodel.run` 이 `base_prob`·`market`·`commentary` 를 읽게
+       만들면 이 줄이 빨개진다.
+    """
+    import ast
+    src = (ROOT / "app" / "core" / "probmodel.py").read_text(encoding="utf-8")
+    tree = ast.parse(src)
+    fn = [n for n in ast.walk(tree)
+          if isinstance(n, ast.FunctionDef) and n.name == "run"]
+    assert fn, "🔴 `probmodel.run` 이 없다"
+    said = ast.unparse(fn[0])
+    for bad in ("base_prob", "adj_prob", "market", "elo", "commentary",
+                "coach", "h2h", "stakes", "outlook", "llm"):
+        assert bad not in said, f"🔴 S3 가 `{bad}` 를 읽는다(C1)"
+    # 🔴 `facts` 에서 읽는 것은 **리그 평균·대회 유형**뿐이다
+    whole = ast.unparse(tree)
+    assert "match_total_baseline" in whole and "goal_share" in whole
+
+
+def test_v7_C2_카드_확률이_S3_산출과_같다():
+    """🔴 C2 — *"S5 이후 어느 단계도 확률을 바꾸지 않는다(S3 출력 = 카드 확률)"*."""
+    from app.core import probmodel as _pm
+    from app.core.state import RunState
+    ref, facts, vs, _box, mr = _probset()
+    got = _pm.run(ref, facts, mr, vs, state=RunState(match_key="x"))
+    assert got.ok()
+    sim = got.as_sim()
+    for key in ("home", "draw", "away"):
+        assert sim[key] == getattr(got, key)
+    # 🔴 파이프라인이 그 수를 **그대로** 우리 열에 넣는다
+    src = (ROOT / "app" / "core" / "pipeline.py").read_text(encoding="utf-8")
+    assert 'layers["ours"] = _PT(home=prob.home' in src, (
+        "🔴 카드 확률이 S3 에서 안 온다")
+
+
+def test_v7_C4_상성_우위와_확률_방향이_같다():
+    """🔴 C4 — *"상성 우위 팀 = S3 확률이 더 높은 팀(강도 '없음' 제외)"*.
+
+    🔴 지금은 **구조로** 보장된다 — 같은 축 합이 λ 기울기를 만든다.
+    """
+    from app.core import probmodel as _pm
+    from app.core.state import RunState
+    ref, facts, vs, _box, mr = _probset()
+    got = _pm.run(ref, facts, mr, vs, state=RunState(match_key="x"))
+    edge = mr.edge_of()
+    if edge and dict(mr.verdict).get("strength") != "없음":
+        want = "home" if got.home >= got.away else "away"
+        assert edge == want, (edge, got.home, got.away)
+
+
+def test_v7_기여_합이_리그_평균_대비_변화와_같다():
+    """🔴 3-4 — *"축0 x · 축1 y · 축2 z · 축3 w — **합 = 리그 평균 대비 변화**"*."""
+    from app.core import probmodel as _pm
+    from app.core.state import RunState
+    ref, facts, vs, _box, mr = _probset()
+    got = _pm.run(ref, facts, mr, vs, state=RunState(match_key="x"))
+    base = _pm.league_base(ref, facts, vs)
+    total = (float(got.home) - float(base["home"])) * 100.0
+    assert abs(sum(got.share.values()) - total) < 0.05, (got.share, total)
+    assert set(got.share) == {"axis0", "axis1", "axis2", "axis3"}
+    # 🔴 축마다 **그 기여를 만든 변수 id**(상위 3개)
+    assert set(got.share_refs) == set(got.share)
+
+
+def test_v7_람다_이동이_상한을_지킨다():
+    """🔴 3-6 — λ 이동은 `config/matchup_model.yaml` 의 `cap_pct` 안이다."""
+    import math
+
+    from app.core import matchup as _mu
+    from app.core import probmodel as _pm
+    from app.core.state import RunState
+    ref, facts, vs, box, _mr = _probset()
+    # 🔴 축0 을 아주 크게 벌려도 상한에서 잘린다
+    big = _mu.MatchupReport(axes={"axis0": _mu.Axis(name="axis0", home=50.0,
+                                                    away=0.0, gap=50.0)})
+    got = _pm.run(ref, facts, big, vs, state=RunState(match_key="x"))
+    cap = float(dict(_mu.table()["lambda_model"]).get("cap_pct")) / 100.0
+    mean, _why = _pm.league_mean(facts, ref=ref)
+    mul, _said = _pm.home_mul(facts, vs)
+    # ⚠️ λ 는 소수 넷째 자리로 **반올림**해 담긴다 — 그 폭을 둔다
+    assert float(got.lam["home"]) <= mean * mul * math.exp(cap) + 1e-3
+    assert "상한" in got.why, got.why
+
+
+def test_v7_C8_선수단_교체는_r_가중을_받는다():
+    """🔴 C8 — *"squad_turnover 팀은 **r 가중**이 적용된다"*.
+
+    ⚠️ 옛 계약은 *"기준 약함 ×0.5"* 를 셌다 — §2 가 그 고정 배율을 **지웠다**.
+    """
+    from app.core import form as _form
+    from app.core import matchup as _mu
+    from app.core import routing
+    from app.core.schema import Variable
+    ref = _ref()
+    turn = Variable(id="TURN-home", type="squad_rotation", subject=ref.home,
+                    favors="away", hardness="hard", weight=2.0,
+                    claim="선수단 교체", quote="q")
+    vs = routing.place([turn])
+    r = _mu.r_of(vs, ref)
+    assert 0.0 < r["home"] < 1.0 and r["away"] == 1.0, r
+    # 🔴 축1 이 그 r 로 과거를 깎는다
+    box = {"form": {"home": _form.TeamForm(team="H", n=10, adj_gf=20.0,
+                                           adj_ga=10.0),
+                    "away": _form.TeamForm(team="A", n=10, adj_gf=10.0,
+                                           adj_ga=10.0)}}
+    axis = _mu.axis1(box, vs, r=r)
+    assert abs(float(axis.home) - 1.0 * r["home"]) < 1e-6, axis.home
+    assert "r=" in axis.why
+    # 🔴 그 r 은 **표**가 든다(코드에 수를 박지 않는다)
+    assert "turnover_r" in str(_mu.table().get("axis1"))

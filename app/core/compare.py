@@ -43,193 +43,6 @@ ABSENCE_TYPES = ("absence", "def_absence", "absence_att", "suspension")
 HALF_TYPES = ("strength_gap", "recent_pattern", "h2h_pattern")
 
 
-def move_rules() -> dict:
-    """🔴 ① 이동 규칙 표 — `config/interpret_rules.yaml` 의 `our_prob` 하나다."""
-    from app import rules
-    return dict((rules._load("config/interpret_rules.yaml")
-                 .get("our_prob") or {}))
-
-
-def our_prob(hypo: HypoSet | None, *, start: ProbTriple | None = None,
-             variables: list[Variable] | None = None,
-             adjusted: bool = False, ref: MatchRef | None = None,
-             outlook: dict | None = None,
-             strategy: object = None) -> tuple[ProbTriple | None, str]:
-    """🔴🔴 ③ 우리 확률 — **기준에서 출발한다**(사용자 지시 2026-10-06(6차) ①).
-
-    ══════════════════════════════════════════════════════════════════
-    🔴 바뀐 것 — 시나리오 비율이 **출발점이 아니다**
-    ══════════════════════════════════════════════════════════════════
-
-    > OurProb = ①②의 `AdjProb` 를 **출발점**으로, ③ 변수 중 ① 이 이미 반영하지 않는
-    > 종류만 **로그 오즈**를 움직인다. 이동량 = **변수 무게 × k**(k=config, 초기 0.15),
-    > 한 결과의 총 이동은 **±0.5 로그 오즈** 상한.
-    > ①②가 없는 경기만 **지금의 시나리오 비율**을 쓰고 카드에 *"기준 없음 — 시나리오
-    > 비율"* 표시.
-
-    🔴 어느 쪽으로 움직이나 — 변수의 `favors` 가 말한다(`home`·`away`·`both`).
-       ⚠️ `both` 는 **무승부 쪽**으로 본다(양쪽에 다 유리하다는 말은 승자를 가리지
-          않는다는 뜻이다). 🔴 `goals` 는 승무패를 안 움직인다(총점 마켓의 말이다).
-    ⚠️ 시나리오 세트·생존 판정은 **그대로다** — 이 함수는 **카드의 우리 열**과 방향
-       판정에만 쓰인다(지시서 ① 마지막 줄).
-    """
-    box = move_rules()
-    if start is None:
-        # ══════════════════════════════════════════════════════════════
-        # 🔴🔴 **기준이 없으면 우리 열은 비운다**(사용자 지시 2026-10-09 ③)
-        # ══════════════════════════════════════════════════════════════
-        #
-        # > 기준이 없을 때 **시나리오 비율을 그대로 우리 열로 쓰지 않는다**
-        # > (앞 지시 5번 그대로).
-        #
-        # 🔴 왜 — 시나리오 비율은 **갈래를 센 수**다. 변수가 하나뿐이어도 갈래는
-        #    여섯 개가 나오므로, 그 비율은 *"자료가 말한 확률"* 이 아니라
-        #    *"우리가 갈래를 몇 개 그렸나"* 다. ⚠️ 실측 2026-10-08
-        #    (마리노스–교토산업대): 변수가 `S03` **하나**(그마저 수치 없음)인데
-        #    우리 열이 40/29/31 로 찍혀 **대학팀 원정승 31%** 가 나왔다.
-        #    🔴 그 수를 우리 열에 적으면 사람이 그것을 분석으로 읽는다.
-        # ⚠️ 그래도 **버리지 않는다** — 참고로 사유에 적는다(#3 조용한 0 금지).
-        got, why = _from_scenarios(hypo)
-        said = ("**기준 없음 — 우리 열을 비운다**(시나리오 비율은 갈래를 센 수다 · "
-                "지시 2026-10-09 ③)")
-        if got is not None:
-            said += (f" · 참고로 시나리오 비율은 홈 {got.home:.0%} · "
-                     f"무 {got.draw:.0%} · 원정 {got.away:.0%} 였다")
-        else:
-            said += f" · {why}"
-        return None, said
-    k = float(box.get("k") or 0.15)
-    cap = float(box.get("cap_logodds") or 0.5)
-    movers = {str(x) for x in (box.get("movers") or [])}
-    skip = {str(x) for x in (box.get("skip") or [])}
-    if adjusted:
-        skip |= {str(x) for x in (box.get("skip_when_adjusted") or [])}
-    else:
-        # ══════════════════════════════════════════════════════════════
-        # 🔴🔴 **②가 못 쓰면 ③이 센다**(사용자 지시 2026-10-09 ③)
-        # ══════════════════════════════════════════════════════════════
-        #
-        # > 라인업 보정 환산 계수가 없는 리그에서는 결장 계열 변수를 ③ 무게표로
-        # > 센다(②에 넘겼는데 ②가 못 쓰면 **0 이 되는 구멍**).
-        #
-        # 🔴 실측 2026-10-09(대전–전북): ② 가 *"확률은 안 움직였다(환산 계수 없음)"*
-        #    인데 `IR02-home`·`IR02-away` 는 `movers` 목록에 없어 ③ 도 세지 않았다.
-        #    즉 결장 두 건이 **어디에서도 안 세졌다** — 카드에 보이기만 했다.
-        # ⚠️ `adjusted` 는 *"② 가 확률을 **움직였나**"* 다(`adj_p.moved`) — 계수가
-        #    없으면 거짓이므로 그때만 이 길이 열린다. 🔴 둘이 **동시에** 세는 일은
-        #    없다(이중 계산 금지 · 9차 ③ 점검표).
-        movers |= {str(x) for x in (box.get("movers_when_not_adjusted") or [])}
-    shift = {"home": 0.0, "draw": 0.0, "away": 0.0}
-    used: list[str] = []
-    MOVES.clear()
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **경우의 수 상태별 이동**(7차 §4) — 동기는 변수가 아니라 **표**에서 온다
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  🔴 `draw_enough` 팀은 무승부 쪽으로 +k(5백이면 한 번 더). `must_win`·
-    #     `margin_needed` 는 **1X2 를 안 움직인다**(총점 쪽이고 s6·s7 이 쓴다).
-    #     `nothing` 은 **아무것도 안 움직인다**(상대에게 +k 를 주지 않는다).
-    #  ⚠️ **변수 이동보다 먼저** 돈다 — 5백(IR01)을 여기서 한 번 셌으면 그 변수는
-    #     다시 세지 않는다(9차 ③ 점검표: *"이중 계산 없음"*).
-    low_used: set[str] = set()
-    for team, said in ((outlook or {}).get("states") or {}).items():
-        rule = dict((box.get("outlook_moves") or {}).get(str(said.get("state")))
-                    or {})
-        side = rule.get("side")
-        if not side:
-            continue
-        times = int(rule.get("steps") or 1)
-        if _low_block(team, variables or [], ref=ref) \
-                and rule.get("with_low_block"):
-            times = int(rule["with_low_block"])
-            low_used.add(norm_name(team))
-        step = k * times
-        shift[str(side)] += step
-        used.append(f"{team}:{said.get('state')}(×{times}·{step:+.3f})")
-        MOVES.append({"id": f"경우의수:{team}", "type": str(said.get("state")),
-                      "favors": "both", "side": str(side), "weight": float(times),
-                      "logodds": round(step, 4)})
-    for v in (variables or []):
-        if v.type in skip or v.type not in movers:
-            continue
-        # 🔴🔴 **근거 불가 변수는 확률을 못 움직인다**(사용자 지시 2026-10-06(9차) ③)
-        #    ⚠️ 실측 카자흐–페로: `R2`(출처 1곳 · 근거 불가)가 ③ 이동 +0.060 을 받았다.
-        #    🔴 근거로 못 쓰는 사실이 수를 움직이면 그 수의 근거가 없어진다 — s6 도
-        #       그 변수를 `context_only` 로만 보낸다(§4-1). 같은 규율을 ③ 에도 쓴다.
-        if not v.usable_as_basis:
-            continue
-        step = float(v.weight or 0.0) * k
-        if step <= 0:
-            continue
-        side = {"home": "home", "away": "away", "both": "draw"}.get(v.favors)
-        if side is None:
-            continue
-        # ══════════════════════════════════════════════════════════════
-        # 🔴🔴 **5백(IR01)은 무승부 쪽이고, 두 번 세지 않는다**(9차 ③ 점검표)
-        # ══════════════════════════════════════════════════════════════
-        #
-        #  > `lineup_intent`(페로 5백): **무승부 쪽 이동만**, away 이동 **없음**,
-        #  > **이중 계산 없음**.
-        #
-        #  🔴 5백은 *"그 팀이 이긴다"* 가 아니라 *"경기를 잠근다"* 는 말이다 —
-        #     그래서 그 팀 쪽이 아니라 **무승부 쪽**이다.
-        #  ⚠️ `draw_enough` ×2 로 이미 센 팀이면 **아무 이동도 안 한다**(같은 사실이다).
-        if _is_low_block_var(v):
-            who = norm_name(_team_in(v, ref))
-            if who and who in low_used:
-                used.append(f"{v.id}(5백 — 경우의 수에서 이미 셌다 · 이동 0)")
-                continue
-            side = "draw"
-        shift[side] += step
-        used.append(f"{v.id}({v.type}·{v.favors}·{step:+.3f})")
-        # 🔴 카드 7b 의 *"③ 이 움직인 양"* 줄이 이 목록을 그대로 적는다(지시 ③)
-        MOVES.append({"id": v.id, "type": v.type, "favors": v.favors,
-                      "side": side, "weight": float(v.weight or 0.0),
-                      "logodds": round(step, 4)})
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **전략 이동**(사용자 지시 2026-10-10(둘째) §3-2)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  > 승무패: 잠그기 → 그 팀 **패↓·무승부↑** / 공격 위주 → 그 팀 **승·패 둘 다↑**
-    #  > (무승부↓) / 로테이션 → 그 팀 **승↓** / 실험 → **무승부↑**.
-    #
-    #  🔴 방향은 지시서가 글자로 줬고 **크기는 `config/strategy_effects.yaml`** 이
-    #     든다(적합 못 한 값은 `임시값` 으로 표시된다 · 카드가 적는다).
-    #  🔴 **확정 XI 일 때만** 온다 — `s2d_strategy` 가 예상 XI 면 판정을 안 낸다.
-    #  ⚠️ 아래 **같은 상한(±0.5)** 에 함께 걸린다(새 상한을 만들지 않는다).
-    for said in _strategy_moves(strategy, ref):
-        shift[said["side"]] += float(said["logodds"])
-        used.append(f"{said['id']}({said['type']}·{said['logodds']:+.3f})")
-        MOVES.append(said)
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **상한은 경기당 합계다**(사용자 지시 2026-10-06(9차) ①)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    # > ③ 이동 상한: **경기당 합계 ±0.5 로그 오즈**를 넘지 못하게 **자른다**
-    # > (지금 +0.585).
-    #
-    # ⚠️ 종전 상한은 **결과(홈·무·원정)마다** 걸렸다 — 그래서 무승부에 0.3, 홈에 0.165,
-    #    원정에 0.12 처럼 나뉘면 **합 0.585** 가 통과했다(실측 카자흐–페로).
-    # 🔴 지금은 **합**을 보고, 넘으면 **비율대로 줄인다**(어느 하나를 지우지 않는다 —
-    #    그러면 그 근거만 사라져 설명이 어긋난다). `MOVES` 도 같은 비율로 줄여 적어
-    #    카드의 이동량 합이 실제와 **같게** 만든다.
-    total = sum(abs(v) for v in shift.values())
-    scale = 1.0
-    if total > cap and total > 0:
-        scale = cap / total
-        for m in MOVES:
-            m["logodds"] = round(float(m["logodds"]) * scale, 4)
-            m["scaled"] = round(scale, 4)
-    capped = {k2: val * scale for k2, val in shift.items()}
-    got = _apply(start, capped)
-    why = (f"기준({start.home:.0%}/{start.draw:.0%}/{start.away:.0%})에서 출발 · "
-           f"이동 {len(used)}개(k={k}) · 합 {total:.3f}"
-           + (f" → 🔴 **상한 {cap} 로 잘랐다**(×{scale:.3f})" if scale < 1.0
-              else f"(상한 {cap} 안)")
-           + (f" · {' '.join(used[:4])}" if used else " · **움직인 변수 없음**"))
-    return got, why
-
-
 def _apply(start: ProbTriple, shift: dict[str, float]) -> ProbTriple:
     """🔴 로그 오즈를 더하고 다시 **합 1** 로 만든다(소프트맥스와 같은 꼴).
 
@@ -636,3 +449,17 @@ def _strategy_moves(strategy: object, ref: MatchRef | None) -> list[dict]:
                         "logodds": round(step, 4), "why": why,
                         "strategy": said})
     return out
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **`our_prob()` 을 지웠다** — 상성 엔진 지시서 §2·C7(2026-10-10 여섯째)
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 변수가 로그 오즈를 직접 미는 ③ 이동 경로(k=0.15·mover 목록·이동 상한)를
+#  > **확률 경로에서 뺀다** → 변수는 V-3 배치표대로 ①②③에.
+#  > C7 변수가 확률에 닿는 길은 **① 상성 축뿐**이다(로그 오즈 직접 이동 코드 0).
+#
+#  🔴 우리 열은 이제 **S3**(`app/core/probmodel.py`)이 낸다 — 상성 축 넷이 λ 를
+#     정하고 시뮬이 승무패로 바꾼다.
+#  ⚠️ 이 파일에 남은 것은 **세 열 비교·기울기 사유·시장 사유·무게 규칙**이다
+#     (그것들은 확률을 만들지 않는다).

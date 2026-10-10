@@ -71,16 +71,6 @@ def suspect(*, changed: int | None, off_squad: int) -> str:
             f"없는** 선수 {int(off_squad)}명(문턱 {want_o})")
 
 
-def weaken() -> dict:
-    """🔴 기준·규칙을 얼마나 낮추나 — ⚠️ **임시값**이고 그 사실이 표에 있다."""
-    box = dict(table().get("weaken") or {})
-    fit = dict(box.get("fit") or {})
-    return {"elo": float(box.get("elo") or 1.0),
-            "rules": float(box.get("rules") or 1.0),
-            "provisional": bool(fit.get("provisional")),
-            "why": str(fit.get("why") or "")}
-
-
 def read(ref, facts, *, side: str) -> dict:
     """🔴🔴 §③ — 그 팀이 **선수단 교체 상태인가**. 돌려주는 표:
 
@@ -174,3 +164,17 @@ def past_since(rows: list, *, names: set[str]) -> tuple[list, str]:
         return keep, (f"🔴 선수단 교체 — 최근 {len(rows or [])}경기 중 교체 이후 "
                       f"**{len(keep)}경기만** 썼다")
     return keep, ""
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **`weaken()` 을 지웠다** — 상성 엔진 지시서 §2(2026-10-10 여섯째)
+# ══════════════════════════════════════════════════════════════════
+#
+#  > "기준 약함 ×0.5" 등 **고정 배율 삭제** → **r 가중·호흡**.
+#
+#  🔴 지금 선수단 교체가 확률에 닿는 길은 **변수 `TURN-{side}`** 하나다:
+#     `s5_verify._turn_vars` 가 만들고, 배치표가 `axis0·axis1·axis3·V1` 로 보내고,
+#     축0 은 **호흡**으로, 축1·축3 은 **r 가중**(`config/matchup_model.yaml` 의
+#     `axis1.turnover_r`)으로 센다.
+#  ⚠️ `WEAK_MARK` 는 **남겨 둔다** — 카드가 *"기준 낡음"* 을 적는 글자이고 검증
+#     (V1)이 그 말을 쓴다.

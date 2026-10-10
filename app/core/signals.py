@@ -116,7 +116,7 @@ def bad_signal(sig) -> str:
 def value_of(sig, sim: dict) -> tuple[float | None, str]:
     """🔴 그 신호가 가리키는 **시뮬 값**. `(값, 사유)` — 못 읽으면 `(None, 사유)`.
 
-    `sim` 은 `s2e_matchup.final_sim` 이 돌려준 표다(새 계산 0건).
+    `sim` 은 **S3**(`probmodel.run`)이 돌려준 표다(새 계산 0건).
     """
     metric = str(getattr(sig, "metric", "") or "")
     side = str(getattr(sig, "side", "") or "")

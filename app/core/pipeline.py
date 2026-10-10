@@ -191,29 +191,40 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #     최종이다. ⚠️ 그래서 아래 모두(재가명·등급·양상·논평·오버)가 **같은 수**를
     #     쓴다. 🔴 실사고 2026-10-10: 시뮬 52% · 최종 38% 로 두 답이 나갔다.
     edge["turnover"] = turn
-    said_sim = _s2e.final_sim(ref, facts, edge, state=st,
-                              ours=layers.get("ours"),
-                              before=before_layers.get("ours"),
-                              turnover=turn)
-    if said_sim.get("home") is not None:
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **S2 상성 판정 → S3 확률**(상성 엔진 지시서 S2·S3)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > P1 확률의 출처는 **상성 하나**다. 상성(오늘 XI 기준 네 축)이 기대 득점을
+    #  > 정하고, 시뮬레이션이 그것을 승무패·오버로 바꾼다.
+    #  > C1 S3 입력에 Elo·동기·일정·감독 발언·맞대결·시장·LLM 문장이 **없다**.
+    #
+    #  🔴 입력은 `FactBundle`(=`facts`) + `VariableSet` 의 ① 배치 변수뿐이다.
+    from app.core import matchup as _mu
+    from app.core import probmodel as _pm
+    mr = _mu.report(ref, facts, edge, varset, strategy=plan)
+    st.note(f"S2 상성 — {mr.why} · {mr.verdict.get('why')}")
+    prob = _pm.run(ref, facts, mr, varset, edge=edge, state=st)
+    edge["report"] = mr
+    if prob.ok():
         from app.core.schema import ProbTriple as _PT
-        edge["sim"] = said_sim
-        edge["share"] = dict(said_sim.get("share") or {})
-        # 🔴 **최종 = 시뮬**. 잠정도 같은 공간(시뮬)으로 옮긴다 — 두 열을 다른
-        #    자리에서 재면 비교가 거짓이 된다.
-        layers["ours"] = _PT(home=said_sim["home"], draw=said_sim["draw"],
-                             away=said_sim["away"])
-        box_b = dict(said_sim.get("before") or {})
-        if box_b:
-            layers["prob_before"] = _PT(home=box_b["home"], draw=box_b["draw"],
-                                        away=box_b["away"])
+        edge["sim"] = prob.as_sim()
+        edge["share"] = dict(prob.share)
+        edge["share_refs"] = dict(prob.share_refs)
+        edge["prob"] = prob
+        # 🔴🔴 **S3 가 낸 수가 카드의 확률이다**(C2) — 뒤 단계는 안 바꾼다
+        layers["ours"] = _PT(home=prob.home, draw=prob.draw, away=prob.away)
+        # 🔴 3-4 — 기여는 **리그 평균 대비**다. 그래서 `잠정` 열은 **리그 평균**
+        #    확률이다(옛 `잠정`=전략 전 확률이 아니다 · §2: 옛 경로를 지웠다).
+        base_sim = _pm.league_base(ref, facts, varset)
+        if base_sim is not None:
+            layers["prob_before"] = _PT(home=base_sim["home"],
+                                        draw=base_sim["draw"],
+                                        away=base_sim["away"])
     else:
-        # ⚠️ 시뮬이 못 돌면(총골 기준이 없다) **확률층 수를 그대로 쓴다** —
-        #    그 사실을 사유로 남긴다(#3 조용히 넘기지 않는다).
-        edge["sim"] = said_sim
+        edge["sim"] = {"why": prob.gap}
         edge["share"] = {}
-        st.note("§4 확률 한 곳 — 🔴 시뮬이 못 돌아 **확률층 수를 그대로 쓴다** · "
-                + str(said_sim.get("why") or ""))
+        st.note(f"S3 — 🔴 확률을 못 셌다 · {prob.gap}")
     layers["ocr_text"] = ocr_text
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **단계 4 — 검증(가설 ↔ 시뮬) → 시나리오**(순서 재편 §4)
@@ -597,16 +608,24 @@ def _layers(ref: MatchRef, facts: Facts, variables: list[Variable],
             hypo: HypoSet, base_p: BaseProb, adj_p: AdjProb,
             feed_mk: MarketProb, user_mk: MarketProb, *,
             state: RunState, outlook: dict | None = None,
-            strategy: object = None) -> dict:
+            strategy: object = None, ours=None) -> dict:
     """🔴 ③ 우리 확률 + §6 세 열 비교를 만든다. ⚠️ 못 만든 열은 **사유만** 남는다."""
     from app.core import compare
     from app.core.stages import s2c_market
-    # 🔴🔴 ③ 우리 확률은 **①② 에서 출발한다**(사용자 지시 2026-10-06(6차) ①).
-    #    ⚠️ ① 이 없으면 종전처럼 시나리오 비율이고, 카드가 그 사실을 적는다.
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **③ 로그 오즈 경로를 끊었다** — 상성 엔진 지시서 §2·C7
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 변수가 로그 오즈를 직접 미는 ③ 이동 경로(k=0.15·mover 목록·이동 상한)를
+    #  > **확률 경로에서 뺀다** → 변수는 V-3 배치표대로 ①②③에.
+    #  > C7 변수가 확률에 닿는 길은 **① 상성 축뿐**이다.
+    #
+    #  🔴 그래서 ③ 이동 함수를 **부르지 않는다**(그 함수는 지웠다). 우리 열은 **S3**
+    #     (`probmodel.run`)이 낸 수이고, 파이프라인이 `ours` 로 넣어 준다.
+    #  ⚠️ `start`(①②)는 **기준 열**로만 쓴다 — 출발점이 아니다(§2 첫 줄: Elo 를
+    #     출발점에서 빼고 V1 검증으로 보낸다).
     start = adj_p.probs if adj_p.probs is not None else base_p.probs
-    ours, why = compare.our_prob(hypo, start=start, variables=variables,
-                                 adjusted=bool(adj_p.moved), ref=ref,
-                                 outlook=outlook, strategy=strategy)
+    why = "S3(상성)이 낸 수"
     # 🔴 §6 은 *"기준(**②반영**)·우리·시장"* 을 나란히 놓으라고 했다 — 그래서 비교도
     #    ② 를 반영한 수로 한다(카드 표와 **같은 수**여야 설명이 맞는다).
     base_for_compare = (base_p.model_copy(update={"probs": start})
@@ -624,8 +643,10 @@ def _layers(ref: MatchRef, facts: Facts, variables: list[Variable],
                + (f"(우리 {why})" if ours is not None else f"({why})"))
     return {"base": base_p, "adj": adj_p, "market": market,
             "outlook": dict(outlook or {}),
-            # 🔴 ③ 이 움직인 양 — `our_prob` 가 방금 적어 둔 그 목록이다
-            "moves": list(compare.MOVES),
+            # 🔴🔴 **③ 이동 목록은 비었다**(C7) — 변수는 로그 오즈를 안 민다.
+            #    ⚠️ 칸은 남겨 둔다(카드·계약이 그 이름을 안다) — 늘 빈 목록이고
+            #       그 사실이 *"변수가 확률을 직접 안 움직인다"* 의 증거다.
+            "moves": [],
             "user_market": user_mk, "ours": ours, "compare": verdict,
             "compare_lines": [*lines, (f"시장 열 — {label}" if label else "")],
             "tilt": tilt, "market_why": reasons}

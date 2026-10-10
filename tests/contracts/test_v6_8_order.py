@@ -49,7 +49,7 @@ def test_v6_가설_단계가_시뮬_결과를_안_받는다():
     세 가지로 막는다:
       ① `claims()` 의 **인자에 시뮬·확률이 없다**
       ② 그 본문이 `sim`·`our_prob`·`matchup` 을 **읽지 않는다**
-      ③ 파이프라인에서 `claims()` 가 `final_sim()` **앞**에 있다
+      ③ 파이프라인에서 `claims()` 가 **S3**(`_pm.run`) **앞**에 있다
     """
     fn = _fn(CORE / "stages" / "s6_hypo.py", "claims")
     args = {a.arg for a in [*fn.args.args, *fn.args.kwonlyargs]}
@@ -57,10 +57,10 @@ def test_v6_가설_단계가_시뮬_결과를_안_받는다():
                 "edge", "base_p", "adj_p"):
         assert bad not in args, f"🔴 가설 단계가 `{bad}` 를 받는다"
     said = ast.unparse(fn)
-    for bad in ("final_sim", "our_prob", "\"sim\"", "'sim'"):
+    for bad in ("probmodel", "our_prob", "\"sim\"", "'sim'"):
         assert bad not in said, f"🔴 가설 단계가 `{bad}` 를 읽는다"
     src = (CORE / "pipeline.py").read_text(encoding="utf-8")
-    i, j = src.find("s6_hypo.claims("), src.find("final_sim(")
+    i, j = src.find("s6_hypo.claims("), src.find("_pm.run(")
     assert 0 <= i < j, f"🔴 가설이 시뮬보다 뒤다(i={i} j={j})"
     # 🔴 시나리오는 **시뮬 뒤**다(§2-3·§4-4)
     k = src.find("s6_hypo.scenarios(")
@@ -105,22 +105,34 @@ def test_v6_신호_지표는_허용_목록_안이다():
 
 
 def test_v6_시뮬_표가_검증이_읽는_네_칸을_든다():
-    """🔴🔴 **실사고 2026-10-10** — `sim.Out` 에 칸을 더해 놓고 `final_sim` 의
-    표에 **안 실어** 검증이 12줄 중 **8줄**을 `기대득점 칸이 없다` 로 버렸다.
+    """🔴🔴 **실사고 2026-10-10** — `sim.Out` 에 칸을 더해 놓고 산출 표에 **안
+    실어** 검증이 12줄 중 **8줄**을 `기대득점 칸이 없다` 로 버렸다.
 
-    ⚠️ 돌연변이: 그 네 칸 중 하나라도 표에서 빼면 이 줄이 빨개진다(조용한 0 · #3).
+    🔴 그 표는 이제 **S3**(`probmodel.ProbOut.as_sim`)이 낸다(§2: 옛 `final_sim`
+       을 지웠다). ⚠️ 네 칸 중 하나라도 빠지면 이 줄이 빨개진다(조용한 0 · #3).
     """
-    from app.core import signals as _sg
-    from app.core.schema import Facts, ProbTriple, Signal
-    from app.core.stages import s2e_matchup as _s2e
+    from app.core import matchup as _mu
+    from app.core import probmodel as _pm
+    from app.core import routing, signals as _sg
+    from app.core.schema import Facts, Signal, Variable, XI
     from app.core.state import RunState
-    facts = Facts(standings={"match_total_baseline": 2.6})
-    ours = ProbTriple(home=0.45, draw=0.27, away=0.28)
-    got = _s2e.final_sim(_ref(), facts, {"fired": [], "fired2": [], "form": {}},
-                         state=RunState(match_key="x"), ours=ours, before=ours)
+    ref = _ref()
+    xi = {ref.home: XI(team=ref.home, state="confirmed",
+                       players=[f"H{i}" for i in range(11)]),
+          ref.away: XI(team=ref.away, state="confirmed",
+                       players=[f"A{i}" for i in range(11)])}
+    facts = Facts(xi=xi, standings={"match_total_baseline": 2.6},
+                  player_value={**{f"H{i}": 1_000_000 for i in range(11)},
+                                **{f"A{i}": 700_000 for i in range(11)}})
+    vs = routing.place([Variable(id="S03", type="home_field", subject=ref.home,
+                                 favors="home", hardness="soft", weight=0.4,
+                                 claim="홈 이점 수치 없음", quote="q")])
+    box = {"form": {}, "style": {}, "profile": {}, "fired": [], "fired2": [],
+           "off": {}, "late": {}}
+    mr = _mu.report(ref, facts, box, vs)
+    got = _pm.run(ref, facts, mr, vs, state=RunState(match_key="x")).as_sim()
     for key in ("xg", "no_goal", "by_bucket", "first_then_win"):
-        assert got.get(key), f"🔴 시뮬 표에 `{key}` 가 없다 — 검증이 못 읽는다"
-    # 🔴 일곱 지표가 **전부** 읽힌다(판단 불가가 지표 없음으로 나오지 않는다)
+        assert got.get(key), f"🔴 S3 표에 `{key}` 가 없다 — 검증이 못 읽는다"
     want = [Signal(metric="기대득점", direction=">", ref="0.5", side="home"),
             Signal(metric="무득점확률", direction="<", ref="0.9", side="away"),
             Signal(metric="구간득점", direction=">", ref="0.0", side="home",
@@ -133,7 +145,6 @@ def test_v6_시뮬_표가_검증이_읽는_네_칸을_든다():
     for sig in want:
         said = _sg.check(sig, got, league=league)
         assert said["verdict"] != _sg.NA, (sig.metric, said["why"])
-
 
 def test_v6_단위가_다른_기준을_버린다():
     """🔴🔴 **실사고 2026-10-10** — 모델이 `무득점확률 > 리그평균` 을 냈고 검증이

@@ -1,0 +1,254 @@
+"""🔴🔴 **S3 — 상성 → 기본 확률(= 최종 확률)**. 상성 엔진 지시서(여섯째) S3.
+
+> 3-1 `log λ홈 = 리그 평균 득점(로그) + 홈 이점(리그 실측) + 대회 유형 상수
+>      + β·(축0~축3 의 홈 공격 vs 원정 수비 특징)`
+> **입력은 MatchupReport 뿐이다.** Elo·동기·일정(T2 경유 제외)·감독 발언·맞대결·
+> 시장·LLM 문장은 **금지**(C1).
+> 3-3 시뮬레이션 → 승무패·오버·무득점·시간대·선제골 후·예상 스코어.
+> 3-4 **축별 기여 분해**(리그 평균 대비): 축0 x · 축1 y · 축2 z · 축3 w — 합 =
+>      리그 평균 대비 변화. 축마다 그 기여를 만든 **변수 id 상위 3개**.
+> 3-6 **임시 모드**: λ = 리그 평균 × 홈 이점 × exp(임시 계수 × 표준화된 축 차).
+
+🔴 시뮬레이션은 `app/core/sim.py` 하나다(사본 금지).
+🔴 C2 — 이 함수가 낸 수가 **카드의 확률**이다. 뒤 단계는 그것을 바꾸지 않는다.
+"""
+from __future__ import annotations
+
+import logging
+import math
+from dataclasses import dataclass, field
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ProbOut:
+    """🔴 S3 산출 — 확률·λ·기여 분해·사유."""
+
+    home: float | None = None
+    draw: float | None = None
+    away: float | None = None
+    over: dict = field(default_factory=dict)
+    scores: dict = field(default_factory=dict)
+    no_goal: dict = field(default_factory=dict)
+    by_bucket: dict = field(default_factory=dict)
+    first_then_win: dict = field(default_factory=dict)
+    first_wins: float | None = None
+    lam: dict = field(default_factory=dict)
+    #: 🔴 §3 — 검증이 읽는 **기대 득점**(분포 평균). `lam` 과 다르다(상태 배율 반영)
+    xg: dict = field(default_factory=dict)
+    #: 🔴 3-4 — `{"axis0": %p, …}`(리그 평균 대비) + 축별 주요 변수
+    share: dict = field(default_factory=dict)
+    share_refs: dict = field(default_factory=dict)
+    #: 🔴 C10 — 임시 계수를 썼나(카드가 `🔴 임시` 를 적는다)
+    provisional: bool = True
+    why: str = ""
+    #: 🔴 못 돌았으면 그 사유(#3)
+    gap: str = ""
+
+    def ok(self) -> bool:
+        return self.home is not None
+
+    def as_sim(self) -> dict:
+        """🔴 가설 검증(§4-1)이 읽는 **시뮬 표** 꼴 — 같은 수다(사본 아님)."""
+        return {"home": self.home, "draw": self.draw, "away": self.away,
+                "over": dict(self.over), "scores": dict(self.scores),
+                "no_goal": dict(self.no_goal),
+                "by_bucket": dict(self.by_bucket),
+                "first_then_win": dict(self.first_then_win),
+                "first_wins": self.first_wins, "lam": dict(self.lam),
+                "xg": dict(self.xg),
+                "share": dict(self.share), "why": self.why}
+
+
+def _kind(ref, facts) -> str:
+    """🔴 대회 유형 열쇠 — `s5_verify.comp_kind` 하나가 만든다(사본 금지).
+
+    돌려주는 꼴: `national_friendly`·`national_official`·`league:<이름>`.
+    ⚠️ `ref` 가 없으면 `facts` 만으로 만든다(홈 이점 쪽에서 그렇게 부른다).
+    """
+    from app.core.stages.s5_verify import comp_kind
+    try:
+        return str(comp_kind(ref, facts) if ref is not None
+                   else comp_kind(_RefShim(facts), facts))
+    except Exception:                                       # noqa: BLE001
+        return str(getattr(facts, "match_format", "") or "")
+
+
+class _RefShim:
+    """🔴 `ref` 없이 유형을 물을 때의 **최소 모양**(대회 이름만 본다)."""
+
+    def __init__(self, facts) -> None:
+        self.competition = ""
+        self.competition_short = ""
+        self.sport = "soccer"
+        self.home = self.away = ""
+        self.home_name = self.away_name = ""
+
+
+def league_mean(facts, *, ref=None) -> tuple[float | None, str]:
+    """🔴 3-1 — **리그 평균 득점**(한 팀 몫 = 경기당 총골 ÷ 2).
+
+    🔴 출처는 **둘이고 좁은 쪽이 먼저**다(사본 금지 — 둘 다 이미 있는 것이다):
+      ① `facts.standings["match_total_baseline"]` — **이 두 팀**의 경기당 총골
+      ② `rules.goal_share(대회 유형)` — **대회 실측 평균**(`config/goal_baselines.yaml`)
+    ⚠️ 둘 다 없으면 `(None, 사유)` — S3 를 **안 돈다**(지어내지 않는다 · #4).
+    """
+    from app import rules
+    got = dict(getattr(facts, "standings", None) or {}).get(
+        "match_total_baseline")
+    if got is not None:
+        return float(got) / 2.0, f"두 팀 경기당 총골 {float(got):g}"
+    kind = _kind(ref, facts)
+    said = rules.goal_share(kind)
+    if said is not None:
+        box = rules.goal_baseline(kind)
+        return float(said), (f"대회 유형 `{kind}` 실측 평균 "
+                             f"{float(box.get('goals_per_match') or 0):g}"
+                             f"(표본 {box.get('n')})")
+    return None, (f"🔴 리그 평균 득점을 **모른다**(두 팀 기준도, 대회 유형 "
+                  f"`{kind}` 표도 없다) — S3 를 안 돈다")
+
+
+def home_mul(facts, varset) -> tuple[float, str]:
+    """🔴🔴 3-1 — **홈 이점(리그 실측)**. ⚠️ 없으면 **1.0**(다른 대회에서 안 빌린다).
+
+    🔴 실측은 `config/goal_baselines.yaml` 의 `home_share` 다 — *"홈 개최 경기의
+       **홈 팀** 평균 득점"*. 그것을 **한 팀 몫**(경기당 ÷ 2)으로 나누면 홈 배율이다.
+    🔴 `home_field`(S03) 변수는 `lambda_const` 자리에 있다 — 그 변수가 *"수치
+       없음"* 이라고 적으면 그 사실을 사유에 함께 남긴다(#3).
+    ⚠️ 중립 경기(홈이 없는 대회)에는 **쓰지 않는다** — `home_share` 가 없으면 1.0.
+    """
+    from app import rules
+    from app.core import matchup as _m
+    box = dict(_m.table().get("lambda_model") or {})
+    kind = _kind(None, facts)
+    said = rules.goal_baseline(kind)
+    share, per = said.get("home_share"), rules.goal_share(kind)
+    rows = [one for one in (varset.of("lambda_const") if varset else [])
+            if str(one.type) == "home_field"]
+    tag = f" · 변수 `{rows[0].id}`" if rows else ""
+    if share is None or not per:
+        return (float(box.get("home_mul_default") or 1.0),
+                f"🔴 홈 이점 **실측 없음**(대회 `{kind}`) — 배율 1.0"
+                f"(빌리지 않는다){tag}")
+    mul = float(share) / float(per)
+    return mul, (f"홈 이점 실측 — 홈 팀 평균 {float(share):g} ÷ 한 팀 몫 "
+                 f"{float(per):g} = ×{mul:.3f}(대회 `{kind}`){tag}")
+
+
+def run(ref, facts, mr, varset, *, edge: dict | None = None,
+        state=None) -> ProbOut:
+    """🔴🔴 S3 — **상성만으로** λ 를 세고 시뮬로 바꾼다.
+
+    `mr` 은 `matchup.MatchupReport` 다. ⚠️ `facts` 에서 읽는 것은 **리그 평균**
+    하나다(C1: Elo·동기·일정·감독·맞대결·시장은 안 읽는다).
+    """
+    from app.core import matchup as _m
+    from app.core import sim as _sim
+    got = ProbOut()
+    mean, why_mean = league_mean(facts, ref=ref)
+    if mean is None:
+        got.gap = why_mean
+        _note(state, f"S3 {why_mean}")
+        return got
+    conf = dict(_m.table().get("lambda_model") or {})
+    fit = dict(_m.table().get("fit") or {})
+    got.provisional = bool(fit.get("provisional", True))
+    beta = float(conf.get("beta") or 0.0)
+    cap = float(conf.get("cap_pct") or 35.0) / 100.0
+    mul, why_home = home_mul(facts, varset)
+    # 🔴 3-1 — 축 차 하나로 두 팀 λ 를 **반대 방향으로** 기울인다
+    gaps = mr.gaps()
+    weights = dict(_m.table().get("weights") or {})
+    tilt = sum(float(weights.get(k) or 0.0) * float(v) for k, v in gaps.items())
+    move = max(-cap, min(cap, beta * tilt))
+    lam_h = mean * mul * math.exp(move)
+    lam_a = mean * math.exp(-move)
+    got.lam = {"home": round(lam_h, 4), "away": round(lam_a, 4)}
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **3-2 시간대·경기 상태** — 축3 이 구간과 상태 배율을 준다
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 축3 **시간대 비중**으로 λ 를 구간 분할, **리드 유지력·추격력**으로
+    #  > 상태별 배율.
+    #
+    #  🔴 그 재료를 만드는 곳은 `goals.sim_input` 하나다(사본 금지) — 발동 규칙의
+    #     `lambda_own_late`·T11 상태 배율을 거기서 읽는다.
+    #  ⚠️ C9 — `관찰만` 규칙은 그 함수가 **빼고** 준다(λ 에 안 들어간다).
+    from app.core import goals as _g
+    args = _g.sim_input(dict(edge or {}), lam_home=lam_h, lam_away=lam_a)
+    out = _sim.run(args["lam_home"], args["lam_away"],
+                   late_home=args["late_home"], late_away=args["late_away"],
+                   lead_mul=args["lead_mul"])
+    got.lam = {"home": round(float(args["lam_home"]), 4),
+               "away": round(float(args["lam_away"]), 4)}
+    _fill(got, out)
+    why_rules = str(args.get("why") or "")
+    # 🔴 3-4 — **리그 평균 대비** 축별 기여(합 = 전체 변화)
+    base = _sim.run(mean * mul, mean)
+    got.share, got.share_refs = _share(mean, mul, beta, cap, weights, gaps, mr,
+                                       base=base)
+    got.why = (f"{why_mean} → 한 팀 평균 {mean:.3f} · {why_home} · 축 종합 "
+               f"{tilt:+.3f} × β {beta:g} → λ 이동 {move:+.3f}"
+               + (f"(상한 ±{cap:.0%} 로 잘렸다)"
+                  if abs(beta * tilt) > cap else "")
+               + (f" · 규칙 λ {why_rules}" if why_rules else "")
+               + (f" · {_m.PROVISIONAL}" if got.provisional else ""))
+    _note(state, f"S3 확률(상성) — 홈 {got.home:.1%} · 무 {got.draw:.1%} · "
+                 f"원정 {got.away:.1%} · {got.why}")
+    logger.info("[S3] %s", got.why)
+    return got
+
+
+def _fill(got: ProbOut, out) -> None:
+    got.home, got.draw, got.away = out.home, out.draw, out.away
+    got.xg = dict(out.xg)
+    got.over = dict(out.over)
+    got.scores = dict(sorted(out.scores.items(),
+                             key=lambda kv: -float(kv[1]))[:40])
+    got.no_goal = dict(out.no_goal)
+    got.by_bucket = {k: dict(v) for k, v in dict(out.by_bucket).items()}
+    got.first_then_win = dict(out.first_then_win)
+    got.first_wins = out.first_wins
+
+
+def _share(mean: float, mul: float, beta: float, cap: float, weights: dict,
+           gaps: dict, mr, *, base) -> tuple[dict, dict]:
+    """🔴🔴 3-4 — 축별 기여(%p). **합이 리그 평균 대비 변화와 같다**.
+
+    🔴 재는 법: 축을 **하나씩 더해** 가며 홈 승 확률의 차를 적는다(겹침 없이
+       합이 정확하다 · 잔차 0).
+    """
+    from app.core import sim as _sim
+    out: dict = {}
+    refs: dict = {}
+    run = 0.0
+    prev = float(base.home)
+    for name in ("axis0", "axis1", "axis2", "axis3"):
+        run += float(weights.get(name) or 0.0) * float(gaps.get(name) or 0.0)
+        move = max(-cap, min(cap, beta * run))
+        now = _sim.run(mean * mul * math.exp(move), mean * math.exp(-move))
+        out[name] = round((float(now.home) - prev) * 100.0, 2)
+        prev = float(now.home)
+        refs[name] = list(mr.axis(name).refs)[:3]
+    return out, refs
+
+
+def _note(state, said: str) -> None:
+    if state is not None:
+        state.note(said)
+
+
+def league_base(ref, facts, varset) -> dict | None:
+    """🔴 3-4 의 기준선 — **리그 평균만**으로 돈 확률(축 기여가 0일 때의 수).
+
+    ⚠️ 리그 평균이 없으면 `None`(지어내지 않는다).
+    """
+    from app.core import sim as _sim
+    mean, _why = league_mean(facts, ref=ref)
+    if mean is None:
+        return None
+    mul, _said = home_mul(facts, varset)
+    out = _sim.run(mean * mul, mean)
+    return {"home": out.home, "draw": out.draw, "away": out.away}

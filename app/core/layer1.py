@@ -579,12 +579,39 @@ def template_lines(card: Card) -> tuple[list[str], list[list[str]]]:
     refs = [[fid] for fid, _text in rows]
     # 🔴 **마지막 문장은 방향으로 맺는다**(§3 마지막 줄 · 검열 (k))
     tail = direction_words(card)
-    if tail == "반반":
-        said.append("세 열이 갈라지지 않아 **어느 쪽도 확신할 근거가 없다**.")
-    else:
-        said.append(f"우리 열은 {tail} 로 잡힌다.")
-    refs.append(["DIR"] if "DIR" in box else [])
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **마지막 문장은 상성으로 맺는다**(상성 엔진 지시서 P1·§3)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 종전에는 `반반` 일 때 *"세 열이 갈라지지 않아 어느 쪽도 확신할 근거가
+    #     없다"* 를 적었다 — **세 열이 출발점이던 시절의 말**이고, 검열 (j) 가
+    #     *"범용 문장"* 으로 잡는다(실측 2026-10-10).
+    #  🔴 지금 확률의 출처는 **상성**이다 → 그 판정(우위 팀·강도)과 **가장 큰 축**
+    #     을 적고, 근거는 그 축의 변수 id 로 든다(없으면 방향만).
+    said_edge, edge_refs = _edge_tail(card, tail)
+    said.append(said_edge)
+    refs.append(edge_refs if edge_refs else (["DIR"] if "DIR" in box else []))
     return said, refs
+
+
+def _edge_tail(card: Card, tail: str) -> tuple[str, list]:
+    """🔴 템플릿의 마지막 문장 — **상성 판정 + 가장 큰 축 + 그 축의 변수**."""
+    box = dict(getattr(card, "matchup", None) or {})
+    mr = box.get("report")
+    share = dict(box.get("share") or {})
+    refs = dict(box.get("share_refs") or {})
+    if mr is None or not share:
+        return (f"우리 열은 {tail} 로 잡힌다.", [])
+    top = max(share, key=lambda k: abs(float(share[k] or 0.0)))
+    who = str(dict(getattr(mr, "verdict", None) or {}).get("edge") or "")
+    name = {"home": card.match.home_name,
+            "away": card.match.away_name}.get(who, "")
+    said = (f"상성은 {name} {dict(mr.verdict).get('strength')}"
+            if name else "상성은 **가리지 못했다**")
+    got = [str(x) for x in (refs.get(top) or [])][:2]
+    return (f"{said} — 가장 큰 축은 {top}"
+            f"({float(share[top]):+.1f}%p)이고 우리 열은 {tail} 로 잡힌다.",
+            got)
 
 
 def _cap(said: str, n: int) -> str:

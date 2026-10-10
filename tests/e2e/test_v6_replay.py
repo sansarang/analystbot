@@ -145,12 +145,40 @@ def card(replaying) -> Card:
         hypo = s6_hypo.scenarios(ref, facts, variables, hypo, {}, state=state)
         # 🔴🔴 **파이프라인과 같은 순서**(2026-10-07 재가중 ①) — 우리 열 → 재가중 →
         #    생존. ⚠️ 순서가 다르면 재생이 운영을 흉내낸 것이 아니다.
-        before_layers = pipeline._layers(ref, facts, variables, hypo, base_p,
-                                        adj_p, feed_mk, user_mk, state=state)
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **S1V → S2 → S3**(상성 엔진 지시서 2026-10-10 여섯째)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  🔴 확률의 출처는 **상성 하나**다(P1) — 그래서 재생도 그 순서로 돈다.
+        #  ⚠️ 이 고정물은 상성 재료(폼·스타일·골 프로필)를 안 모은다 → 축1·2·3 은
+        #     `⬜`(사유가 남는다)이고 축0 만 센다. 그것이 재생과 운영의 차이다.
+        from app.core import matchup as _mu
+        from app.core import probmodel as _pm
+        from app.core import routing as _routing
+        varset = _routing.place(variables)
+        edge: dict = {"form": {}, "style": {}, "profile": {}, "fired": [],
+                      "fired2": [], "off": {}, "late": {}}
+        mr = _mu.report(ref, facts, edge, varset, strategy=plan)
+        prob = _pm.run(ref, facts, mr, varset, edge=edge,
+                       state=state)
         layers = pipeline._layers(ref, facts, variables, hypo, base_p, adj_p,
                                  feed_mk, user_mk, state=state, strategy=plan)
         layers["strategy"] = plan
-        layers["prob_before"] = before_layers.get("ours")
+        layers["varset"] = varset
+        edge["report"] = mr
+        if prob.ok():
+            from app.core.schema import ProbTriple as _PT
+            layers["ours"] = _PT(home=prob.home, draw=prob.draw,
+                                 away=prob.away)
+            edge["sim"] = prob.as_sim()
+            edge["share"] = dict(prob.share)
+            edge["share_refs"] = dict(prob.share_refs)
+            said_base = _pm.league_base(ref, facts, varset)
+            if said_base:
+                layers["prob_before"] = _PT(home=said_base["home"],
+                                            draw=said_base["draw"],
+                                            away=said_base["away"])
+        layers["matchup"] = edge
         hypo = _reweight.of(hypo, layers.get("ours"), ref=ref, state=state)
         said = s7_judge.run(ref, facts, variables, hypo, state=state, now=NOW,
                             board=BOARD, board_source="user_board")
@@ -680,30 +708,32 @@ def test_불변식27_라인업_보정의_pp_와_신뢰도가_카드에_있다(ca
         assert card.adj_prob.why and ("안 움직였다" in said or "없음" in said)
 
 
-def test_불변식28_우리_열이_기준에서_출발한다(card: Card):
-    """28. ③ 이동량이 **기준(②반영) → 우리** 차이를 설명한다(6차 ①·③).
+def test_불변식28_우리_열이_상성에서_나온다(card):
+    """🔴🔴 **상성 엔진 지시서 §2·P1**(2026-10-10 여섯째) — 전제가 바뀌었다.
 
-    🔴 이동이 없으면 우리 열 = 기준이고, 카드가 *"③ 이동 없음"* 을 적는다.
+    > §2 Elo 기준 확률을 **출발점에서 뺀다** → V1(검증).
+    > P1 확률의 출처는 **상성 하나**다.
+
+    ⚠️ 옛 불변식은 *"우리 열이 **기준(①②)에서 출발**한다"* 였다 — 그 경로를
+       지웠으므로 그 계약도 바꾼다(§2 마지막 줄: 빨간 채로 두지 않는다).
+    🔴 이제 세는 것: 우리 열이 **S3 산출과 같은 수**이고(C2), ③ 로그 오즈 이동
+       목록이 **비어 있다**(C7).
     """
-    said = render.card_text(card)
-    start = (card.adj_prob.probs if card.adj_prob.probs is not None
-             else card.base_prob.probs)
-    if start is None or card.our_prob is None:
-        assert "기준 없음" in said
-        return
-    if not card.moves:
-        assert "③ **이동 없음 — 우리 열 = 기준**" in said
-        for key in ("home", "draw", "away"):
-            assert abs(getattr(card.our_prob, key) - getattr(start, key)) < 0.005
-        return
-    assert "③ 이 움직인 양" in said
-    # 🔴 움직인 쪽은 **그 방향으로** 갔다(상한 안에서)
-    for m in card.moves:
-        side = str(m.get("side"))
-        if side not in ("home", "draw", "away"):
-            continue
-        assert float(m.get("logodds") or 0) != 0.0, m
-
+    from app.core import matchup as _mu
+    assert card.our_prob is not None, "🔴 우리 확률이 없다"
+    box = dict(getattr(card, "matchup", None) or {})
+    sim = dict(box.get("sim") or {})
+    assert sim.get("home") is not None, "🔴 S3 산출이 카드에 없다"
+    for key in ("home", "draw", "away"):
+        assert abs(float(getattr(card.our_prob, key))
+                   - float(sim[key])) < 1e-9, (key, sim[key])
+    # 🔴 C7 — 변수가 로그 오즈를 직접 미는 목록은 **비었다**
+    assert list(getattr(card, "moves", None) or []) == [], card.moves
+    # 🔴 상성 판정이 카드에 있고 강도 글자가 열거값이다
+    mr = box.get("report")
+    assert mr is not None, "🔴 MatchupReport 가 카드에 없다"
+    assert dict(mr.verdict).get("strength") in (_mu.STRONG, _mu.MID,
+                                                _mu.WEAK, _mu.NONE)
 
 def test_불변식29_결장_변수는_그_팀_명단에_있다(card: Card):
     """29. 🔴🔴 **결장 계열 변수의 팀 귀속**(사용자 지시 2026-10-07 §결장-귀속-5).

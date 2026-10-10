@@ -527,113 +527,6 @@ def _vars(*specs):
     return out
 
 
-def test_우리_확률이_기준에서_출발한다():
-    """🔴 ① — `OurProb` 는 ①②의 확률에서 **로그 오즈로** 움직인다.
-
-    돌연변이: 출발점을 무시하고 시나리오 비율로 돌아가기 → 기준과 멀어져 빨개진다.
-    """
-    from app.core import compare
-    from app.core.schema import ProbTriple
-    start = ProbTriple(home=0.54, draw=0.29, away=0.17)
-    got, why = compare.our_prob(None, start=start, variables=[], adjusted=False)
-    assert got is not None and "기준" in why
-    # 🔴 움직일 변수가 없으면 **기준 그대로**다
-    assert abs(got.home - 0.54) < 0.005 and abs(got.away - 0.17) < 0.005, got
-    # 🔴 `stakes`(홈 유리 · 무게 2.0)가 홈을 **올린다**
-    said, why2 = compare.our_prob(None, start=start,
-                                  variables=_vars(("stakes", "home", 2.0)),
-                                  adjusted=False)
-    assert said is not None and said.home > got.home, (said, why2)
-
-
-def test_이동에_쓰는_유형이_열뿐이다():
-    """🔴 ① — 목록 밖 유형은 **안 움직인다**. 돌연변이: 목록을 늘리기.
-
-    ⚠️ 7차 §4 가 `lineup_intent` **하나를 더했다**(6차에서 빠져 있었다).
-    """
-    from app.core import compare
-    box = compare.move_rules()
-    assert sorted(box["movers"]) == sorted([
-        "stakes", "coach_intent", "coach_conflict", "match_type", "fatigue",
-        "match_format", "individual_title", "streak_psych", "venue_weather",
-        "lineup_intent"])
-    assert float(box["k"]) == 0.15 and float(box["cap_logodds"]) == 0.5
-    # 🔴 ① 이 머금은 유형은 **빠진다**
-    for kind in ("strength_gap", "recent_pattern", "home_field", "h2h_pattern"):
-        assert kind in box["skip"], kind
-
-
-def test_기준이_머금은_유형은_우리_열을_안_움직인다():
-    """🔴 ① — `recent_pattern`·`home_field`·`h2h` 는 이동 0.
-
-    🔴 결장 계열은 **② 가 움직였을 때만** 0 이다(지시 2026-10-09 ③ — ② 가 못 쓰면
-       ③ 이 센다). ⚠️ 그 둘이 **동시에** 세면 이중 계산이다.
-    """
-    from app.core import compare
-    from app.core.schema import ProbTriple
-    start = ProbTriple(home=0.5, draw=0.3, away=0.2)
-    rows = _vars(("recent_pattern", "home", 3.0), ("home_field", "home", 3.0),
-                 ("h2h_pattern", "home", 3.0))
-    got, why = compare.our_prob(None, start=start, variables=rows,
-                                adjusted=False)
-    assert got is not None and abs(got.home - 0.5) < 0.005, (got, why)
-    # 🔴 ② 가 움직였으면 결장 계열도 빠진다(두 번 세지 않는다)
-    absent = _vars(("def_absence", "away", 3.0))
-    with_adj, _ = compare.our_prob(None, start=start, variables=absent,
-                                   adjusted=True)
-    assert with_adj is not None and abs(with_adj.away - 0.2) < 0.005, with_adj
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **②가 못 쓰면 ③이 센다**(사용자 지시 2026-10-09 ③)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    # > 라인업 보정 환산 계수가 없는 리그에서는 결장 계열 변수를 ③ 무게표로
-    # > 센다(②에 넘겼는데 ②가 **못 쓰면 0 이 되는 구멍**).
-    #
-    # ⚠️ 종전 계약은 *"② 가 없으면 그 변수는 움직이지도 않는다"* 였다 — 그것이
-    #    바로 구멍이었다(실측 2026-10-09 대전–전북: 결장 둘이 어디서도 안 세졌다).
-    # 🔴 **둘이 동시에 세지는 않는다** — 위 `adjusted=True` 줄이 그것을 지킨다.
-    moved, why2 = compare.our_prob(None, start=start, variables=absent,
-                                   adjusted=False)
-    assert moved is not None, why2
-    assert moved.away > 0.2 + 0.005, (moved, why2)
-    assert "def_absence" in why2 or "IR" in why2, why2
-
-
-def test_한_결과_이동이_로그오즈_0_5_를_넘지_않는다():
-    """🔴 ① — 상한. 돌연변이: 상한 제거 → 큰 무게가 확률을 뒤집는다."""
-    from app.core import compare
-    from app.core.schema import ProbTriple
-    start = ProbTriple(home=0.5, draw=0.3, away=0.2)
-    many = _vars(*[("stakes", "home", 3.0)] * 8)      # 합 3.6 로그 오즈
-    got, why = compare.our_prob(None, start=start, variables=many,
-                                adjusted=False)
-    assert got is not None and "상한" in why, why
-    # 🔴 0.5 로그 오즈면 홈은 0.5 → 0.62 쯤이다(뒤집히지 않는다)
-    assert 0.55 < got.home < 0.68, got
-
-
-def test_기준이_없으면_우리_열을_비우고_그_말을_적는다():
-    """🔴🔴 **사용자 지시 2026-10-09 ③** — 돌연변이: 시나리오 비율을 우리 열로 쓴다.
-
-    > 기준이 없을 때 **시나리오 비율을 그대로 우리 열로 쓰지 않는다**
-    > (앞 지시 5번 그대로).
-
-    🔴 왜 계약으로 박나 — 실측 2026-10-08(마리노스–교토산업대): 변수가 `S03`
-       **하나**(그마저 수치 없음)인데 우리 열이 40/29/31 로 찍혀 **대학팀 원정승
-       31%** 가 나왔다. 그 수는 분석이 아니라 **갈래를 센 수**다.
-    ⚠️ 그래도 비율은 **버리지 않는다** — 사유에 참고로 남는다(#3 조용한 0 금지).
-    """
-    from app.core import compare
-    from app.core.schema import HypoSet, Scenario
-    rows = [Scenario(id="A", outcomes=[(2, 0)], mechanism="m", strength=1.0),
-            Scenario(id="B", outcomes=[(1, 1)], mechanism="m", strength=1.0)]
-    got, why = compare.our_prob(HypoSet(scenarios=rows), start=None)
-    assert got is None, f"기준이 없는데 우리 열에 수가 찍혔다: {got}"
-    assert "우리 열을 비운다" in why, why
-    # 🔴 참고 수는 **남아 있어야** 한다 — 그 수를 없애면 자료가 사라진다
-    assert "참고로 시나리오 비율" in why and "50%" in why, why
-
-
 def test_기여표는_같은_포지션끼리_짝짓는다():
     """🔴 ③ — 다른 포지션은 **구조 변경**이다. 돌연변이: 순서대로 짝짓기."""
     from app.core.stages.s2b_base import _deltas
@@ -684,31 +577,6 @@ def test_라인업_보정이_확률을_움직이고_신뢰도를_함께_적는�
                        strength_pct={}, deltas=[], home="team:000129",
                        away="team:000245", estimated=0, why="②")
     assert not none.moved and "환산 계수가 없다" in none.why
-
-
-def test_k_는_임시값이라고_표에_적혀_있다():
-    """🔴 6차 ④ — `k` 를 바꾸지 않는다 · 표에 *"임시값"* 이 적혀 있다."""
-    import pathlib
-    from app.core import compare
-    assert float(compare.move_rules()["k"]) == 0.15
-    said = pathlib.Path("config/interpret_rules.yaml").read_text(encoding="utf-8")
-    i = said.index("our_prob:")
-    assert "임시값" in said[i:i + 900], "🔴 `k` 가 임시값이라는 말이 표에 없다"
-
-
-def test_셋째층_이동량이_구조로_남는다():
-    """🔴 6차 ③ — 카드가 **글자를 다시 파싱하지 않는다**(`Card.moves`)."""
-    from app.core import compare
-    from app.core.schema import Card, ProbTriple
-    assert "moves" in Card.model_fields
-    start = ProbTriple(home=0.5, draw=0.3, away=0.2)
-    compare.our_prob(None, start=start, variables=_vars(("stakes", "home", 2.0)),
-                     adjusted=False)
-    assert compare.MOVES and compare.MOVES[0]["type"] == "stakes"
-    assert compare.MOVES[0]["logodds"] == 0.3, compare.MOVES
-    # 🔴 다음 호출이 **앞의 기록을 지운다**(묵은 이동량이 카드에 남으면 거짓이다)
-    compare.our_prob(None, start=start, variables=[], adjusted=False)
-    assert compare.MOVES == []
 
 
 def test_선수별_pp_는_상쇄되는_큰_항목에_안_적는다():
@@ -828,41 +696,6 @@ def test_상태가_다섯_글자_중_하나다():
     kz2, why4 = st.state_of(said, "Kazakhstan", is_home=True, zones={})
     assert kz2 == "must_win", (kz2, why4)
     assert "위" in why4, why4
-
-
-def test_상태별_이동이_표에서_온다():
-    """🔴 §4 — `draw_enough` → 무승부 +k(5백이면 ×2) · `must_win` → **이동 없음**.
-
-    돌연변이: `must_win` 에 1X2 이동을 주기 / `nothing` 에 상대 +k 를 주기.
-    """
-    from app.core import compare
-    from app.core.schema import ProbTriple, Variable
-    box = compare.move_rules()["outlook_moves"]
-    assert box["must_win"]["side"] is None and box["must_win"]["goals"] == "up"
-    assert box["nothing"]["side"] is None
-    assert box["draw_enough"]["side"] == "draw"
-    assert int(box["draw_enough"]["with_low_block"]) == 2
-    assert box["margin_needed"]["require_counter"] is True
-    start = ProbTriple(home=0.48, draw=0.33, away=0.19)
-    look = {"states": {"Faroe": {"state": "draw_enough"},
-                       "Kazakh": {"state": "must_win"}}}
-    got, why = compare.our_prob(None, start=start, variables=[], outlook=look)
-    assert got is not None and got.draw > 0.33, (got, why)
-    # 🔴 `must_win` 은 1X2 를 **안 움직인다**
-    only = {"states": {"Kazakh": {"state": "must_win"}}}
-    said, _ = compare.our_prob(None, start=start, variables=[], outlook=only)
-    assert said is not None and abs(said.draw - 0.33) < 0.005, said
-    # 🔴 5백(IR01)이 함께 걸리면 **두 번**이다
-    five = [Variable(id="IR01-away", type="lineup_intent",
-                     subject="team:000080", favors="away", goals="down",
-                     target="formation", hardness="soft", weight=0.7,
-                     claim="Faroe 5백으로 내려선다", quote="five at the back",
-                     from_rule="IR01-away")]
-    twice, why2 = compare.our_prob(None, start=start, variables=five,
-                                   outlook={"states": {"Faroe": {"state": "draw_enough"}}})
-    assert twice is not None
-    assert any(m["id"] == "경우의수:Faroe" and m["logodds"] == 0.3
-               for m in compare.MOVES), compare.MOVES
 
 
 def test_IR11_문턱이_4일과_시차3시간_거리3000km_다():
@@ -1037,29 +870,6 @@ def test_역습_갈래가_필수형으로_들어온다():
 # ══════════════════════════════════════════════════════════════════
 
 
-def test_이동은_경기당_합계_상한을_넘지_못한다():
-    """🔴 ① — **경기당 합계** ±0.5 로그 오즈. 돌연변이: 결과마다만 자르기.
-
-    ⚠️ 실측 카자흐–페로: 무 0.300 + 홈 0.165 + 원정 0.105 = **0.570** 이 통과했다.
-    🔴 지금은 합을 보고 **비율대로 줄인다** — `MOVES` 도 같은 비율로 적는다(카드의
-       이동량 합이 실제와 같아야 한다).
-    """
-    from app.core import compare
-    from app.core.schema import ProbTriple
-    start = ProbTriple(home=0.48, draw=0.33, away=0.19)
-    many = _vars(("coach_intent", "both", 0.7), ("fatigue", "home", 0.7),
-                 ("lineup_intent", "away", 0.7), ("stakes", "home", 0.7))
-    got, why = compare.our_prob(None, start=start, variables=many,
-                                outlook={"states": {"X": {"state": "draw_enough"}}})
-    assert got is not None and "상한" in why, why
-    said = sum(abs(float(m["logodds"])) for m in compare.MOVES)
-    assert said <= float(compare.move_rules()["cap_logodds"]) + 1e-9, said
-    # 🔴 상한 안이면 **줄이지 않는다**
-    few = _vars(("stakes", "home", 0.7))
-    compare.our_prob(None, start=start, variables=few, outlook=None)
-    assert abs(sum(abs(float(m["logodds"])) for m in compare.MOVES) - 0.105) < 1e-9
-
-
 def test_감독_로테이션은_같은_주제면_하나다():
     """🔴 ② — `coach_intent`·`coach_conflict`·`squad_rotation` 이 같은 팀 + 같은 주제면
     **한 변수**다(출처 수만 올라간다). 돌연변이: 유형별로 따로 두기.
@@ -1081,27 +891,6 @@ def test_감독_로테이션은_같은_주제면_하나다():
     # 🔴 주제를 못 가리면 **대상 글자**로 간다(지어내지 않는다)
     d = merge_key("team:1", "coach_intent", "Mier", claim="알 수 없는 말")
     assert d[2] == "mier", d
-
-
-def test_근거_불가_변수는_확률을_못_움직인다():
-    """🔴 ③ 점검표 — `usable_as_basis=False` 는 ③ 이동에서 빠진다.
-
-    ⚠️ 실측: `R2`(출처 1곳 · 근거 불가)가 +0.060 을 받았다. 돌연변이: 검사 제거.
-    """
-    from app.core import compare
-    from app.core.schema import ProbTriple, Variable
-    start = ProbTriple(home=0.5, draw=0.3, away=0.2)
-    weak = [Variable(id="R2", type="fatigue", subject="team:000132",
-                     favors="home", goals="none", target="result",
-                     hardness="soft", weight=0.7, claim="c", quote="q",
-                     usable_as_basis=False)]
-    got, why = compare.our_prob(None, start=start, variables=weak, outlook=None)
-    assert got is not None and abs(got.home - 0.5) < 0.005, (got, why)
-    assert not compare.MOVES, compare.MOVES
-    # 🔴 근거 가능하면 움직인다
-    ok = [weak[0].model_copy(update={"usable_as_basis": True})]
-    said, _ = compare.our_prob(None, start=start, variables=ok, outlook=None)
-    assert said is not None and said.home > 0.5
 
 
 def test_정보가_없다는_변수로_만들지_않는다():
@@ -1126,36 +915,6 @@ def test_정보가_없다는_변수로_만들지_않는다():
     calls = {c.func.id for c in _ast.walk(fn)
              if isinstance(c, _ast.Call) and isinstance(c.func, _ast.Name)}
     assert "has_info" in calls, "🔴 `_one` 이 `has_info` 를 안 부른다(배선 끊김)"
-
-
-def test_오백은_무승부_쪽이고_두_번_세지_않는다():
-    """🔴 9차 ③ 점검표 — `lineup_intent`(5백): **무승부 쪽만** · away 이동 **없음** ·
-    `draw_enough` ×2 로 이미 셌으면 **이동 0**(이중 계산 없음).
-
-    돌연변이: 5백을 `favors`(away) 쪽으로 움직이기 / ×2 와 변수 이동을 둘 다 주기.
-    """
-    import importlib
-    from app.core import compare
-    from app.core.schema import ProbTriple, Variable
-    ref = importlib.import_module("tests.e2e.test_v6_replay")._ref()
-    start = ProbTriple(home=0.48, draw=0.33, away=0.19)
-    five = Variable(id="IR01-away", type="lineup_intent", subject=ref.away,
-                    favors="away", goals="down", target="formation",
-                    hardness="soft", weight=0.7, claim="5백으로 내려앉는다",
-                    quote="q", from_rule="IR01-away")
-    # ① 경우의 수가 없을 때 — **무승부 쪽**으로만 움직인다(away 아님)
-    compare.our_prob(None, start=start, variables=[five], ref=ref, outlook=None)
-    assert [(m["id"], m["side"]) for m in compare.MOVES] == \
-           [("IR01-away", "draw")], compare.MOVES
-    # ② `draw_enough` ×2 가 돌면 그 변수는 **이동 0**(같은 사실이다)
-    look = {"states": {ref.away_name: {"state": "draw_enough"}}}
-    compare.our_prob(None, start=start, variables=[five], ref=ref, outlook=look)
-    ids = [m["id"] for m in compare.MOVES]
-    assert ids == [f"경우의수:{ref.away_name}"], ids
-    assert compare.MOVES[0]["logodds"] == 0.3, compare.MOVES
-    # 🔴 5백 판정은 **열쇠**로 센다 — claim 글자에 팀 이름이 없어도 ×2 가 돈다
-    assert compare._low_block(ref.away_name, [five], ref=ref)
-    assert not compare._low_block(ref.home_name, [five], ref=ref)
 
 
 def test_이름표가_모르면_임시_열쇠를_발급한다():
@@ -3186,3 +2945,40 @@ def test_총평_템플릿이_나열이_아니라_문장이다():
     import pathlib
     src = pathlib.Path("app/core/layer1.py").read_text(encoding="utf-8")
     assert "listy(" in src, "1겹이 나열을 안 거른다"
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **③ 로그 오즈 경로가 사라졌다** — 상성 엔진 지시서 §2·C7
+# ══════════════════════════════════════════════════════════════════
+#
+#  위에 있던 아홉 계약(우리 열이 기준에서 출발 · 결과당 ±0.5 · 경기당 합계 상한 ·
+#  근거 불가는 못 움직임 · 기준 머금은 유형 · 기준 없으면 빈 열 · 이동량 구조 ·
+#  상태별 이동 · 5백 무승부)은 **네 층 지시서의 ③ 이동 규칙**을 세고 있었다.
+#  🔴 상성 엔진 지시서 §2 가 그 경로를 **지웠다**(`k` 임시값·이동 유형 표 계약도
+#     같이 걷혔다 — 그 수들이 더는 확률에 닿지 않는다) — 변수는 이제 ①상성 축·②검증·
+#     ③가설로 간다. 그래서 그 계약들을 **하나로** 바꾼다(§2 마지막 줄).
+
+def test_v7_C7_변수가_로그오즈를_직접_못_민다():
+    """🔴🔴 C7 — *"변수가 확률에 닿는 길은 **① 상성 축뿐**이다(로그 오즈 직접
+    이동 코드 **0**)"*.
+
+    세 가지로 센다:
+      ① `compare` 에 `our_prob`·`move_rules` 가 **없다**(지웠다)
+      ② 확률을 내는 곳은 `probmodel` 하나고, 그 입력은 `MatchupReport` 다
+      ③ 카드의 `moves`(③ 이동 목록)는 **늘 빈 목록**이다
+    """
+    import ast as _ast
+
+    from app.core import compare
+    for gone in ("our_prob", "move_rules"):
+        assert not hasattr(compare, gone), f"🔴 `compare.{gone}` 가 살아 있다"
+    src = (ROOT / "app" / "core" / "pipeline.py").read_text(encoding="utf-8")
+    assert "compare.our_prob" not in src, "🔴 파이프라인이 옛 경로를 부른다"
+    fn = [n for n in _ast.walk(_ast.parse(src))
+          if isinstance(n, _ast.FunctionDef) and n.name == "_layers"]
+    assert fn, "🔴 `_layers` 가 없다"
+    said = _ast.unparse(fn[0])
+    assert "our_prob(" not in said
+    #: 🔴 `ast.unparse` 는 따옴표를 홑으로 바꾼다 — 두 꼴을 다 받는다
+    assert ("'moves': []" in said or '"moves": []' in said), (
+        "🔴 ③ 이동 목록이 비지 않았다")
