@@ -631,6 +631,10 @@ def text(card: Card, *, buttons: bool = True) -> str:
         if said_block:
             out.append(said_block)
     out.append(f"🎯 예상 {_scores(card)}")
+    # 🔴🔴 **최종 평**(2026-10-10 넷째 §4) — *"1겹 맨 끝, **보드 판정 위에**"*
+    said_say = say_block(card)
+    if said_say:
+        out.append(said_say)
     out.append(f"🎯 보드 판정: {_board(card)}")
     out.append(f"⚠️ 뒤집히는 길: {_flip(card)}")
     # 🔴🔴 §3-4 — **🆕 새 사실(72시간)** 은 1겹에도 올라온다
@@ -1063,3 +1067,52 @@ def _sim_line(box: dict) -> str:
     if said.get("first_wins") is not None:
         got += f" · 선제골 팀 승 {float(said['first_wins']):.0%}"
     return got
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **최종 평 블록** — 사용자 지시 2026-10-10(넷째) §4
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 🧑‍🏫 최종 평 — {verdict}
+#  >  {one_line}
+#  >  · {key_point 1: 주장 — 메커니즘}
+#  >  · {key_point 2}
+#  >  · {key_point 3}
+#  >  📈 흐름: {전반} / {후반}   ⏱ 승부처: {decisive_moment}
+#  >  🔄 뒤집히는 조건: {flip_condition}
+#
+#  🔴 **빈 글자면 블록을 안 낸다** — 1겹의 줄 순서 계약이 빈 줄을 센다.
+#  🔴 주장은 **셋까지**다(1겹 상한) — 나머지는 긴 카드가 든다(§4 둘째 덩이).
+
+SAY_HEAD = "🧑‍🏫 **최종 평**"
+#: 🔴 1겹에 올리는 주장 수 — 지시서 §4 가 보인 모양(점 셋)
+SAY_POINTS = 3
+
+
+def say_block(card: Card) -> str:
+    """🔴🔴 §4 — 최종 평 블록. ⚠️ 못 돌았으면 **빈 글자**(사유는 긴 카드가 적는다).
+
+    🔴 `템플릿` 평도 **낸다** — 그것이 §3 마지막 줄이 정한 모양이고, 머리에
+       `템플릿` 이라고 적어 사람이 그 사실을 본다(#3 조용히 바꿔치지 않는다).
+    """
+    got = getattr(card, "say", None)
+    said = str(getattr(got, "audit", "") or "")
+    if got is None or said in ("", "안 돌았다"):
+        return ""
+    if not str(getattr(got, "verdict", "") or ""):
+        return ""
+    head = f"{SAY_HEAD} — {got.verdict}"
+    if said == "템플릿":
+        head += "  ⬜ **템플릿**(검열이 LLM 평을 버렸다)"
+    out = [head]
+    if str(got.one_line or ""):
+        out.append(f" {got.one_line}")
+    for kp in list(got.key_points or [])[:SAY_POINTS]:
+        out.append(f" · {kp.claim} — {kp.mechanism}")
+    if str(got.flow_first or "") or str(got.flow_second or ""):
+        out.append(f" 📈 흐름: {got.flow_first} / {got.flow_second}"
+                   + (f"   ⏱ 승부처: {got.decisive_moment}"
+                      if str(got.decisive_moment or "") else ""))
+    if str(got.flip_condition or ""):
+        out.append(f" 🔄 뒤집히는 조건: {got.flip_condition}")
+    return "\n".join(out)

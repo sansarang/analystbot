@@ -136,11 +136,20 @@ def xi_of(team_key: str, raw: object, *, source_url: str = "",
               formation=(_text(box.get("formation")) or None),
               players=players,
               bench=names_of(box.get("bench") or box.get("subs")),
+              # 🔴 **세부 자리·측면·나이·레이팅을 같이 싣는다**(최종 평 §1-1) —
+              #    수집기가 이미 센 것이고, 여기서 다시 세지 않는다(사본 금지).
               lineup=[Player(name=str(r.get("name") or ""),
                              pos=str(r.get("pos") or ""),
                              number=(int(r["number"])
                                      if isinstance(r.get("number"), int)
-                                     else None))
+                                     else None),
+                             spot=str(r.get("spot") or ""),
+                             flank=str(r.get("flank") or ""),
+                             age=(int(r["age"])
+                                  if isinstance(r.get("age"), int) else None),
+                             rating=(float(r["rating"])
+                                     if isinstance(r.get("rating"),
+                                                   (int, float)) else None))
                       for r in rows if r.get("name")],
               source_url=str(source_url or box.get("source_url") or ""),
               fetched_at=_utc(box.get("fetched_at")),
@@ -189,6 +198,8 @@ def facts_of(raw: dict, *, xi: dict[str, XI] | None = None,
              squad: dict[str, list[str]] | None = None,
              player_value: dict[str, float] | None = None,
              past_xi: dict[str, list[XI]] | None = None,
+             #: 🔴 선수별 시즌 기록(최종 평 §1-1) — 선수단 페이지가 준다
+             player_stats: dict | None = None,
              gaps: list[str] | None = None) -> Facts:
     """🔴 구조 사실 묶음 → `schema.Facts`. ⚠️ 없는 칸은 **빈 것**으로 둔다.
 
@@ -211,6 +222,7 @@ def facts_of(raw: dict, *, xi: dict[str, XI] | None = None,
                       if v and float(v) > 0},
         past_xi={str(k): list(v) for k, v in (past_xi or {}).items() if v},
         squad={k: [str(x) for x in v] for k, v in (squad or {}).items()},
+        player_stats=dict(player_stats or {}),
         match_format=(fmt if fmt in allowed else "unknown"),  # type: ignore[arg-type]
         # 🔴🔴 **리그 번호**(`general.parentLeagueId`) — 대회 판정이 글자로만
         #    가지 않게(실사고 2026-10-10: `Super League` 가 스위스·인도네시아 둘).

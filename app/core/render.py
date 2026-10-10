@@ -59,6 +59,8 @@ def card_text(card: Card, *, debug: bool = False) -> str:
             out.append("\n" + tactic_long(card))
             # 🔴🔴 §5(셋째) — **상성 자세히**는 그 예측의 재료다(바로 뒤)
             out.append("\n" + matchup_long(card))
+            # 🔴🔴 §4(넷째) — **최종 평 자세히**(근거 id · 원 사실 · 검열 결과)
+            out.append("\n" + say_long(card))
         # 🔴 **결론 바로 아래**가 논평 자리다(지시 ④)
         if num == "8":
             out.append(_comment(card, debug=debug))
@@ -1281,3 +1283,47 @@ def goals_watch() -> str:
     """🔴 `관찰만` 글자는 `app/core/goals.py` 하나가 든다(사본 금지)."""
     from app.core import goals as _g
     return str(_g.WATCH_ONLY)
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 §4 둘째 덩이 — **긴 카드의 최종 평**(2026-10-10 넷째)
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 긴 카드(/디버그): **key_point마다 근거 id와 원 사실, 검열 결과.**
+
+SAY_LONG_HEAD = "🧑‍🏫 최종 평 (자세히)"
+
+
+def say_long(card: Card) -> str:
+    """🔴 §4 — 주장마다 **근거 id + 원 사실**, 그리고 **검열 결과**."""
+    got = getattr(card, "say", None)
+    said = str(getattr(got, "audit", "") or "")
+    if got is None or said in ("", "안 돌았다"):
+        return (f"**{SAY_LONG_HEAD}** — ⬜ 안 돌렸다"
+                + (f" · {list(getattr(got, 'violations', None) or [])[:2]}"
+                   if got is not None and getattr(got, "violations", None)
+                   else ""))
+    out = [f"**{SAY_LONG_HEAD}** — 판정 `{said}` · 결론 **{got.verdict}**"]
+    if str(got.one_line or ""):
+        out.append(f"- 한 줄 — {got.one_line}")
+    used = dict(getattr(got, "used", None) or {})
+    for i, kp in enumerate(got.key_points or [], 1):
+        out.append(f"- **주장 {i}** {kp.claim}")
+        out.append(f"    메커니즘 — {kp.mechanism}")
+        out.append(f"    근거 {list(kp.refs or [])}")
+        for r in (kp.refs or []):
+            one = used.get(str(r))
+            if one:
+                out.append(f"      `{r}` {one}")
+            else:
+                # 🔴 #3 — 원 사실을 못 되찾은 id 도 **이름으로** 남긴다
+                out.append(f"      `{r}` ⬜ 원 사실을 못 되찾았다")
+    out.append(f"- 흐름 전반 — {got.flow_first}")
+    out.append(f"- 흐름 후반 — {got.flow_second}")
+    out.append(f"- 승부처 — {got.decisive_moment}")
+    out.append(f"- 뒤집히는 조건 — {got.flip_condition}")
+    rows = list(getattr(got, "violations", None) or [])
+    out.append("- 검열 결과 — "
+               + ("⬜ **위반 0건**" if not rows
+                  else " / ".join(str(x) for x in rows[:6])))
+    return "\n".join(out)

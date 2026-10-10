@@ -402,8 +402,90 @@ def players_of(team: dict) -> list[dict]:
         except (TypeError, ValueError):
             number = None
         out.append({"name": name, "pos": pos, "number": number,
-                    "value": _value_of(p)})
+                    "value": _value_of(p),
+                    # 🔴🔴 **측면·세부 자리·나이·시즌 레이팅**(최종 평 §1-1)
+                    "flank": flank_of(p), "spot": spot_of(p),
+                    "age": _int_of(p.get("age")),
+                    "rating": _float_of((p.get("performance") or {})
+                                        .get("seasonRating"))})
     return out
+
+
+def _int_of(got: object) -> int | None:
+    try:
+        return int(got)                                     # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+
+
+def _float_of(got: object) -> float | None:
+    try:
+        return float(got)                                   # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **측면과 세부 자리** — 최종 평 지시서(2026-10-10 넷째) §1-1
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 포지션 세부(GK·CB·LB·RB·LWB·RWB·DM·CM·AM·LW·RW·ST)와 **측면(왼/중앙/오른)**.
+#
+#  🔴 재료는 경기 페이지가 **이미 주는 좌표**다(새 통신 0건) — 선발마다
+#     `horizontalLayout: {x, y}` 가 있다(실측 2026-10-10 · 김천–안양):
+#        `x` = 깊이(GK 0.1 · 수비 0.357 · 중원 0.613 · 최전방 0.87)
+#        `y` = **좌우**
+#  🔴🔴 **좌우 방향을 추측하지 않았다 — 재서 맞췄다.** 선수 페이지의
+#     `primaryPosition.label` 과 대조한 실측 2026-10-10(네 명 전부 맞았다):
+#        | 선수 | `y` | 선수 페이지가 말한 자리 |
+#        |---|---|---|
+#        | Si-Hoo Hong (홈) | 0.875 | **Right Back** |
+#        | Min-Seo Park (홈) | 0.125 | **Left Back** |
+#        | Ji-Hun Kang (원정) | 0.875 | **Right Back** |
+#        | Dong-Jin Kim (원정) | 0.125 | **Left Back** |
+#     → **`y` 가 크면 오른쪽, 작으면 왼쪽**이고 홈·원정이 같다(뒤집히지 않는다).
+#  ⚠️ 선수 페이지를 **운영에서 받지 않는다** — 선수마다 한 번씩이면 경기당 22번이다.
+#     그 페이지는 **이 눈금을 맞추는 데만** 썼다(한 번).
+#  🔴 좌표가 없으면 **빈 글자**다(가운데로 때우지 않는다 · #3).
+
+#: 🔴 `y` 문턱 — 이 바깥이 측면이다(4백의 윙백이 0.125·0.875, 센터백이 0.375·0.625)
+FLANK_CUT = 0.3
+
+
+def flank_of(p: dict) -> str:
+    """🔴 §1-1 — `왼`·`중앙`·`오른` 중 하나. ⚠️ 좌표가 없으면 **빈 글자**."""
+    y = _float_of((dict(p or {}).get("horizontalLayout") or {}).get("y"))
+    if y is None:
+        return ""
+    return "왼" if y < FLANK_CUT else ("오른" if y > 1 - FLANK_CUT else "중앙")
+
+
+def spot_of(p: dict) -> str:
+    """🔴🔴 §1-1 — **세부 자리**(`GK`·`LB`·`CB`·`RB`·`DM`·`CM`·`AM`·`LW`·`RW`·`ST`).
+
+    🔴 재료는 포지션 묶음(`usualPlayingPositionId` → `GK/DF/MF/FW`)과 좌표다.
+    ⚠️ `LWB`·`RWB` 는 **가리지 않는다** — 3백의 윙백과 4백의 풀백을 좌표로는 못
+       가른다(실측: 둘 다 `y≈0.1`). 🔴 못 가리는 것을 가린 척하지 않는다(#4).
+    ⚠️ 묶음을 모르면 **빈 글자**다.
+    """
+    box = dict(p or {})
+    grp = _pos_of(box)
+    flank = flank_of(box)
+    x = _float_of((box.get("horizontalLayout") or {}).get("x"))
+    if grp == "GK":
+        return "GK"
+    if grp == "DF":
+        return {"왼": "LB", "오른": "RB"}.get(flank, "CB") if flank else ""
+    if grp == "MF":
+        if flank in ("왼", "오른"):
+            return "LW" if flank == "왼" else "RW"
+        if x is None:
+            return "CM"
+        #: 🔴 중원 세 칸 — 실측에서 수비형은 `x≈0.55`, 공격형은 `x≈0.7` 이었다
+        return "DM" if x < 0.58 else ("AM" if x > 0.68 else "CM")
+    if grp == "FW":
+        return {"왼": "LW", "오른": "RW"}.get(flank, "ST") if flank else "ST"
+    return ''
 
 
 def _value_of(p: dict) -> float | None:
@@ -2018,6 +2100,54 @@ def venue_of(j: dict) -> dict:
 def team_fixtures_url(team_id: object, slug: str = "x") -> str:
     """🔴 팀 일정 페이지 주소. ⚠️ 슬러그는 아무 글자나 받는다(실측: `x` 도 200)."""
     return f"{BASE}/teams/{team_id}/fixtures/{slug}"
+
+
+def squad_url(team_id: object, slug: str = "x") -> str:
+    """🔴 팀 **선수단** 페이지 주소(robots 허용 · `/api/*` 아님)."""
+    return f"{BASE}/teams/{team_id}/squad/{slug}"
+
+
+def squad_stats(page_text: str) -> dict[str, dict]:
+    """🔴🔴 **선수별 시즌 기록** — 최종 평 §1-1 의 *"비교 수치"*.
+
+    `{이름: {goals, assists, rating, age, height, injury, role, penalties}}`
+
+    🔴 실측 2026-10-10(김천 선수단 37명): 선수 한 명의 칸은
+       `name·age·height·goals·assists·penalties·rating·injury·positionId·role`
+       이다. ⚠️ **태클·가로채기·경합 승률·드리블·크로스·출장 시간은 없다** —
+       그 지표는 사실 묶음에서 `없음` 이고, 있는 척하지 않는다(#3·#4).
+    🔴 자리는 `fallback["team-{id}"]["squad"]["squad"]` 아래 묶음별 목록이다
+       (`coach`·`keepers`·`defenders`·`midfielders`·`attackers`).
+    """
+    j = payload(page_text)
+    if not j:
+        return {}
+    fb = ((j.get("props") or {}).get("pageProps") or {}).get("fallback") or {}
+    out: dict[str, dict] = {}
+    for key, val in dict(fb).items():
+        if not str(key).startswith("team-") or not isinstance(val, dict):
+            continue
+        for grp in ((val.get("squad") or {}).get("squad") or []):
+            title = str(dict(grp).get("title") or "")
+            if title == "coach":
+                continue
+            for m in (dict(grp).get("members") or []):
+                if not isinstance(m, dict):
+                    continue
+                name = str(m.get("name") or "").strip()
+                if not name:
+                    continue
+                out[name] = {
+                    "goals": _int_of(m.get("goals")),
+                    "assists": _int_of(m.get("assists")),
+                    "penalties": _int_of(m.get("penalties")),
+                    "rating": _float_of(m.get("rating")),
+                    "age": _int_of(m.get("age")),
+                    "height": _int_of(m.get("height")),
+                    "injury": m.get("injury"),
+                    "group": title,
+                    "role": str((m.get("role") or {}).get("fallback") or "")}
+    return out
 
 
 def team_ids(tb_json: dict) -> dict[str, int]:

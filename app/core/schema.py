@@ -263,6 +263,18 @@ class Player(Frozen):
     name: str
     pos: str = ""
     number: int | None = None
+    # ══════════════════════════════════════════════════════════════
+    # 🔴🔴 **세부 자리·측면·나이·시즌 레이팅** — 최종 평 §1-1
+    # ══════════════════════════════════════════════════════════════
+    #
+    #  > 포지션 세부(GK·CB·LB·RB·…)와 **측면(왼/중앙/오른)**.
+    #
+    #  🔴 칸을 **더하기만** 한다(축구 완성 지시서 §2: 이름 바꾸기·빼기 금지).
+    #  ⚠️ 못 읽으면 빈 글자·`None` 이다 — 가운데로 때우지 않는다(#3).
+    spot: str = ""
+    flank: str = ""
+    age: int | None = None
+    rating: float | None = None
 
 
 class Missing(Frozen):
@@ -339,6 +351,19 @@ class Facts(Frozen):
     schedule: dict = Field(default_factory=dict)
     #: 🔴🔴 **선수 → 포지션 표**(경기 단위 · §2) — §1-1 결장 유형과 IR01·IR02 가 쓴다
     player_pos: dict[str, str] = Field(default_factory=dict)
+    # ══════════════════════════════════════════════════════════════
+    # 🔴🔴 **선수별 시즌 기록** — 최종 평 §1-1 의 *"비교 수치"*
+    # ══════════════════════════════════════════════════════════════
+    #
+    #  `{이름: {goals, assists, rating, age, height, injury, role}}`
+    #
+    #  🔴 출처는 팀 **선수단 페이지**다(robots 허용 HTML · 팀당 한 번).
+    #     ⚠️ `standings["key_players"]` 는 팀마다 **상위 2명**뿐이어서 교체된
+    #        선수의 수를 못 댔다(실측 2026-10-10) — 그 칸이 이 표로 메워진다.
+    #  ⚠️ 태클·가로채기·경합 승률·드리블·크로스는 **이 페이지에도 없다**
+    #     (실측 2026-10-10: 선수 칸은 `goals·assists·rating·age·height·injury`
+    #     뿐이다). 🔴 그래서 그 지표는 사실 묶음에서 **`없음`** 이다.
+    player_stats: dict = Field(default_factory=dict)
     #: 🔴🔴 **소집 명단**(선발+교체 전원 · 사용자 지시 2026-10-06(4차) ①-b·②)
     #
     #  🔴 *"명단에 없음 = 결장, XI 에 없음 = 벤치"* — 그 둘을 가르는 자리다.
@@ -645,6 +670,44 @@ class TacticOut(Frozen):
     #: 🔴 `통과`·`재작성 후 통과`·`버렸다`·`확정 XI 전`·`안 돌았다`
     audit: str = "안 돌았다"
     violations: list[str] = Field(default_factory=list)
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **최종 평** — 사용자 지시 2026-10-10(넷째) §2
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 출력 칸: `verdict` · `key_points`(3~5개, 각각 주장·메커니즘·근거 id 2개
+#  > 이상) · `flow`(전반·후반) · `decisive_moment` · `flip_condition` ·
+#  > `one_line`.
+#
+#  🔴 **확률 칸이 없다** — *"확률도 바꾸지 않는다(확률은 앞 단계가 이미 정했다)"*.
+
+
+class KeyPoint(Frozen):
+    """🔴 §2 — 핵심 주장 하나. ⚠️ **근거 id 2개 이상**이 계약이다(검열 (q))."""
+
+    claim: str
+    mechanism: str
+    #: 🔴 §1 묶음의 id 들(`X3`·`G7`·`L2`·`T11` …) — 없는 id 면 검열이 버린다
+    refs: list[str] = Field(default_factory=list)
+
+
+class SayOut(Frozen):
+    """🔴 s9say 산출 — **최종 평** + 검열 결과(§7 타입 하나)."""
+
+    #: 🔴 §2 — 이길 팀 이름 · `무승부 쪽` · `반반`. 코드 방향과 같아야 한다((u))
+    verdict: str = ""
+    one_line: str = ""
+    key_points: list[KeyPoint] = Field(default_factory=list)
+    flow_first: str = ""
+    flow_second: str = ""
+    decisive_moment: str = ""
+    flip_condition: str = ""
+    #: 🔴 `통과`·`재작성 후 통과`·`템플릿`·`안 돌았다`
+    audit: str = "안 돌았다"
+    violations: list[str] = Field(default_factory=list)
+    #: 🔴 긴 카드가 적는다 — `{id: 원 사실}`(검열이 쓴 그 묶음)
+    used: dict = Field(default_factory=dict)
 
 
 class SpellOut(Frozen):
@@ -1041,6 +1104,12 @@ class Card(Frozen):
     #
     #  ⚠️ **글뿐이다** — 확률 칸이 없다(*"이야기는 확률을 움직이지 못한다"* §4).
     tactic: TacticOut | None = None
+    # ══════════════════════════════════════════════════════════════
+    # 🔴🔴 **최종 평**(사용자 지시 2026-10-10 넷째) — 카드의 **마지막 단계**
+    # ══════════════════════════════════════════════════════════════
+    #
+    #  🔴 확률을 다 센 **뒤**에 돈다(입력에 최종 확률이 든다) — 평은 글만 낸다.
+    say: SayOut | None = None
     #: 🔴🔴 **③ 이 움직인 양**(사용자 지시 2026-10-06(6차) ③) — 변수별 로그 오즈 이동
     #
     #  ⚠️ 비면 *"③ 이동 없음 — 우리 열 = 기준"* 을 적는다(빈 줄은 "안 봤다"와 같다).

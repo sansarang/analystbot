@@ -178,6 +178,9 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #    뒤**다. ⚠️ *"이야기(LLM 문장)는 확률을 움직이지 못한다"*(§4) — 그래서
     #    카드가 완성된 다음에 글만 더한다.
     card = with_tactic(card, state=st)
+    # 🔴🔴 **최종 평**(사용자 지시 2026-10-10(넷째)) — *"카드의 **마지막 단계**"*.
+    #    ⚠️ 사실 묶음이 전술 예측·확률·상성을 **다** 들어야 하므로 가장 뒤다.
+    card = with_say(card, state=st)
     # 🔴 **마지막 실행을 기억한다** — 재분석이 s3·s4 를 다시 돌지 않게(§4-1)
     _LAST[ref.id] = {"at": (now or datetime.now(timezone.utc)), "ref": ref,
                      "docs": docs, "cands": cands, "card": card,
@@ -622,6 +625,17 @@ def _axis_share(ref, facts, variables, hypo, base_p, adj_p, feed_mk, user_mk,
     if said:
         state.note(f"§4 기여 분해 — {said}(합 = 잠정→최종 변화)")
     return said
+
+
+def with_say(card: Card, *, state: RunState) -> Card:
+    """🔴🔴 **최종 평을 카드에 더한다**(2026-10-10 넷째). ⚠️ 확률은 **안 건드린다**.
+
+    🔴 확정 XI 가 아니어도 **돈다** — 이 평은 *"카드의 마지막 단계"* 이고 사실
+       묶음에는 골 내용·폼·확률처럼 XI 와 무관한 칸이 많다. ⚠️ 라인업 칸이 비면
+       묶음이 그것을 `없음` 으로 적고, 프롬프트가 *"그 칸은 말하지 마라"* 로 준다.
+    """
+    from app.core.stages import s9_say
+    return card.model_copy(update={"say": s9_say.run(card, state=state)})
 
 
 def with_tactic(card: Card, *, state: RunState) -> Card:

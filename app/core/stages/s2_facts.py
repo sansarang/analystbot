@@ -173,6 +173,8 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
     #     **유일한 통로**였다. ⚠️ 이름이 아니라 **등번호로** 잇는다(한글↔로마자).
     await _fill_capture(ref, box, xi, state=state, net=net, pages=raw_pages)
     await _fill_form(ref, box, state=state, net=net, pages=raw_pages)
+    # 🔴🔴 **선수별 시즌 기록**(최종 평 §1-1) — 선수단 페이지 · 팀당 한 번
+    await _fill_squad(ref, box, state=state, net=net)
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **라인업 사다리**(사용자 지시 2026-10-10 A-1) — 경기 페이지가 못 줄 때
     # ══════════════════════════════════════════════════════════════════
@@ -220,7 +222,8 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
     return adapt.facts_of(box, xi=xi, match_format=fmt,
                           sources=sorted(set(sources)), missing=missing,
                           coach=coach, player_pos=pos, gaps=gaps, squad=squad,
-                          player_value=values, past_xi=past)
+                          player_value=values, past_xi=past,
+                          player_stats=dict(box.get("player_stats") or {}))
 
 
 def _gaps(*, xi: dict, missing: dict, coach: dict, box: dict,
@@ -651,6 +654,43 @@ async def _fill_form(ref: MatchRef, box: dict, *, state: RunState, net: Any,
             box.setdefault("standings", {}).setdefault("key_players", {})[key] = got
             state.note(f"s2 §2 핵심 선수 — `{name}` "
                        + " · ".join(f"{x['name']} {x['value']}" for x in got))
+
+
+async def _fill_squad(ref: MatchRef, box: dict, *, state: RunState, net: Any,
+                      ) -> None:
+    """🔴🔴 **선수단 페이지 → 선수별 시즌 기록**(최종 평 §1-1 *"비교 수치"*).
+
+    🔴 왜 필요한가: `standings["key_players"]` 는 팀마다 **상위 2명**뿐이다. 그래서
+       교체로 들어온 선수의 수를 **한 명도 못 댔다**(실측 2026-10-10). 선수단
+       페이지는 **전원**의 시즌 득점·도움·레이팅·나이·키·부상을 준다.
+    🔴 통신은 **팀당 한 번**이고 하루 캐시다(`_day_page`). ⚠️ `/api/*` 가 아니다.
+    ⚠️ 못 받으면 **빈 표**이고 사유를 남긴다(#3) — 사실 묶음이 `없음` 으로 적는다.
+    """
+    from app.collect import fotmob as fm
+    from app.core import discover as _d
+    try:
+        idx = await fm.team_index(net)
+    except Exception as exc:                                # noqa: BLE001
+        state.note(f"s2 선수단 기록 — 🔴 팀 색인을 못 받았다({exc!r})")
+        return
+    out: dict[str, dict] = {}
+    for name in (str(ref.home_name or ""), str(ref.away_name or "")):
+        hits = _d._slug_hit(idx, name)
+        if not hits:
+            state.note(f"s2 선수단 기록 — `{name}` 을 팀 색인에서 못 찾았다")
+            continue
+        tid, slug = hits[0]
+        page = await _day_page(net, fm.squad_url(tid, slug), state=state,
+                               team=f"{name} 선수단")
+        got = (fm.squad_stats(getattr(page, "text", "") or "")
+               if page is not None else {})
+        if not got:
+            state.note(f"s2 선수단 기록 — `{name}` 선수단 페이지가 비었다")
+            continue
+        out.update(got)
+        state.note(f"s2 선수단 기록 — `{name}` {len(got)}명")
+    if out:
+        box["player_stats"] = out
 
 
 def _recent_of(rows: list[dict], *, kickoff=None) -> dict:
