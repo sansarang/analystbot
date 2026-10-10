@@ -168,7 +168,8 @@ async def find(*, team: str, opponent: str = "", day: date | None = None,
     #     리그 일정 · 전부 robots 허용 경로). 🔴 **여기 아래의 검색 단이 ④** 다.
     #  ⚠️ 색인이 찾아도 **행은 같은 곳에서 만든다**(`reader.slate_row`) — 행 만드는
     #     길을 둘로 두면 한쪽만 고쳐진다(사본 금지).
-    found = await _by_index(net, team=team, opponent=opponent, day=day, got=got)
+    found = await _by_index(net, team=team, opponent=opponent, day=day,
+                           league=league, got=got)
     if found is not None:
         got.rows.append(found)
         return got
@@ -358,7 +359,7 @@ async def find_and_store(pool, *, team: str, opponent: str = "",
 
 
 async def _by_index(net, *, team: str, opponent: str, day: date,
-                    got: Found) -> dict | None:
+                    got: Found, league: str = "") -> dict | None:
     """🔴🔴 §2 ②③ — **색인으로 찾는다**. 찾으면 슬레이트 한 줄, 못 찾으면 `None`.
 
     🔴 자동 등록도 **여기서 건다**(§2 마지막 줄: *"경기를 찾으면 그 경기의 리그
@@ -368,7 +369,8 @@ async def _by_index(net, *, team: str, opponent: str, day: date,
     """
     from app.core import discover
     try:
-        out = await discover.find(net, home=team, away=opponent, day=None)
+        out = await discover.find(net, home=team, away=opponent, day=None,
+                                  league=league)
     except Exception as exc:                            # noqa: BLE001
         got.tried.append(f"색인 사다리가 죽었다(검색 단으로 간다) — {exc!r}")
         return None

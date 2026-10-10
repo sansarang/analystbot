@@ -80,47 +80,77 @@ class Found:
 
 
 def norm_name(said: object) -> str:
-    """🔴🔴 **이름 정규화 — 한 곳**(§2 ② 마지막 줄).
+    """🔴🔴 **이름 정규화 — 한 곳**(§2 ② 마지막 줄). 공백까지 **붙인** 꼴.
 
     하는 일: 유니코드 분해 후 결합문자 제거(`Unión`→`union`) · 소문자 ·
-    글자 아닌 것을 공백 · `_AFFIX` 의 클럽 표기 제거 · 공백 제거.
+    글자 아닌 것을 공백 · `_AFFIX` 의 클럽 표기 제거 · **공백 제거**.
 
-    ⚠️ **글자를 지어내 바꾸지 않는다** — 떼는 것은 `_AFFIX` 에 적힌 것뿐이다.
+    🔴 공백을 붙이는 까닭: 같은 팀을 출처마다 다르게 띄운다 — 실측 2026-10-10
+       `Ha Noi FC` ↔ `Hanoi` · `Công An Hà Nội` ↔ `Cong An Hanoi`.
+    ⚠️ **글자를 지어내 바꾸지 않는다** — 떼는 것은 `_AFFIX` 뿐이다.
     🔴 한글↔로마자는 **여기서 잇지 않는다** — 그것은 이름표(`learn_names`)의 일이고
        여기서 억지로 이으면 엉뚱한 팀을 분석한다(M14).
     """
+    return "".join(tokens(said))
+
+
+def tokens(said: object) -> list[str]:
+    """🔴 정규화한 **낱말들** — `covers` 가 이것으로 센다."""
     low = unicodedata.normalize("NFKD", str(said or ""))
     low = "".join(c for c in low if not unicodedata.combining(c)).lower()
     low = re.sub(r"[^0-9a-z가-힣ぁ-んァ-ヴー一-龥]+", " ", low)
-    for w in _AFFIX:
-        low = re.sub(rf"(^|\s){w}(\s|$)", " ", low)
-    return re.sub(r"\s+", "", low)
+    return [w for w in low.split() if w and w not in _AFFIX]
 
 
 #: 🔴 떼는 접사 — 팀 이름의 **클럽·법인 표기**뿐이다(실측으로 늘린다).
 #  ⚠️ `united`·`city` 는 **떼지 않는다** — `Adelaide City` ↔ `Adelaide United` 가
 #     같은 팀이 돼 버린다(실사고가 될 자리였다 · 2026-10-10 에 잡았다).
-_AFFIX: tuple[str, ...] = (
+_AFFIX: frozenset[str] = frozenset((
     "fc", "cf", "sc", "ac", "afc", "cd", "ca", "sv", "if", "bk", "fk",
     "club", "clube", "asd", "ssd", "us", "as", "ud", "cs",
-    "futbol", "football", "calcio", "spor", "kulubu", "kulübü",
-)
+    "futbol", "football", "calcio", "spor", "kulubu", "kulubu",
+))
 
 
-def same(a: object, b: object) -> bool:
-    """🔴 두 이름이 같은 팀인가 — 정규화 뒤 **한쪽이 다른 쪽을 품으면** 같다.
+def covers(said: object, want: object) -> bool:
+    """🔴🔴 `said`(출처가 적은 이름)가 `want`(사용자가 적은 이름)를 **담고 있나**.
 
-    ⚠️ 품는 검사는 느슨하다. 🔴 그래서 **네 글자 미만은 품기를 안 쓴다** — `un` 이
-       `union` 을, `cesena` 가 `ac cesena` 를 넘어 엉뚱한 데 붙는 것을 막는다.
+    ══════════════════════════════════════════════════════════════════
+    🔴🔴 **방향이 있다** — 양방향 품기는 엉뚱한 팀을 물어 온다
+    ══════════════════════════════════════════════════════════════════
+
+    ⚠️ 실측 2026-10-10 — 양방향으로 품게 했더니 **거짓 일치 둘**이 나왔다:
+
+    | 사용자가 물은 것 | 잘못 붙은 것 | 왜 |
+    |---|---|---|
+    | `Cong An Hanoi` | `ha-noi-fc`(**다른 구단**) | `conganhanoi` 가 `hanoi` 를 품는다 |
+    | `Union de Santa Fe` | `santa-fe`(**콜롬비아 팀**) | 낱말 집합이 부분집합이다 |
+
+    🔴 그래서 **담는 쪽이 출처**여야 한다: 출처 이름이 사용자 낱말을 **전부**
+       들고 있을 때만 같은 팀이다(`lion-city-sailors-fc` ⊇ `Lion City Sailors`).
+    🔴 붙여 쓴 꼴이 **정확히 같으면** 그것도 같은 팀이다(띄어쓰기만 다른 경우).
     """
-    x, y = norm_name(a), norm_name(b)
-    if not x or not y:
+    a, b = tokens(said), tokens(want)
+    if not a or not b:
         return False
-    if x == y:
+    if "".join(a) == "".join(b):
         return True
-    if len(x) < 4 or len(y) < 4:
-        return False
-    return x in y or y in x
+    return set(b) <= set(a)
+
+
+def alike(a: object, b: object) -> bool:
+    """🔴🔴 **양쪽 중 한쪽이 다른 쪽을 담으면** 같은 팀으로 본다.
+
+    ⚠️ 이것은 `covers` 보다 **느슨하다**. 🔴 그래서 **쓰는 자리를 좁힌다**: 날짜
+       창과 **기준 팀**이 이미 좁혀 놓은 뒤에만 쓰고, 걸린 경기가 **둘 이상이면
+       고르지 않는다**(§2: *"후보가 둘 이상이면 버튼으로 고르게 한다"*).
+
+    🔴 왜 필요한가(실측 2026-10-10): fotmob 이 **더 짧게** 적는다 —
+       `Unión`(fotmob) ↔ `Union de Santa Fe`(사용자). 방향을 강제하면 이 경기를
+       놓친다. ⚠️ 그런데 느슨한 검사를 **넓은 목록**에 쓰면 `santa-fe`(콜롬비아)
+       같은 엉뚱한 팀이 붙는다 — 그래서 좁은 자리에서만 쓴다.
+    """
+    return covers(a, b) or covers(b, a)
 
 
 def window(day: date | None, *, today: date | None = None) -> list[date]:
@@ -142,12 +172,12 @@ def _slug_hit(index: dict[str, str], name: str) -> list[tuple[str, str]]:
         return []
     exact = [(i, s) for i, s in index.items() if norm_name(s) == want]
     loose = [(i, s) for i, s in index.items()
-             if norm_name(s) != want and same(s, name)]
+             if norm_name(s) != want and covers(s, name)]
     return [*sorted(exact), *sorted(loose)]
 
 
 async def find(net, *, home: str, away: str, day: date | None = None,
-               today: date | None = None) -> Found:
+               league: str = "", today: date | None = None) -> Found:
     """🔴🔴 §2 — 사다리 ②③ 을 순서대로. ⚠️ **리그를 묻지 않는다**.
 
     ④(검색 단)는 부르는 쪽이 잇는다(`app/findgame.py` 가 그 통로다) — 여기서
@@ -158,7 +188,8 @@ async def find(net, *, home: str, away: str, day: date | None = None,
     out = await _by_team(net, home=home, away=away, days=days, got=got)
     if out.match:
         return out
-    out = await _by_league(net, home=home, away=away, days=days, got=got)
+    out = await _by_league(net, home=home, away=away, days=days, got=got,
+                           league=league)
     if out.match:
         return out
     got.why = miss_line(got)
@@ -183,9 +214,10 @@ async def _by_team(net, *, home: str, away: str, days: list[date],
                    got: Found) -> Found:
     """🔴 §2 ② — 팀 색인에서 id 를 풀고, **그 팀 일정**에서 상대를 맞춘다.
 
-    🔴 **한쪽만 풀려도 된다** — 실측 2026-10-10: `union-santa-fe` 는 색인에 0건인데
-       `defensa-y-justicia` 는 `161730` 으로 풀린다. 그 팀 일정에서 상대를 찾으면
-       경기가 확정된다.
+    🔴 **한쪽만 풀려도 된다** — 실측 2026-10-10: `Union de Santa Fe` 는 색인에
+       0건인데 `Defensa y Justicia` 는 `161730` 으로 풀린다. 그 팀 일정에서
+       상대를 찾으면 경기가 확정된다.
+    🔴 **둘 이상 걸리면 고르지 않는다** — 후보로 담아 두고 사용자가 고른다(§2).
     """
     from app.collect import fotmob as fm
     index = await fm.team_index(net)
@@ -204,15 +236,26 @@ async def _by_team(net, *, home: str, away: str, days: list[date],
             if tid in seen:
                 continue
             seen.add(tid)
-            got.candidates.append({"team": slug, "id": tid})
             page = await net.get(fm.team_fixtures_url(tid, slug))
             rows = team_fixtures(getattr(page, "text", "") or "", tid)
             got.tried.append(f"fotmob 팀일정 `{slug}` {len(rows)}경기")
-            for m in rows:
-                if str(m.get("utc") or "")[:10] not in want:
-                    continue
-                if not (same(m["home"], other) or same(m["away"], other)):
-                    continue
+            # 🔴 날짜 창 **안에서** 상대가 맞는 경기를 **전부** 모은다
+            fit = [m for m in rows
+                   if str(m.get("utc") or "")[:10] in want
+                   and (alike(m["home"], other) or alike(m["away"], other))]
+            for m in fit:
+                got.candidates.append({"team": slug, "id": tid,
+                                       "match": f"{m['home']} vs {m['away']}",
+                                       "utc": m.get("utc")})
+            if len(fit) > 1:
+                # 🔴 §2 — **고르지 않는다.** 애매하면 사용자가 고른다.
+                got.tried.append(
+                    f"🔴 `{slug}` 일정에서 날짜 창 안 후보가 {len(fit)}건이다 — "
+                    f"고르지 않는다(" + " · ".join(
+                        f"{x['home']} vs {x['away']}" for x in fit[:3]) + ")")
+                continue
+            if fit:
+                m = fit[0]
                 got.match, got.rung = m, "② 팀 색인 → 팀 일정"
                 got.league_id = m.get("league_id")
                 got.league_name = str(m.get("league_name") or "")
@@ -250,7 +293,7 @@ def team_fixtures(text: str, team_id: str) -> list[dict]:
 
 
 async def _by_league(net, *, home: str, away: str, days: list[date],
-                     got: Found) -> Found:
+                     got: Found, league: str = "") -> Found:
     """🔴 §2 ③ 대체 — **리그 색인**에서 이름이 걸리는 리그의 일정을 본다.
 
     ⚠️ 리그 색인은 431개다 — 전부 열지 않는다. 🔴 질문의 **두 팀 이름 조각**이
@@ -261,7 +304,16 @@ async def _by_league(net, *, home: str, away: str, days: list[date],
     from app.collect import fotmob as fm
     index = await fm.league_index(net)
     got.tried.append(f"fotmob 리그 색인(sitemap) {len(index)}리그")
-    words = [w for w in re.split(r"\s+", f"{home} {away}".strip()) if len(w) > 3]
+    # 🔴🔴 **질문의 대회 이름도 센다**(실측 2026-10-10: `turkish-cup` 은 리그
+    #    색인에 **있는데** 예실유르트·겔레첵은 팀 색인에 **없다** — 그러면 ③ 만이
+    #    길이고, ③ 이 리그를 찾는 재료는 질문의 대회 이름뿐이다).
+    #  ⚠️ 한글 대회명(`터키컵`)은 여기서 안 걸린다 — fotmob 슬러그는 로마자다.
+    #     그 한계를 `tried` 에 적는다(#3).
+    words = [w for w in re.split(r"\s+", f"{league} {home} {away}".strip())
+             if len(w) > 3]
+    if league and not any(norm_name(w) for w in tokens(league)):
+        got.tried.append(f"⚠️ 대회 힌트 `{league}` 는 로마자가 아니다 — 리그 "
+                         f"색인(로마자 슬러그)에 못 맞춘다")
     hits = sorted({(i, s) for i, s in index.items()
                    for w in words if norm_name(w) in norm_name(s)})
     if not hits:
@@ -271,16 +323,21 @@ async def _by_league(net, *, home: str, away: str, days: list[date],
     for lid, slug in hits[:MAX_LEAGUES]:
         rows = await fm.league_matches(net, lid)
         got.tried.append(f"fotmob 리그일정 `{slug}` {len(rows)}경기")
-        for m in rows:
-            if str(m.get("utc") or "")[:10] not in want:
-                continue
-            if ((same(m["home"], home) and same(m["away"], away))
-                    or (same(m["home"], away) and same(m["away"], home))):
-                got.match, got.rung = m, "③ 리그 색인 → 리그 일정"
-                got.league_id = lid
-                got.league_name = slug
-                got.why = f"✅ 리그 일정 — `{slug}` · {str(m.get('utc'))[:10]}"
-                return got
+        # 🔴 리그 전체는 **넓은 목록**이다 — 여기서는 `covers`(방향 있는 검사)만
+        #    쓴다. ⚠️ 느슨하게 보면 같은 도시·같은 이름의 다른 팀이 붙는다.
+        fit = [m for m in rows if str(m.get("utc") or "")[:10] in want
+               and ((covers(m["home"], home) and covers(m["away"], away))
+                    or (covers(m["home"], away) and covers(m["away"], home)))]
+        if len(fit) > 1:
+            got.tried.append(f"🔴 `{slug}` 에서 후보 {len(fit)}건 — 고르지 않는다")
+            continue
+        if fit:
+            m = fit[0]
+            got.match, got.rung = m, "③ 리그 색인 → 리그 일정"
+            got.league_id = lid
+            got.league_name = slug
+            got.why = f"✅ 리그 일정 — `{slug}` · {str(m.get('utc'))[:10]}"
+            return got
     return got
 
 
