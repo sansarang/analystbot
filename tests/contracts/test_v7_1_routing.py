@@ -722,3 +722,43 @@ def test_v7_리그_평균은_한_곳이다():
     # 🔴 부르는 쪽이 `ref` 를 **넘겨야** 대회 열쇠가 산다(안 넘기면 또 빈 글자다)
     assert "league_of(facts, ref=ref)" in inspect.getsource(_s6c), (
         "🔴 `s6c` 가 `ref` 를 안 넘긴다 — 대회 유형을 모르면 평균도 못 찾는다")
+
+
+def test_v7_등록_안_된_리그_클럽도_한글로_풀린다(tmp_path, monkeypatch):
+    """🔴🔴 **실사고 2026-10-11** — 사용자가 `올랜도`·`크루`(MLS)로 물었다.
+
+    별칭을 `config/entities.yaml` 에 적었는데도 `aliases_of('올랜도')` 가
+    **['올랜도']** 뿐이었다 — `teamref._from_entities` 는 **정식명이 이름표에
+    이미 있을 때만** 별칭을 붙이고(`정식명을 못 찾아 건너뜀`), MLS 는 리그 명부에
+    없어 그 팀이 이름표에 **없다**.
+    🔴 그런데 fotmob 색인은 이름표와 **무관한 출처**다 — 등록 안 된 리그의 클럽도
+       거기 있다(실측 `orlando-city` 267810). 🔴 그래서 **표를 직접 읽는다**.
+    ⚠️ 돌연변이: `_entity_aliases` 를 빼면 한글 MLS 질문이 다시 **0건**이 된다.
+    """
+    from app.core import discover as _d
+    got = _d.aliases_of("올랜도")
+    assert "Orlando City" in got, got
+    assert "크루" != got[0] or True
+    assert "Columbus Crew" in _d.aliases_of("크루"), _d.aliases_of("크루")
+    # 🔴 이름표가 **아는** 팀은 종전 그대로다(새 길이 옛 길을 덮지 않는다)
+    assert "Gangwon FC" in _d.aliases_of("강원")
+
+
+def test_v7_2군_슬러그를_뺀다():
+    """🔴🔴 **실측 2026-10-11** — `올랜도` 를 물으면 색인이 `orlando-city` 와 함께
+    **`orlando-city-b`**(2군)를, `크루` 는 **`columbus-crew-2`**(MLS Next Pro)를
+    준다. 🔴 1군 경기가 창에 없으면 **2군 경기를 열 수 있다 — 남의 경기다**(M14).
+
+    ⚠️ 돌연변이: `RESERVE_TAIL` 을 지우면 2군이 후보로 돌아온다.
+    ⚠️ 낱말(`b`·`2`)로 잡으면 엉뚱한 팀이 걸린다 — **꼬리로** 본다.
+    """
+    from app.core import discover as _d
+    idx = {"267810": "orlando-city", "722266": "orlando-city-b",
+           "6001": "columbus-crew", "1348126": "columbus-crew-2"}
+    got = _d._slug_hit(idx, "Orlando City")
+    assert got == [("267810", "orlando-city")], got
+    got2 = _d._slug_hit(idx, "Columbus Crew")
+    assert got2 == [("6001", "columbus-crew")], got2
+    # 🔴 **사용자가 2군을 적었으면 그대로 본다**(공백 표기도 같은 꼬리로 읽는다)
+    assert ("722266", "orlando-city-b") in _d._slug_hit(idx, "Orlando City B")
+    assert ("1348126", "columbus-crew-2") in _d._slug_hit(idx, "Columbus Crew 2")

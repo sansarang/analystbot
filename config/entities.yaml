@@ -51,6 +51,24 @@ teams:
       사용자 지시 2026-10-10 — 사용자가 `제노아` 로 물었다
       실측 2026-10-10 — fotmob 팀 색인 슬러그 `genoa` · id 10233
 
+  Orlando City:
+    aliases:
+      ko: [올랜도, 올랜도 시티, 올란도]
+      en: [Orlando City SC, Orlando]
+    source: |
+      사용자 지시 2026-10-11 — 사용자가 `올랜도` 로 물었다(MLS)
+      실측 2026-10-11 — fotmob 팀 색인 슬러그 `orlando-city` · id 267810
+      ⚠️ 같은 색인에 `orlando-city-b`(722266 · 2군)·`orlando-pride`(여자)가 있다
+
+  Columbus Crew:
+    aliases:
+      ko: [컬럼버스, 컬럼버스 크루, 콜럼버스 크루, 크루]
+      en: [Columbus Crew SC, Columbus]
+    source: |
+      사용자 지시 2026-10-11 — 사용자가 `크루` 로 물었다(MLS)
+      실측 2026-10-11 — fotmob 팀 색인 슬러그 `columbus-crew` · id 6001
+      ⚠️ 같은 색인에 `columbus-crew-2`(1348126 · 2군)가 있다
+
   # ── 🔴 사용자가 직접 준 것 (지시 2026-10-03)
   Jamaica:
     aliases:

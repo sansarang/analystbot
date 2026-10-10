@@ -201,11 +201,28 @@ TIER_WORDS: tuple[str, ...] = (
 )
 
 
+#: 🔴🔴 **2군 슬러그 꼬리**(실측 2026-10-11 · MLS)
+#
+#  ⚠️ `올랜도` 를 물으면 색인이 `orlando-city` 와 함께 **`orlando-city-b`**(2군)를
+#     주고, `크루` 는 **`columbus-crew-2`**(MLS Next Pro)를 준다. 🔴 낱말로는 못
+#     잡는다 — `b`·`2` 를 낱말로 넣으면 엉뚱한 팀이 걸린다. **꼬리로** 본다.
+RESERVE_TAIL: tuple[str, ...] = ("-b", "-2", "-ii", "-iii")
+
+
 def tier_of(said: object) -> set[str]:
-    """🔴 그 이름이 말하는 **등급 낱말들**(없으면 빈 집합)."""
+    """🔴 그 이름이 말하는 **등급 낱말들**(없으면 빈 집합).
+
+    🔴 2군 꼬리(`-b`·`-2`)도 등급으로 센다 — 사용자가 적지 않으면 뺀다.
+    """
     low = {w for w in tokens(said)}
     said_s = "".join(low)
-    return {w for w in TIER_WORDS if w in low or w in said_s}
+    got = {w for w in TIER_WORDS if w in low or w in said_s}
+    # 🔴 **사용자가 2군을 적었으면 그대로 본다** — 그래서 `Orlando City B`(공백)도
+    #    `orlando-city-b`(붙임표)와 **같은 꼬리**로 읽는다(한쪽만 읽으면 그 escape
+    #    hatch 가 죽는다 · `_slug_hit` 의 `asked` 가 이 집합을 본다).
+    raw = "-".join(str(said or "").strip().lower().split())
+    got |= {tail for tail in RESERVE_TAIL if raw.endswith(tail)}
+    return got
 
 
 def _slug_hit(index: dict[str, str], name: str) -> list[tuple[str, str]]:
@@ -275,7 +292,42 @@ def aliases_of(name: str, *, spell: dict | None = None) -> list[str]:
             if ":" in got or got in out:
                 continue
             out.append(got)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **사용자 별칭표를 직접 읽는다** — 이름표가 그 팀을 몰라도
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실사고 2026-10-11: 사용자가 `올랜도`·`크루`(MLS)로 물었다. 별칭을
+    #     `config/entities.yaml` 에 적었는데도 `aliases_of('올랜도')` 가
+    #     **['올랜도']** 뿐이었다 — `teamref._from_entities` 는 **정식명이
+    #     이름표에 이미 있을 때만** 별칭을 붙이고(`정식명을 못 찾아 건너뜀`),
+    #     MLS 는 리그 명부에 없어 그 팀이 이름표에 **없다**.
+    #  🔴 그런데 색인(fotmob sitemap)은 이름표와 **무관한 출처**다 — 등록 안 된
+    #     리그의 클럽도 거기에 있다(실측: `orlando-city` 267810). 사용자가 적은
+    #     별칭을 안 쓸 까닭이 없다. 🔴 **표를 직접 읽는다**(짓지 않는다).
+    out.extend(_entity_aliases(said, skip=out))
     return out
+
+
+def _entity_aliases(said: str, *, skip: list[str]) -> list[str]:
+    """🔴 `config/entities.yaml` 에서 그 이름이 걸리는 줄의 **다른 이름들**.
+
+    🔴 걸리는 법: 정식명이거나 그 줄의 별칭 하나와 `same_team` 이다.
+    ⚠️ 이름을 **짓지 않는다** — 표에 적힌 글자만 돌려준다.
+    """
+    try:
+        from app import entities
+        table = entities._table()
+    except Exception:                                       # noqa: BLE001
+        return []
+    got: list[str] = []
+    for team in table:
+        names = [str(team), *entities.names_of(team)]
+        if not any(same_team(said, one) for one in names if one):
+            continue
+        for one in names:
+            if one and ":" not in one and one not in skip and one not in got:
+                got.append(one)
+    return got
 
 
 async def find(net, *, home: str, away: str, day: date | None = None,
