@@ -1262,6 +1262,9 @@ def check_block(card: Card) -> str:
             f"{int(counts.get(_sg.NA, 0))}")
     if str(box.get("stale") or ""):
         head += f"  {_cap(str(box['stale']), 90)}"
+    # 🔴 **못 센 칸**은 카드가 적는다(#3) — ⚠️ 모델에 가는 글에는 안 섞는다
+    for one in list(box.get("gaps") or [])[:1]:
+        head += f" · {_cap(str(one), 60)}"
     out = [head]
     # 🔴 **지지 → 반박** 순으로 올린다(평이 쓰는 것이 먼저다)
     want = [r for r in rows if dict(r).get("verdict") == _sg.OK]

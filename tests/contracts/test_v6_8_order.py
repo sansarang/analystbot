@@ -104,6 +104,37 @@ def test_v6_신호_지표는_허용_목록_안이다():
                                      arg="2.5"))
 
 
+def test_v6_시뮬_표가_검증이_읽는_네_칸을_든다():
+    """🔴🔴 **실사고 2026-10-10** — `sim.Out` 에 칸을 더해 놓고 `final_sim` 의
+    표에 **안 실어** 검증이 12줄 중 **8줄**을 `기대득점 칸이 없다` 로 버렸다.
+
+    ⚠️ 돌연변이: 그 네 칸 중 하나라도 표에서 빼면 이 줄이 빨개진다(조용한 0 · #3).
+    """
+    from app.core import signals as _sg
+    from app.core.schema import Facts, ProbTriple, Signal
+    from app.core.stages import s2e_matchup as _s2e
+    from app.core.state import RunState
+    facts = Facts(standings={"match_total_baseline": 2.6})
+    ours = ProbTriple(home=0.45, draw=0.27, away=0.28)
+    got = _s2e.final_sim(_ref(), facts, {"fired": [], "fired2": [], "form": {}},
+                         state=RunState(match_key="x"), ours=ours, before=ours)
+    for key in ("xg", "no_goal", "by_bucket", "first_then_win"):
+        assert got.get(key), f"🔴 시뮬 표에 `{key}` 가 없다 — 검증이 못 읽는다"
+    # 🔴 일곱 지표가 **전부** 읽힌다(판단 불가가 지표 없음으로 나오지 않는다)
+    want = [Signal(metric="기대득점", direction=">", ref="0.5", side="home"),
+            Signal(metric="무득점확률", direction="<", ref="0.9", side="away"),
+            Signal(metric="구간득점", direction=">", ref="0.0", side="home",
+                   arg="61-90+"),
+            Signal(metric="선제골후승리", direction=">", ref="0.1",
+                   side="home"),
+            Signal(metric="승무패", direction=">", ref="0.1", arg="draw"),
+            Signal(metric="오버", direction=">", ref="0.1", arg="1.5")]
+    league = _sg.league_of(facts)
+    for sig in want:
+        said = _sg.check(sig, got, league=league)
+        assert said["verdict"] != _sg.NA, (sig.metric, said["why"])
+
+
 def test_v6_신호없는_줄은_판단_불가다():
     """🔴 §2-2·§4-1 — 신호가 없으면 **줄은 남고** 판정이 `판단 불가` 다.
 
@@ -175,7 +206,17 @@ def test_v6_기준_낡음을_선수단교체와_결장으로_센다():
     ref = _ref()
     assert _s6c.ABSENT_STALE == 3
     said = _s6c._stale(ref, Facts(), {"home": {"on": True}})
-    assert "선수단 교체" in said and "감독 교체" in said, said
+    assert "선수단 교체" in said, said
+    # 🔴🔴 **못 센 칸은 글귀에 안 섞는다** — ⚠️ 실사고 2026-10-10: 그 군더더기를
+    #    같은 문장에 붙였더니 최종 평이 *"선수단 교체는 **감독 교체 직후라** …"*
+    #    로 두 사실을 하나로 붙여 **거짓을 만들었다**. 그래서 `gaps` 로 따로 든다.
+    assert "감독 교체" not in said, "🔴 모델에 가는 글에 군더더기가 섞였다"
+    assert "감독 교체" in _s6c.GAP_COACH
+    from app.core.state import RunState
+    from app.core.schema import HypoSet
+    got = _s6c.run(ref, Facts(), HypoSet(), {}, state=RunState(match_key="x"),
+                   turnover={"home": {"on": True}})
+    assert _s6c.GAP_COACH in list(got.get("gaps") or []), got.get("gaps")
     miss = [Missing(name=f"P{i}", reason="injury") for i in range(3)]
     said2 = _s6c._stale(ref, Facts(missing={ref.home: miss}), None)
     assert "결장 3명" in said2, said2

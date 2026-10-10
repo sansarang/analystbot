@@ -385,6 +385,12 @@ def final_sim(ref: MatchRef, facts: Facts, box: dict, *, state: RunState,
                 got.home, got.draw, got.away, share)
     return {"home": got.home, "draw": got.draw, "away": got.away,
             "over": got.over, "first_wins": got.first_wins,
+            # 🔴🔴 **가설 검증이 읽는 네 칸**(순서 재편 §3) — ⚠️ 실사고 2026-10-10:
+            #    `sim.Out` 에 칸을 더해 놓고 **이 표에 안 실어** 검증이 12줄 중
+            #    8줄을 `기대득점 칸이 없다` 로 버렸다(조용한 0 · #3).
+            "xg": dict(got.xg), "no_goal": dict(got.no_goal),
+            "by_bucket": {k: dict(v) for k, v in dict(got.by_bucket).items()},
+            "first_then_win": dict(got.first_then_win),
             # 🔴 **무게 큰 순으로** 40칸만 든다 — ⚠️ 열쇠 순으로 자르면
             #    `0-0`~`4-8` 만 남아 상위 스코어가 사라진다(실측 2026-10-10).
             "scores": dict(sorted(got.scores.items(),

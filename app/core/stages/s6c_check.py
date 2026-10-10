@@ -27,6 +27,8 @@ logger = logging.getLogger(__name__)
 MISS, STALE, WRONG = "입력 누락", "기준 낡음", "가설 오류"
 #: 🔴 §4-2 (b) — **핵심 몇 명 결장**이면 기준이 낡았다고 보나(지시서가 적은 3)
 ABSENT_STALE = 3
+#: 🔴 §4-2 (b) 의 **못 센 칸** — 카드가 적고, **모델에 가는 글에는 안 섞는다**
+GAP_COACH = "⚠️ 감독 교체 직후는 **못 센다**(취임일 자료가 없다)"
 #: 🔴 §4-3 — 재실행 상한
 MAX_RERUN = 1
 
@@ -92,7 +94,9 @@ def run(ref: MatchRef, facts: Facts, hypo: HypoSet, sim: dict, *,
     logger.info("[s6c] %s · 재실행 %s", said, rerun or "없다")
     return {"rows": [r.as_dict() for r in rows],
             "supported": [r.as_dict() for r in rows if r.verdict == _sg.OK],
-            "counts": counts, "stale": stale, "rerun": rerun, "why": said}
+            "counts": counts, "stale": stale, "rerun": rerun,
+            # 🔴 **못 센 칸**은 따로 든다(카드가 적는다 · 모델 글에는 안 섞인다)
+            "gaps": [GAP_COACH], "why": said}
 
 
 def _one(line, *, side: str, kind: str, sim: dict, league: dict) -> Row:
@@ -125,11 +129,15 @@ def _stale(ref: MatchRef, facts: Facts, turnover: dict | None) -> str:
         if len(rows) >= ABSENT_STALE:
             said.append(f"{name} 결장 {len(rows)}명")
     # ⚠️ **감독 교체 직후**를 세는 자료가 없다 — `facts.coach` 는 이름뿐이고
-    #    취임일이 없다(실측 2026-10-10). 🔴 그 칸은 비워 두고 그 사실을 적는다(#3).
+    #    취임일이 없다(실측 2026-10-10). 🔴 그 칸은 비워 두고 그 사실을 **따로**
+    #    적는다(`GAP_COACH`).
+    #    ⚠️ 실사고 2026-10-10: 그 문장을 `stale` 글귀 **안에** 붙였더니 최종 평이
+    #       *"선수단 교체는 **감독 교체 직후라** 취임일 자료가 없어 못 센다"* 로
+    #       두 사실을 하나로 붙여 **거짓을 만들었다**. 🔴 모델에 가는 글에 군더더기를
+    #       넣지 않는다.
     if not said:
         return ""
-    return ("🔴 **기준 낡음 의심** — " + " · ".join(said)
-            + " ⚠️ 감독 교체 직후는 **못 센다**(취임일 자료가 없다)")
+    return "🔴 **기준 낡음 의심** — " + " · ".join(said)
 
 
 def _cause(row: Row, *, variables: list | None, stale: str,

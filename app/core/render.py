@@ -1357,6 +1357,8 @@ def check_long(card: Card) -> str:
            f"{int(counts.get(_sg.NA, 0))}"]
     if str(box.get("stale") or ""):
         out.append(f"- {box['stale']}")
+    for one in list(box.get("gaps") or []):
+        out.append(f"- {one}")
     # 🔴 **재실행 여부와 이유**(§4-3) — 0회도 적는다(#3)
     out.append("- 재실행 — "
                + (str(box["rerun"]) if str(box.get("rerun") or "")
