@@ -57,26 +57,52 @@ def langs_of(ccode: str) -> list[str]:
        **표에서** 한다(`pycountry` 가 없으면 앞 두 글자로 떨어지지 않는다 — 그러면
        빈 목록이고 등록이 실패한다 · 조용히 틀리지 않는다).
     """
+    out, _why = langs_with_why(ccode)
+    return out
+
+
+def langs_with_why(ccode: str) -> tuple[list[str], str]:
+    """🔴🔴 `(언어들, 왜)` — **왜를 함께** 돌려준다(#3 조용한 0 금지).
+
+    ══════════════════════════════════════════════════════════════════
+    🔴🔴 **fotmob 의 나라 코드는 FIFA 코드다 — CLDR 은 ISO 만 안다**
+    ══════════════════════════════════════════════════════════════════
+
+    실측 2026-10-10(스위스 수퍼리그 FC Zürich–Thun 실행): fotmob 이 `ccode:
+    "SUI"` 를 줬고 등록이 *"필수 칸이 없다: ['langs']"* 로 **실패했다.**
+    🔴 `babel` 의 `global.dat` **전수 조사**로 확인했다 — 16개 표 어디에도 `SUI`
+       가 없다(`territory_aliases["CHE"] → ['CH']` 는 있다). 즉 CLDR 은 FIFA
+       코드를 **모른다**.
+
+    ⚠️ 그래서 **표를 손으로 짓지 않는다**(사본 금지 · 추측 금지). 대신:
+      ① 두 글자면 CLDR 에 바로 묻는다.
+      ② 세 글자면 CLDR `territory_aliases`(ISO 3→2)로 바꿔 묻는다.
+      ③ 그래도 안 되면 **영어만** 쓰고 **그 까닭을 이름으로 남긴다** — 등록을
+         막지 않는다(막으면 그 리그 경기를 **아예 못 본다**).
+    🔴 ③ 이 걸린 코드는 `questions/2026-10-10_fifa_ccode_vs_cldr.md` 에 실측으로
+       쌓는다 — 기억이 아니라 측정으로 자란다.
+    """
     cc = str(ccode or "").strip().upper()
     if not cc:
-        return []
-    two = cc
-    if len(cc) == 3:
-        two = _alpha2(cc)
-        if not two:
-            return []
+        return ["en"], "🔴 나라 코드가 비었다 — 영어만"
+    two = cc if len(cc) == 2 else _alpha2(cc)
+    if not two:
+        return ["en"], (f"🔴 `{cc}` 는 **FIFA 코드**다 — CLDR(ISO)에 없다 · "
+                        f"영어만으로 찾는다(현지어 기사를 놓칠 수 있다)")
     try:
         import babel.core as bc
         box = (bc.get_global("territory_languages") or {}).get(two) or {}
     except Exception:                                       # noqa: BLE001
-        return []
+        return ["en"], f"🔴 babel 을 못 읽었다(`{two}`) — 영어만"
     off = sorted(((k, float(v.get("population_percent") or 0))
                   for k, v in box.items() if v.get("official_status")),
                  key=lambda x: -x[1])
     out = [k for k, _p in off][:3]
+    if not out:
+        return ["en"], f"🔴 CLDR 이 `{two}` 의 공식 언어를 모른다 — 영어만"
     if "en" not in out:
         out.append("en")       # 🔴 영어는 늘 더한다(§3: "그 언어 + 영어")
-    return out
+    return out, f"CLDR — `{cc}`→`{two}` 공식 언어 {out}"
 
 
 def _alpha2(cc3: str) -> str:
@@ -139,6 +165,8 @@ def build(*, competition_key: str, meta: dict, teams: list[str],
         # 🔴 팀 목록 출처 — 이미 만든 통로 이름 그대로(§3 첫 줄)
         "teams_from": f"fotmob:{lid}" if lid else "",
         "langs": langs_of(ccode),
+        # 🔴 §3 — 언어를 **어떻게 정했나**. FIFA 코드라 영어만 쓴 경우가 여기 남는다
+        "langs_why": langs_with_why(ccode)[1],
         "teams": sorted(set(str(x) for x in (teams or []) if str(x).strip())),
         "name": str(meta.get("name") or ""),
         "season": str(meta.get("season") or ""),
@@ -204,11 +232,16 @@ def line(key: str) -> str:
     if not box:
         return f"🆕 자동 등록 없음 — `{short_of(key)}`"
     base = dict(box.get("baseline") or {})
-    return (f"🆕 **자동 등록** `{short_of(key)}` · {box.get('ccode')} · "
+    said = (f"🆕 **자동 등록** `{short_of(key)}` · {box.get('ccode')} · "
             f"언어 {box.get('langs')} · 팀 {len(box.get('teams') or [])} · "
             f"확인일 {box.get('checked_at')} · 기준 "
             + ("🔴 **약함**" if base.get("weak") else "✅")
             + f"({base.get('n')}경기)")
+    # 🔴 언어를 **영어만으로 떨어진 까닭**은 숨기지 않는다(#3)
+    why = str(box.get("langs_why") or "")
+    if why.startswith("🔴"):
+        said += f"\n   ⚠️ 검색 언어 — {why}"
+    return said
 
 
 def report() -> str:
