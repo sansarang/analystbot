@@ -208,6 +208,17 @@ ladder:
           🔴 **선발 11명을 주는 칸을 아직 못 찾았다** — 위 인자로는 빈 목록이다.
           ⚠️ 그래서 이 출처는 **일정·구단 SNS·타임라인**에 쓰고, 선발은 사다리의
              `article` 로 간다. 더 찾으면 여기 적는다(추측으로 붙이지 않는다).
+
+          🔴🔴 **2026-10-10 추가 실측 — 이번엔 "경기 전" 상태로 쟀다**
+             (gameId **185** 김천–안양 · 킥오프 16:30 KST · 잰 시각 T-75분):
+               `getScheduleList.do` → ✅ 그 경기를 찾는다(`gameId 185`·`meetSeq 1`)
+               `matchInfo.do` → 200 이지만 **칸이 골·득점자뿐**이고 전부 **0줄**
+                 (`firstHalf`·`secondHalf`·`homeScorer`·`awayScorer`·`EfirstHalf`
+                  ·`EsecondHalf` — 선발 칸이 **아예 없다**)
+               `getMatchRecordAllDetail.do` → `listH`/`listA` **0줄**
+             🔴 즉 이 XHR 들은 **경기 중·후 기록**이고 **경기 전 선발은 주지 않는다**.
+                ⚠️ 끝난 경기에서 0줄이던 것이 *"아직 안 끝나서"* 가 아니었다 —
+                   **칸 자체가 없다**. 그러니 **다시 시도하지 않는다**.
         gives: [schedule, club_sns, timeline]
       - id: club_sns
         what: 구단 공식 SNS(사용자가 허용)

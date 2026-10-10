@@ -29,19 +29,36 @@ from __future__ import annotations
 import ast
 import datetime as dt
 import inspect
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
 
 
 # ══════════════════════════════════════════════════════════════════
 # ① SearXNG 에 `time_range=week` 를 기본으로
 # ══════════════════════════════════════════════════════════════════
-def test_d1_searx_가_week_를_기본으로_건다():
+def test_d1_창의_기본값은_표가_든다():
+    """🔴🔴 창을 **코드에 박지 않는다** — `config/search_routing.yaml` 이 든다.
+
+    ⚠️ 종전 이 계약은 `SEARX_TIME_RANGE == "week"` 를 못 박았다. 🔴 실측
+       2026-10-10 에 그 값이 **영어 질의를 0건으로** 만들었다(10-05 에는 3건이었다)
+       — 봇은 퇴로로 복구하지만 **검색 호출을 두 배로** 썼고 하위당 상한이 3회라
+       그 낭비가 문서 수를 깎았다. 그래서 **표에서 읽고 껐다**.
+    🔴 이 계약이 세는 것은 *"그 값이 표에서 오나"* 와 *"`query` 가 그것을 쓰나"* 다
+       (수를 박으면 다음에 또 뒤집힐 때 계약이 빨개진다 · #1 사본 금지).
+    """
+    import yaml
     from app import search
-    assert hasattr(search, "SEARX_TIME_RANGE"), (
-        "🔴 `search.SEARX_TIME_RANGE` 가 없다 — 창을 코드에 박지 말고 이름으로")
-    assert search.SEARX_TIME_RANGE == "week", search.SEARX_TIME_RANGE
+    assert hasattr(search, "searx_time_range"), (
+        "🔴 `search.searx_time_range()` 가 없다 — 창을 표에서 읽어야 한다")
+    box = yaml.safe_load((ROOT / "config" / "search_routing.yaml")
+                         .read_text(encoding="utf-8"))
+    assert "time_range_default" in box, (
+        "🔴 표에 `time_range_default` 칸이 없다")
+    assert search.searx_time_range() == str(box.get("time_range_default") or "")
     src = inspect.getsource(search.SearxSearch.query)
-    assert "SEARX_TIME_RANGE" in src, (
-        "🔴 `query` 가 그 창을 **안 건다**(#2 배선)")
+    assert "searx_time_range()" in src, (
+        "🔴 `query` 가 표의 값을 **안 쓴다**(#2 배선)")
 
 
 def test_d1_0건이면_창을_벗기고_다시_던진다():
@@ -61,7 +78,9 @@ def test_d1_0건이면_창을_벗기고_다시_던진다():
             return [] if time_range else [search.Hit(title="t",
                                                      url="https://a.com/1")]
 
-    got = asyncio.run(Fake().query("아무 질의"))
+    # 🔴 창을 **명시해** 부른다 — 기본값은 표가 들고(지금은 꺼짐) 이 계약이
+    #    세는 것은 *"창을 걸었을 때 0건이면 벗기고 다시 던지나"* 다.
+    got = asyncio.run(Fake().query("아무 질의", time_range="week"))
     assert seen == ["week", ""], (
         f"🔴 창을 벗기고 **다시 던지지 않았다**(던진 창: {seen}) — `week` 가 "
         f"0건이면 그 질의가 통째로 죽는다")

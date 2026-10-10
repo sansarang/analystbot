@@ -44,12 +44,27 @@ services:
       SEARXNG_BASE_URL: http://localhost:8888/
     restart: unless-stopped
     healthcheck:
-      # 🔴 JSON 출력이 실제로 켜졌는지까지 본다 — 컨테이너가 살아 있는 것과
-      #    우리가 쓸 수 있는 것은 다르다.
-      test: ["CMD-SHELL", "wget -qO- 'http://localhost:8080/search?q=test&format=json' | head -c 1 | grep -q '{'"]
-      interval: 10s
+      # ══════════════════════════════════════════════════════════════
+      # 🔴🔴 **실사고 2026-10-10 — 헬스체크가 검색 엔진을 죽이고 있었다**
+      # ══════════════════════════════════════════════════════════════
+      #
+      # 종전 헬스체크는 **10초마다 실제 검색**을 던졌다:
+      #   `wget 'localhost:8080/search?q=test&format=json'` · interval 10s
+      # 🔴 하루 **8,640회**다. 그것이 `brave`·`startpage`·`google cse` 의
+      #    *"Suspended: **too many requests**"* 를 **우리가 만든 것**이었다.
+      # 🔴 그리고 `duckduckgo` 가 타임아웃(engine 6s)으로 응답을 끌어 검색이
+      #    1.76초가 됐고, 어떤 때는 5초 timeout 을 넘겨 컨테이너가 **35회 연속
+      #    실패 → `unhealthy`** 였다(5일째).
+      #
+      # 🔴 그래서 **`/healthz` 로 바꿨다** — 실측 2026-10-10: **7밀리초**
+      #    (검색은 1.76초). ⚠️ *"JSON 출력이 켜졌나"* 는 헬스체크가 볼 일이
+      #    아니다 — 그것은 **설정**이고 `app/search.py` 가 못 읽으면 바로
+      #    사유로 남는다(조용히 틀리지 않는다).
+      # ⚠️ 간격도 10초 → **30초**로 늘렸다(그 자체가 비용이다).
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/healthz >/dev/null"]
+      interval: 30s
       timeout: 5s
-      retries: 12
+      retries: 6
       start_period: 20s
 
 volumes:

@@ -133,17 +133,17 @@ class SearxSearch:
     async def query(self, text: str, *, lang: str = "ko",
                     engines: list[str] | None = None,
                     time_range: str | None = None) -> list[Hit]:
-        """🔴 ①층 — **`time_range=week` 를 기본으로 건다**(지시 2026-10-05).
+        """🔴 ①층 — 창의 기본값은 **표**가 든다(`searx_time_range`).
 
-        ⚠️ `time_range=None` 은 *"기본을 쓴다"* 이고, `""` 은 *"창을 벗긴다"* 다
-           (0건 퇴로가 그것을 쓴다).
+        ⚠️ `time_range=None` 은 *"표의 기본을 쓴다"* 이고, `""` 은 *"창을 벗긴다"* 다.
+        🔴 실측 2026-10-10 로 기본이 **꺼졌다** — 영어 질의에서 `week` 가 0건을
+           만들었다(표에 그 수가 적혀 있다).
         """
+        want = searx_time_range() if time_range is None else time_range
         got = await self._one(text, lang=lang, engines=engines,
-                              time_range=(SEARX_TIME_RANGE
-                                          if time_range is None else time_range))
+                              time_range=want)
         # 🔴 **2건 이하면 얄팍하다**(§6-1) — 0건만 보지 않는다
-        if len(got) > SEARX_THIN_AT or (time_range is not None
-                                        and not time_range):
+        if len(got) > SEARX_THIN_AT or not want:
             return got
         # ══════════════════════════════════════════════════════════════════
         # 🔴🔴 **0건이면 창을 벗기고 다시** — 지정 엔진 대체(§19-b-4)와 같은 결
@@ -152,7 +152,7 @@ class SearxSearch:
         #  ⚠️ 실측 2026-10-05: `week` 가 30건을 3건으로 좁힌다(ja) · 45→10(en).
         #     🔴 좁히는 것이 목적이지만 **0건이면 그 질의가 통째로 죽는다.**
         logger.info("[searx] 🔴 `time_range=%s` 로 %d건(≤%d) → **창을 벗기고 "
-                    "다시** 던진다(§6-1 퇴로)", SEARX_TIME_RANGE, len(got),
+                    "다시** 던진다(§6-1 퇴로)", want, len(got),
                     SEARX_THIN_AT)
         wide = await self._one(text, lang=lang, engines=engines, time_range="")
         # ⚠️ 벗긴 쪽이 **더 많을 때만** 쓴다 — 적으면 창 안의 것이 낫다(신선도)
@@ -389,7 +389,18 @@ class GoogleSearch:
 #
 #  ⚠️ 그런데 **`publishedDate` 는 모든 조합에서 0건**이다 — 창은 좁히지만
 #     날짜를 주지는 않는다. 그래서 ②층(fetch 전 거름)·③층(htmldate)이 있다.
-SEARX_TIME_RANGE = "week"
+#: 🔴🔴 **창의 기본값은 표가 든다**(`config/search_routing.yaml`) — 코드 상수가
+#  아니다. ⚠️ 실측 2026-10-10: 영어 질의에서 `week` 가 **0건**을 만들어 질의가
+#  통째로 죽었고(10-05 에는 3건이었다) 퇴로가 검색 호출을 **두 배로** 썼다.
+#  🔴 그래서 **표에서 읽는다** — 또 뒤집히면 표만 고친다(#1 사본 금지).
+def searx_time_range() -> str:
+    """🔴 `time_range` 기본값 — 표가 없으면 **끈 상태**다(fail-open)."""
+    from app import rules
+    got = (rules._load("config/search_routing.yaml") or {})
+    return str(got.get("time_range_default") or "")
+
+
+SEARX_TIME_RANGE = ""
 
 #: 🔴🔴 **얄팍하다고 보는 건수** — 딥서치 재구축 §6-1 (2026-10-05).
 #

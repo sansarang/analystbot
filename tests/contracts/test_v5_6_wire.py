@@ -39,7 +39,10 @@ def test_r6_두건_이하면_창을_벗기고_다시():
             return ([search.Hit(title="t", url=f"https://a{i}.com/x")
                      for i in range(2 if time_range else 5)])
 
-    got = asyncio.run(Fake().query("아무 질의"))
+    # 🔴 **창을 명시해 부른다** — 기본값은 이제 **표**가 들고(2026-10-10 실측으로
+    #    `week` 가 영어 질의를 0건으로 만들어 **껐다**), 이 계약이 세는 것은
+    #    *"창을 걸었을 때 얄팍하면 벗기고 다시 던지나"* 라는 **퇴로 동작**이다.
+    got = asyncio.run(Fake().query("아무 질의", time_range="week"))
     assert seen == ["week", ""], (
         f"🔴 2건인데 다시 안 던졌다(던진 창: {seen})")
     assert len(got) == 5, f"🔴 벗긴 결과를 안 썼다: {len(got)}"
@@ -58,7 +61,7 @@ def test_r6_세건이면_다시_안_던진다():
             return [search.Hit(title="t", url=f"https://a{i}.com/x")
                     for i in range(3)]
 
-    asyncio.run(Fake().query("아무 질의"))
+    asyncio.run(Fake().query("아무 질의", time_range="week"))
     assert seen == ["week"], f"🔴 3건인데 또 던졌다: {seen}"
 
 

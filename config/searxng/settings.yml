@@ -134,5 +134,16 @@ engines:
     disabled: false
   - name: wikipedia
     disabled: false
-  # ⚠️ `duckduckgo`·`brave` 는 기본으로 켜져 있다 — 여기 다시 적지 않는다.
-  #    정지되는 것은 설정 문제가 아니라 그쪽 정책이므로 고칠 수 없다.
+  # ══════════════════════════════════════════════════════════════════
+  # 🔴🔴 **끈다 — 실측 2026-10-10: 검색마다 시간을 먹는다**
+  # ══════════════════════════════════════════════════════════════════
+  #
+  # `duckduckgo` 가 **매 검색 타임아웃**(engine 6초)을 내 전체 응답을 1.76초로
+  # 끌었고 로그를 15초마다 채웠다(`ERROR:searx.engines.duckduckgo: engine
+  # timeout`). `brave` 는 `Suspended: too many requests` 로 늘 정지다.
+  # 🔴 켜 둬도 **0건**이고 기다림만 늘린다 → 끈다. ⚠️ 되살아나면 다시 켠다
+  #    (이 저장소의 실측은 엔진이 하루 만에 뒤집힌다고 적는다).
+  - name: duckduckgo
+    disabled: true
+  - name: brave
+    disabled: true
