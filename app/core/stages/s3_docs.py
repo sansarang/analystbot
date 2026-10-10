@@ -161,7 +161,60 @@ def queries_for(sub: Any, ref: MatchRef) -> list[tuple[str, str]]:
         said = " ".join(x for x in (a, b, word(lang)) if x)
         if said and said != out[-1][0]:
             out.append((said, lang))
-    return [(queries.slot_value(q), lg) for q, lg in out if str(q).strip()]
+    return _fit(out, mine=mine, other=other)
+
+
+def _shorter(name: str) -> list[str]:
+    """🔴 그 팀의 **현지·짧은 표기들** — 질의 글자에서 상대를 뺄 때 쓴다.
+
+    ⚠️ 이름을 **짓지 않는다** — 이름표가 아는 것만(`discover.aliases_of`).
+    """
+    if not str(name or "").strip():
+        return []
+    try:
+        from app.core import discover as _d
+        got = [str(x) for x in _d.aliases_of(name) if str(x).strip()]
+    except Exception:                                       # noqa: BLE001
+        return []
+    return sorted(got, key=lambda x: -len(x))
+
+
+def _fit(out: list[tuple[str, str]], *, mine: str, other: str = "",
+         ) -> list[tuple[str, str]]:
+    """🔴🔴 **문지기(1~6낱말)를 넘는 질의는 한 팀 질의로 떨어뜨린다.**
+
+    ══════════════════════════════════════════════════════════════════
+    🔴 왜 — 실사고 2026-10-11 (뉴잉글랜드 vs 시애틀 사운더스)
+    ══════════════════════════════════════════════════════════════════
+
+    팀 이름이 `New England Revolution`(3낱말) · `Seattle Sounders FC`(3낱말)이라
+    두 팀 + 개념어가 **7~8낱말**이 됐고, `gate_ok`(1~6낱말)가 **질의를 전부**
+    막았다 → 검색 0회 · 문서 0건 · 새 사실 0건. ⚠️ 그런데 카드에는
+    `queries None` 만 남아 *"안 쟀다"* 처럼 보였다(#3 조용한 0).
+
+    🔴 이름을 **지어 줄이지 않는다** — 상대를 빼고 **내 팀 + 개념**으로 묻는다
+    (`squad_turnover` 가 이미 쓰는 꼴이다 · 하위가 홈/원정 두 벌이라 두 팀이 다
+    덮인다). ⚠️ 그래도 넘으면 그대로 두고 문지기가 사유를 적는다.
+    """
+    from app import queries
+    got: list[tuple[str, str]] = []
+    for q, lg in out:
+        said = str(q).strip()
+        if not said:
+            continue
+        if not gate_ok(said)[0]:
+            # 🔴 **상대 이름만 뺀다** — 개념어는 두 낱말일 수 있다
+            #    (`injury news`). ⚠️ 끝 낱말만 남기면 `news` 로 **잘린다**.
+            solo = said
+            for name in (str(other or ""), *_shorter(other)):
+                if name and name in solo:
+                    solo = solo.replace(name, " ")
+                    break
+            solo = " ".join(solo.split())
+            if solo and solo != said and gate_ok(solo)[0]:
+                said = solo
+        got.append((queries.slot_value(said), lg))
+    return got
 
 
 def names_of(ref: MatchRef) -> tuple[list[str], list[str]]:
@@ -360,6 +413,12 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, chain: Any,
     # 🔴 **센 칸을 적는다** — 실측 2026-10-06: `queries`·`hits`·`kept_date` 가
     #    `null` 로 남아 깔때기가 *"안 쟀다"* 라고 말했다(#3 은 그것을 허용하지만,
     #    **잴 수 있는데 안 잰 것**은 게으름이다). 수는 `_tally` 가 모은다.
+    # 🔴 **0 도 적는다** — ⚠️ 실사고 2026-10-11: `if n:` 이 0 을 빼먹어 카드에
+    #    `queries None` 으로 남았고, *"안 쟀다"* 와 *"재 보니 0"* 이 섞였다(#3).
+    # ⚠️ 칸 이름은 **깔때기 계약**이 정한다(`state.STAGES`) — 새 칸을 지어내지
+    #    않는다. 막힌 질의 수는 `state.note` 로 보고에 남는다(위 `gate_ok` 자리).
+    for stage in ("queries", "hits", "kept_date"):
+        state.set(stage, int(_TALLY.get(stage) or 0))
     for stage, n in sorted(_TALLY.items()):
         if n:
             state.set(stage, n)

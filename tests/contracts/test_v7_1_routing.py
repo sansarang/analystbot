@@ -841,3 +841,49 @@ def test_v7_두_낱말_한_팀_이름을_가르지_않는다():
     assert "one_team" in said, "🔴 입구가 한 팀 검사를 안 부른다"
     i = said.index("one_team")
     assert "words[0], words[1]" in said[i:], "🔴 가름이 그 검사 뒤에 와야 한다"
+
+
+def test_v7_긴_팀_이름이_질의를_통째로_막지_않는다():
+    """🔴🔴 **실사고 2026-10-11**(뉴잉글랜드 vs 시애틀 사운더스) — 검색이 **0회**였다.
+
+    팀 이름이 `New England Revolution`(3낱말)·`Seattle Sounders FC`(3낱말)이라
+    두 팀 + 개념어가 **7~8낱말**이 되고 `gate_ok`(1~6낱말)가 질의를 **전부** 막았다
+    → 검색 0회 · 문서 0건 · 새 사실 0건. ⚠️ 카드에는 `queries None` 만 남아
+    *"안 쟀다"* 처럼 보였다(#3 조용한 0).
+
+    🔴 이름을 **지어 줄이지 않는다** — 상대 이름만 빼고 **내 팀 + 개념**으로 묻는다.
+    ⚠️ 돌연변이: `_fit` 을 지우면 긴 이름 두 팀 경기가 다시 검색 0회가 된다.
+    ⚠️ 끝 낱말만 남기면 `injury news` 가 `news` 로 **잘린다** — 그래서 뺀다.
+    """
+    from app.core.stages.s3_docs import _fit, gate_ok
+
+    long_q = "New England Revolution Seattle Sounders FC injury news"
+    assert gate_ok(long_q)[0] is False, "🔴 전제가 바뀌었다(문지기가 안 막는다)"
+    got = _fit([(long_q, "en")], mine="Seattle Sounders FC",
+               other="New England Revolution")
+    assert got, got
+    said = got[0][0]
+    assert gate_ok(said)[0] is True, said
+    assert "injury news" in said, f"🔴 개념어가 잘렸다 — {said!r}"
+    assert "New England" not in said, said
+    # 🔴 **넘지 않는 질의는 손대지 않는다**
+    ok_q = "Genoa CFC ACF Fiorentina injury"
+    assert _fit([(ok_q, "en")], mine="Genoa CFC",
+                other="ACF Fiorentina")[0][0] == ok_q
+
+
+def test_v7_질의_0건도_수로_적는다():
+    """🔴 **조용한 0 금지**(#3) — `if n:` 이 0 을 빼먹어 카드가 `queries None` 을
+    적었다. *"안 쟀다"* 와 *"재 보니 0"* 은 다른 말이다.
+
+    ⚠️ 돌연변이: 그 네 칸을 늘 적는 줄을 지우면 `None` 이 돌아온다.
+    """
+    import inspect
+
+    from app.core import render as _r
+    from app.core.stages import s3_docs as _s3
+
+    said = inspect.getsource(_s3.run)
+    assert '("queries", "hits", "kept_date")' in said, "🔴 0 을 적지 않는다"
+    # 🔴 카드는 그 네 칸을 그대로 보인다(깔때기 계약이 칸 이름을 정한다)
+    assert "queries" in inspect.getsource(_r.new_facts_block)
