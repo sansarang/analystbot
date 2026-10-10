@@ -1085,8 +1085,8 @@ def edge_block(card: Card) -> str:
         out.append(" 기여(리그 평균 대비): "
                    + " · ".join(f"{k} {float(v):+.1f}%p"
                                 for k, v in share.items()))
-        said = [f"{k[-1]}:{','.join(list(v)[:2])}" for k, v in refs.items()
-                if v]
+        said = [f"{k.replace('axis', '축')} {','.join(list(v)[:2])}"
+                for k, v in refs.items() if v]
         if said:
             out.append(" 주요 변수 " + _cap(" · ".join(said), 80))
     offs = dict(getattr(mr, "off_weapons", None) or {})
@@ -1442,9 +1442,20 @@ VERIFY_HEAD = "🔎 **검증**"
 def verify_block(card: Card) -> str:
     """🔴 §3 — 검증 요약 한 줄 + 반대 출처(둘까지) + 등급 영향."""
     box = dict(getattr(card, "check", None) or {})
+    if "sources" not in box:
+        return ""                      # 🔴 S5 를 안 돌렸다(그 사실은 긴 카드가 적는다)
     rows = list(box.get("sources") or [])
     if not rows:
-        return ""
+        # 🔴🔴 **0건이면 왜 0건인지 적는다** — ⚠️ 실측 2026-10-10: `같은 방향 0 ·
+        #    반대 0` 만 찍혀 *"검증했는데 아무 말이 없었다"* 로 읽혔다. 실은
+        #    **출처가 하나도 없었다**(① 기준이 없고 ② 배치 변수도 없었다).
+        from app.core import routing
+        got = getattr(card, "varset", None)
+        n = sum(len(got.of(x)) for x in routing.VERIFY) if got else 0
+        return (f"{VERIFY_HEAD} — ⬜ **출처 0건** · ② 검증 자리 변수 {n}개 · "
+                "① 기준 확률 "
+                + ("있다" if getattr(card.base_prob, "probs", None) is not None
+                   else "**없다**"))
     same = [r for r in rows if dict(r).get("dir") == "같음"]
     against = [r for r in rows if dict(r).get("dir") == "반대"]
     out = [f"{VERIFY_HEAD} — 같은 방향 {len(same)} · 반대 {len(against)}"]
