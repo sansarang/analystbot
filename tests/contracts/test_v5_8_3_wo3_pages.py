@@ -294,3 +294,12 @@ def test_v6_번호가_글자를_이긴다():
            and any(k.arg == "league_id" for k in n.keywords)]
     assert hit, ("🔴 `comp_kind` 가 `kind_of` 에 `league_id` 를 안 넘긴다 — "
                  "대회 이름은 나라를 넘어 겹친다(실사고 2026-10-10)")
+    # 🔴 번호가 **거기까지 오려면** `facts_of` 가 실어야 한다(실측: 이 줄이 없어
+    #    카드가 두 번 연속 "대회를 알아보지 못했다"를 띄웠다).
+    said2 = ast.parse((ROOT / "app" / "core"
+                       / "adapt.py").read_text(encoding="utf-8"))
+    fns = [n for n in ast.walk(said2) if isinstance(n, ast.FunctionDef)
+           and n.name == "facts_of"]
+    assert fns and "league_id=" in ast.unparse(fns[0]), (
+        "🔴 `adapt.facts_of` 가 `league_id` 를 `Facts` 에 안 싣는다 — "
+        "`s2_facts` 가 담아도 판정까지 오지 않는다")

@@ -212,6 +212,10 @@ def facts_of(raw: dict, *, xi: dict[str, XI] | None = None,
         past_xi={str(k): list(v) for k, v in (past_xi or {}).items() if v},
         squad={k: [str(x) for x in v] for k, v in (squad or {}).items()},
         match_format=(fmt if fmt in allowed else "unknown"),  # type: ignore[arg-type]
+        # 🔴🔴 **리그 번호**(`general.parentLeagueId`) — 대회 판정이 글자로만
+        #    가지 않게(실사고 2026-10-10: `Super League` 가 스위스·인도네시아 둘).
+        #    ⚠️ 이 줄을 빼면 그 사고가 **그대로 돌아온다** — 계약이 센다.
+        league_id=str(box.get("league_id") or ""),
         extra_time=box.get("extra_time"),
         leg=box.get("leg"),
         sources=[str(x) for x in (sources or box.get("sources") or [])],
