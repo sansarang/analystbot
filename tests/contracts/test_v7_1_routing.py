@@ -181,3 +181,80 @@ def test_v7_파이프라인이_배치를_카드에_싣는다():
     src = (ROOT / "app" / "core" / "pipeline.py").read_text(encoding="utf-8")
     assert "routing.place(" in src, "🔴 파이프라인이 배치를 안 돌린다"
     assert "varset" in src, "🔴 배치 산출을 카드로 안 보낸다"
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 실행이 잡은 셋 — 선수단 교체 변수 · 유형–내용 · `상대` 기준
+# ══════════════════════════════════════════════════════════════════
+
+def test_v7_선수단_교체가_변수로_만들어진다():
+    """🔴🔴 V-3 — *"squad_turnover(IR03 포함) → 축0 호흡, 축1·축3 r 가중,
+    V1 기준 낡음"*.
+
+    ⚠️ 실측 2026-10-10: 선수단 교체가 **깃발로만** 있어 배치표를 지나지 않았고,
+       김천 VariableSet 에 `squad_rotation` 이 **0개**였다 — 축이 받을 통로가 없다.
+    ⚠️ 돌연변이: `_turn_vars` 를 지우면 그 통로가 다시 막힌다.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    from app.core import routing
+    from app.core.schema import MatchRef
+    from app.core.stages import s5_verify
+    from app.core.state import RunState
+    ref = MatchRef(id="x:1", sport="soccer", competition="K-League 1",
+                   competition_short="K리그1", home="team:000318",
+                   away="team:000320", home_name="Gimcheon Sangmu",
+                   away_name="FC Anyang",
+                   kickoff_utc=datetime.now(timezone.utc) + timedelta(hours=2))
+    got = s5_verify._turn_vars(
+        ref, {"home": {"on": True, "why": "전역 주기 팀",
+                       "off_squad": ["A", "B"]},
+              "away": {"on": False}}, state=RunState(match_key="x"))
+    assert len(got) == 1 and got[0].id == "TURN-home", [x.id for x in got]
+    assert got[0].type == "squad_rotation" and got[0].hardness == "hard"
+    # 🔴 배치표가 그것을 축0·축1·축3·V1 로 보낸다
+    row = routing.place(got).rows[0]
+    assert set(row.places) == {"axis0", "axis1", "axis3", "V1", "hypo"}
+    # 🔴 깃발이 꺼지면 **안 만든다**(지어낸 변수 금지)
+    assert s5_verify._turn_vars(ref, {"home": {"on": False}},
+                                state=RunState(match_key="x")) == []
+    # 🔴 배선 — s5 가 그것을 변수 목록에 더하고 파이프라인이 깃발을 넘긴다
+    src = (ROOT / "app" / "core" / "stages"
+           / "s5_verify.py").read_text(encoding="utf-8")
+    assert "out += _turn_vars(" in src
+    assert "turnover=turn" in (ROOT / "app" / "core"
+                               / "pipeline.py").read_text(encoding="utf-8")
+
+
+def test_v7_유형과_내용이_어긋나면_버린다():
+    """🔴 V-2 — *"유형–내용 일치 검사(부진 문장을 fatigue 로 단 것 등 버림)"*.
+
+    ⚠️ 실측 2026-10-10: *"4-4-2 포메이션으로 경기에 임한다"* 가 `def_absence`
+       (수비 결장)로 들어왔다 — 결장 얘기가 **한 글자도 없다**.
+    """
+    from app.core.stages.s5_verify import _type_fits
+    said = _type_fits("def_absence", "Gimcheon Sangmu는 4-4-2 포메이션이다")
+    assert "한 글자도 없다" in said, said
+    # 🔴 결장 말이 있으면 통과한다
+    assert _type_fits("def_absence", "Kwon 이 명단에서 빠졌다") == ""
+    assert _type_fits("returning", "무고사가 복귀했다") == ""
+    # 🔴 목록에 없는 유형은 **통과**다(모르는 것으로 버리지 않는다 · #4)
+    assert _type_fits("team_stats", "아무 말") == ""
+    # 🔴 사유 열거값이 있다(사유를 지어 쓰지 않는다)
+    from app.core.schema import DropReason
+    assert DropReason.TYPE_CONTENT_MISMATCH.value == "type_content_mismatch"
+
+
+def test_v7_상대_기준은_팀_지정_지표에만():
+    """🔴🔴 ⚠️ 실사고 2026-10-10: `승무패[home] > 상대` 가 왔고 그 지표는 팀 칸이
+    뜻이 없어 **자기 자신과 비교**했다(`0.461 > 0.461` → 늘 반박)."""
+    from app.core import signals as _sg
+    from app.core.schema import Signal
+    bad = Signal(metric="승무패", direction=">", ref="상대", side="home",
+                 arg="home")
+    said = _sg.bad_signal(bad)
+    assert "팀을 지정하는 지표" in said, said
+    assert _sg.check(bad, {"home": 0.46, "away": 0.24})["verdict"] == _sg.NA
+    # 🔴 팀 지정 지표에는 그대로 쓴다
+    ok = Signal(metric="기대득점", direction=">", ref="상대", side="home")
+    assert _sg.bad_signal(ok) == ""

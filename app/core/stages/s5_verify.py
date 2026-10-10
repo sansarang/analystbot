@@ -161,8 +161,13 @@ def stakes_ok(claim: str) -> tuple[bool, str]:
 
 
 def run(ref: MatchRef, facts: Facts, docs: list[Doc],
-        cands: list[VarCandidate], *, state: RunState) -> list[Variable]:
-    """🔴 후보를 검증해 변수로. ⚠️ 버린 것은 **사유와 함께** 남는다(#3)."""
+        cands: list[VarCandidate], *, state: RunState,
+        turnover: dict | None = None) -> list[Variable]:
+    """🔴 후보를 검증해 변수로. ⚠️ 버린 것은 **사유와 함께** 남는다(#3).
+
+    🔴🔴 `turnover` 가 켜진 팀은 **`squad_rotation` 변수**를 하나 만든다(상성 엔진
+       지시서 V-3) — 그래야 축0·축1·축3 이 선수단 교체를 **입력으로** 받는다.
+    """
     by_id = {d.id: d for d in docs}
     rows: list[dict] = []
     for i, c in enumerate(cands):
@@ -263,12 +268,86 @@ def run(ref: MatchRef, facts: Facts, docs: list[Doc],
             state.note(f"s5 R{i} 는 **근거로 못 쓴다**(등급 {level} · 출처 "
                        f"{n_src}곳 · {tier}) — 맥락으로만 보낸다")
     out += _from_facts(ref, facts, state=state)
+    # 🔴🔴 V-3 — **선수단 교체 변수**(깃발을 변수로 만든다 · 아래 함수 주석 참고)
+    out += _turn_vars(ref, turnover, state=state)
     state.set("variables", len(out))
+    return out
+
+
+def _turn_vars(ref: MatchRef, turnover: dict | None, *,
+               state: RunState) -> list[Variable]:
+    """🔴🔴 상성 엔진 V-3 — **선수단 교체 변수**(`squad_rotation`). 켜진 팀만.
+
+    > squad_turnover(IR03 포함) │ 축0 호흡, 축1·축3 r 가중 │ V1 기준 낡음 │ 근거
+
+    🔴 이 변수가 있어야 S2 가 그 셋을 할 수 있다 — ⚠️ 실측 2026-10-10: 선수단
+       교체가 **깃발로만** 있어 배치표를 지나지 않았고, 김천 VariableSet 에
+       `squad_rotation` 이 **0개**였다(축이 받을 통로가 없었다).
+    ⚠️ 깃발이 꺼졌으면 **만들지 않는다**(지어낸 변수 금지).
+    """
+    out: list[Variable] = []
+    for side, one in dict(turnover or {}).items():
+        box = dict(one)
+        if not box.get("on"):
+            continue
+        key = str(getattr(ref, side, "") or "")
+        name = str(getattr(ref, f"{side}_name", "") or "")
+        gone = [str(x) for x in (box.get("off_squad") or [])]
+        out.append(Variable(
+            id=f"TURN-{side}", type="squad_rotation", subject=key,
+            favors=("away" if side == "home" else "home"),
+            goals="none", target="squad_rotation:turnover", hardness="hard",
+            weight=_sample_weight(5)[1],
+            claim=(f"{name} 선수단 교체 — {box.get('why')}"
+                   + (f" · 명부에 없는 과거 선발 {len(gone)}명" if gone else "")),
+            quote=str(box.get("why") or ""), doc_ids=[],
+            from_rule="IR03T", usable_as_basis=True))
+        state.note(f"s5 선수단 교체 변수 — `TURN-{side}` ({name})")
     return out
 
 
 #: 🔴 센 등급이 먼저다 — 한 주장을 여러 매체가 말하면 **가장 센 쪽**으로 센다
 _TIER_ORDER = ("official", "national", "local", "aggregator", "tip", "dead")
+
+
+#: 🔴🔴 V-2 — **유형이 반드시 담아야 하는 말**(그 말이 없으면 유형이 거짓이다).
+#  ⚠️ 실측 2026-10-10: *"4-4-2 포메이션으로 경기에 임한다"* 가 `def_absence` 로
+#     들어왔다 — 결장 얘기가 한 글자도 없다.
+#  🔴 **여는 쪽으로 짠다** — 목록에 없는 유형은 검사하지 않는다(거짓 탈락이 더
+#     나쁘다). 늘리는 것은 **실측으로** 한다.
+_TYPE_WORDS: dict[str, tuple[str, ...]] = {
+    "absence": ("결장", "빠진", "빠졌", "제외", "부상", "못 나", "못나", "없다",
+                "아웃", "out", "miss", "injur", "doubt", "unavailab"),
+    "def_absence": ("결장", "빠진", "빠졌", "제외", "부상", "없다", "out",
+                    "miss", "injur", "suspend", "doubt"),
+    "absence_att": ("결장", "빠진", "빠졌", "제외", "부상", "없다", "out",
+                    "miss", "injur", "suspend", "doubt"),
+    "suspension": ("정지", "징계", "경고", "퇴장", "누적", "suspend", "ban",
+                   "red card"),
+    "returning": ("복귀", "합류", "전역", "제대", "돌아", "return", "back",
+                  "available"),
+    "national_duty_return": ("복귀", "합류", "대표", "국가대표", "return",
+                             "national"),
+    "fatigue": ("휴식", "일정", "연전", "피로", "이동", "체력", "rest", "days",
+                "fixture", "travel", "fatigu"),
+    "travel_schedule": ("이동", "원정", "비행", "시차", "일정", "travel",
+                        "trip", "away"),
+}
+
+
+def _type_fits(kind: str, said: str) -> str:
+    """🔴 V-2 — 유형이 그 내용과 **맞나**. 어긋나면 사유 글자, 맞으면 빈 글자.
+
+    ⚠️ 목록에 없는 유형은 **통과**다(모르는 것으로 버리지 않는다 · #4).
+    """
+    want = _TYPE_WORDS.get(str(kind or ""))
+    if not want:
+        return ""
+    low = str(said or "").lower()
+    if any(w.lower() in low for w in want):
+        return ""
+    return (f"🔴 유형 `{kind}` 인데 그 말이 **한 글자도 없다** — "
+            f"필요한 말 {list(want)[:5]}… · 내용 `{str(said)[:60]}`")
 
 
 def _one(c: VarCandidate, ref: MatchRef, by_id: dict[str, Doc], *,
@@ -281,6 +360,13 @@ def _one(c: VarCandidate, ref: MatchRef, by_id: dict[str, Doc], *,
         # ⚠️ 스키마 enum 이 막으므로 **여기 오면 재생본이 어긋난 것**이다
         state.drop(what, DropReason.UNKNOWN_VAR,
                    f"`{c.doc_id}` 는 그 하위에 넘긴 문서가 아니다")
+        return None
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **유형–내용 일치 검사**(상성 엔진 지시서 V-2)
+    # ══════════════════════════════════════════════════════════════════
+    said_bad = _type_fits(str(c.type), f"{c.claim} {c.quote}")
+    if said_bad:
+        state.drop(what, DropReason.TYPE_CONTENT_MISMATCH, said_bad)
         return None
     quote = _unhead(c.quote)
     if quote != c.quote:

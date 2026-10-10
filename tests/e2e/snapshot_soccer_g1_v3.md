@@ -6,7 +6,7 @@
 ⏳ **확정 XI 전** — 10-06 19:00 KST 이후 `/재분석`(지금 XI 는 none)
 
 **1. 자료 한계 고백**
-- 버린 것: `body_missing` 6건 · `conflict` 1건 · `duplicate` 6건 · `identity_mismatch` 63건 · `replay_miss` 2건 · `sport_mismatch` 5건 · `stakes_vague` 1건 · `stale` 2건 · `team_tier_mismatch` 4건 · `type_off_catalog` 3건
+- 버린 것: `body_missing` 6건 · `conflict` 1건 · `duplicate` 5건 · `identity_mismatch` 63건 · `replay_miss` 2건 · `sport_mismatch` 5건 · `stakes_vague` 1건 · `stale` 2건 · `team_tier_mismatch` 4건 · `type_content_mismatch` 1건 · `type_off_catalog` 3건
 - 문서 8건 · 변수 11개 · 시나리오 5개
 - 못 받은 칸 — 오늘 XI 없음(상태 none — IR02·IR03 이 안 돈다) · 감독 미확보 · 순위표 없음
 - 🔴 충돌: **채택 구조 사실**(공식 어댑터 6승 3무 0패 · 표본 9경기) / **버림 기사**(11승 4무 1패) — 공식 > 출처 수 > 등급

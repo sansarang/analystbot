@@ -143,6 +143,10 @@ class DropReason(str, Enum):
     SPORT_MISMATCH = "sport_mismatch"
     SIDE_MISMATCH = "side_mismatch"
     TYPE_OFF_CATALOG = "type_off_catalog"
+    #: 🔴🔴 **유형과 내용이 어긋난다**(상성 엔진 지시서 V-2 *"유형–내용 일치 검사"*)
+    #  ⚠️ 실측 2026-10-10(김천–안양): *"4-4-2 포메이션으로 경기에 임한다"* 가
+    #     `def_absence`(수비 결장)로 들어왔다 — 결장 얘기가 한 글자도 없다.
+    TYPE_CONTENT_MISMATCH = "type_content_mismatch"
     THIN_SAMPLE = "thin_sample"
     CONFLICT = "conflict"
     DUPLICATE = "duplicate"

@@ -111,7 +111,8 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
                                  cache=cache)
     # 🔴 s4 가 좁히기 2차로 문서를 더 받았을 수 있다 — **캐시가 전부를 든다**
     docs = list(cache.values()) or docs
-    variables = s5_verify.run(ref, facts, docs, cands, state=st)
+    variables = s5_verify.run(ref, facts, docs, cands, state=st,
+                              turnover=turn)
     # 🔴 ②(2차) — **검증된 결장 변수**까지 넣어 다시 센다(§4-2 · 네트워크 0)
     adj_p = s2b_base.again(ref, facts, base_p, variables, state=st)
     # ══════════════════════════════════════════════════════════════════
