@@ -61,6 +61,11 @@ def card_text(card: Card, *, debug: bool = False) -> str:
             out.append("\n" + matchup_long(card))
             # 🔴🔴 **🔢 변수**(상성 엔진 V-4) — 축·검증·가설의 재료가 전부 여기다
             out.append("\n" + vars_long(card))
+            # 🔴🔴 **상성·검증·분포·적합**(상성 엔진 §3 긴 카드)
+            out.append("\n" + matchup_report_long(card))
+            out.append("\n" + score_grid(card))
+            out.append("\n" + verify_long(card))
+            out.append("\n" + fit_long(card))
             # 🔴🔴 **가설 검증표**(순서 재편 §4-5) — 최종 평의 재료다(바로 앞)
             out.append("\n" + check_long(card))
             # 🔴🔴 §4(넷째) — **최종 평 자세히**(근거 id · 원 사실 · 검열 결과)
@@ -1425,4 +1430,105 @@ def vars_long(card: Card) -> str:
         out.append(f"- {said}")
     if got.unplaced:
         out.append(f"- 🔴 **미배치**(C5 위반) — {got.unplaced}")
+    return "\n".join(out)
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **긴 카드 — 상성·검증·시뮬 행렬·적합 정보**(상성 엔진 §3)
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 긴 카드: 🔢 변수 전체(배치 자리) · FactBundle · **MatchupReport 전체** ·
+#  > **시뮬 스코어 행렬 상위 10** · **VerificationTable** · 가설 검증표 ·
+#  > **적합 정보**.
+
+MATCHUP_LONG_HEAD = "⚔️ MatchupReport (전체)"
+VERIFY_LONG_HEAD = "🔎 VerificationTable"
+GRID_HEAD = "🎲 시뮬 스코어 상위 10"
+FIT_HEAD = "🧮 적합 정보"
+
+
+def matchup_report_long(card: Card) -> str:
+    """🔴 §3 — 축별 값·우위·강도·근거 변수·발동 규칙·전략 판정·종합."""
+    box = dict(getattr(card, "matchup", None) or {})
+    mr = box.get("report")
+    if mr is None:
+        return f"**{MATCHUP_LONG_HEAD}** — ⬜ 안 돌렸다"
+    verdict = dict(getattr(mr, "verdict", None) or {})
+    out = [f"**{MATCHUP_LONG_HEAD}** — 종합 {verdict.get('edge') or '가리지 못함'}"
+           f" {verdict.get('strength')} · {verdict.get('why')}"]
+    for key in ("axis0", "axis1", "axis2", "axis3"):
+        one = mr.axis(key)
+        out.append(f"- **{key}** 홈 {one.home} · 원정 {one.away} · 차 "
+                   f"{one.gap} · 우위 {one.edge or '—'}({one.strength})")
+        out.append(f"    {one.why}")
+        out.append(f"    근거 변수 {list(one.refs) or '**없다**'}")
+    rows = list(getattr(mr, "fired", None) or [])
+    out.append(f"- 발동 규칙 {len(rows)}건"
+               + ("" if rows else " — ⬜ **0건**"))
+    for f in rows[:8]:
+        out.append(f"    `{f.rule}` {f.side} {f.text[:70]}"
+                   + (" · **관찰만**(λ 미반영 · C9)" if f.watch_only else ""))
+    out.append(f"- r 가중 {dict(getattr(mr, 'r', None) or {})}"
+               f" · 꺼진 무기 {dict(getattr(mr, 'off_weapons', None) or {})}"
+               f" · 후반 무기 {dict(getattr(mr, 'late_weapons', None) or {})}")
+    return "\n".join(out)
+
+
+def verify_long(card: Card) -> str:
+    """🔴 §3 — **VerificationTable** 전체 + 등급 조정."""
+    box = dict(getattr(card, "check", None) or {})
+    rows = list(box.get("sources") or [])
+    if not rows:
+        return f"**{VERIFY_LONG_HEAD}** — ⬜ 검증 출처가 없다"
+    out = [f"**{VERIFY_LONG_HEAD}** — {len(rows)}줄"]
+    for one in rows:
+        said = dict(one)
+        out.append(f"- `{said.get('src')}` {said.get('name')} — 방향 "
+                   f"**{said.get('dir')}** · 크기 {said.get('size')} · 신뢰 "
+                   f"{said.get('trust')}"
+                   + (f" · 원인 **{said.get('cause')}**"
+                      if said.get("cause") else "")
+                   + f" · 근거 {list(said.get('refs') or [])}")
+        out.append(f"    {said.get('why')}")
+    grade = dict(box.get("grade") or {})
+    out.append("- 등급 조정 — "
+               + (" / ".join(grade.get("why") or []) or "⬜ 없다")
+               + (f" · 내릴 칸 {grade.get('steps')}" if grade else ""))
+    return "\n".join(out)
+
+
+def score_grid(card: Card) -> str:
+    """🔴 §3 — **시뮬 스코어 행렬 상위 10**(같은 분포에서 나온다)."""
+    box = dict(dict(getattr(card, "matchup", None) or {}).get("sim") or {})
+    rows = dict(box.get("scores") or {})
+    if not rows:
+        return f"**{GRID_HEAD}** — ⬜ 분포가 없다"
+    top = sorted(rows.items(), key=lambda kv: -float(kv[1]))[:10]
+    said = " · ".join(f"{int(k[0])}-{int(k[1])} {float(v):.1%}"
+                      for k, v in top)
+    return f"**{GRID_HEAD}** — {said}"
+
+
+def fit_long(card: Card) -> str:
+    """🔴 §3·C10 — **적합 정보**: 임시값인가, 어디서 오나, 왜.
+
+    🔴 표가 원본이다(`config/matchup_model.yaml`·`config/verify_rules.yaml`) —
+       여기 수를 적지 않는다(사본 금지).
+    """
+    from app.core import matchup as _mu
+    from app.core.stages import s6c_check as _chk
+    box = dict(_mu.table())
+    fit = dict(box.get("fit") or {})
+    vfit = dict(dict(_chk.rules_table()).get("fit") or {})
+    out = [f"**{FIT_HEAD}**"]
+    out.append(f"- 상성 계수 — 표본 {fit.get('n')} · "
+               + ("🔴 **임시값**" if fit.get("provisional") else "적합됨")
+               + f" · {fit.get('why')}")
+    out.append(f"    축 비중 {dict(box.get('weights') or {})} · λ 모형 "
+               f"{dict(box.get('lambda_model') or {})}")
+    out.append(f"- 검증 임계 — 표본 {vfit.get('n')} · "
+               + ("🔴 **임시값**" if vfit.get("provisional") else "적합됨")
+               + f" · {vfit.get('why')}")
+    out.append("- 적합 도구 — `tools/fit_matchup_model.py`"
+               f"(`{box.get('fitted_by')}`)")
     return "\n".join(out)

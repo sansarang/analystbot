@@ -611,6 +611,18 @@ NOT_WIRED: set[str] = {
     "app.rules.unimplemented_types",  # 옛 세포가 못 하는 유형 선언
     "app.window.set_clock",           # 계약이 시계를 고정하는 자리
 }
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **부르는 곳이 `tools/` 인 함수** — 안 이어진 것이 아니다
+# ══════════════════════════════════════════════════════════════════
+#
+#  🔴 이 검사는 **`app/` 안에서만** 센다(테스트가 부르는 것은 배선이 아니다).
+#     그래서 **도구가 부르는** 함수가 고아로 보인다. ⚠️ `NOT_WIRED`(아직 안 이은
+#     것)와 뜻이 다르므로 **따로** 적는다 — 그리고 아래 검사가 *"그 도구가 정말
+#     부르나"* 를 센다(이름만 적어 두고 비는 것을 막는다).
+TOOL_ONLY: dict[str, str] = {
+    "app.core.backfill.features": "tools/fit_matchup_model.py",
+    "app.core.backfill.score_of": "tools/fit_matchup_model.py",
+}
 
 
 def test_남은_모듈에_고아_공개함수가_없다():
@@ -637,9 +649,15 @@ def test_남은_모듈에_고아_공개함수가_없다():
             if fn.startswith("_") or obj.__module__ != name:
                 continue
             key = f"{name}.{fn}"
-            if used.get(key, 0) == 0 and key not in NOT_WIRED:
+            if used.get(key, 0) == 0 and key not in NOT_WIRED \
+                    and key not in TOOL_ONLY:
                 orphans.append(key)
     assert orphans == [], f"부르는 곳이 없다: {sorted(orphans)}"
     # 🔴 반대 위험 — 이어 놓고 목록에 남기면 목록이 거짓이 된다
     stale = [k for k in NOT_WIRED if used.get(k, 0) > 0]
     assert stale == [], f"이어졌으니 NOT_WIRED 에서 빼라: {stale}"
+    # 🔴 `TOOL_ONLY` 는 **그 도구가 정말 부르는지** 센다(이름만 적는 것을 막는다)
+    for key, tool in TOOL_ONLY.items():
+        said = (ROOT / tool).read_text(encoding="utf-8")
+        fn = key.rsplit(".", 1)[1]
+        assert fn in said, f"🔴 `{key}` 를 `{tool}` 이 안 부른다"

@@ -401,3 +401,118 @@ def test_v7_카드가_검증_블록을_낸다():
     assert "같은 방향 1 · 반대 1" in said, said
     assert "V2" in said and _chk.CAUSE_BLIND in said
     assert "등급 영향" in said
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 C11 **백필 누설 금지** — 상성 엔진 지시서 3-5
+# ══════════════════════════════════════════════════════════════════
+
+def test_v7_C11_백필이_자기_경기를_특징에_안_넣는다():
+    """🔴🔴 C11 — *"경기 m 특징에 **m 자신·이후 자료**가 들어가면 실패"*.
+
+    두 가지로 센다:
+      ① 백필 고리가 **특징을 만든 뒤에** 그 경기를 과거 목록에 넣는다(코드 순서)
+      ② `features()` 는 `prior` 만 읽는다 — 그 안에 자기 경기가 없다
+    ⚠️ 돌연변이: `_remember` 를 `features` **앞**으로 옮기면 ① 이 빨개진다.
+    """
+    import ast
+    src = (ROOT / "tools" / "fit_matchup_model.py").read_text(encoding="utf-8")
+    fn = [n for n in ast.walk(ast.parse(src))
+          if isinstance(n, (ast.AsyncFunctionDef, ast.FunctionDef))
+          and n.name == "backfill"]
+    assert fn, "🔴 `backfill` 이 없다"
+    said = ast.unparse(fn[0])
+    i, j = said.find("_bf.features("), said.find("_remember(")
+    assert 0 <= i < j, f"🔴 자기 경기를 특징보다 **먼저** 넣는다(i={i} j={j})"
+    # 🔴 ② 특징 함수는 `prior` 만 본다 — 그 경기 골/스코어를 안 읽는다
+    bf = (ROOT / "app" / "core" / "backfill.py").read_text(encoding="utf-8")
+    feat = [n for n in ast.walk(ast.parse(bf))
+            if isinstance(n, ast.FunctionDef) and n.name == "features"]
+    assert feat
+    body = ast.unparse(feat[0])
+    assert "goals_of" not in body, "🔴 특징이 **그 경기 골**을 읽는다(누설)"
+    assert "score_of" not in body, "🔴 특징이 **그 경기 스코어**를 읽는다(누설)"
+
+
+def test_v7_적합은_시간순으로_가른다():
+    """🔴 3-5 — **시간순 분할**(미래로 과거를 맞추지 않는다) · 표본 적으면 멈춘다."""
+    import tools.fit_matchup_model as fit
+    assert 0.5 <= fit.SPLIT < 1.0
+    src = (ROOT / "tools" / "fit_matchup_model.py").read_text(encoding="utf-8")
+    assert 'rows.sort(key=lambda r: str(r.get("utc") or ""))' in src
+    assert "train, test = rows[:cut], rows[cut:]" in src
+    # 🔴 **표본이 적으면 적합하지 않는다**(지어낸 계수보다 임시값이 낫다)
+    assert "적합하지 않는다" in src
+
+
+def test_v7_적합은_계수를_스스로_쓰지_않는다():
+    """🔴 P4·§6 — *"값은 자동으로 쓰지 않는다"*(사용자가 config 에 넣는다).
+
+    ⚠️ 돌연변이: 도구가 `config/matchup_model.yaml` 을 쓰게 하면 빨개진다.
+    """
+    src = (ROOT / "tools" / "fit_matchup_model.py").read_text(encoding="utf-8")
+    assert "matchup_model.yaml" in src, "🔴 어디에 넣을지 안 적었다"
+    for bad in ("write_text(json.dumps(conf", "yaml.dump", "rules._save"):
+        assert bad not in src, f"🔴 도구가 설정을 **스스로 쓴다**({bad})"
+    # 🔴 보고 항목이 지시서 그대로다
+    for want in ("로그 손실", "브라이어", "보정표", "채택 판정", "기준 모형"):
+        assert want in src, f"🔴 보고에 `{want}` 가 없다"
+
+
+def test_v7_C9_관찰만은_람다에_안_들어간다():
+    """🔴 C9 — *"표본 미만 규칙은 **관찰만**, λ 에 안 들어간다"*.
+
+    🔴 그 걸러내기는 `goals.sim_input` 하나가 한다(S3 가 그 함수를 쓴다).
+    """
+    from app.core import goals as _g
+    thin = _g.Fired(rule="T9", side="home", effect={"lambda_own": 0.5},
+                    watch_only=True)
+    fat = _g.Fired(rule="T10", side="home", effect={"lambda_own": 0.1})
+    got = _g.sim_input({"fired": [thin, fat], "fired2": []},
+                       lam_home=1.0, lam_away=1.0)
+    # 🔴 `관찰만` 의 0.5 가 빠졌으니 홈 λ 는 1.1 쪽이다(1.6 이 아니다)
+    assert abs(float(got["lam_home"]) - 1.1) < 1e-6, got["lam_home"]
+    assert thin.moves() == {}, "🔴 `관찰만` 이 이동량을 내놓는다"
+    # 🔴 S3 가 그 함수를 쓴다(배선)
+    src = (ROOT / "app" / "core" / "probmodel.py").read_text(encoding="utf-8")
+    assert "_g.sim_input(" in src, "🔴 S3 가 규칙 λ·상태 배율을 안 쓴다"
+
+
+def test_v7_C10_임시값이면_카드에_보인다():
+    """🔴 C10 — *"임시 계수가 쓰였으면 카드에 **🔴 임시**가 보인다"*."""
+    from datetime import datetime, timedelta, timezone
+
+    from app.core import layer1, matchup as _mu, probmodel as _pm, render
+    from app.core import routing
+    from app.core.schema import Card, Facts, MatchRef, ProbTriple, Variable, XI
+    from app.core.state import RunState
+    ref = MatchRef(id="x:1", sport="soccer", competition="K-League 1",
+                   competition_short="K리그1", home="team:000318",
+                   away="team:000320", home_name="H", away_name="A",
+                   kickoff_utc=datetime.now(timezone.utc) + timedelta(hours=2))
+    xi = {ref.home: XI(team=ref.home, state="confirmed",
+                       players=[f"H{i}" for i in range(11)]),
+          ref.away: XI(team=ref.away, state="confirmed",
+                       players=[f"A{i}" for i in range(11)])}
+    facts = Facts(xi=xi, standings={"match_total_baseline": 2.6},
+                  player_value={**{f"H{i}": 1_000_000 for i in range(11)},
+                                **{f"A{i}": 700_000 for i in range(11)}})
+    vs = routing.place([Variable(id="S03", type="home_field", subject=ref.home,
+                                 favors="home", hardness="soft", weight=0.4,
+                                 claim="홈 이점 수치 없음", quote="q")])
+    box = {"form": {}, "style": {}, "profile": {}, "fired": [], "fired2": [],
+           "off": {}, "late": {}}
+    mr = _mu.report(ref, facts, box, vs)
+    prob = _pm.run(ref, facts, mr, vs, edge=box, state=RunState(match_key="x"))
+    card = Card(match=ref, facts=Facts(), varset=vs,
+                matchup={"report": mr, "prob": prob, "sim": prob.as_sim(),
+                         "share": dict(prob.share),
+                         "share_refs": dict(prob.share_refs)},
+                our_prob=ProbTriple(home=prob.home, draw=prob.draw,
+                                    away=prob.away))
+    assert prob.provisional, "🔴 시험 재료 — 지금은 임시값이어야 한다"
+    said = layer1._probs(card)
+    assert _mu.PROVISIONAL in said and "(상성)" in said, said
+    # 🔴 긴 카드의 **적합 정보**도 그 사실을 적는다
+    long = render.fit_long(card)
+    assert "임시값" in long and "tools/fit_matchup_model.py" in long
