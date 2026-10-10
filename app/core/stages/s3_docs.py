@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import re
 from datetime import timedelta
 from typing import Any
@@ -26,6 +27,8 @@ from typing import Any
 from app.core import adapt
 from app.core.schema import Doc, DropReason, Facts, MatchRef
 from app.core.state import RunState
+
+logger = logging.getLogger(__name__)
 
 #: 🔴 발행일 창 — 킥오프 **7일 전**까지. ⚠️ 수는 `s5_verify.DATE_WINDOW_DAYS` 가
 #   원본이다(사본 금지) — 여기서 다시 정하지 않는다.
@@ -283,6 +286,14 @@ def gate_ok(said: str) -> tuple[bool, str]:
                    f"{said!r}")
 
 
+#: 🔴🔴 **그 실행 안에서 던진 질의** — `{(낱말 집합, 언어): Future[결과]}`.
+#
+#  🔴 **결과가 아니라 약속을 담는다** — 하위가 동시에 돌아 둘이 같은 순간에
+#     캐시를 보기 때문이다(결과만 담으면 둘 다 놓치고 두 번 던진다 · 실측).
+#  ⚠️ 실행마다 비운다(`run` 이 비운다) — 남겨 두면 어제 결과가 오늘 카드에 섞인다.
+_SEEN: dict[tuple, asyncio.Future] = {}
+
+
 async def run(ref: MatchRef, facts: Facts, *, state: RunState, chain: Any,
               net: Any, cache: dict[str, Doc] | None = None) -> list[Doc]:
     """🔴 하위 과제 여덟 — **찾기는 동시에, 자리 잡기는 차례로**(§5 s3 · §7 재생).
@@ -300,6 +311,8 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, chain: Any,
        되는 조건이다).
     ⚠️ 느려지는 것은 받기뿐이다(검색이 느린 쪽이고, 그쪽은 그대로 동시다).
     """
+    # 🔴 **실행마다 비운다** — 질의 캐시가 실행을 넘으면 어제 결과가 섞인다
+    _SEEN.clear()
     from app.research import subtasks as _st
     cache = cache if cache is not None else {}
     subs = _st.split(_RefShim(ref))
@@ -379,6 +392,46 @@ async def _candidates(sub: Any, ref: MatchRef, *, state: RunState,
         if not ok:
             state.note(f"s3/{name} {why}")
             continue
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **같은 질의를 두 번 던지지 않는다** — 실사고 2026-10-10
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 하위가 **홈/원정 두 벌**이라 질의가 **거울로 겹친다**:
+        #     `김천 안양 복귀` ↔ `안양 김천 복귀` — 같은 검색이다.
+        #  🔴 김천–안양 실행에서 26회 중 **한국어 질의 11회가 0건**이었고, 그 0은
+        #     엔진이 죽은 것이 아니라 **우리 버스트가 만든 일시 정지**였다
+        #     (`naver: access denied` — 직후 다시 재니 15건이었다).
+        #  🔴 그래서 **낱말 집합이 같은 질의는 한 번만** 던지고 결과를 나눠 쓴다.
+        #     ⚠️ 예산(`search_used`)도 그만큼 안 쓴다 — 아낀 몫이 다음 질의로 간다.
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **재생에서는 합치지 않는다** — 실사고 2026-10-10
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  🔴 합치면 **검색 예산이 남아** 전에 상한에 걸려 못 돌던 질의가 돈다 —
+        #     라이브에는 이득이지만(수확이 늘어난다) **녹음은 그 질의를 모른다**.
+        #     ⚠️ 실측: 고정물이 문서 8→6 · 변수 11→9 로 깎였다. 녹음은 지난
+        #        경기라 다시 만들 수 없다.
+        #  🔴 그래서 **재생일 때만 끈다** — 라이브 동작은 그대로 둔다.
+        key = (" ".join(sorted(str(q).lower().split())), str(lang))
+        if _replaying():
+            key = (key[0], key[1], str(getattr(sub, "name", "")))
+        waiting = _SEEN.get(key)
+        if waiting is not None:
+            # 🔴🔴 **진행 중이면 기다린다** — 하위가 **동시에** 돌기 때문이다.
+            #    ⚠️ 실사고 2026-10-10: 결과만 캐시했더니 둘이 **동시에 캐시를
+            #       보고** 둘 다 놓쳐 거울 질의가 그대로 두 번 나갔다(걸린 수 0).
+            #    🔴 그래서 **약속(Future)을 캐시**한다 — 둘째는 첫째를 기다린다.
+            try:
+                got = list(await waiting)
+            except Exception:                               # noqa: BLE001
+                got = []
+            state.note(f"s3/{name} 질의 {q!r} — **같은 검색을 이미 했다**"
+                       f"(결과 {len(got)}건을 나눠 쓴다 · 호출 0)")
+            logger.info("[s3] 같은 검색을 나눠 썼다 — %r → %d건", q, len(got))
+            hits += got
+            continue
+        fut: asyncio.Future = asyncio.get_running_loop().create_future()
+        _SEEN[key] = fut
         sub.budget.search_used += 1
         _count("queries")
         try:
@@ -386,7 +439,11 @@ async def _candidates(sub: Any, ref: MatchRef, *, state: RunState,
                 got = await chain.query(q, lang=lang)
         except Exception as exc:                            # noqa: BLE001
             state.note(f"s3/{name} 검색 실패 {q!r}: {exc}")
+            if not fut.done():
+                fut.set_result([])
             continue
+        if not fut.done():
+            fut.set_result(list(got or []))
         state.note(f"s3/{name} 질의 {q!r}({lang}) → {len(got or [])}건")
         _count("hits", len(got or []))
         hits += list(got or [])
@@ -626,3 +683,9 @@ async def regather(ref: MatchRef, sid: str, words: list[str], *,
                             claimed=set(cache), tag=tag, start=start)
     state.note(f"s3 2차 — `{sid}` 하위를 못 찾았다")
     return []
+
+
+def _replaying() -> bool:
+    """🔴 카세트 재생 중인가 — 재생에서는 질의를 합치지 않는다(위 까닭)."""
+    from app import cassette
+    return cassette.mode() == cassette.REPLAY
