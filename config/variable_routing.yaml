@@ -1,0 +1,165 @@
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **변수 배치표** — 상성 중심 확률 엔진 지시서(2026-10-10 여섯째) V-3
+# ══════════════════════════════════════════════════════════════════
+#
+# > 변수마다 아래 표로 자리를 정한다(유형 → 자리). **한 변수가 여러 자리에 갈 수
+# > 있다.** … 표에 없는 유형이 나오면 **배치 실패** → 근거 불가로 내리고 운영자
+# > 알림(**지어서 배치하지 않는다**).
+# > 근거 불가 변수는 ①②에 못 들어가고 ③에서도 맥락으로만.
+#
+# 🔴 자리 글자(코드가 읽는 열거값):
+#     `axis0`·`axis1`·`axis2`·`axis3`  — ① 상성 축 입력(확률에 닿는 **유일한** 길)
+#     `lambda_const`                   — 리그/대회 상수(홈 이점·대회 유형)
+#     `V1`~`V6`                        — ② 검증 출처
+#     `hypo`                           — ③ 가설의 근거
+# ⚠️ `V7`(가설 신호)은 변수 자리가 아니다 — 단계 5 가 S3 출력과 대조하는 자리다.
+#
+# 🔴 `why` 는 **지시서의 그 칸 글자**다(옮겨 적으며 고치지 않는다).
+
+source: "사용자 지시 2026-10-10(여섯째) V-3 배치표"
+checked_at: "2026-10-10"
+
+#: 🔴 자리 열거값 — 코드가 이 목록으로만 검사한다(지어낸 자리 금지)
+places:
+  axis: [axis0, axis1, axis2, axis3]
+  const: [lambda_const]
+  verify: [V1, V2, V3, V4, V5, V6]
+  hypo: [hypo]
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴 유형 → 자리
+# ══════════════════════════════════════════════════════════════════
+types:
+  # │ absence·def_absence·absence_att·suspension │ 축0(빠진 선수 가치) 축2(무기 꺼짐) │ — │ 근거 │
+  absence:
+    places: [axis0, axis2, hypo]
+    why: "축0(오늘 XI 전력: 빠진 선수 가치) · 축2(그 선수가 쥔 무기 꺼짐)"
+  def_absence:
+    places: [axis0, axis2, hypo]
+    why: "축0(빠진 수비 자원 가치) · 축2(수비 무기 꺼짐)"
+  absence_att:
+    places: [axis0, axis2, hypo]
+    why: "축0(빠진 공격 자원 가치) · 축2(공격 무기 꺼짐)"
+  suspension:
+    places: [axis0, axis2, hypo]
+    why: "축0·축2 — 결장과 같다(사유만 다르다)"
+
+  # │ returning·squad_boost │ 축0(들어온 선수 가치), 축2(무기 켜짐) │ — │ 근거 │
+  returning:
+    places: [axis0, axis2, hypo]
+    why: "축0(들어온 선수 가치) · 축2(무기 켜짐)"
+  national_duty_return:
+    places: [axis0, axis2, hypo]
+    why: "복귀와 같다 — 대표팀에서 돌아온 선수"
+  lineup_value:
+    places: [axis0, hypo]
+    why: "축0 — 오늘 XI 선수 가치 합이 그 변수의 내용이다"
+
+  # │ squad_turnover(IR03 포함) │ 축0 호흡, 축1·축3 r 가중 │ V1 기준 낡음 │ 근거 │
+  squad_rotation:
+    places: [axis0, axis1, axis3, V1, hypo]
+    why: "축0 호흡 · 축1·축3 r 가중 · V1 기준 낡음(선수단 교체·로테이션)"
+
+  # │ lineup_intent(IR01 5백 등) │ 축2(스타일 조정·전략 판정) │ — │ 근거 │
+  lineup_intent:
+    places: [axis2, hypo]
+    why: "축2 — 스타일 조정·전략 판정 입력"
+
+  # │ recent_pattern(S01)·IR12 │ 축1(보정 폼) │ — │ 근거 │
+  recent_pattern:
+    places: [axis1, hypo]
+    why: "축1 — 보정 폼"
+
+  # │ team_stats │ 축1 또는 축2(내용에 따라) │ — │ 근거 │
+  team_stats:
+    places: [axis1, axis2, hypo]
+    why: "축1 또는 축2 — 내용에 따라(둘 다 열어 두고 축이 쓸 것을 고른다)"
+
+  # │ IR04 회귀 │ 축1(운 요소·xG 대비 성과 보정) │ — │ 근거 │
+  regression:
+    places: [axis1, hypo]
+    why: "축1 — 운 요소·xG 대비 성과 보정"
+
+  # │ strength_gap │ 축0 — 전력 차가 그 변수의 내용이다
+  strength_gap:
+    places: [axis0, hypo]
+    why: "축0 — 전력 차"
+
+  # │ home_field(S03) │ 리그 홈 이점(λ 상수) │ — │ — │
+  home_field:
+    places: [lambda_const]
+    why: "리그 홈 이점(λ 상수) — 가설 근거로도 쓰지 않는다(지시서 표의 `—`)"
+
+  # │ match_type(S04 친선)·IR07 │ 리그/대회 유형별 상수(λ·무승부) │ — │ 근거 │
+  match_type:
+    places: [lambda_const, hypo]
+    why: "대회 유형 상수(λ·무승부)"
+
+  # │ stakes·IR05 동기 비대칭 │ —(상성 밖) │ V2 동기 │ 근거 │
+  stakes:
+    places: [V2, hypo]
+    why: "상성 밖 — V2 동기"
+
+  # │ fatigue·schedule_load·IR11 │ 축2 압박 감쇠(T2)만 — 적합된 경우 │ V3 │ 근거 │
+  fatigue:
+    places: [axis2, V3, hypo]
+    why: "축2 압박 감쇠(T2)만 — **적합된 경우** · V3 일정·피로"
+    #: 🔴 적합 전에는 축2 로 **안 간다**(코드가 이 칸을 본다)
+    axis_needs_fit: true
+  travel_schedule:
+    places: [axis2, V3, hypo]
+    why: "일정 부담 — 축2 는 적합된 경우만 · V3"
+    axis_needs_fit: true
+
+  # │ coach_intent·coach_conflict │ 축2 전략 판정 입력(확정 XI와 일치할 때) │ V4 │ 근거 │
+  coach_intent:
+    places: [axis2, V4, hypo]
+    why: "축2 전략 판정 입력(**확정 XI 와 일치할 때**) · 아니면 V4"
+    #: 🔴 확정 XI 와 일치할 때만 축2 로 간다
+    axis_needs_xi_match: true
+  coach_conflict:
+    places: [axis2, V4, hypo]
+    why: "같은 칸 — 발언과 명단이 어긋나면 V4 로만"
+    axis_needs_xi_match: true
+  coach_change:
+    places: [V1, V4, hypo]
+    why: "감독 교체 직후 → V1 기준 낡음 · V4"
+
+  # │ h2h_pattern(S02) │ — │ V5 맞대결 │ 근거 │
+  h2h_pattern:
+    places: [V5, hypo]
+    why: "상성 밖 — V5 맞대결"
+
+  # │ venue_record │ 축3(경기 목록으로 검증된 hard만) │ V5(나머지) │ 근거 │
+  venue_weather:
+    places: [V4, hypo]
+    why: "V4 기타 — 날씨·구장 상태"
+
+  # │ individual_title·streak_psych·venue_weather │ — │ V4 기타 │ 근거 │
+  individual_title:
+    places: [V4, hypo]
+    why: "V4 기타"
+  individual:
+    places: [V4, hypo]
+    why: "V4 기타 — 개인 기록"
+  emotion:
+    places: [V4, hypo]
+    why: "V4 기타 — 정서·분위기(확률에 닿지 않는다)"
+  event_match:
+    places: [V4, hypo]
+    why: "V4 기타 — 은퇴 경기 등"
+
+  # 🔴 야구 유형 — 축구 범위 밖이지만 **표에 둔다**(배치 실패로 떨어지지 않게)
+  pitcher_state:
+    places: [hypo]
+    why: "야구 선발 상태 — 축구 상성 축에 자리가 없다(가설 근거로만)"
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴 배치 실패 — 표에 없는 유형
+# ══════════════════════════════════════════════════════════════════
+#
+# > 표에 없는 유형이 나오면 **배치 실패** → 근거 불가로 내리고 **운영자 알림**.
+fail:
+  #: 🔴 내려갈 자리 — 근거 불가(맥락)
+  to: context_only
+  note: "🔴 배치표에 없는 유형 — 근거 불가로 내렸다(지어서 배치하지 않는다)"

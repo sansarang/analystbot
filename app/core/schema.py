@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Annotated, Literal
+from typing import Any, Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -1156,6 +1156,14 @@ class Card(Frozen):
     #
     #  🔴 최종 평은 **`supported` 만** 쓴다(§5) · 1겹은 🧪 한 줄씩 상위 셋.
     check: dict = Field(default_factory=dict)
+    # ══════════════════════════════════════════════════════════════
+    # 🔴🔴 **변수 배치**(상성 엔진 지시서 2026-10-10 여섯째 V-4)
+    # ══════════════════════════════════════════════════════════════
+    #
+    #  `routing.VariableSet` — 변수마다 배치 자리(①축 ②검증 ③가설)를 든다.
+    #  🔴 **확률에 닿는 길은 ① 뿐이다**(C7) · 긴 카드 `🔢 변수` 가 전부 보인다.
+    #  ⚠️ `dataclass` 라서 pydantic 칸은 `Any` 다(타입은 그 파일이 든다).
+    varset: Any | None = None
     #: 🔴🔴 **③ 이 움직인 양**(사용자 지시 2026-10-06(6차) ③) — 변수별 로그 오즈 이동
     #
     #  ⚠️ 비면 *"③ 이동 없음 — 우리 열 = 기준"* 을 적는다(빈 줄은 "안 봤다"와 같다).

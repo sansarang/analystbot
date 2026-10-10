@@ -115,6 +115,20 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     # 🔴 ②(2차) — **검증된 결장 변수**까지 넣어 다시 센다(§4-2 · 네트워크 0)
     adj_p = s2b_base.again(ref, facts, base_p, variables, state=st)
     # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **S1V — 변수 배치**(상성 엔진 지시서 2026-10-10 여섯째 V-3·V-4)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 각 변수는 성격에 따라 세 자리 중 하나 이상에 배치된다 — ① 상성 축의 입력
+    #  > ② 검증 출처 ③ 가설의 근거. **확률에 닿는 길은 ① 뿐이다.**
+    #
+    #  🔴 배치표는 `config/variable_routing.yaml` 이고 배치는 `routing.place`
+    #     하나가 한다. ⚠️ 배치 실패·미배치는 **이름으로** 남는다(C5·C6).
+    from app.core import routing as _routing
+    varset = _routing.place(variables)
+    st.note(f"S1V 변수 배치 — {varset.why()}")
+    for said in varset.fails:
+        st.note(f"S1V {said}")
+    # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **단계 2 — 가설(+예측 신호)만**. 시나리오는 단계 4다
     # ══════════════════════════════════════════════════════════════════
     #
@@ -217,6 +231,7 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
                              dict(edge.get("sim") or {}), state=st,
                              supported=list(got_check.get("supported") or []))
     layers["check"] = got_check
+    layers["varset"] = varset
     from app.core import reweight as _reweight
     hypo = _reweight.of(hypo, layers.get("ours"), ref=ref, state=st)
     said = s7_judge.run(ref, facts, variables, hypo, state=st, board=got_board,
@@ -477,6 +492,8 @@ def card_of(ref: MatchRef, facts: Facts, variables: list[Variable],
         matchup=dict(box.get("matchup") or {}),
         # 🔴🔴 **가설 검증표**(순서 재편 §4-5) — 최종 평이 `supported` 만 쓴다
         check=dict(box.get("check") or {}),
+        # 🔴🔴 **변수 배치**(상성 엔진 V-4) — 긴 카드 `🔢 변수` 가 전부 보인다
+        varset=box.get("varset"),
         match=ref, facts=facts, variables=variables,
         drops=[*state.drops, *hypo.drops], hypo=hypo, evals=said.evals,
         direction=said.direction, conclusion=said.conclusion,

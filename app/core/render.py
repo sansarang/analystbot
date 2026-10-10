@@ -59,6 +59,8 @@ def card_text(card: Card, *, debug: bool = False) -> str:
             out.append("\n" + tactic_long(card))
             # 🔴🔴 §5(셋째) — **상성 자세히**는 그 예측의 재료다(바로 뒤)
             out.append("\n" + matchup_long(card))
+            # 🔴🔴 **🔢 변수**(상성 엔진 V-4) — 축·검증·가설의 재료가 전부 여기다
+            out.append("\n" + vars_long(card))
             # 🔴🔴 **가설 검증표**(순서 재편 §4-5) — 최종 평의 재료다(바로 앞)
             out.append("\n" + check_long(card))
             # 🔴🔴 §4(넷째) — **최종 평 자세히**(근거 id · 원 사실 · 검열 결과)
@@ -1382,4 +1384,45 @@ def check_long(card: Card) -> str:
         for one in scen:
             out.append(f"    `{one.id}` {one.outcomes} — 근거 "
                        f"{list(one.driver_vars)} · {one.mechanism[:70]}")
+    return "\n".join(out)
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **🔢 변수 블록** — 상성 엔진 지시서(2026-10-10 여섯째) V-4·§3
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 카드 긴 블록 `🔢 변수` 에 **전부** 보이고, 각 변수가 **어디에 쓰였는지**
+#  > (축 몇 / 검증 몇 / 가설 몇) 표시.
+#
+#  🔴 배치는 `routing.place` 하나가 한다 — 여기서 다시 정하지 않는다(사본 금지).
+
+VARS_HEAD = "🔢 변수 (배치 자리)"
+
+
+def vars_long(card: Card) -> str:
+    """🔴 V-4 — 변수 **전부**와 그 자리. ⚠️ 배치 실패·미배치를 이름으로 적는다."""
+    from app.core import routing
+    rows = list(getattr(card, "variables", None) or [])
+    if not rows:
+        return f"**{VARS_HEAD}** — ⬜ **변수 0개**"
+    got = getattr(card, "varset", None)
+    if got is None:
+        # 🔴 파이프라인이 안 실었으면 **여기서 한 번** 배치한다(카드는 나온다).
+        #    ⚠️ 그 사실을 적는다 — 운영 경로와 다른 자리에서 센 것이다(#3).
+        got = routing.place(rows)
+        head = f"**{VARS_HEAD}** — ⚠️ 카드가 직접 배치했다 · {got.why()}"
+    else:
+        head = f"**{VARS_HEAD}** — {got.why()}"
+    out = [head]
+    for one in got.rows:
+        out.append(
+            f"- `{one.id}` [{one.type}] {one.hardness} 무게 {one.weight:g}"
+            + (" · 🔴 **근거 불가**(맥락)" if one.context_only else "")
+            + f" · 자리 {one.places or '**없다**'}")
+        out.append(f"    {one.claim[:90]}"
+                   + (f" · {one.why}" if one.why else ""))
+    for said in got.fails:
+        out.append(f"- {said}")
+    if got.unplaced:
+        out.append(f"- 🔴 **미배치**(C5 위반) — {got.unplaced}")
     return "\n".join(out)

@@ -28,6 +28,30 @@
 
 **⚔️ 상성 세 축 (자세히)** — ⬜ 안 돌렸다
 
+**🔢 변수 (배치 자리)** — ⚠️ 카드가 직접 배치했다 · 변수 11개 — axis0 1 · axis1 4 · axis2 2 · lambda_const 2 · V2 1 · V3 1 · V4 1 · hypo 10
+- `R1` [absence] hard 무게 1 · 자리 ['axis0', 'axis2', 'hypo']
+    Kim Min-jae is unlikely to play in Tuesday's friendly against Uzbekistan after missing tea · 축0(오늘 XI 전력: 빠진 선수 가치) · 축2(그 선수가 쥔 무기 꺼짐)
+- `R2` [individual_title] hard 무게 1 · 자리 ['V4', 'hypo']
+    Son Heung-min scored his 59th goal, surpassing Cha Bum-keun to rank No. 1 in the most A-ma · V4 기타
+- `R3` [team_stats] soft 무게 0.7 · 자리 ['axis1', 'axis2', 'hypo']
+    The Korean national team started under interim coach Moreno and made a fresh start with a  · 축1 또는 축2 — 내용에 따라(둘 다 열어 두고 축이 쓸 것을 고른다)
+- `R5` [stakes] soft 무게 0.7 · 자리 ['V2', 'hypo']
+    한국은 우즈베키스탄전에서 Son Heung-min이 한 골만 넣으면 남자 대표팀 최다 득점 단독 1위 기록을 달성할 수 있다. · 상성 밖 — V2 동기
+- `R6` [regression] soft 무게 0.7 · 자리 ['axis1', 'hypo']
+    한국은 9월 두 경기에서 4-4-2로 1-1을 기록했으며, 로베르토 모레노 감독이 이번 두 경기에서 전술·선수 구성 또는 둘 다의 변화를 줄지 주목된다. · 축1 — 운 요소·xG 대비 성과 보정
+- `S01-home` [recent_pattern] soft 무게 0.7 · 자리 ['axis1', 'hypo']
+    최근 5경기 L L W L D · 득점 평균 0.8(보정 0.25) · 기준 팀당 1.2662골(대회 national_friendly) 대비 득점 적다 · 실점  · 축1 — 보정 폼
+- `S01-away` [recent_pattern] soft 무게 0.7 · 자리 ['axis1', 'hypo']
+    최근 5경기 L L L W W · 득점 평균 1.8(보정 1.25) · 기준 팀당 1.2662골(대회 national_friendly) 대비 득점 보통 · 실점  · 축1 — 보정 폼
+- `S02` [h2h_pattern] soft 무게 0.7 · 🔴 **근거 불가**(맥락) · 자리 ['hypo']
+    맞대결 9경기 South Korea 6승 3무 0패(상대 0승) · 평균 3.0골 · 상성 밖 — V5 맞대결
+- `S03` [home_field] soft 무게 0.4 · 자리 ['lambda_const']
+    South Korea 홈 경기 — 홈 이점 **수치 없음**(대회 유형 `national_friendly` 의 표가 없다 · 다른 대회 숫자를 빌리지 않는다) · 리그 홈 이점(λ 상수) — 가설 근거로도 쓰지 않는다(지시서 표의 `—`)
+- `S04` [match_type] soft 무게 0.4 · 자리 ['lambda_const', 'hypo']
+    친선 — 실험 라인업·교체 다수 가능 · 대회 유형 상수(λ·무승부)
+- `IR11-home` [fatigue] soft 무게 0.7 · 자리 ['V3', 'hypo']
+    South Korea 일정 과부하 — 8일 안에 이번이 3번째 경기(직전 [4, 8]일 전) · 축2 압박 감쇠(T2)만 — **적합된 경우** · V3 일정·피로
+
 **🧪 가설 검증표 (자세히)** — ⬜ 검증을 안 돌렸다
 
 **🧑‍🏫 최종 평 (자세히)** — ⬜ 안 돌렸다
