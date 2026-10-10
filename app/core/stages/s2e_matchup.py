@@ -357,6 +357,17 @@ def final_sim(ref: MatchRef, facts: Facts, box: dict, *, state: RunState,
         state.note(f"§4 선수단 교체 — 기준 약함{weak_said}")
     t_bef = (solve_tilt(box, base, _ratio(before)) if before is not None
              else t_fin)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **상한을 지킨다 — 경기당 ±0.5 로그 오즈**(네 층 지시서 · §4 마지막 줄)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실측 2026-10-10(재현): 폼 기울기(+0.28)를 확률 기울기에 **그냥 얹으니**
+    #     홈 승이 42% → 58% 로 **+17.8%p**(로그 오즈 +0.74) 움직였다 — 상한의
+    #     한 배 반이다. 🔴 상한은 *"경기당 총 이동"* 이므로 **폼·축2·축3 을 합친
+    #     몫**에 걸어야 한다.
+    #  🔴 재는 법: 확률 기울기만 쓴 시뮬(`p_ref`)과 전부 얹은 시뮬의 **홈 승 로그
+    #     오즈 차**를 보고, 넘으면 **얹는 몫만** 비율로 줄인다(이분법).
+    f_tilt, cut_said = _within_cap(box, base, t_fin, f_tilt)
     # 🔴 단계를 쌓는다 — 합이 정확히 맞는 기여 분해가 여기서 나온다
     p0, _ = _sim_at(box, base, t_bef, axis2=False, axis3=False)   # 잠정
     p1, _ = _sim_at(box, base, t_bef + f_tilt, axis2=False, axis3=False)
@@ -383,8 +394,46 @@ def final_sim(ref: MatchRef, facts: Facts, box: dict, *, state: RunState,
             "why": (f"총골 기준 {base} → λ {args['lam_home']}/"
                     f"{args['lam_away']} · 기울기 확률 {t_fin:+.3f}"
                     f"(③ 비를 맞춰 풀었다) + 폼 {f_tilt:+.3f}"
-                    f"(임시값 0.25) · {args['why']} · {got.why}{weak_said}"),
-            "weak": weak_said}
+                    f"(임시값 0.25) · {args['why']} · {got.why}{weak_said}"
+                    + (f" · {cut_said}" if cut_said else "")),
+            "cut": cut_said, "weak": weak_said}
+
+
+def _logit(p: float) -> float:
+    """🔴 로그 오즈. ⚠️ 0·1 은 피한다(무한이 된다)."""
+    import math
+    x = min(max(float(p), 1e-6), 1 - 1e-6)
+    return math.log(x / (1 - x))
+
+
+def _within_cap(box: dict, base: float, t_prob: float, f_tilt: float,
+                ) -> tuple[float, str]:
+    """🔴🔴 **얹는 몫(폼+규칙)을 상한 안으로** — `(쓸 폼 기울기, 사유)`.
+
+    🔴 상한은 `strategy.caps()` 가 든다(`config/strategy_effects.yaml` ·
+       `interpret_rules.yaml` 과 **같은 0.5**). 사본 금지 — 여기 수를 적지 않는다.
+    ⚠️ 줄이는 것은 **폼 기울기**다. 규칙의 λ 이동은 자기 상한(±15%)을 이미 지키고,
+       그 둘을 더한 결과가 상한을 넘으면 **폼 쪽을 깎는다**(폼 계수가 임시값이다).
+    """
+    from app.core import strategy as _st
+    cap, _pct = _st.caps()
+    ref_got, _ = _sim_at(box, base, t_prob, axis2=False, axis3=False)
+    full, _ = _sim_at(box, base, t_prob + f_tilt, axis2=True, axis3=True)
+    gap = _logit(full.home) - _logit(ref_got.home)
+    if abs(gap) <= cap:
+        return f_tilt, ""
+    lo, hi = 0.0, 1.0
+    for _ in range(SOLVE_STEPS):
+        mid = (lo + hi) / 2.0
+        got, _ = _sim_at(box, base, t_prob + f_tilt * mid,
+                         axis2=True, axis3=True)
+        if abs(_logit(got.home) - _logit(ref_got.home)) > cap:
+            hi = mid
+        else:
+            lo = mid
+    return (f_tilt * lo,
+            f"🔴 **상한 ±{cap} 로그 오즈로 잘렸다**(원래 {gap:+.3f} · 폼 기울기를 "
+            f"×{lo:.2f} 로 줄였다)")
 
 
 def _ratio(p) -> float:

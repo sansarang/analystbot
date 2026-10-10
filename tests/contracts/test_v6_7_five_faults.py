@@ -310,6 +310,67 @@ def test_v6_기여분해_합이_잠정에서_최종까지와_같다():
     assert set(share) == {"폼", "전술", "골 내용"}, share
 
 
+def test_v6_얹는_몫이_상한_반_로그오즈를_넘지_않는다():
+    """🔴🔴 ④ — 폼·축2·축3 을 **합친 몫**이 경기당 ±0.5 로그 오즈 안이다.
+
+    ⚠️ 실측 2026-10-10(재현): 폼 기울기를 그냥 얹으니 홈 승이 42% → **58%**
+       (+0.72 로그 오즈)로 움직였다 — 상한의 한 배 반이다.
+    ⚠️ 돌연변이: `_within_cap` 을 지우면 이 줄이 빨개진다.
+    """
+    import math
+
+    from app.core import form as _form
+    from app.core import strategy as _st
+    from app.core.schema import Facts, ProbTriple
+    from app.core.stages import s2e_matchup as _s2e
+    from app.core.state import RunState
+    cap, _pct = _st.caps()
+    facts = Facts(standings={"match_total_baseline": 2.5})
+    # 🔴 그 경기 그대로 — 폼 차 1.13(홈 −0.17 · 원정 −1.30)
+    box: dict = {"fired": [], "fired2": [],
+                 "form": {"home": _form.TeamForm(team="H", n=10, adj_gf=10.0,
+                                                 adj_ga=11.7),
+                          "away": _form.TeamForm(team="A", n=10, adj_gf=10.0,
+                                                 adj_ga=23.0)}}
+    ours = ProbTriple(home=0.42, draw=0.27, away=0.31)
+    got = _s2e.final_sim(_ref(), facts, box, state=RunState(match_key="x"),
+                         ours=ours, before=ours)
+
+    def logit(x):
+        return math.log(x / (1 - x))
+
+    # 🔴 확률층만 쓴 시뮬과의 차가 상한 안이다
+    t = _s2e.solve_tilt(box, 2.5, 0.42 / 0.31)
+    ref_got, _ = _s2e._sim_at(box, 2.5, t, axis2=False, axis3=False)
+    moved = logit(float(got["home"])) - logit(ref_got.home)
+    assert abs(moved) <= cap + 1e-6, (moved, cap)
+    assert got["cut"], "🔴 잘렸는데 그 사실을 안 적었다(#3)"
+    assert "상한" in got["cut"]
+
+
+def test_v6_오버도_시뮬에서_나온다():
+    """🔴🔴 ④ — *"확률 한 곳"*. 오버 줄이 **시뮬 분포**에서 나온다.
+
+    ⚠️ 실측 2026-10-10(재현): 한 카드에 `시뮬 오버 1.5 72%` 와 `확률 변화 오버
+       1.5 62%` 가 같이 있었다(재가중 분포). 🔴 둘 중 하나만 봇의 말이다.
+    """
+    from app.core import layer1
+    from app.core.schema import Card, Facts, ProbTriple
+    sim = {"home": 0.4, "draw": 0.3, "away": 0.3,
+           "over": {"1.5": 0.72, "2.5": 0.46, "3.5": 0.24}}
+    card = Card(match=_ref(), facts=Facts(),
+                matchup={"profile": {"home": 1}, "sim": sim},
+                shape={"over": {"1.5": 0.62, "2.5": 0.49, "3.5": 0.19}},
+                our_prob=ProbTriple(home=0.4, draw=0.3, away=0.3))
+    said = layer1._over_line(card)
+    assert "1.5 72%" in said and "시뮬 분포" in said, said
+    assert "62%" not in said, f"🔴 재가중 분포를 그대로 적었다 — {said}"
+    # 🔴 시뮬이 못 돌면 재가중을 쓰고 **그 사실을 적는다**
+    thin = card.model_copy(update={"matchup": {"profile": {"home": 1}}})
+    said2 = layer1._over_line(thin)
+    assert "1.5 62%" in said2 and "재가중 분포" in said2, said2
+
+
 # ══════════════════════════════════════════════════════════════════
 # ⑤ 상성 우위
 # ══════════════════════════════════════════════════════════════════

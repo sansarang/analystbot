@@ -912,14 +912,27 @@ def _over_line(card: Card) -> str:
        나오고, 그 재가중은 최종 확률로 한 번만 돈다. 🔴 그래서 지금 적을 수 있는
        것은 **최종 오버**뿐이고, 그 사실을 글자로 말한다(#3 조용히 넘기지 않는다).
     """
-    box = dict(getattr(card, "shape", None) or {})
-    over = dict(box.get("over") or {})
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **오버도 시뮬에서 나온다 — 확률은 한 곳이다**(지적 ④)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실측 2026-10-10(재현): 같은 카드에서 `시뮬: 오버 1.5 **72%**` 인데
+    #     `📊 확률 변화`의 오버는 **62%** 였다(재가중 분포). 🔴 사용자 지시 ④ 가
+    #     *"최종 확률 = 시뮬레이션(묶인 분포) 결과"* 라고 정했으므로 **오버도
+    #     그 분포**다. 그래서 `questions/2026-10-10_over_lines_two_generators.md`
+    #     의 갈림길은 **A(시뮬이 이긴다)** 로 닫혔다.
+    #  ⚠️ 시뮬이 못 돌면 재가중 분포를 쓰고 **그 사실을 적는다**(#3).
+    sim = dict(dict(getattr(card, "matchup", None) or {}).get("sim") or {})
+    over = dict(sim.get("over") or {})
+    where = "시뮬 분포"
+    if not over:
+        over = dict(dict(getattr(card, "shape", None) or {}).get("over") or {})
+        where = "🔴 시뮬이 못 돌아 **재가중 분포**"
     if not over:
         return ""
     said = " · ".join(f"{x} {float(over.get(str(x), 0.0)):.0%}"
                       for x in OVER_LINES if str(x) in over)
-    return (f"오버 {said} (최종만 — 총골 분포는 재가중을 한 번만 돈다)"
-            if said else "")
+    return f"오버 {said} ({where})" if said else ""
 
 
 # ══════════════════════════════════════════════════════════════════
