@@ -1590,7 +1590,12 @@ def test_갈래가_없는_결과는_보강으로_덮는다():
     # 🔴🔴 **배선** — 파이프라인이 s7 **앞에서** 재가중한다(두 입구 다)
     src = (ROOT / "app/core/pipeline.py").read_text(encoding="utf-8")
     tree = ast.parse(src)
-    for name in ("analyze", "reanalyze"):
+    # 🔴🔴 **재분석은 이제 `analyze` 에 위임한다**(지시서 2026-10-11 F1) —
+    #    종전에는 파이프라인 **사본**이라 여기서 따로 셌다. 사본을 지웠으므로
+    #    차례는 `analyze` 한 곳에서만 본다. ⚠️ 위임 자체는 아래에서 센다.
+    assert "await analyze(" in src.split("async def reanalyze")[1], (
+        "🔴 재분석이 `analyze` 에 위임하지 않는다 — 사본이 돌아왔다")
+    for name in ("analyze",):
         fn = next(n for n in ast.walk(tree)
                   if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
                   and n.name == name)
@@ -1901,7 +1906,10 @@ def test_검열이_파이프라인에_이어져_있다():
     """🔴 §4 — 논평 **바로 뒤·렌더 전**이다. 돌연변이: 검열 단계 건너뛰기 → 빨강."""
     src = (ROOT / "app/core/pipeline.py").read_text(encoding="utf-8")
     tree = ast.parse(src)
-    for name in ("analyze", "reanalyze"):
+    # 🔴 재분석은 **위임**이다(F1) — 검열은 `analyze` 한 곳에서 돈다
+    assert "await analyze(" in src.split("async def reanalyze")[1], (
+        "🔴 재분석이 `analyze` 에 위임하지 않는다 — 사본이 돌아왔다")
+    for name in ("analyze",):
         fn = next(n for n in ast.walk(tree)
                   if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
                   and n.name == name)

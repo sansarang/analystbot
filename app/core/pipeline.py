@@ -73,6 +73,7 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
                   state: RunState | None = None, board: Board | None = None,
                   board_text: str = "", board_image: str = "",
                   pick_key: str = "", xi_image: str = "",
+                  reuse: dict | None = None, before: Card | None = None,
                   now: datetime | None = None) -> Card | Ambiguous:
     """🔴 질문 하나 → 카드 하나. ⚠️ 경기를 **못 고르면** `Ambiguous`(묻는다).
 
@@ -151,11 +152,28 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
             if cycle or any(one.get("on") for one in turn.values()) else None)
     if cycle:
         st.note("s3 전역 주기 팀 — **고정 질의**를 넣는다(`전역`·`신병 합류`)")
-    docs = await s3_docs.run(ref, facts, state=st, chain=chain, net=net,
-                             extra_words=more,
-                             cache=cache)
-    cands = await s4_extract.run(ref, docs, state=st, chain=chain, net=net,
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **재분석은 ③ 문서·⑤ 추출만 다시 쓴다**(지시서 2026-10-11 F1)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 재사용은 ③의 기사 문서·⑤의 기사 추출 결과만(검색·LLM 추출 비용 절약).
+    #  > 구조 사실·라인업·새 사실 72시간은 **다시 받는다**.
+    #
+    #  🔴 그래서 위 `s2_facts`(구조·라인업)는 **늘 다시 돈다** — 재사용 목록에 없다.
+    said_reuse = dict(reuse or {})
+    if said_reuse.get("docs") is not None:
+        docs = list(said_reuse.get("docs") or [])
+        cands = list(said_reuse.get("cands") or [])
+        st.note(f"재분석 — ③ 문서 {len(docs)}건 · ⑤ 추출 {len(cands)}건을 "
+                f"**그대로 쓴다**(검색·LLM 추출을 다시 하지 않는다 · F1)")
+        st.set("docs", len(docs))
+        st.set("candidates", len(cands))
+    else:
+        docs = await s3_docs.run(ref, facts, state=st, chain=chain, net=net,
+                                 extra_words=more,
                                  cache=cache)
+        cands = await s4_extract.run(ref, docs, state=st, chain=chain, net=net,
+                                     cache=cache)
     # 🔴 s4 가 좁히기 2차로 문서를 더 받았을 수 있다 — **캐시가 전부를 든다**
     docs = list(cache.values()) or docs
     variables = s5_verify.run(ref, facts, docs, cands, state=st,
@@ -345,8 +363,13 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
                             state=st, board_source=board_src,
                             ours=layers.get("ours"))
     layers.update(_comment_layers(got_note, got_shape))
+    # 🔴 F1 — 직전 카드가 있으면 **바뀐 것**을 함께 싣는다(머리줄이 그것을 적는다)
+    changed = (_diff(before, facts, variables, said)
+               + _market_moved(before, layers, state=st)
+               + _moved(before, layers, mr) if before is not None else [])
     card = card_of(ref, facts, variables, hypo, said, state=st,
-                   board_extra=extra, board_bad=bad, layers=layers)
+                   board_extra=extra, board_bad=bad, layers=layers,
+                   changed=(changed or None))
     # 🔴🔴 **1겹 이유 문단**(사용자 지시 2026-10-09(3차) §3·§4) — 카드가 다 선 뒤다
     #    ⚠️ 작성자 입력이 **카드의 사실 목록**이라 카드보다 **뒤**에 와야 한다.
     card = with_reason(card, state=st)
@@ -364,20 +387,27 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     return card
 
 
-async def reanalyze(raw: str, *, pool: Any, net: Any, chain: Any, xi_image: str = "",
+async def reanalyze(raw: str, *, pool: Any, net: Any, chain: Any,
+                    xi_image: str = "",
                     state: RunState | None = None,
                     now: datetime | None = None) -> Card | Ambiguous:
-    """🔴🔴 **재분석**(축구 완성 지시서 §4) — s2 만 다시 돌고 s3·s4 는 **안 돈다**.
+    """🔴🔴 **재분석** — 지시서 2026-10-11 **F1**: 확정 XI 가 오면 **상성부터 다시**.
 
-    > 1. 그 경기의 마지막 실행(RunState·Doc 캐시)을 불러온다. 기사 검색(s3)·추출(s4)은
-    >    **다시 하지 않는다** — 비용·시간을 아끼고 변수가 회차마다 흔들리지 않게.
-    > 2. s2 만 다시 돈다: XI(확정 여부), 결장 명단, 같은 조 먼저 끝난 경기 결과.
-    > 3. 바뀐 사실로 IR01~IR03·IR05 변수를 다시 만들고, s6·s7 을 다시 돈다.
-    > 4. 카드 맨 위에 `재분석 — 바뀐 것:` 한 블록.
-    > 5. 마지막 실행이 24시간 넘었거나 없으면 **전체를 새로** 돈다.
+    > reanalyze: 확정(또는 2매체 보도) XI가 들어오면 ④ 깃발부터 ⑯까지 **전부 다시**
+    > 돈다. 재사용은 ③의 기사 문서·⑤의 기사 추출 결과만(검색·LLM 추출 비용 절약).
+    > 구조 사실·라인업·새 사실 72시간은 다시 받는다.
+    > "상성·시뮬 그대로, 시나리오 필수형 보강만" 경로 **삭제**.
+
+    ══════════════════════════════════════════════════════════════════
+    🔴 왜 이렇게 바뀌었나 — 실측 2026-10-11
+    ══════════════════════════════════════════════════════════════════
+
+    이 함수는 **파이프라인의 두 번째 사본**이었다. `analyze` 의 ⑧ 상성 재료·⑨ 상성
+    판정·⑪ 확률·⑫ 검증을 **아예 안 불렀고**, 그래서 재분석 카드에는 **우리 확률이
+    없었다**(시나리오도 "필수형 보강만"). 사본은 원본이 자랄 때 따라가지 못한다
+    (CLAUDE.md #1). 🔴 그래서 **사본을 지우고** `analyze` 에 재사용 인자를 넘긴다.
     """
-    from app.core.stages import (s1_resolve, s2_facts, s2b_base, s2c_market,
-                                 s5_verify, s6_hypo, s7_judge)
+    from app.core.stages import s1_resolve
     st = state if state is not None else RunState()
     q = _question(raw, now=now)
     ref = await s1_resolve.run(q, pool=pool, state=st, net=net)
@@ -396,114 +426,41 @@ async def reanalyze(raw: str, *, pool: Any, net: Any, chain: Any, xi_image: str 
                 f"({old:%m-%d %H:%M}Z) → 전체를 새로 돈다(§4-5)")
         return await analyze(raw, pool=pool, net=net, chain=chain, state=st,
                              now=now, xi_image=xi_image)
-    before: Card = last["card"]
-    # ── ② s2 만 다시 돈다(기사·추출은 그대로 쓴다)
-    facts = await s2_facts.run(ref, state=st, net=net)
-    docs, cands = list(last["docs"]), list(last["cands"])
-    st.set("docs", len(docs))
-    st.set("candidates", len(cands))
-    variables = s5_verify.run(ref, facts, docs, cands, state=st)
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **변수가 그대로면 DeepSeek 를 다시 부르지 않는다**(사용자 지시 ④)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  > 재분석: 변수 목록이 **바뀌지 않았으면** DeepSeek 를 다시 부르지 않고 **이전
-    #  > 시나리오를 그대로** 쓴다. 변수가 바뀐 경우에만 s6 재실행.
-    #  > *"사실 그대로 → 등급 그대로"* 를 E2E 불변식으로.
-    #
-    #  ⚠️ 실측 2026-10-06: 사실이 하나도 안 바뀐 재분석에서 가설·시나리오가 새로
-    #     나와 **등급이 흔들렸다**(`무패 원정 소액하단 → 없음`). 그것은 분석이 바뀐
-    #     것이 아니라 **모델이 흔들린 것**이다 — 사용자가 보는 수가 그래서 변하면
-    #     되돌아볼 수가 없다.
-    same = _same_vars(before.variables, variables)
-    if same and before.hypo is not None:
-        hypo = before.hypo
-        st.note(f"재분석 — 변수 {len(variables)}개가 **그대로다** → DeepSeek 를 "
-                f"부르지 않고 이전 시나리오 {len(hypo.scenarios)}개를 그대로 쓴다")
-        st.set("scenarios", len(hypo.scenarios))
-    else:
-        hypo = s6_hypo.claims(ref, facts, variables, state=st)
-    got_board, extra, bad = None, list(before.board_extra), list(before.board_bad)
-    if last.get("board_text"):
-        from app.core import board as _board
-        got_board, extra, bad = _board.parse(str(last["board_text"]))
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **재분석의 네 층**(네 층 지시서 §4 재분석 · §6 배당 움직임)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  > XI 상태가 바뀌면 **② 만** 다시 계산(s3·s4 재실행 없음).
-    #  > 피드 배당이 첫 실행보다 **5%p 이상** 움직였으면 *"시장 이동"* 을 적는다.
-    #  🔴 피드 요청은 **1회**다(§2-2) — `reanalyze=True` 가 그 예산을 든다.
-    base_p, adj_p = await s2b_base.run(ref, facts, state=st, net=net)
-    adj_p = s2b_base.again(ref, facts, base_p, variables, state=st)
-    look = s2b_base.outlook(ref, facts, state=st)
-    feed_mk, user_mk = await s2c_market.run(ref, pool=pool, net=net, state=st,
-                                            board=got_board, reanalyze=True)
-    board_src = "user_board" if (got_board is not None and got_board.lines) else ""
-    if not board_src and feed_mk.probs:
-        from app.core import odds as _odds
-        from app.core.schema import Board as _Board
-        got_board = _Board(lines=_odds.lines_from(feed_mk))
-        board_src = "feed"
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **확정 라인업 전략**(사용자 지시 2026-10-10(둘째) §1·§3)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  > 라인업 상태가 **확정**(또는 두 매체 이상 보도)일 때만. 예상 XI 로는 전략을
-    #  > 추론하지 않는다. … 라인업 전 확률은 **잠정**, 확정 라인업 반영 확률이 **최종**.
-    #
-    #  🔴 **잠정 확률을 먼저 센다**(전략 없이) — 그래야 카드가 `잠정 → 최종` 을
-    #     나란히 적을 수 있다. ⚠️ 두 번 세는 것이 아니라 **같은 함수를 두 입력으로**
-    #     부른다(규칙이 하나다).
-    from app.core.stages import s2d_strategy as _s2d
-    plan = _s2d.run(ref, facts, state=st,
-                    news=[v for v in variables
-                          if str(getattr(v, "subtask", "") or "").startswith("F-")])
-    before_layers = _layers(ref, facts, variables, hypo, base_p, adj_p, feed_mk,
-                            user_mk, state=st, outlook=look)
-    # 🔴 재분석도 **같은 순서**다 — 우리 열 → 재가중 → 생존(재가중 ①)
-    layers = _layers(ref, facts, variables, hypo, base_p, adj_p, feed_mk,
-                     user_mk, state=st, outlook=look, strategy=plan)
-    layers["strategy"] = plan
-    # 🔴 §4 — **잠정 → 최종**. ⚠️ 전략이 없으면 둘이 같다(그 사실도 적는다)
-    layers["prob_before"] = before_layers.get("ours")
-    # 🔴🔴 **재분석에도 시나리오가 있어야 한다**(순서 재편 뒤처리) — `claims()` 는
-    #    시나리오를 안 만들므로 여기서 **보강을 돌린다**. ⚠️ 재분석 경로는 상성·
-    #    시뮬을 다시 돌지 않으므로 **분포에서 못 만든다** — 그 사실을 적는다(#3).
-    if not hypo.scenarios:
-        st.note("재분석 — 🔴 시뮬 분포가 없다(상성을 다시 안 돈다) → 시나리오는 "
-                "**필수형 보강만**이다(§4-4 의 분포 시나리오가 아니다)")
-        hypo = s6_hypo.scenarios(ref, facts, variables, hypo, {}, state=st)
-    from app.core import reweight as _reweight
-    hypo = _reweight.of(hypo, layers.get("ours"), ref=ref, state=st)
-    said = s7_judge.run(ref, facts, variables, hypo, state=st, board=got_board,
-                        board_source=board_src, now=now)
-    said = _direction(_lower(said, layers, state=st), layers, ref)
-    # 🔴🔴 논평 — **양상·근거 변수가 바뀐 경우에만** 다시 부른다(비용 · 지시 ③)
-    from app.core import shape as _shape
-    from app.core.stages import s8_comment, s9_audit
-    got_shape = _shape.of(hypo)
-    if s8_comment.same_input(before.shape, got_shape, before.variables,
-                             variables) and before.commentary is not None:
-        st.note("s8 논평 — 양상·근거 변수가 **그대로다** → 다시 부르지 않는다"
-                "(검열도 다시 돌지 않는다 — 같은 글이다)")
-        layers["shape"] = got_shape
-        layers["commentary"] = before.commentary
-        layers["comment_notes"] = list(before.comment_notes)
-        layers["comment_audit"] = before.comment_audit
-        layers["comment_violations"] = list(before.comment_violations)
-    else:
-        got_note = s9_audit.run(ref, facts, variables, hypo, said, got_shape,
-                                state=st, board_source=board_src,
-                                ours=layers.get("ours"))
-        layers.update(_comment_layers(got_note, got_shape))
-    changed = _diff(before, facts, variables, said)
-    changed += _market_moved(before, layers, state=st)
-    card = card_of(ref, facts, variables, hypo, said, state=st,
-                   board_extra=extra, board_bad=bad, layers=layers,
-                   changed=changed)
-    _LAST[ref.id] = {**last, "at": when, "card": card}
-    return card
+    st.note("재분석 — ④ 깃발부터 ⑯까지 **전부 다시** 돈다(F1) · 재사용은 "
+            "③ 문서·⑤ 추출뿐이다")
+    return await analyze(raw, pool=pool, net=net, chain=chain, state=st,
+                         now=now, xi_image=xi_image,
+                         board_text=str(last.get("board_text") or ""),
+                         reuse={"docs": last.get("docs") or [],
+                                "cands": last.get("cands") or []},
+                         before=last.get("card"))
+
+
+def _moved(before: Card, layers: dict, mr: object) -> list[str]:
+    """🔴🔴 **F1 — 바뀐 것: 상성 축(전→후)·확률(전→후)·등급(전→후)**.
+
+    ⚠️ 직전 카드가 그 수를 들고 있을 때만 적는다(없으면 그 사실을 적지 않는다 — 빈
+       줄을 지어내지 않는다 · #3).
+    """
+    out: list[str] = []
+    was = dict(getattr(before, "matchup", None) or {})
+    old_mr = was.get("report")
+    if old_mr is not None and mr is not None:
+        from app.core import matchup as _mu
+        a, b = _mu.fingerprint(old_mr), _mu.fingerprint(mr)
+        if a != b:
+            out.append(
+                f"상성 축 — {getattr(old_mr, 'why', '')[:60]} → "
+                f"{getattr(mr, 'why', '')[:60]}(지문 {a} → **{b}**)")
+    old_p, now_p = getattr(before, "our_prob", None), layers.get("ours")
+    if old_p is not None and now_p is not None:
+        said = [(k, getattr(old_p, k, None), getattr(now_p, k, None))
+                for k in ("home", "draw", "away")]
+        if any(x != y for _k, x, y in said if x is not None and y is not None):
+            out.append("확률 — " + " · ".join(
+                f"{k} {float(x):.0%}→**{float(y):.0%}**"
+                for k, x, y in said if x is not None and y is not None))
+    return out
 
 
 def _diff(before: Card, facts: Facts, variables: list[Variable],

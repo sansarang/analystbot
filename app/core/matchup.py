@@ -53,6 +53,9 @@ class Axis:
 class MatchupReport:
     """🔴 S2 산출 — 축 넷 + 전략 판정 + 종합 판정."""
 
+    #: 🔴 F1/R1 — 그 판정이 **어떤 XI 로** 나왔나(`confirmed`·`predicted`·`none`)
+    xi_state: str = ""
+
     axes: dict = field(default_factory=dict)
     #: 🔴 축2 가 든 것 — 발동 규칙·꺼진 무기·후반 무기·전략 판정
     fired: list = field(default_factory=list)
@@ -311,6 +314,31 @@ def axis3(box: dict, varset, *, r: dict) -> Axis:
     return _settle(got, scale=1.0)
 
 
+def fingerprint(mr: object) -> str:
+    """🔴🔴 **계약 R1** — 그 상성 판정의 지문. 같은 XI 면 같은 글자다.
+
+    > 같은 경기에서 XI 가 예상→확정으로 바뀌면 `MatchupReport` 해시가 **다시
+    > 계산된다**(같은 XI 면 같은 해시).  — 지시서 2026-10-11 F1
+
+    🔴 축 네 개의 **차**와 종합·판정·XI 상태를 센다. ⚠️ 상수를 돌려주면 그
+       순간 이 계약이 거짓말이 된다(돌연변이 시험이 그것을 본다).
+    """
+    import hashlib
+    got = []
+    for key in ("axis0", "axis1", "axis2", "axis3"):
+        try:
+            one = mr.axis(key)                              # type: ignore[attr-defined]
+        except Exception:                                   # noqa: BLE001
+            one = None
+        gap = getattr(one, "gap", None)
+        got.append("⬜" if gap is None else f"{float(gap):.4f}")
+    got.append(f"{float(getattr(mr, 'total', 0.0) or 0.0):.4f}")
+    said = dict(getattr(mr, "verdict", None) or {})
+    got.append(f"{said.get('who')}/{said.get('strength')}")
+    got.append(str(getattr(mr, "xi_state", "") or ""))
+    return hashlib.sha1("|".join(got).encode()).hexdigest()[:12]
+
+
 def report(ref, facts, box: dict, varset, *, strategy=None,
            turnover: dict | None = None) -> MatchupReport:
     """🔴🔴 **S2 산출** — 축 넷 + 전략 판정 + 종합 판정.
@@ -327,10 +355,16 @@ def report(ref, facts, box: dict, varset, *, strategy=None,
         axes=axes, fired=[*(box.get("fired2") or []), *(box.get("fired") or [])],
         off_weapons=dict(box.get("off") or {}),
         late_weapons=dict(box.get("late") or {}),
-        strategy=strategy, r=r, verdict=combine(axes))
+        strategy=strategy, r=r, verdict=combine(axes),
+        # 🔴 F1/R1 — **어떤 XI 로** 센 판정인가(예상→확정이면 지문이 바뀐다)
+        xi_state=" · ".join(
+            sorted({str(getattr(v, "state", "") or "없음")
+                    for v in (dict(getattr(facts, "xi", None) or {})).values()})
+            or ["없음"]))
     got.why = (" · ".join(f"{k} {v.gap:+.2f}" if v.gap is not None
                           else f"{k} ⬜" for k, v in axes.items())
                + f" → 종합 {got.verdict.get('edge') or '가리지 못함'} "
                + f"{got.verdict.get('strength')}")
+    got.why += f" · XI {got.xi_state} · 지문 {fingerprint(got)}"
     logger.info("[S2] 상성 — %s", got.why)
     return got

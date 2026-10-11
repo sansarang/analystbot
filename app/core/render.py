@@ -275,9 +275,21 @@ def _head(card: Card) -> str:
         head += (f"\n⏳ **확정 XI 전** — {timefmt.kst_label(when)} 이후 `/재분석`"
                  f"(지금 XI 는 {'·'.join(sorted(said_xi))})")
     if card.changed:
-        # 🔴 **재분석 — 바뀐 것**(축구 완성 지시서 §4-4): 카드 **맨 위**다
-        head += "\n\n🔁 **재분석 — 바뀐 것**\n" + "\n".join(
-            f"- {x}" for x in card.changed)
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **재분석 — 바뀐 것**(축구 완성 지시서 §4-4): 카드 **맨 위**다
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  🔴 지시서 2026-10-11 **F1** — 확정 XI 로 다시 돌았으면 머리줄이
+        #     *"🔁 **확정 XI 반영** — 바뀐 것: 상성 축(전→후)·확률(전→후)·
+        #     등급(전→후)"* 이다. ⚠️ **확정이 아닐 때 그 말을 쓰지 않는다**
+        #     (바뀐 것은 적되 "확정 XI 반영" 이라고는 안 한다 · #3).
+        said_now = {str(getattr(v, "state", "") or "")
+                    for v in (card.facts.xi or {}).values()}
+        done = bool(said_now) and said_now <= {"confirmed"}
+        head += (("\n\n🔁 **확정 XI 반영** — 바뀐 것: 상성 축(전→후)·"
+                  "확률(전→후)·등급(전→후)\n" if done
+                  else "\n\n🔁 **재분석 — 바뀐 것**\n")
+                 + "\n".join(f"- {x}" for x in card.changed))
     return head
 
 

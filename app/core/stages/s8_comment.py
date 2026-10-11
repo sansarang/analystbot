@@ -377,18 +377,6 @@ def listy(said: str) -> bool:
     return low.count("·") >= 3 or "…" in low
 
 
-def same_input(before: dict, now: dict, before_vars: list[Variable],
-               now_vars: list[Variable]) -> bool:
-    """🔴 재분석에서 **다시 부를지** — 양상·근거 변수가 그대로면 **안 부른다**(지시 ③).
-
-    > 비용: 경기당 1회, 재분석 때는 **shape 이나 근거 변수가 바뀐 경우에만** 다시.
-    """
-    if str(before.get("shape") or "") != str(now.get("shape") or ""):
-        return False
-    a = [(v.id, v.weight) for v in _basis(before_vars)]
-    b = [(v.id, v.weight) for v in _basis(now_vars)]
-    return a == b
-
 
 def plain(said: Commentary) -> str:
     """🔴 카드에 들어가는 **사람 말 한 문단** — 변수 번호·코드를 **지운다**(지시 ④)."""
