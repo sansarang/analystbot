@@ -280,6 +280,18 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     mr = _mu.report(ref, facts, edge, varset, strategy=plan,
                     turnover=turn)
     st.note(f"S2 상성 — {mr.why} · {mr.verdict.get('why')}")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **⑩ 가설 — 상성 판정 직후·확률 앞**(지시서 2026-10-11 F6/R8)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 가설 세우기를 ⑨ 상성 판정 **직후**·⑪ 확률 **앞**으로 옮긴다.
+    #  > 입력: MatchupReport + VariableSet(hypo 자리) — **시뮬 출력 없음**.
+    #
+    #  🔴 C3 는 그대로다(`claims()` 는 확률을 인자로도 본문으로도 안 받는다) —
+    #     이번에 바뀐 것은 **순서**다. 가설이 상성 결론에서 **뻗어 나가야** 하고,
+    #     확률 뒤에 서면 *"수를 보고 말을 맞춘 것"* 과 구분이 안 된다.
+    hypo = s6_hypo.claims(ref, facts, variables, state=st, mr=mr,
+                          varset=varset)
     prob = _pm.run(ref, facts, mr, varset, edge=edge, state=st)
     edge["report"] = mr
     if prob.ok():
@@ -333,8 +345,8 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #
     #  🔴 S2 **뒤**이고 S3 숫자를 **보지 않는다**(C3) — `claims()` 는 확률을
     #     인자로도 본문으로도 안 받는다(계약이 센다).
-    hypo = s6_hypo.claims(ref, facts, variables, state=st, mr=mr,
-                          varset=varset)
+    #  🔴🔴 **그 호출은 위로 올라갔다**(F6/R8 — 상성 직후·확률 앞). 여기서는
+    #     세운 가설을 **검증**에 넘긴다.
     from app.core.stages import s6c_check as _s6c
     got_check = _s6c.run(ref, facts, hypo, dict(edge.get("sim") or {}),
                          variables=variables, turnover=turn, mr=mr,

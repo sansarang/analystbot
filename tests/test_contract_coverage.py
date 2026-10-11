@@ -182,7 +182,9 @@ def test_v5_9_3_M_R_계약도_센다():
     #     (`tests/contracts/test_v8_f1_reanalyze.py`·`test_v8_f2_materials.py`).
     #  🔴 **24 → 22** — 실측 2026-10-11. F3 의 계약이 `R4`(이중 계산)·`R5`(홈·원정
     #     분리)를 덮었다(`test_v8_f3_lambda.py`).
-    BASELINE = 22
+    #  🔴 **22 → 21** — F5·F6 의 계약이 `R7`(생존 = 시뮬 확률)·`R8`(가설이 확률보다
+    #     먼저)을 덮었다(`test_v8_f5_survival.py`·`test_v8_f6_hypo_order.py`).
+    BASELINE = 21
     assert len(missing) <= BASELINE, (
         f"🔴 계약 없는 M·R 이 **늘었다** {len(missing)} > {BASELINE}:\n  "
         + "\n  ".join(missing))
