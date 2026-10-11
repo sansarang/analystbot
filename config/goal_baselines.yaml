@@ -35,6 +35,12 @@ kinds:
     n: 655
     n_home: 655
     source: football-data FL1 ['2024', '2025', '2026']
+  league:J1:
+    goals_per_match: 2.9302
+    home_share: 1.6047
+    n: 86
+    n_home: 86
+    source: fotmob 리그 223 결과 ['2026/2027'] · ⚠️ 중립 경기 표시를 안 준다(홈 몫에 섞일 수 있다)
   league:K-League 1:
     goals_per_match: 2.4432
     home_share: 1.1784
