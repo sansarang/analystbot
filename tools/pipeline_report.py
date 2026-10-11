@@ -32,8 +32,11 @@ STAGES: tuple[tuple[str, str, str, str], ...] = (
      "app.core.stages.s2b_base", r"\*\*3c\. 기준 전력"),
     ("S1 딥서치", "하위 과제별 질의 → 문서(기사)",
      "app.core.stages.s3_docs", r"\[searx\]|\[bing-news\]"),
+    # 🔴🔴 **자기 산출물로 센다**(사용자 지시 2026-10-11) — ⚠️ 종전엔 이 줄이
+    #    `4. 뒤집는 변수`(=`s5` 의 블록)를 증거로 썼다. 그래서 추출이 **돌았는지
+    #    조차** 모르는 실행에 ✅ 가 붙었다(실사고 2026-10-11 가와사키).
     ("S1 추출", "문서 → 변수 후보(LLM 스키마 강제)",
-     "app.core.stages.s4_extract", r"\*\*4\. 뒤집는 변수\*\*"),
+     "app.core.stages.s4_extract", r"\[s4\] 추출 — 문서"),
     ("S1V 변수 검증", "후보 → 변수(신원·날짜·유형 검사)",
      "app.core.stages.s5_verify", r"\*\*4\. 뒤집는 변수\*\*"),
     ("S1V 변수 배치", "변수 → 자리(axis0~3 · lambda_const · V1~V6 · hypo)",
@@ -45,7 +48,9 @@ STAGES: tuple[tuple[str, str, str, str], ...] = (
     ("축2 전략 판정", "오늘 XI ↔ 평소 XI → 전략(로테이션·수비 위주·선수단 교체…)",
      "app.core.stages.s2d_strategy", r"\*\*🧠 라인업 전략"),
     ("전술 예측", "운영·흐름·승부처(근거 id 를 달아서)",
-     "app.core.stages.s2f_tactic", r"\*\*🎓 전술 전문가 예측"),
+     # 🔴 F7(2026-10-11) 이후 전술 예측은 **최종 평 한 편**이 먹인다 —
+     #    ⚠️ 옛 주인 `s2f_tactic` 은 그때 지워졌다(점검표가 낡은 주소를 들고 있었다).
+     "app.core.stages.s9_say", r"\*\*🎓 전술 전문가 예측"),
     ("상성 재료", "골 내용·스타일 6축·폼 — 축의 재료",
      "app.core.stages.s2e_matchup", r"\*\*⚔️ 상성 세 축"),
     ("S2 상성 판정", "축0~3 → 종합(우위·강도)",
@@ -117,9 +122,11 @@ def report(path: str) -> str:
             "| # | 단계 | 하는 일 | 주인(코드) | 산출 | 증거(원문) |",
             "|---|---|---|---|---|---|"]
     gone: list[str] = []
+    shown: dict[str, str] = {}
     for i, (name, what, owner, pat) in enumerate(STAGES, 1):
         n = len(re.findall(pat, said, re.M))
         got = _evidence(said, pat).replace("|", "\\|")
+        shown[name] = got
         rows.append(f"| {i} | {name} | {what} | `{owner}` | "
                     f"{'✅ ' + str(n) + '건' if n else '🔴 0건'} | {got or '—'} |")
         if not n:
@@ -128,6 +135,17 @@ def report(path: str) -> str:
     said_bad = [f"- `{w}` {said.count(w)}건" for w in BAD if said.count(w)]
     rows += said_bad or ["- 없다"]
     bad_owner = _check_owners()
+    # 🔴🔴 **증거 겹침을 실행 중에도 잡는다**(사용자 지시 2026-10-11) —
+    #    두 단계가 같은 줄로 ✅ 를 받으면 그 ✅ 중 하나는 **남의 산출물**이다.
+    rows += ["", "## 증거 겹침 검사", ""]
+    by_said: dict[str, list[str]] = {}
+    for name, said in list(shown.items()):
+        if said:
+            by_said.setdefault(said, []).append(name)
+    dupes = {k: v for k, v in by_said.items() if len(v) > 1}
+    rows += ([f"- 🔴 **같은 증거를 두 단계가 썼다** — {' · '.join(v)} ← `{k[:60]}`"
+              for k, v in dupes.items()]
+             or ["- ✅ 단계마다 **다른 증거**를 썼다"])
     rows += ["", "## 주인 모듈 확인", ""]
     rows += ([f"- 🔴 {x}" for x in bad_owner]
              or [f"- ✅ {len(STAGES)}단계의 주인 모듈이 **전부 열린다**"])

@@ -18,12 +18,15 @@
 """
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from app.core import adapt
 from app.core.schema import (Doc, DropReason, LlmFail, MatchRef, SubtaskId,
                              VarCandidate, VarCandidates)
 from app.core.state import RunState
+
+logger = logging.getLogger(__name__)
 
 #: 🔴 하위 과제 여덟 — 열거값이 원본이다(§3). ⚠️ 여기서 이름을 지어내지 않는다.
 SIDS: tuple[str, ...] = tuple(SubtaskId.__args__)      # type: ignore[attr-defined]
@@ -264,8 +267,11 @@ async def run(ref: MatchRef, docs: list[Doc], *, state: RunState,
               cache: dict[str, Doc] | None = None) -> list[VarCandidate]:
     """🔴 하위 여덟마다 추출 1회(+조건부 1회). `VarCandidate` 목록."""
     out: list[VarCandidate] = []
+    asked = 0          # 🔴 실제로 **물은** 하위 수(문서가 있어 추출을 돈 것)
     for sid in SIDS:
         mine = [d for d in docs if d.subtask == sid]
+        if mine:
+            asked += 1
         got = _ask(sid, mine, ref, state=state)
         if not got and mine and chain is not None:
             # 🔴 **0개이고 예산이 남으면 좁혀서 한 번 더**(§5 s4) — 그 이상은 없다
@@ -276,7 +282,35 @@ async def run(ref: MatchRef, docs: list[Doc], *, state: RunState,
                 docs += more
         out += got
     state.set("candidates", len(out))
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **자기 줄을 찍는다**(사용자 지시 2026-10-11) — #3 조용한 0 금지
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실사고 2026-10-11(가와사키 점검표): 이 파일에 `logger.info` 가 **0개**
+    #     여서 *"추출이 돌았나"* 를 로그로 증명할 길이 없었다. 기사 변수도 0개라
+    #     점검표가 **남의 블록**(`4. 뒤집는 변수` — `s5` 의 산출)을 증거로 ✅ 를
+    #     줬다. 🔴 건너뛴 것·후보 0개인 것·터진 것은 **다른 일**이다.
+    said = _why_zero(docs=len(docs), asked=asked) if not out else ""
+    state.note(f"s4 추출 — 문서 {len(docs)}건 → 후보 {len(out)}개"
+               + (f" · {said}" if said else ""))
+    logger.info("[s4] 추출 — 문서 %d건 → 후보 %d개%s",
+                len(docs), len(out), f" · {said}" if said else "")
     return out
+
+
+def _why_zero(*, docs: int, asked: int) -> str:
+    """🔴 후보가 0개인 **까닭을 가린다**(세 가지가 다르다).
+
+    ① 문서가 0건이라 **건너뛴** 것 · ② 문서는 있는데 **묻지도 못한** 것(하위 짝이
+    안 맞았다) · ③ **물었는데 후보가 0개**인 것(모델이 못 건졌거나 스키마에서 버렸다).
+    """
+    if not docs:
+        return "⬜ **건너뛰었다** — 문서가 0건이다"
+    if not asked:
+        return (f"🔴 문서 {docs}건이 있는데 **못 물었다** — 하위 과제(`SIDS`)에 "
+                f"묶인 문서가 없다(문서의 `subtask` 가 비었나)")
+    return (f"🔴 **후보 0개** — 문서 {docs}건 중 {asked}개 하위에 물었고 "
+            f"건진 것이 없다(모델이 못 건졌거나 스키마가 버렸다)")
 
 
 def _ask(sid: str, mine: list[Doc], ref: MatchRef, *, state: RunState,
