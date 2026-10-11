@@ -72,7 +72,13 @@ feeds:
       soccer_korea_kleague1: ["k league", "k리그", "kleague"]
       soccer_japan_j_league: ["j1 league", "j league", "j리그"]
       soccer_uefa_nations_league: ["uefa nations", "네이션스리그"]
-      soccer_spain_la_liga: ["la liga", "라리가", "laliga"]
+      # 🔴 `primera` 두 꼴 — 실측 2026-10-11(엘체–셀타 재현): 이름 없는 열쇠를
+      #    합치자 대회명이 `LaLiga` → **`Primera Division`** 으로 바뀌어 종목
+      #    열쇠가 0건이 되고 **시장 열이 통째로 비었다**(앞 실행은 받았다).
+      #    ⚠️ football-data 표기다 — `config/competitions.yaml` 의
+      #    `football_data_names` 가 같은 두 꼴을 적고 있다.
+      soccer_spain_la_liga: ["la liga", "라리가", "laliga",
+                             "primera division", "primera división"]
       soccer_italy_serie_a: ["serie a", "세리에"]
       soccer_germany_bundesliga: ["bundesliga", "분데스리가"]
       soccer_france_ligue_one: ["ligue 1", "리그앙"]
