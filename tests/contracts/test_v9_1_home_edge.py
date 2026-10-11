@@ -104,3 +104,30 @@ def test_v9_원본_득실이_뒤집히면_경고_줄이_붙는다():
     got = _mu.axis1(box, None, r={})
     assert "⚠️" in got.why and "원본 득실" in got.why, got.why
     assert "away" in got.why
+
+
+def test_v9_꺼진_무기가_상수가_아니다():
+    """🔴🔴 **③ 축2 감사**(사용자 지시 2026-10-11) — 꺼진 무기는 **비중**으로 센다.
+
+    ⚠️ 실사고: `off_weapons` 가 **상수**(`forward`·`box_entry`·`direct`)를 돌려줘
+       LAFC·밴쿠버가 **둘 다 3/3**, 김천–안양도 3/3 이었다 — 양 팀이 늘 같으면
+       축2 의 차는 **언제나 0** 이다(실제로 그랬다).
+    🔴 고정물 — **결장 0명 팀은 꺼진 무기 0.**
+    """
+    from app.core import style as _style
+
+    class _Read:
+        def __init__(self, state, table):
+            self.key_state, self.att_table = state, table
+
+    table = {"A": 10.0, "B": 5.0, "C": 5.0}       # 팀 합 20
+    # 🔴 빠진 선수가 **없다** → 꺼진 무기 0
+    assert _style.off_weapons(_Read({"A": "선발"}, table), None) == []
+    # 🔴 비중 50% → 공격 축 셋
+    big = _style.off_weapons(_Read({"A": "명단 제외"}, table), None)
+    assert set(big) == {"forward", "box_entry", "direct"}, big
+    # 🔴 비중 25% → **하나만**(상수가 아니다)
+    mid = _style.off_weapons(_Read({"B": "벤치"}, table), None)
+    assert mid == ["forward"], mid
+    # 🔴 표가 비면 **끄지 않는다**(없는 약화를 지어내지 않는다)
+    assert _style.off_weapons(_Read({"A": "명단 제외"}, {}), None) == []

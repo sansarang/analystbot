@@ -72,6 +72,10 @@ class TeamRead:
     dd_bad: str = ""
     #: 🔴 핵심 선수 상태 — `{이름: "선발"|"벤치"|"명단 제외"}`
     key_state: dict = field(default_factory=dict)
+    #: 🔴🔴 선수별 **공격 기여**(득점+도움) — 축2 의 *"꺼진 무기"* 가 이것으로
+    #  비중을 센다(사용자 지시 2026-10-11 ③). ⚠️ 비면 **0 비중**이고 그러면
+    #  꺼진 무기가 **없다**(없는 약화를 지어내지 않는다).
+    att_table: dict = field(default_factory=dict)
     #: 🔴 교체 주력(선발 비율 30% 미만)의 벤치 — **약화로 읽지 않는다**
     bench_regulars: list = field(default_factory=list)
     #: 🔴 복귀 선수가 선발인가 — `{이름: True/False}`
@@ -244,6 +248,7 @@ def read(ref, facts, *, side: str) -> TeamRead:
                       f"넘었다 — **계산 오류 의심으로 안 쓴다**")
         got.dd = None
     got.key_state = _key_state(facts, key, xi)
+    got.att_table = _att_table(facts)
     got.bench_regulars = _bench_regulars(facts, key, xi)
     got.returning = _returning(facts, key, xi)
     got.facts = _facts_of(got, name=name, how=how)

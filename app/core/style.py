@@ -188,7 +188,48 @@ def off_weapons(read, prof) -> list[str]:
     """
     said = dict(getattr(read, "key_state", None) or {})
     gone = [nm for nm, st in said.items() if st in ("명단 제외", "벤치")]
-    return ["forward", "box_entry", "direct"] if gone else []
+    if not gone:
+        return []           # 🔴 고정물 — **빠진 선수가 없으면 꺼진 무기도 없다**
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **비중으로 끈다**(사용자 지시 2026-10-11 ③)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 무기 꺼짐은 결장·벤치 선수가 **그 무기의 주 기여자일 때만**.
+    #
+    #  ⚠️ 실사고 2026-10-11: 이 함수가 **상수**(`forward`·`box_entry`·`direct`)를
+    #     돌려줬다 — 그래서 LAFC·밴쿠버가 **둘 다 3/3**, 김천–안양도 3/3 이었다.
+    #     양 팀이 늘 같은 값이면 축2 의 차는 **언제나 0** 이다(실제로 그랬다).
+    #  🔴 이제 **빠진 선수의 공격 기여 비중**으로 센다 — 그 비중이 클수록 더 많은
+    #     공격 축이 꺼진다. ⚠️ *"어느 선수가 어느 축의 무기인가"* 를 가리는 자료는
+    #     여전히 **없다**(선수별 크로스·공중볼 통로가 없다) — 그래서 **비중**으로만
+    #     가르고 그 한계를 여기 적어 둔다(#4).
+    share = _att_share(read, gone)
+    if share >= 0.30:
+        return ["forward", "box_entry", "direct"]
+    if share >= 0.15:
+        return ["forward"]
+    return []
+
+
+#: 🔴 빠진 선수의 공격 기여가 팀의 이만큼이면 **공격 축 셋**이 꺼진다
+OFF_BIG, OFF_SMALL = 0.30, 0.15
+
+
+def _att_share(read, gone: list[str]) -> float:
+    """🔴 빠진 선수들이 쥔 **팀 공격 기여(득점+도움) 비중**(0~1).
+
+    🔴 표는 `strategy._att_table` 하나다(사본 금지). ⚠️ 표가 비면 **0** 이 아니라
+       그 사실이 비중 0 으로 남고, 호출부가 *"꺼진 무기 없음"* 을 적는다 — 없는
+       약화를 지어내지 않는다(#4).
+    """
+    box = dict(getattr(read, "att_table", None) or {})
+    if not box:
+        return 0.0
+    total = sum(float(v) for v in box.values())
+    if total <= 0:
+        return 0.0
+    mine = sum(float(box.get(nm) or 0.0) for nm in gone)
+    return max(0.0, min(1.0, mine / total))
 
 
 def off_from_vars(varset, side: str) -> tuple[list[str], list[str]]:
