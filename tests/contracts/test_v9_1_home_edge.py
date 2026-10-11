@@ -67,3 +67,40 @@ def test_v9_fotmob_리그_결과_파서가_선다():
     got = _fm.league_results(j)
     assert len(got) == 1, got          # 🔴 안 끝난 줄·점수 못 읽은 줄은 **버린다**
     assert got[0]["gh"] == 2 and got[0]["ga"] == 0
+
+
+def test_v9_축1이_창과_산술을_적는다():
+    """🔴🔴 **② 축1 감사**(사용자 지시 2026-10-11) — 축1 사유가 **경기 수·원본
+    득실·운 할인**을 적는다.
+
+    ⚠️ 실사고: 카드의 **폼 블록은 최근 5경기**, 축1 은 **최근 10경기**였다 —
+       두 수가 **다른 창**인데 카드가 그 말을 안 했다(사용자가 그래서 물었다).
+    """
+    import inspect
+
+    from app.core import matchup as _mu
+    said = inspect.getsource(_mu.axis1)
+    for want in ("최근", "운 할인", "원본 득실"):
+        assert want in said, f"🔴 축1 이 `{want}` 를 안 적는다"
+
+
+def test_v9_원본_득실이_뒤집히면_경고_줄이_붙는다():
+    """🔴 고정물 — *"원본 득실이 더 나쁜 팀이 축1에서 크게 앞서면 경고 줄"*.
+
+    🔴 실물로 센다 — 원본은 home 이 좋은데 보정 지수는 away 가 앞서게 만든다.
+    """
+    from app.core import form as _form
+    from app.core import matchup as _mu
+
+    def _mk(gf, ga, n, idx):
+        one = _form.TeamForm(team="t", n=n, gf=gf, ga=ga,
+                             adj_gf=gf, adj_ga=ga)
+        # 🔴 운 할인으로 **지수만** 낮춘다(원본 득실은 그대로다)
+        one.gf_after_luck = idx * n + ga
+        return one
+
+    box = {"form": {"home": _mk(20, 10, 10, -0.2),   # 원본 +1.0 · 지수 -0.2
+                    "away": _mk(10, 12, 10, 0.4)}}   # 원본 -0.2 · 지수 +0.4
+    got = _mu.axis1(box, None, r={})
+    assert "⚠️" in got.why and "원본 득실" in got.why, got.why
+    assert "away" in got.why

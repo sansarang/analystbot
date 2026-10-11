@@ -267,8 +267,39 @@ def axis1(box: dict, varset, *, r: dict) -> Axis:
     got.refs = [one.id for one in varset.of("axis1")] if varset else []
     said_r = " · ".join(f"{k} r={float(dict(r or {}).get(k, 1.0)):g}"
                         for k in ("home", "away"))
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **창과 산술을 적는다**(사용자 지시 2026-10-11 ②)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실사고 2026-10-11(LAFC): 카드의 **폼 블록은 최근 5경기**, 축1 은
+    #     **최근 10경기**였다. 그래서 사용자가 *"밴쿠버 실점 2.0 인데 왜 앞서나"*
+    #     를 물을 수밖에 없었다 — **두 수가 다른 창**이었고 카드는 그 말을 안 했다.
+    #  🔴 그래서 축1 사유에 **경기 수·원본 득실·운 할인**을 적는다.
+    said_box = []
+    warn = ""
+    raw = {}
+    for side in ("home", "away"):
+        one = form.get(side)
+        if one is None or not getattr(one, "n", 0):
+            continue
+        n = int(one.n)
+        raw[side] = (float(one.gf) - float(one.ga)) / n
+        cut = getattr(one, "gf_after_luck", None)
+        said_box.append(
+            f"{side} 최근 {n}경기 득 {one.gf:.0f}·실 {one.ga:.0f}"
+            + (f" · 운 할인 뒤 득 {float(cut):.1f}" if cut is not None else "")
+            + f" → 지수 {vals[side]}")
+    # 🔴 **경고 줄** — 원본 득실이 더 나쁜 팀이 축1 에서 **크게 앞서면** 적는다
+    if len(raw) == 2:
+        lead = "home" if float(vals["home"]) > float(vals["away"]) else "away"
+        other = "away" if lead == "home" else "home"
+        if raw[lead] < raw[other] and abs(float(vals[lead]) - float(vals[other])) >= 0.3:
+            warn = (f" · ⚠️ **원본 득실은 {other} 가 더 좋은데**({raw[other]:+.2f} "
+                    f"vs {raw[lead]:+.2f}) 축1 은 {lead} 가 앞선다 — 보정·운 할인이"
+                    f" 뒤집었다(까닭을 위 줄에서 본다)")
     got.why = (f"보정 득실차/경기 홈 {vals['home']} · 원정 {vals['away']}"
-               f" → r 가중 {said_r}")
+               f" → r 가중 {said_r}"
+               + (" · " + " · ".join(said_box) if said_box else "") + warn)
     return _settle(got, scale=float(dict(table().get("axis1") or {})
                                     .get("scale") or 1.0))
 
