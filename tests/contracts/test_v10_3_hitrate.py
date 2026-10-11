@@ -117,3 +117,40 @@ def test_form_blends_xg() -> None:
                         games=[{"gf": 1, "ga": 0, "xgf": 0.1, "xga": 2.0,
                                 "xg_n": 0}] * 10)
     assert thin.index() == 1.0 and "안 섞음" in thin.why
+
+
+# ══════════════════════════════════════════════════════════════════
+# B — 축2 상쇄를 고친다(6축 차를 직접)
+# ══════════════════════════════════════════════════════════════════
+
+def test_axis2_uses_the_six_axis_gap() -> None:
+    """🔴🔴 B — 양 팀이 **같은 규칙에 걸려도** 축2 가 0 이 되지 않는다.
+
+    ⚠️ 실측 2026-10-11(가와사키): `T1 home`·`T1 away`·`T3 home`·`T3 away` 가 다
+       터져 **차 0.0** 이었다. 쇼난은 `발동 0건`으로 축2 가 ⬜ 였다. 즉 비중 0.2
+       짜리 축이 **거의 늘 죽어 있었다**.
+    🔴 스타일 6축의 raw 값은 이미 있다 — 그 **차**를 직접 쓴다.
+    """
+    from app.core import matchup
+
+    class _S:
+        def __init__(self, box):
+            self.axis = dict(box)
+
+    box = {"style": {"home": _S({"forward": 0.47, "box_entry": 1.64,
+                                 "press": 0.04, "low_block": 0.06}),
+                     "away": _S({"forward": 0.44, "box_entry": 2.50,
+                                 "press": 0.05, "low_block": 0.07})},
+           "fired2": [], "fired": [], "off": {}, "late": {}}
+    got = matchup.axis2(box, None)
+    assert got.gap is not None, got.why
+    assert abs(float(got.gap)) > 0.0, (got.gap, got.why)
+    assert "6축" in got.why
+
+
+def test_axis2_says_when_style_is_missing() -> None:
+    """🔴 #3 — 6축 자료가 없으면 **그 사실을 적는다**(0 으로 메우지 않는다)."""
+    from app.core import matchup
+    got = matchup.axis2({"style": {}, "fired2": [], "fired": []}, None)
+    assert got.gap is None or got.gap == 0.0
+    assert "자료" in got.why or "안 센다" in got.why or "6축" in got.why

@@ -410,6 +410,38 @@ def axis1(box: dict, varset, *, r: dict) -> Axis:
                                     .get("scale") or 1.0))
 
 
+#: 🔴🔴 B — **6축의 쪽**(공격 쪽은 그대로, 수비 쪽은 상대 공격을 막는 값이다)
+#  ⚠️ 이름은 `style` 이 쓰는 그 여섯이다(사본 금지 — 여기서 늘리지 않는다).
+SIX_ATT: tuple[str, ...] = ("forward", "box_entry", "direct")
+SIX_DEF: tuple[str, ...] = ("press", "low_block", "wide")
+
+
+def _six_gap(box: dict, *, per: float) -> float | None:
+    """🔴🔴 B — **6축 차**(홈 − 원정)를 한 수로. 자료가 없으면 `None`.
+
+    🔴 공격 축은 *내 값 − 상대 값*, 수비 축은 *상대 값 − 내 값*(막는 쪽이 높을수록
+       내 우위다). 둘을 더해 축 수로 나누고 `per`(규칙당 크기)를 곱한다 — **새 계수를
+       만들지 않는다**.
+    ⚠️ 두 팀 중 한쪽이라도 그 축이 없으면 그 축은 **건너뛴다**(0 으로 보지 않는다).
+    """
+    rows = dict(box.get("style") or {})
+    home, away = rows.get("home"), rows.get("away")
+    if home is None or away is None:
+        return None
+    a = dict(getattr(home, "axis", None) or {})
+    b = dict(getattr(away, "axis", None) or {})
+    got: list[float] = []
+    for key in SIX_ATT:
+        if key in a and key in b:
+            got.append(float(a[key]) - float(b[key]))
+    for key in SIX_DEF:
+        if key in a and key in b:
+            got.append(float(b[key]) - float(a[key]))
+    if not got:
+        return None
+    return round(per * sum(got) / len(got), 4)
+
+
 def axis2(box: dict, varset) -> Axis:
     """🔴 축2 — 전술 상성. 발동 규칙(T1~T6)과 **꺼진 무기**로 센다."""
     from app.core import routing
@@ -428,13 +460,31 @@ def axis2(box: dict, varset) -> Axis:
     #       (`tactical_rules.yaml: matchup_gap` 0.25)을 넘은 축 차가 **한 번도**
     #       없었다. 🔴 그것을 `0.0` 으로 적으면 *"차이가 없다"* 로 읽히지만 실은
     #       *"규칙이 아무 말도 안 했다"* 다. 문턱을 감으로 낮추지 않는다(적합 전).
-    if not fired and not any(offs.values()):
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 B **6축 차를 직접 쓴다**(사용자 지시 2026-10-11) — 상쇄를 막는다
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실측 2026-10-11(가와사키): `T1 home`·`T1 away`·`T3 home`·`T3 away` 가 다
+    #     터져 양 팀 값이 같아지고 **차 0.0** 이 됐다. 쇼난은 `발동 0건`으로 축2 가
+    #     ⬜ 였다. 즉 비중 0.2 짜리 축이 **거의 늘 죽어 있었다**.
+    #  🔴 규칙 발동은 **문턱을 넘은 것만** 센다 — 그래서 넘지 못한 차는 전부
+    #     버려졌다. 스타일 6축의 raw 값은 **이미 있다**(`forward 0.47` vs `0.44`).
+    #     그 **차**를 직접 가중합으로 쓰면 상쇄가 아니라 실제 우위가 남는다.
+    #  🔴 계수를 새로 짓지 않는다 — 공격 축은 `+`, 수비 축은 **상대의 공격을
+    #     막는 쪽**이므로 `-` 로 넣고 크기는 `per_rule` 하나를 쓴다(사본 금지).
+    base = _six_gap(box, per=per)
+    if not fired and not any(offs.values()) and base is None:
         from app.core import goals as _g
-        got.why = ("🔴 **발동 0건** — T1~T6 의 문턱"
+        got.why = ("🔴 **발동 0건 · 6축 차도 못 셌다** — T1~T6 의 문턱"
                    f"({float(dict(_g.table()).get('matchup_gap') or 0.25):g})을"
-                   " 넘은 축 차가 없다(스타일 6축은 쟀다) · 문턱은 적합 전이다")
+                   " 넘은 축 차가 없고 6축 raw 값도 비었다 · 문턱은 적합 전이다")
         return got
     val = {"home": 0.0, "away": 0.0}
+    if base is not None:
+        val["home"] += base
+        said_six = f"6축 차 {base:+.4f}(공격 − 상대 수비 · 크기 {per:g})"
+    else:
+        said_six = "6축 차 ⬜ 못 셌다"
     for f in fired:
         val[str(f.side)] = val.get(str(f.side), 0.0) + per
     for side, rows in offs.items():
@@ -442,7 +492,7 @@ def axis2(box: dict, varset) -> Axis:
         val[side] = val.get(side, 0.0) - per_off * len(list(rows or []))
     got.home, got.away = round(val["home"], 4), round(val["away"], 4)
     got.refs = [one.id for one in varset.of("axis2")] if varset else []
-    got.why = (f"발동 {len(fired)}건(규칙당 {per:g}) · 꺼진 무기 "
+    got.why = (f"{said_six} · 발동 {len(fired)}건(규칙당 {per:g}) · 꺼진 무기 "
                + " · ".join(f"{k} {len(list(v or []))}" for k, v in offs.items())
                + f"(하나당 −{per_off:g}) · {PROVISIONAL}")
     return _settle(got, scale=1.0)
