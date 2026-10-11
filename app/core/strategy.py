@@ -248,7 +248,7 @@ def read(ref, facts, *, side: str) -> TeamRead:
                       f"넘었다 — **계산 오류 의심으로 안 쓴다**")
         got.dd = None
     got.key_state = _key_state(facts, key, xi)
-    got.att_table = _att_table(facts)
+    got.att_table = _att_table(facts, key=key)
     got.bench_regulars = _bench_regulars(facts, key, xi)
     got.returning = _returning(facts, key, xi)
     got.facts = _facts_of(got, name=name, how=how)
@@ -425,7 +425,7 @@ def _keyed(table: dict) -> dict:
     return out
 
 
-def _att_table(facts) -> dict:
+def _att_table(facts, *, key: str = "") -> dict:
     """🔴 선수 → **공격 기여**(시즌 득점+도움). 없으면 빈 표.
 
     🔴🔴 **출처가 둘이고 넓은 쪽이 먼저다**(사용자 지적 2026-10-10):
@@ -438,7 +438,12 @@ def _att_table(facts) -> dict:
        수축**하고 `기록 없음 n명` 을 적는다(0 으로 메우지 않는다).
     """
     out: dict[str, float] = {}
-    for nm, one in dict(getattr(facts, "player_stats", None) or {}).items():
+    # 🔴🔴 ③ — **그 팀의 표**가 있으면 그것을 쓴다(비중의 분모가 두 팀 합이 되면
+    #    안 된다 · 실사고 2026-10-11: 뮐러 17.6% 가 10.2% 로 읽혔다).
+    #  ⚠️ 팀별 표가 없으면 합친 표를 쓴다 — 있는 수를 버리지 않는다(#3).
+    rows = dict((getattr(facts, "player_stats_team", None) or {}).get(key)
+                or getattr(facts, "player_stats", None) or {})
+    for nm, one in rows.items():
         box = dict(one)
         if box.get("goals") is None and box.get("assists") is None:
             continue

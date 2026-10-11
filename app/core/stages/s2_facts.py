@@ -244,7 +244,10 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
                           sources=sorted(set(sources)), missing=missing,
                           coach=coach, player_pos=pos, gaps=gaps, squad=squad,
                           player_value=values, past_xi=past,
-                          player_stats=dict(box.get("player_stats") or {}))
+                          player_stats=dict(box.get("player_stats") or {}),
+                          # 🔴 ③ — 팀별 공격 기여 표(비중의 분모)
+                          player_stats_team=dict(
+                              box.get("player_stats_team") or {}))
 
 
 def _gaps(*, xi: dict, missing: dict, coach: dict, box: dict,
@@ -745,7 +748,10 @@ async def _fill_squad(ref: MatchRef, box: dict, *, state: RunState, net: Any,
         state.note(f"s2 선수단 기록 — 🔴 팀 색인을 못 받았다({exc!r})")
         return
     out: dict[str, dict] = {}
-    for name in (str(ref.home_name or ""), str(ref.away_name or "")):
+    # 🔴 ③ — **팀별로도** 담는다(공격 기여 비중의 분모가 한 팀이어야 한다)
+    mine: dict[str, dict] = {}
+    for name, key in ((str(ref.home_name or ""), str(ref.home or "")),
+                      (str(ref.away_name or ""), str(ref.away or ""))):
         hits = _d._slug_hit(idx, name)
         if not hits:
             state.note(f"s2 선수단 기록 — `{name}` 을 팀 색인에서 못 찾았다")
@@ -759,9 +765,16 @@ async def _fill_squad(ref: MatchRef, box: dict, *, state: RunState, net: Any,
             state.note(f"s2 선수단 기록 — `{name}` 선수단 페이지가 비었다")
             continue
         out.update(got)
-        state.note(f"s2 선수단 기록 — `{name}` {len(got)}명")
+        if key:
+            mine[key] = dict(got)
+        state.note(f"s2 선수단 기록 — `{name}` {len(got)}명 · 득점+도움 합 "
+                   + str(sum(int(v.get("goals") or 0)
+                             + int(v.get("assists") or 0)
+                             for v in got.values())))
     if out:
         box["player_stats"] = out
+    if mine:
+        box["player_stats_team"] = mine
 
 
 def _recent_from_games(games: list[dict], *, kickoff=None) -> dict:

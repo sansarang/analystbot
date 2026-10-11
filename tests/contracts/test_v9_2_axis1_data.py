@@ -388,3 +388,38 @@ def test_variable_path_obeys_the_same_gate() -> None:
     #    있는 사실을 지우지 않는다(#3)
     assert s2e_matchup._gate_off(["forward"], usual=set(),
                                  out_today=set()) == ["forward"]
+
+
+# ══════════════════════════════════════════════════════════════════
+# 3-c. 공격 기여 **비중**은 그 팀 안에서 센다
+# ══════════════════════════════════════════════════════════════════
+#
+#  🔴 실측 2026-10-11(fotmob 선수단 페이지):
+#     밴쿠버 25명 득점+도움 합 **85** — 뮐러 **15(17.6%)** · 바드왈 3(3.5%)
+#     LAFC   30명 합 **62** — 부앙가 19(30.6%) · 손흥민 16(25.8%) · 에보비세 0
+#  ⚠️ `s2_facts` 가 두 팀 선수단을 **한 표로 합쳐**(`out.update`) 담았다. 그래서
+#     뮐러의 비중이 15/(85+62)=**10.2%** 로 읽혀 문턱(15%)을 못 넘었고, 밴쿠버
+#     꺼진 무기가 **0** 이었다(사용자 고정물 위반).
+
+def test_att_table_is_one_team() -> None:
+    """🔴 `read.att_table` 은 **그 팀**의 표다 — 두 팀을 섞으면 비중이 반이 된다."""
+    from app.core import strategy
+    from app.core.schema import Facts
+    facts = Facts(
+        player_stats={"Thomas Müller": {"goals": 10, "assists": 5},
+                      "Denis Bouanga": {"goals": 14, "assists": 5}},
+        player_stats_team={
+            "team:000002": {"Thomas Müller": {"goals": 10, "assists": 5},
+                            "Brian White": {"goals": 12, "assists": 7}}})
+    one = strategy._att_table(facts, key="team:000002")
+    assert set(one) == {"Thomas Müller", "Brian White"}
+    assert abs(one["Thomas Müller"] / sum(one.values()) - 15 / 34) < 1e-6
+    #: ⚠️ 팀별 표가 없으면 **합친 표**를 쓴다(있는 수를 버리지 않는다)
+    both = strategy._att_table(facts, key="team:000099")
+    assert "Denis Bouanga" in both
+
+
+def test_s2_facts_keeps_the_table_per_team() -> None:
+    """🔴 배선 — 선수단 기록을 **팀별로도** 담는다."""
+    from app.core.stages import s2_facts
+    assert "player_stats_team" in _code(s2_facts)
