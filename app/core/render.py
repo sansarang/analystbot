@@ -1301,9 +1301,14 @@ def tactic_long(card: Card) -> str:
     if got is None or said in ("", "안 돌았다"):
         return f"**{TACTIC_HEAD}** — ⬜ 안 돌렸다"
     out = [f"**{TACTIC_HEAD}** — 판정 `{said}`"]
+    # 🔴🔴 ④ — **어떤 판정이든 사유를 적는다**(사용자 지시 2026-10-11 ④:
+    #    *"실패하면 '템플릿' 대신 사유(llm_truncated / 검열 코드 / 근거 0)를"*)
+    #  ⚠️ 종전엔 두 판정(`확정 XI 전`·`버렸다`)에서만 적었다 — 그래서 `템플릿`
+    #     판정의 카드에는 **까닭이 한 글자도 없었다**(실측 2026-10-11).
+    rows = [f"- 🔴 {x}" for x in
+            (getattr(got, "violations", None) or [])[:4]]
+    out += rows
     if said in ("확정 XI 전", "버렸다"):
-        out += [f"- 🔴 {x}" for x in
-                (getattr(got, "violations", None) or [])[:4]]
         return "\n".join(out)
     for one in (getattr(got, "lines", None) or []):
         out.append(f"- **{one.slot}** — {one.text} · 근거 {list(one.refs)}")

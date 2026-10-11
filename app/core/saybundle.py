@@ -102,6 +102,19 @@ TOP_VARS = 8
 KEEP = ("P", "M", "H", "R", "N", "S7")
 
 
+def refs_bad(*, refs: list, has_matchup: bool) -> bool:
+    """🔴🔴 ④ 계약 — **상성이 있는데 전술 근거가 비었나**.
+
+    > 계약: MatchupReport가 있는 경기에서 전술 예측 근거가 `[]` 이면 실패.
+    >   — 사용자 지시 2026-10-11 ④
+
+    ⚠️ 상성이 **없으면** 세지 않는다 — 없는 자료를 근거로 요구할 수는 없다.
+    """
+    if not has_matchup:
+        return False
+    return not [x for x in (refs or []) if str(x).strip()]
+
+
 def trim(got: Bundle) -> None:
     """🔴🔴 **⑦ 작성 입력을 상위 근거로 줄인다**(사용자 지시 2026-10-11).
 
@@ -476,6 +489,35 @@ def _strategy(card, got: Bundle) -> None:
                      else f" · 효과 {dict(f.moves())}"))))
     if not fired:
         _none(got, "발동 규칙 T1~T13", "문턱을 넘은 규칙이 없다")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 ④ **꺼진 무기 · 시간대 득실**(사용자 지시 2026-10-11 ④)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 근거 풀에 MatchupReport id(축 우위·발동 규칙·**꺼진 무기**·**시간대
+    #  > 득실**)를 포함한다 — 기사가 0이어도 쓸 수 있어야 한다.
+    #
+    #  ⚠️ 실측 2026-10-11: 묶음에 그 둘이 **없었다**(`off`·시간대 분포). 그래서
+    #     전술 예측은 기사가 0 이면 쓸 근거가 없었다.
+    off = {k: v for k, v in dict(box.get("off") or {}).items() if v}
+    late = {k: v for k, v in dict(box.get("late") or {}).items() if v}
+    for side, axes in off.items():
+        n += 1
+        _put(got, Item(id=f"W{n}", kind="off_weapon", side=str(side),
+                       value=float(len(axes)),
+                       text=(f"{side} **꺼진 무기** {len(axes)}개 — "
+                             f"{', '.join(str(x) for x in axes)}"
+                             f"(그 무기를 쥔 선수가 오늘 빠졌다)")))
+    for side, axes in late.items():
+        n += 1
+        _put(got, Item(id=f"W{n}", kind="late_weapon", side=str(side),
+                       value=float(len(axes)),
+                       text=(f"{side} **후반 무기** {len(axes)}개 — "
+                             f"{', '.join(str(x) for x in axes)}")))
+    if not off and not late:
+        _none(got, "꺼진 무기·후반 무기", "오늘 빠진 주전이 없다(또는 못 쟀다)")
+    # ⚠️ **시간대 득실은 이미 있다** — `_goals` 칸의 `G*`(`goal_time`) 가 그것이다
+    #    (실측 2026-10-11: 내가 `Z*` 로 한 벌 더 만들 뻔했다 · #1 사본 금지).
+    #    🔴 그래서 여기서 다시 담지 않는다 — 프롬프트가 `G*` 를 쓰라고 말한다.
 
 
 # ══════════════════════════════════════════════════════════════════

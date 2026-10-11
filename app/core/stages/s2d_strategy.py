@@ -61,10 +61,33 @@ def run(ref: MatchRef, facts: Facts, *, state: RunState,
                            violations=["🔴 전략 판정 LLM 이 실패했다"])
     bad = check(got.lines, reads)
     if bad:
-        # 🔴 §2-2 — **수치와 반대면 버린다**(다시 묻지 않는다 · 비용·결정성)
-        state.note(f"s2d 전략 **버렸다** — {bad}")
-        logger.info("[s2d] **버렸다** — %s", bad)
-        return StrategyOut(audit="버렸다", violations=bad, facts=box)
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 ③ **버리고 끝내지 않는다 — 코드 판정으로 대체한다**(2026-10-11)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > ④에 걸려 버리면 → 코드 판정(바뀐 자리 수·ΔA·ΔD·핵심 선발 여부)으로
+        #  > 대체해서 낸다. **빈칸 금지.**
+        #
+        #  ⚠️ 종전엔 `audit="버렸다"` 로 **줄이 0개**였고, 그 뒤 전술 예측·축2
+        #     조정이 전부 재료를 잃었다(실측 2026-10-11 광주–울산 · LAFC).
+        state.note(f"s2d 전략 **버렸다 → 코드 판정** — {bad}")
+        logger.info("[s2d] 버렸다 → 코드 판정 — %s", bad)
+        got = got.model_copy(update={"lines": _code_lines(reads, box)})
+        return _settle(got, ref, facts, reads, turnover, box, state=state,
+                       audit="코드 판정(LLM 버림)", violations=bad)
+    return _settle(got, ref, facts, reads, turnover, box, state=state,
+                   audit="통과", violations=[])
+
+
+def _settle(got, ref: MatchRef, facts: Facts, reads: dict,
+            turnover: dict | None, box: dict, *, state: RunState,
+            audit: str, violations: list) -> "StrategyOut":
+    """🔴 전략 줄 → **산출**. 🔴 LLM 줄과 **코드 판정 줄이 같은 길**을 지난다.
+
+    ⚠️ 종전엔 이 뒷단(교체 덮기·양상·총골 사실)이 `run` 안에만 있어서 **코드
+       판정으로 갈아타면 그 전부를 잃었다**(사용자 지시 2026-10-11 ③).
+    """
+    from app.core import strategy as _st
     # 🔴🔴 지적 ③ — **선수단 교체는 로테이션이 아니다**. LLM 판정을 덮는다.
     lines = _turn_lines(got.lines, ref, turnover, state=state, box=box,
                         reads=reads)
@@ -84,8 +107,93 @@ def run(ref: MatchRef, facts: Facts, *, state: RunState,
                f"`{_side(got.lines, 'away')}` · 양상 `{shape}`")
     logger.info("[s2d] 전략 — 홈 `%s` · 원정 `%s` · 양상 `%s`",
                 _side(got.lines, "home"), _side(got.lines, "away"), shape)
-    return StrategyOut(lines=list(got.lines), shape=shape, audit="통과",
-                       facts=box)
+    return StrategyOut(lines=list(got.lines), shape=shape, audit=audit,
+                       violations=list(violations or []), facts=box)
+
+
+#: 🔴🔴 ③ **코드 판정의 문턱** — ⚠️ **임시값**(적합 전)이고 그 사실을 사유에 적는다
+#
+#  > ④에 걸려 버리면 → **코드 판정**(바뀐 자리 수·ΔA·ΔD·핵심 선발 여부)으로
+#  > 대체해서 낸다. **빈칸 금지.** — 사용자 지시 2026-10-11 ③
+#
+#  ⚠️ 실사고 2026-10-11(광주–울산 · LAFC): LLM 판정이 ④(핵심 공격 선발)에 걸려
+#     **버려졌고**, 전략 블록이 *"버렸다"* 한 줄로 끝났다 — 그 뒤 전술 예측도
+#     근거를 잃었다. 🔴 버리는 것과 **못 내는 것**은 다르다.
+DA_BIG = 15.0        #: ΔA(공격 기여 변화율 %)가 이만큼이면 방향을 읽는다
+CHANGED_ROT = 4      #: 바뀐 자리가 이만큼이면 로테이션으로 본다
+PROVISIONAL = "🔴 **임시값**(적합 전)"
+
+
+def _att_lines(reads: dict) -> str:
+    """🔴🔴 ③ — **선발 선수별 공격 기여**와 바뀐 자리를 글로(프롬프트 입력).
+
+    🔴 포메이션 글자를 대신하는 재료다 — *"누가 뛰는지"* 로 센다.
+    ⚠️ 기여표가 비면 **그 사실을 적는다**(0 으로 메우지 않는다 · #3).
+    """
+    out: list[str] = []
+    for side in ("home", "away"):
+        read = reads.get(side)
+        if read is None:
+            continue
+        att = dict(getattr(read, "att_table", None) or {})
+        tot = sum(float(v) for v in att.values()) or 0.0
+        said = dict(getattr(read, "key_state", None) or {})
+        rows = [f"{nm} {float(v):.0f}"
+                + (f"({float(v) / tot:.0%})" if tot else "")
+                for nm, v in sorted(att.items(), key=lambda x: -float(x[1]))[:8]]
+        out.append(
+            f"- **{side}** 바뀐 자리 "
+            f"{getattr(read, 'changed', None) if getattr(read, 'changed', None) is not None else '못 쟀다'}개"
+            + (f" · ΔA {read.da:+.1f}%" if getattr(read, "da", None) is not None
+               else " · ΔA 못 쟀다")
+            + (f" · ΔD {read.dd:+.1f}%" if getattr(read, "dd", None) is not None
+               else " · ΔD 못 쟀다")
+            + (f" · 핵심 상태 {said}" if said else " · 핵심 선수 표 없음"))
+        out.append("    기여 — " + (" · ".join(rows) if rows
+                                   else "⬜ 기여표가 비었다"))
+    return "\n".join(out) or "- ⬜ 자료 없음"
+
+
+def code_verdict(read) -> tuple[str, str]:
+    """🔴🔴 ③ — **코드가 내는 전략 판정**. `(판정, 까닭)`.
+
+    재료 넷(지시서가 준 그것): **바뀐 자리 수 · ΔA · ΔD · 핵심 선발 여부**.
+    🔴 값은 `strategy.KINDS` 안에서만 고른다(새 말을 만들지 않는다).
+    ⚠️ 못 잰 칸(`None`)은 **읽지 않는다** — 0 으로 보지 않는다(#3).
+    """
+    from app.core import strategy as _st
+    changed = getattr(read, "changed", None)
+    da, dd = getattr(read, "da", None), getattr(read, "dd", None)
+    said = dict(getattr(read, "key_state", None) or {})
+    out_key = [nm for nm, v in said.items() if v in ("명단 제외", "벤치")]
+    bits = [f"바뀐 자리 {changed if changed is not None else '못 쟀다'}",
+            f"ΔA {da:+.1f}%" if da is not None else "ΔA 못 쟀다",
+            f"ΔD {dd:+.1f}%" if dd is not None else "ΔD 못 쟀다",
+            f"핵심 빠짐 {len(out_key)}명" if said else "핵심 선수 표 없음"]
+    why = " · ".join(bits) + f" · {PROVISIONAL}"
+    if da is not None and float(da) <= -DA_BIG:
+        return "수비 위주", f"공격 기여가 크게 내려갔다 — {why}"
+    if da is not None and float(da) >= DA_BIG:
+        return "공격 위주", f"공격 기여가 크게 올라갔다 — {why}"
+    if changed is not None and int(changed) >= CHANGED_ROT:
+        return "로테이션·체력 관리", f"자리가 많이 바뀌었다 — {why}"
+    assert "평소 그대로" in _st.KINDS
+    return "평소 그대로", f"방향을 읽을 신호가 없다 — {why}"
+
+
+def _code_lines(reads: dict, box: dict) -> list:
+    """🔴 ③ — 두 팀의 **코드 판정 줄**(LLM 줄과 같은 꼴)."""
+    out = []
+    for side in ("home", "away"):
+        read = reads.get(side)
+        if read is None:
+            continue
+        got, why = code_verdict(read)
+        refs = [k for k, v in dict(box or {}).items()
+                if str(v.get("side") or "") == side][:3]
+        out.append(StrategyLine(side=side, strategy=got, fact_refs=refs,
+                                why=f"🔴 **코드 판정**(LLM 판정을 버렸다) — {why}"))
+    return out
 
 
 def _turn_lines(lines: list, ref: MatchRef, turnover: dict | None, *,
@@ -310,6 +418,18 @@ def _prompt(ref: MatchRef, facts: Facts, reads: dict, box: dict, *,
     상대 XI 사실**.
     """
     from app.core import llm, strategy as _st
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 ③ **포메이션 대신 선수**(사용자 지시 2026-10-11 ③)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > LLM 입력에 포메이션 대신 **선발 선수별 시즌 공격 기여**·평소 XI 대비
+    #  > **바뀐 자리**를 준다.
+    #
+    #  ⚠️ 실사고 2026-10-11: 모델이 포메이션 글자(`4-4-2`)로 *"수비 위주"* 를 골랐고
+    #     ④ 검사(핵심 공격 선수가 선발이다)에 걸려 **버려졌다** — 두 번 다.
+    #  🔴 표는 `strategy.TeamRead.att_table` 하나다(사본 금지) — 그 팀 선수단의
+    #     시즌 득점+도움이고, 비중은 그 팀 합으로 나눈다.
+    who = _att_lines(reads)
     said = "\n".join(f"- `{k}` [{v['kind']}] {v['text']}"
                      for k, v in box.items())
     look = dict(getattr(facts, "standings", None) or {}).get("group") or {}
@@ -335,5 +455,7 @@ def _prompt(ref: MatchRef, facts: Facts, reads: dict, box: dict, *,
             f"경기: {ref.home_name}(홈) vs {ref.away_name}(원정) · "
             f"{ref.competition}\n"
             f"{motive}\n\n🔴 **오늘 명단에서 코드가 센 사실**(이것만 쓴다):\n"
-            f"{said}\n\n🆕 **새 사실·감독 발언(72시간)**:\n{quotes}\n\n{rule}")),
+            f"{said}\n\n🧍 **선발 선수별 시즌 공격 기여(득점+도움) · 평소 XI 대비 "
+            f"바뀐 자리**:\n{who}\n\n🆕 **새 사실·감독 발언(72시간)**:"
+            f"\n{quotes}\n\n{rule}")),
     ]

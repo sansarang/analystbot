@@ -823,13 +823,32 @@ def with_say(card: Card, *, state: RunState) -> Card:
     #  나온다. ⚠️ 비면 **사유를 적는다**(빈 칸은 "안 돌았다"와 구분이 안 된다 · #3).
     #  ⚠️ `commentary`(종합 논평)는 **구조 타입**(`Commentary`)이라 글 한 줄로
     #     덮지 않는다 — 그 블록은 코드 템플릿이 만들고, 최종 평이 그 위에 선다.
+    from app.core import saybundle as _sb
     from app.core.schema import TacticLine
+    # 🔴🔴 ④ — **전술 줄에 근거를 붙인다**(모델이 `tactic_refs` 로 준다)
+    said_refs = dict(getattr(got, "tactic_refs", None) or {})
+    said_lines = [TacticLine(slot=k, text=v,
+                             refs=[str(x) for x in (said_refs.get(k) or [])])
+                  for k, v in (
+                      ("운영:home", got.ops_home), ("운영:away", got.ops_away),
+                      ("흐름:전반", got.flow_first),
+                      ("흐름:후반", got.flow_second),
+                      ("승부처", got.decisive_moment)) if v]
+    # 🔴 ④ 계약 — 상성이 있는데 근거가 **하나도 없으면** 그 사실을 판정에 적는다
+    has_mu = bool(getattr(card, "matchup", None))
+    flat = [x for one in said_lines for x in (one.refs or [])]
+    bad_refs = _sb.refs_bad(refs=flat, has_matchup=has_mu)
+    said_audit = str(got.audit or "안 돌았다")
+    if bad_refs:
+        said_audit += " · 🔴 **근거 0**(상성 id 가 있는데 전술 줄이 안 썼다)"
+        state.note("s9say 전술 예측 — 🔴 **근거 0** · 상성 재료가 있는데 "
+                   "전술 줄이 id 를 안 썼다(④ 계약)")
     said_tactic = TacticOut(
-        lines=[TacticLine(slot=k, text=v) for k, v in (
-            ("운영:home", got.ops_home), ("운영:away", got.ops_away),
-            ("흐름:전반", got.flow_first), ("흐름:후반", got.flow_second),
-            ("승부처", got.decisive_moment)) if v],
-        audit=got.audit or "안 돌았다")
+        lines=said_lines, audit=said_audit,
+        # 🔴 #3 — 실패 사유를 **그 블록이 들고 간다**(`템플릿` 한 글자로 끝내지 않는다)
+        violations=[*(got.violations or []),
+                    *(["🔴 상성 id 가 있는데 전술 줄의 근거가 **0개**다(④)"]
+                      if bad_refs else [])])
     # ══════════════════════════════════════════════════════════════════
     # 🔴 카드의 `reason` 은 **문장 묶음**이다(`ReasonPara`)
     # ══════════════════════════════════════════════════════════════════
