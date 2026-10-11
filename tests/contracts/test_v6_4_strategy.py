@@ -297,7 +297,8 @@ def test_v6_사람이_준_라인업은_등번호로_잇는다():
     assert cap.formation_of(said) == "4-4-2"
     rows = cap.parse(said)
     assert len(rows) == 11, rows
-    assert rows[0] == {"number": "41", "name": "박만호"}, rows[0]
+    # 🔴 ② 2026-10-11 — 캡처가 **포지션 칸**도 낸다(없으면 빈 글자다)
+    assert rows[0] == {"number": "41", "name": "박만호", "pos": ""}, rows[0]
     # 🔴 번호표로 이으면 **로마자 정식 이름**이 들어간다
     got, why = cap.to_xi(rows, {"41": "Man-Ho Park", "15": "Deok-Geun Lim"},
                          team="team:000001", formation="4-4-2")

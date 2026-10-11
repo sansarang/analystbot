@@ -41,6 +41,14 @@ NOT_PLAYER: tuple[str, ...] = ("감독", "코치", "선발", "교체", "벤치",
 _LETTER = re.compile(r"[가-힣A-Za-z]")
 
 
+#: 🔴 ② 캡처가 쓰는 **포지션 글자**(지시서의 `GK 등`). ⚠️ 늘리지 않는다 —
+#   여기 없는 글자는 **이름의 일부**로 남긴다(지어내지 않는다).
+POS_WORDS: frozenset[str] = frozenset({
+    "GK", "DF", "MF", "FW", "CB", "LB", "RB", "DM", "CM", "AM", "LW", "RW",
+    "ST", "WB", "SW",
+})
+
+
 def parse(said: str) -> list[dict]:
     """🔴 캡처 글 → `[{"number": "41", "name": "박만호"}]`. 순서는 글 그대로.
 
@@ -71,7 +79,21 @@ def parse(said: str) -> list[dict]:
         low = one.lower()
         if any(w in low for w in NOT_PLAYER):
             continue
-        out.append({"number": str(int(num)), "name": one})
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **포지션도 읽는다**(사용자 지시 2026-10-11 ②)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > 캡처의 포지션(GK 등)도 읽어 넣는다.
+        #  🔴 검문 (b) *"GK 정확히 1명"* 이 이 칸을 본다 — 캡처에 적혀 있는데
+        #     버리면 그 검문을 돌릴 수 없다.
+        #  ⚠️ 이름 **앞쪽 토막**이 포지션 글자면 그것을 떼어 칸으로 옮긴다.
+        said_pos = ""
+        if parts and parts[0].upper() in POS_WORDS:
+            said_pos = parts[0].upper()
+            rest = " ".join(parts[1:]).strip()
+            if len(_LETTER.findall(rest)) >= 2:
+                one = rest
+        out.append({"number": str(int(num)), "name": one, "pos": said_pos})
     return out
 
 

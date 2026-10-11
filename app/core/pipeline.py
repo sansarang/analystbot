@@ -239,6 +239,23 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     plan = _s2d.run(ref, facts, state=st, turnover=turn,
                     news=[v for v in variables
                           if str(getattr(v, "subtask", "") or "").startswith("F-")])
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **라인업 신원 검문**(사용자 지시 2026-10-11 ③) — 상성 **앞**이다
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > (a) 11명 전원 id 확정 (b) GK 정확히 1명 (c) 선발 id 가 결장·명단 제외·
+    #  > 없는 선수·꺼진 무기 목록에 **하나도 없다**. 어기면 상성·확률을 내지 않고
+    #  > "라인업 신원 미확정 — 누구" 카드. **숫자를 낸 채 🔴만 다는 것 금지.**
+    #
+    #  ⚠️ 실사고 2026-10-11(가와사키 캡처): 브로더센·와키자카·나가이·이즈미가
+    #     **선발이면서** 결장·교체·무기 꺼짐에 동시에 들어갔고, 카드는 그 상태로
+    #     확률 51% 를 **냈다**. 🔴 서로 모순인 입력으로 만든 수는 내지 않는다.
+    from app.core import lineupgate as _gate
+    said_gate = _gate_of(ref, facts, turn, state=st)
+    if not said_gate.ok:
+        st.note(f"🔴🔴 **라인업 신원 미확정** — {said_gate.why}")
+        return _gate_card(ref, facts, variables, said_gate, state=st,
+                          docs=docs, before=before)
     # 🔴🔴 **상성 세 축**(사용자 지시 2026-10-10(셋째)) — 축1 폼 · 축3 골 내용
     #    ⚠️ 축2(T1~T8)는 스타일 프로필 자료가 없어 아직 안 돈다(사유가 들어온다)
     from app.core.stages import s2e_matchup as _s2e
@@ -449,6 +466,108 @@ async def reanalyze(raw: str, *, pool: Any, net: Any, chain: Any,
                          reuse={"docs": last.get("docs") or [],
                                 "cands": last.get("cands") or []},
                          before=last.get("card"))
+
+
+def _id_rows(facts, key: str) -> list[dict]:
+    """🔴 ① — 그 팀의 **신원표 재료 줄들**(출처를 함께 적는다).
+
+    출처 셋(지시서의 그것): **fotmob 명부**(오늘 XI·직전 XI 의 번호·포지션) ·
+    **최근 경기 라인업**(`past_xi`) · **소집 명단**(`squad`) · **결장 명단**.
+    ⚠️ 번호가 없는 출처(소집 명단·결장)는 이름만 넣는다 — 지어내지 않는다.
+    """
+    out: list[dict] = []
+
+    def _xi(one, src: str) -> None:
+        for p in (getattr(one, "lineup", None) or []):
+            out.append({"name": getattr(p, "name", ""),
+                        "number": getattr(p, "number", None),
+                        "pos": getattr(p, "pos", ""), "source": src})
+        for nm in (getattr(one, "players", None) or []):
+            out.append({"name": str(nm), "source": src})
+        for nm in (getattr(one, "bench", None) or []):
+            out.append({"name": str(nm), "source": f"{src}/벤치"})
+
+    one = (facts.xi or {}).get(key)
+    if one is not None:
+        _xi(one, "오늘 XI")
+    last = (facts.last_xi or {}).get(key)
+    if last is not None:
+        _xi(last, "직전 XI")
+    for past in list((facts.past_xi or {}).get(key) or []):
+        _xi(past, "최근 경기")
+    out += [{"name": str(nm), "source": "소집 명단"}
+            for nm in ((facts.squad or {}).get(key) or [])]
+    out += [{"name": getattr(m, "name", ""), "pos": getattr(m, "pos", ""),
+             "source": "결장 명단"}
+            for m in ((facts.missing or {}).get(key) or [])]
+    return [r for r in out if str(r.get("name") or "").strip()]
+
+
+def _gate_of(ref: MatchRef, facts, turn: dict, *, state: RunState):
+    """🔴🔴 ③ — **검문을 돌린다**. 신원표를 만들고 id 로만 견준다.
+
+    🔴 `꺼진 무기` 는 이 자리에서 **아직 없다**(축2 가 상성 안에서 만든다) — 그
+       목록은 **결장·명단 제외에서 파생**되므로 그 둘이 깨끗하면 함께 깨끗하다.
+       ⚠️ 그 사실을 여기 적어 둔다(없는 검사를 했다고 말하지 않는다 · #3).
+    """
+    from app import rules as _rules
+    from app.core import lineupgate as _gate
+    from app.core import playerid as _pid
+    ko = dict(_rules.names_ko().get("players") or {})
+    ids: dict = {}
+    pos: dict = {}
+    boxes: dict = {}
+    said_rows: list[str] = []
+    for side in ("home", "away"):
+        key = str(getattr(ref, side, "") or "")
+        box = _pid.build(rows=_id_rows(facts, key), ko=ko)
+        one = (facts.xi or {}).get(key)
+        rows = list(getattr(one, "lineup", None) or [])
+        got_ids: list[str] = []
+        got_pos: list[str] = []
+        for p in rows:
+            ident, why = _pid.resolve(
+                box, said=str(getattr(p, "name", "") or ""),
+                number=getattr(p, "number", None))
+            got_ids.append(ident)
+            if str(getattr(p, "pos", "") or "").upper() == "GK":
+                got_pos.append("GK")
+            said_rows.append(f"{side} `{getattr(p, 'name', '')}`"
+                             f"({getattr(p, 'number', None)}) → "
+                             f"`{ident or '🔴 못 풀었다'}` · {why}")
+        # 🔴 번호가 없어 GK 를 못 읽었으면 **신원표의 포지션**으로 한 번 더 본다
+        if not got_pos:
+            got_pos = ["GK" for ident in got_ids
+                       if ident and str(box[ident].pos or "").upper() == "GK"]
+        ids[side] = got_ids
+        pos[side] = got_pos
+        # 🔴 "누구"는 **사람이 읽는 이름**으로 적는다(`playerid.said_of`)
+        state.note(f"신원표({side}) — "
+                   + " · ".join(_pid.said_of(box, x) for x in got_ids if x))
+        # ── (c) 의 목록들 — **id 로** 담는다
+        miss = [_pid.resolve(box, said=getattr(m, "name", ""))[0]
+                for m in ((facts.missing or {}).get(key) or [])]
+        offs = [_pid.resolve(box, said=str(nm))[0]
+                for nm in (dict(turn.get(side) or {}).get("off_squad") or [])]
+        boxes[side] = {"결장 명단": [x for x in miss if x],
+                       "없는 선수(명단 제외)": [x for x in offs if x]}
+    state.note("신원 풀이 — " + " / ".join(said_rows[:24]))
+    return _gate.check(ids=ids, pos=pos,
+                       clash=_gate.clash_of(xi_ids=ids, boxes=boxes))
+
+
+def _gate_card(ref: MatchRef, facts, variables: list, gate, *,
+               state: RunState, docs: list, before: Card | None):
+    """🔴🔴 ③ — **"라인업 신원 미확정" 카드**. 상성·확률 칸을 **비운 채** 낸다.
+
+    > 숫자를 낸 채 🔴만 다는 것 금지.
+    """
+    from app.core.schema import Card as _C
+    state.note(gate.card())
+    return _C(match=ref, facts=facts, variables=list(variables or []),
+              funnel=state.counted_box() if hasattr(state, "counted_box")
+              else _C(match=ref, facts=facts).funnel,
+              notes=[gate.card(), *state.notes[-8:]])
 
 
 def _moved(before: Card, layers: dict, mr: object) -> list[str]:
