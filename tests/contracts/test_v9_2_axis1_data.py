@@ -443,3 +443,15 @@ def test_weapons_off_says_why_it_is_zero() -> None:
     none = s2e_matchup._off_why(usual=set(), out_today={"X"}, share=0.0,
                                 table=0)
     assert "평소 XI 를 못 만들었다" in none
+
+
+def test_card_prints_the_weapons_reason() -> None:
+    """🔴 #3 — 카드가 **꺼짐 판정**을 적는다(0 이어도)."""
+    import ast
+    import inspect as _i
+    from app.core import matchup, render
+    src = ast.unparse(ast.parse(_i.getsource(render.matchup_report_long)))
+    assert "off_why" in src and "꺼짐 판정" in src
+    assert "off_why" in [f.name for f in
+                         __import__("dataclasses").fields(
+                             matchup.MatchupReport)]

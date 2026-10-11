@@ -83,6 +83,8 @@ class MatchupReport:
     #: 🔴 축2 가 든 것 — 발동 규칙·꺼진 무기·후반 무기·전략 판정
     fired: list = field(default_factory=list)
     off_weapons: dict = field(default_factory=dict)
+    #: 🔴 #3 — **왜 그만큼 꺼졌나**(평소 XI 수·오늘 빠짐·비중·문턱)
+    off_why: dict = field(default_factory=dict)
     late_weapons: dict = field(default_factory=dict)
     strategy: object = None
     #: 🔴 종합 — `{"edge": "home"|"away"|"", "strength": 강·중·약·없음, "why": …}`
@@ -440,6 +442,7 @@ def report(ref, facts, box: dict, varset, *, strategy=None,
     got = MatchupReport(
         axes=axes, fired=[*(box.get("fired2") or []), *(box.get("fired") or [])],
         off_weapons=dict(box.get("off") or {}),
+        off_why=dict(box.get("off_why") or {}),
         late_weapons=dict(box.get("late") or {}),
         strategy=strategy, r=r, verdict=combine(axes),
         # 🔴 F1/R1 — **어떤 XI 로** 센 판정인가(예상→확정이면 지문이 바뀐다)

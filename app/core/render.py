@@ -1638,6 +1638,9 @@ def matchup_report_long(card: Card) -> str:
     out.append(f"- r 가중 {dict(getattr(mr, 'r', None) or {})}"
                f" · 꺼진 무기 {dict(getattr(mr, 'off_weapons', None) or {})}"
                f" · 후반 무기 {dict(getattr(mr, 'late_weapons', None) or {})}")
+    # 🔴 #3 조용한 0 금지 — **0 이어도 까닭**을 적는다(평소 XI·오늘 빠짐·비중)
+    for side, said in dict(getattr(mr, "off_why", None) or {}).items():
+        out.append(f"    꺼짐 판정 {side} — {said}")
     return "\n".join(out)
 
 
