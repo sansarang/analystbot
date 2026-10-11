@@ -152,6 +152,35 @@ def passes(market: Market, score: str, *, home: str = "", away: str = "",
     return None
 
 
+def from_dist(market: Market, dist: dict, *, home: str = "", away: str = "",
+              sport: str = "") -> float:
+    """🔴🔴 **F5** — 그 줄의 생존을 **시뮬 분포에서 바로** 센다.
+
+    > ⑭ 생존은 ⑪ 스코어 분포에서 **직접** 계산. 시나리오와 필수형 보강 갈래는
+    > **표시용** — 생존 계산에 안 쓴다.  — 지시서 2026-10-11 F5
+
+    `dist` 는 `{(홈, 원정): 확률}`(`sim.run` 산출 · `ProbOut.scores`)이다.
+    🔴 줄 하나를 읽는 규칙은 `apply` **하나**다(사본 금지) — 스코어마다 그것을
+       부르고 확률로 가중해 더한다.
+    ⚠️ **못 읽은 스코어는 분모에서 뺀다** — `False` 로 세면 생존이 거짓으로
+       내려간다(#3). 다 못 읽으면 `0.0` 이 아니라 그 사실이 분모 0 으로 남는다.
+    """
+    hit, mass = 0.0, 0.0
+    for key, prob in dict(dist or {}).items():
+        try:
+            h, a = (int(key[0]), int(key[1])) if not isinstance(key, str) else (
+                int(str(key).split("-")[0]), int(str(key).split("-")[1]))
+        except (TypeError, ValueError, IndexError):
+            continue
+        sym, ratio, _bad = apply(market, [f"{h}-{a}"], home=home, away=away,
+                                 sport=sport)
+        if sym == "?":
+            continue
+        mass += float(prob)
+        hit += float(prob) * float(ratio)
+    return round(hit / mass, 6) if mass else 0.0
+
+
 def apply(market: Market, scores: list[str], *, home: str = "", away: str = "",
           sport: str = "", probs: dict | None = None) -> tuple[str, float, int]:
     """§6-a — 스코어 집합 하나를 대입한다.

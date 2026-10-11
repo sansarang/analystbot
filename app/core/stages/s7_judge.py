@@ -50,8 +50,20 @@ class _Draft:
 
 def run(ref: MatchRef, facts: Facts, variables: list[Variable],
         hypo: HypoSet, *, state: RunState, board: Board | None = None,
-        board_source: str = "", now: Any = None) -> Judgement:
-    """🔴 마켓마다 대입하고 등급을 매긴다. ⚠️ 등급이 없어도 **카드는 나온다**."""
+        board_source: str = "", dist: dict | None = None,
+        now: Any = None) -> Judgement:
+    """🔴 마켓마다 대입하고 등급을 매긴다. ⚠️ 등급이 없어도 **카드는 나온다**.
+
+    ══════════════════════════════════════════════════════════════════
+    🔴🔴 **F5 — 생존 = 시뮬 확률**(지시서 2026-10-11)
+    ══════════════════════════════════════════════════════════════════
+
+    > ⑭ 생존은 ⑪ 스코어 분포에서 **직접** 계산. 시나리오(⑬)와 필수형 보강
+    > 갈래는 **표시용** — 생존 계산에 안 쓴다.
+
+    `dist` 는 `{(홈, 원정): 확률}`(`ProbOut.scores`)다. ⚠️ 없으면 **옛 길**
+    (시나리오 무게)로 센다 — 그 사실을 사유에 적는다(#3).
+    """
     from app import survive
     notes: list[str] = []
     started, started_why = survive.started(ref.kickoff_utc, now)
@@ -86,7 +98,7 @@ def run(ref: MatchRef, facts: Facts, variables: list[Variable],
     evals: list[MarketEval] = []
     for old, line in lines:
         got = _one(old, line, ref, scen, w, cap=cap, enough=enough,
-                   started=started, state=state)
+                   started=started, state=state, dist=dist)
         if got is not None:
             evals.append(got)
     evals = _same_direction_cap(evals, notes=notes)
@@ -218,8 +230,12 @@ def _old_of(line: BoardLine, ref: MatchRef | None = None) -> Any:
 
 def _one(old: Any, line: BoardLine, ref: MatchRef, scen: list[Scenario],
          w: dict[str, float], *, cap: float, enough: bool, started: bool,
-         state: RunState) -> MarketEval | None:
-    """🔴 마켓 한 줄 — **스코어 전부 대입**하고 생존을 센다(§6-a)."""
+         state: RunState, dist: dict | None = None) -> MarketEval | None:
+    """🔴 마켓 한 줄 — **스코어 전부 대입**하고 생존을 센다(§6-a).
+
+    🔴 F5 — 생존은 `dist`(시뮬 분포)에서 센다. 시나리오 기호(`marks`)는 **표시용**
+       으로 그대로 만든다 — 카드의 대입 표가 그것을 보인다.
+    """
     from app import survive
     marks: dict[str, str] = {}
     hit, mass = 0.0, 0.0
@@ -241,7 +257,15 @@ def _one(old: Any, line: BoardLine, ref: MatchRef, scen: list[Scenario],
         state.note(f"s7 `{survive.name_of(old)}` — 대입할 시나리오가 없다"
                    + (f"(못 읽음 {unread})" if unread else ""))
         return None
-    survival = round(hit / mass, 4) if mass else 0.0
+    # 🔴🔴 **F5/R7 — 생존은 시뮬 분포에서**(시나리오 갈래를 바꿔도 안 변한다)
+    if dist:
+        survival = round(survive.from_dist(
+            old, dist, home=ref.home_name, away=ref.away_name,
+            sport=ref.sport), 4)
+    else:
+        survival = round(hit / mass, 4) if mass else 0.0
+        state.note(f"s7 `{survive.name_of(old)}` — 🔴 **시뮬 분포가 없다** → "
+                   f"생존을 시나리오 무게로 센다(F5 의 그 수가 아니다)")
     grade = _grade(survival, cap=cap, enough=enough, started=started,
                    n_scen=len(marks))
     return MarketEval(line=line, marks=marks, survival=survival, cap=cap,

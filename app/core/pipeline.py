@@ -349,8 +349,11 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     layers["varset"] = varset
     from app.core import reweight as _reweight
     hypo = _reweight.of(hypo, layers.get("ours"), ref=ref, state=st)
+    # 🔴 F5 — **생존은 시뮬 분포에서** 센다(시나리오는 표시용이다)
     said = s7_judge.run(ref, facts, variables, hypo, state=st, board=got_board,
-                        board_source=board_src, now=now)
+                        board_source=board_src, now=now,
+                        dist=dict(dict(edge.get("sim") or {}).get("scores")
+                                  or {}))
     said = _direction(_grade_by_check(said, layers, state=st),
                       layers, ref)
     # ══════════════════════════════════════════════════════════════════
