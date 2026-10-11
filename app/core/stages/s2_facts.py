@@ -679,6 +679,28 @@ async def _fill_form(ref: MatchRef, box: dict, *, state: RunState, net: Any,
             state.note(f"s2 §2 폼 보완 — `{name}` 최근 {len(rows)}경기 "
                        f"← 팀 페이지(대회 섞임: "
                        f"{sorted({r['tournament'] for r in rows})})")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 ① **폼도 상성과 같은 목록에서 센다** — 사용자 지시 2026-10-11 ①
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 목록을 만드는 함수는 **상성의 그것**이다(`s2e_matchup._history` +
+    #     `games_of`) — 사본을 만들지 않는다(#1). ⚠️ 그 통로는 **하루 캐시**를
+    #     쓰므로(`_day_page`) 상성이 뒤에 같은 쪽을 다시 받지 않는다.
+    #  ⚠️ 목록을 못 받으면 **옛 칸을 그대로 둔다**(있는 수를 지우지 않는다 · #3).
+    from app.core.stages.s2e_matchup import _history as _hist
+    from app.core.stages.s2e_matchup import games_of as _games_of
+    for name, key in want.items():
+        rows = await _hist(net, name, state=state)
+        made = _games_of(rows or [])
+        if not made:
+            state.note(f"s2 ① 폼 한 원천 — `{name}` 경기 목록을 못 받았다"
+                       f"(옛 폼 칸을 그대로 둔다)")
+            continue
+        old_box = dict((box.get("recent") or {}).get(key) or {})
+        box.setdefault("recent", {})[key] = {
+            **old_box, **_recent_from_games(made, kickoff=ref.kickoff_utc)}
+        state.note(f"s2 ① 폼 한 원천 — `{name}` {len(made)}경기 목록에서 "
+                   f"두 창을 잘랐다(상성과 같은 목록)")
     # ③ 핵심 선수 — 리그 통계 페이지 + 전체 목록
     lid = str((((fm._page(fm.payload(pages[0]) or {}).get("content") or {})
                 .get("table") or {}).get("parentLeagueId")) or "") if pages else ""
@@ -740,6 +762,59 @@ async def _fill_squad(ref: MatchRef, box: dict, *, state: RunState, net: Any,
         state.note(f"s2 선수단 기록 — `{name}` {len(got)}명")
     if out:
         box["player_stats"] = out
+
+
+def _recent_from_games(games: list[dict], *, kickoff=None) -> dict:
+    """🔴🔴 ① — **상성이 쓰는 그 경기 목록**으로 `facts.recent` 를 만든다.
+
+    > 한 원천(같은 경기 목록)에서 두 창을 자른다. — 사용자 지시 2026-10-11 ①
+
+    ⚠️ 실측 2026-10-11(재현 1회차): 카드 블록 3 은 밴쿠버 **최근5 실 8**(1.60)을
+       적었는데 같은 카드의 `S01-away` 는 **실점 평균 2.0** 이었다 — 폼이
+       *또 다른 파서*(fotmob 폼 블록·`team_recent`)에서 왔기 때문이다. 🔴 그래서
+       S01 이 읽는 이 칸도 **그 목록**에서 센다.
+
+    🔴 평균은 **최근 5경기**다(카드 블록 3·S01 글자가 말하는 그 창) — 목록 전체
+       (10경기)는 `games` 로 함께 둔다. 창을 세는 함수는 `form.window_sums` 하나다.
+    """
+    from app.collect import fotmob as _fm
+    from app.core import form as _form
+    rows = [dict(g) for g in (games or [])]
+    five = _form.window_sums(rows, 5)
+    seq = [{"date": g.get("date"), "side": g.get("side"),
+            "score": g.get("score"),
+            "opponent": g.get("opp"),
+            "tournament": g.get("league") or "",
+            "scored": float(g.get("gf") or 0.0),
+            "conceded": float(g.get("ga") or 0.0)}
+           for g in rows[-5:]]
+    got = [float(g.get("gf") or 0.0) for g in rows[-5:]]
+    trimmed, _why = _fm.trimmed_avg(got) if got else (None, "")
+    rest = None
+    if kickoff is not None and seq:
+        from datetime import date as _date
+        try:
+            last = max(_date.fromisoformat(str(x["date"])) for x in seq
+                       if x.get("date"))
+            rest = (kickoff.date() - last).days
+        except (ValueError, TypeError, AttributeError):
+            rest = None
+    n = int(five["n"])
+    return {
+        # 🔴 승패 글자는 **득실로 센다**(다른 파서의 글자를 베끼지 않는다)
+        "last5": [("W" if float(g.get("gf") or 0) > float(g.get("ga") or 0)
+                   else "L" if float(g.get("gf") or 0) < float(g.get("ga") or 0)
+                   else "D") for g in rows[-5:]],
+        "matches": n,
+        "sequence": seq,
+        "rest_days": rest,
+        "recent_scored_avg": (round(five["gf"] / n, 3) if n else None),
+        "recent_trimmed_avg": trimmed,
+        "recent_conceded_avg": (round(five["ga"] / n, 3) if n else None),
+        # 🔴 ① 목록 자체 — 카드 블록 3 과 축1 이 **같은 줄**을 본다
+        "games": rows,
+        "windows": {str(w): _form.window_sums(rows, w) for w in _form.WINDOWS},
+        "source": "fotmob 팀 일정 + 경기 페이지(상성과 같은 목록)"}
 
 
 def _recent_of(rows: list[dict], *, kickoff=None) -> dict:

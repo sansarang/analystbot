@@ -257,3 +257,31 @@ def test_elo_on_our_side_is_not_a_market_reason() -> None:
     said = "\n".join(out)
     tail = said.split("시장이 다르게 보는 까닭")
     assert len(tail) == 1 or "Elo" not in tail[1].split(")")[0], said
+
+
+# ══════════════════════════════════════════════════════════════════
+# 1-b. `facts.recent`(폼 블록·S01)도 **그 목록**에서 센다
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 실측 2026-10-11(재현 1회차): 카드 블록 3 은 밴쿠버 **최근5 실 8**(1.60)을
+#     적었는데 같은 카드의 `S01-away` 는 **실점 평균 2.0** 이었다 — `facts.recent`
+#     가 *또 다른 파서*(fotmob 폼 블록·`team_recent`)에서 왔기 때문이다.
+
+def test_facts_recent_comes_from_the_same_list() -> None:
+    """🔴🔴 ① — `facts.recent` 의 수가 **같은 경기 목록**에서 나온다."""
+    from app.core.stages import s2_facts
+    got = s2_facts._recent_from_games(GAMES, kickoff=None)
+    five = form.window_sums(GAMES, 5)
+    assert got["matches"] == 5
+    assert abs(got["recent_scored_avg"] - five["gf"] / 5) < 1e-6
+    assert abs(got["recent_conceded_avg"] - five["ga"] / 5) < 1e-6
+    #: 🔴 목록 자체도 들고 있다(카드·축1 이 같은 줄을 본다)
+    assert len(got["games"]) == len(GAMES)
+    assert got["last5"] == ["L", "W", "L", "D", "D"]
+
+
+def test_s2_facts_is_wired_to_that_list() -> None:
+    """🔴 배선 — `s2_facts` 가 상성의 그 목록 함수를 부른다(사본 금지)."""
+    from app.core.stages import s2_facts
+    src = _code(s2_facts)
+    assert "games_of" in src and "_recent_from_games" in src
