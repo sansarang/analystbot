@@ -218,3 +218,23 @@ def test_truncated_asks_for_the_core_instead_of_a_template() -> None:
     assert "_ask_core" in src
     #: 🔴 판정은 **코드가 고른 방향**을 쓴다 — 모델의 판정으로 덮지 않는다(검열 u)
     assert "verdict" not in _src(s9_say._ask_core).split("model_copy")[-1]
+
+
+def test_empty_reason_is_rejected_by_the_schema() -> None:
+    """🔴🔴 ①-c — **빈 이유 문단은 스키마가 거부한다**.
+
+    ⚠️ 실사고 2026-10-11(재현 3·4회차): strict 스키마는 모든 칸을 `required` 로
+       만들지만 **빈 글자는 통과한다** — 모델이 `"reason": ""` 를 세 번 보냈고
+       검열이 평을 버렸다. 🔴 길이를 요구하면 `llm.ask` 가 오류를 붙여 다시 묻는다.
+    """
+    import pydantic
+    import pytest
+    from app.core.schema import MIN_REASON_CHARS, ReasonOnly, SayCore
+    assert MIN_REASON_CHARS >= 50
+    for cls in (ReasonOnly, SayCore):
+        with pytest.raises(pydantic.ValidationError):
+            cls(reason="")
+        with pytest.raises(pydantic.ValidationError):
+            cls(reason="짧다")
+    got = ReasonOnly(reason="가" * MIN_REASON_CHARS)
+    assert len(got.reason) == MIN_REASON_CHARS

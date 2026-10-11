@@ -740,6 +740,16 @@ class KeyPoint(Frozen):
     refs: list[str] = Field(default_factory=list)
 
 
+#: 🔴🔴 **이유 문단의 최소 길이**(글자) — 사용자 지시 2026-10-11
+#
+#  ⚠️ 실사고 2026-10-11(재현 3·4회차): strict 스키마는 모든 칸을 `required` 로
+#     만들지만 **빈 글자는 통과한다**. 모델은 `"reason": ""` 를 보냈고 검열이
+#     (i)·(p) 로 평을 버렸다 — 세 번 그랬다.
+#  🔴 길이를 요구하면 **pydantic 이 거부**하고 `llm.ask` 가 오류 문장을 붙여
+#     **다시 묻는다**(그 통로는 이미 있다). 세 문장이면 이 정도는 된다.
+MIN_REASON_CHARS = 80
+
+
 class SayCore(Frozen):
     """🔴🔴 **잘렸을 때 받는 핵심** — 한 줄 + 이유 문단(2026-10-11).
 
@@ -748,7 +758,8 @@ class SayCore(Frozen):
     """
 
     one_line: str = ""
-    reason: str = ""
+    #: 🔴 빈 글자를 막는다 — 그래야 `llm.ask` 가 다시 묻는다
+    reason: str = Field(min_length=MIN_REASON_CHARS)
 
 
 class ReasonOnly(Frozen):
@@ -759,7 +770,8 @@ class ReasonOnly(Frozen):
        질문은 잘리지 않는다 — 그래서 칸이 하나인 꼴을 둔다.
     """
 
-    reason: str = ""
+    #: 🔴 빈 글자를 막는다 — 그래야 `llm.ask` 가 다시 묻는다
+    reason: str = Field(min_length=MIN_REASON_CHARS)
 
 
 class SayOut(Frozen):

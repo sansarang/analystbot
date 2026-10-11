@@ -107,6 +107,8 @@ def run(card: Card, *, state: RunState) -> SayOut:
     #     7822) 그 멀쩡한 글까지 버려졌다. 🔴 짧은 질문은 잘리지 않는다.
     if _reason_only(bad):
         said = _ask_reason(card, box, state=state, bad=bad)
+        logger.info("[s9say] 이유 문단 수선 — %d자 · 위반 %s",
+                    len(said), bad[:2])
         if said:
             fixed = got.model_copy(update={"reason": said})
             bad2 = check(fixed, card=card, box=box)
@@ -116,6 +118,7 @@ def run(card: Card, *, state: RunState) -> SayOut:
                     "audit": "이유 문단 수선 후 통과",
                     "used": _used(fixed, box)})
             state.note(f"s9say 이유 문단 수선 — 아직 위반 {len(bad2)}건")
+            logger.info("[s9say] 수선 뒤에도 위반 — %s", bad2[:3])
             bad = bad2
     state.note(f"s9say 최종 평 **재작성** — 위반 {len(bad)}건")
     again = _ask(card, box, state=state, bad=bad)
