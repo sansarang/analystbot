@@ -1168,6 +1168,22 @@ def new_facts(card: Card) -> list:
 LOSS_ROWS = 40
 
 
+#: 🔴 단계가 늦을수록 큰 수 — 손실 표가 그 순서로 보인다
+_LATE: tuple[tuple[str, int], ...] = (
+    ("s9", 60), ("s7", 55), ("s6", 50), ("s5", 40), ("s4", 30), ("s3", 20),
+    ("s2", 10),
+)
+
+
+def _late_rank(stage: str) -> int:
+    """🔴 그 단계가 **얼마나 늦은가**(모르면 0 — 맨 뒤)."""
+    said = str(stage or "").lower()
+    for head, rank in _LATE:
+        if said.startswith(head):
+            return rank
+    return 0
+
+
 def loss_table(card: Card) -> str:
     """🔴🔴 ② **손실 표** — 버린 것 하나하나를 `단계 · 사유 · 제목` 으로.
 
@@ -1181,6 +1197,14 @@ def loss_table(card: Card) -> str:
     rows = list(card.drops or [])
     if not rows:
         return "🧾 **손실 표** — ⬜ 버린 것이 없다"
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **늦은 단계를 먼저 보인다**(사용자 지시 2026-10-11 · 서치 고침)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실측: 표가 40줄에서 잘려 `s5/type_content_mismatch` **2건**이 안 보였다
+    #     — 그 둘은 추출까지 통과한 *"거의 다 온 것"* 이라 가장 볼 값이 크다.
+    #  🔴 단계가 늦을수록 앞에 둔다(s6 → s5 → s4 → s3). 같은 단계면 들어온 순서다.
+    rows.sort(key=lambda d: -_late_rank(str(getattr(d, "stage", "") or "")))
     out = ["🧾 **손실 표**(버린 단계 · 사유 · 제목)",
            "", "| 단계 | 사유 | 제목 | 상세 |", "|---|---|---|---|"]
     for d in rows[:LOSS_ROWS]:

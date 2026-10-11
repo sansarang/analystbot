@@ -350,12 +350,50 @@ _TYPE_WORDS: dict[str, tuple[str, ...]] = {
 }
 
 
+#: 🔴 유형–내용 검사가 보는 **언어들**. ⚠️ 이름은 `search_words.yaml` 이 든다 —
+#   여기서 낱말을 적지 않는다(#1 사본 금지).
+_FIT_LANGS: tuple[str, ...] = ("ko", "en", "ja", "nl", "es", "pt", "de", "fr")
+
+
+def _type_words(kind: str) -> tuple[str, ...]:
+    """🔴🔴 그 유형이 내용에 있어야 하는 **낱말들** — 손 표 + **개념 낱말 표**.
+
+    ⚠️ 실사고 2026-10-11(가와사키): 추출이 **후보 2개**를 냈는데 둘 다
+       `type_content_mismatch` 로 죽어 기사 변수가 0개가 됐다. 🔴 까닭은
+       `_TYPE_WORDS` 가 **한국어·영어만** 들고 있어서다 — 일본 기사의 `欠場`·
+       `離脱` 이 "그 말이 한 글자도 없다"로 읽혔다.
+    🔴 그런데 **개념 낱말 표에 현지어가 이미 있다**(`rules.local_words('injury',
+       'ja')` → `['欠場','故障者','離脱','登録抹消']`). 그 표에서 자라게 한다 —
+       손으로 늘리면 그 순간 사본이 된다(#1).
+    """
+    from app import rules
+    from app.core import adapt as _ad
+    got = list(_TYPE_WORDS.get(str(kind or "")) or ())
+    # 🔴🔴 **손 표에 없는 유형은 그대로 통과**다 — ⚠️ 실사고 2026-10-11: 개념
+    #    표에서 자라게 했더니 `team_stats` 처럼 **문이 없던 유형에 새 문**이
+    #    생겼다(옛 계약이 잡았다). 그러면 수확이 **줄어든다** — 이 고침의 뜻은
+    #    문을 **느슨하게** 하는 것이지 조이는 것이 아니다.
+    if not got:
+        return ()
+    said = _ad.catalog_type(str(kind or "")) or str(kind or "")
+    concept = rules.word_concept(said)
+    if concept:
+        for lang in _FIT_LANGS:
+            for one in (rules.local_words(concept, lang) or []):
+                # 🔴 질의용 낱말은 **구**일 수 있다(`injury news`) — 그 안의
+                #    토막도 넣는다(내용에는 한 낱말로 나온다).
+                for tok in str(one).split():
+                    if len(tok) >= 2 and tok not in got:
+                        got.append(tok)
+    return tuple(got)
+
+
 def _type_fits(kind: str, said: str) -> str:
     """🔴 V-2 — 유형이 그 내용과 **맞나**. 어긋나면 사유 글자, 맞으면 빈 글자.
 
     ⚠️ 목록에 없는 유형은 **통과**다(모르는 것으로 버리지 않는다 · #4).
     """
-    want = _TYPE_WORDS.get(str(kind or ""))
+    want = _type_words(str(kind or ""))
     if not want:
         return ""
     low = str(said or "").lower()

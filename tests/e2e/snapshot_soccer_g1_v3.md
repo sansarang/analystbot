@@ -30,6 +30,20 @@
 
 | 단계 | 사유 | 제목 | 상세 |
 |---|---|---|---|
+| `s6` | `replay_miss` | ⬜ 제목 없음 | replay_miss: 카세트 없음 — tests/fixtures/cassettes/nomatch/socce |
+| `s6` | `replay_miss` | ⬜ 제목 없음 | replay_miss: 카세트 없음 — tests/fixtures/cassettes/nomatch/socce |
+| `s5` | `type_content_mismatch` | ⬜ 제목 없음 | 🔴 유형 `absence_att` 인데 그 말이 **한 글자도 없다** — 필요한 말 ['결장', '빠진', |
+| `s5` | `stakes_vague` | ⬜ 제목 없음 | 🔴 구체적 동기가 없다(진출·탈락·우승·기록·감독 거취·순위) — The match against Uzbek |
+| `s5` | `duplicate` | ⬜ 제목 없음 | 같은 사실로 묶었다(열쇠 absence*·kim min-jae) → 출처 2곳 |
+| `s5` | `duplicate` | ⬜ 제목 없음 | 같은 사실로 묶었다(열쇠 absence*·kim min-jae) → 출처 2곳 |
+| `s5` | `duplicate` | ⬜ 제목 없음 | 같은 사실로 묶었다(열쇠 absence*·kim min-jae) → 출처 3곳 |
+| `s5` | `duplicate` | ⬜ 제목 없음 | 같은 사실로 묶었다(열쇠 absence*·kim min-jae) → 출처 3곳 |
+| `s5` | `duplicate` | ⬜ 제목 없음 | 같은 사실로 묶었다(열쇠 individual_title·son heung-min) → 출처 2곳 |
+| `s5` | `conflict` | ⬜ 제목 없음 | 충돌: **채택 구조 사실**(공식 어댑터 6승 3무 0패 · 표본 9경기) / **버림 기사**(11승 4 |
+| `s4` | `team_tier_mismatch` | ⬜ 제목 없음 | 🔴 다른 등급 낱말이 주어다({'women': ['women', "women's"]}) — 이 경기는 `se |
+| `s4` | `team_tier_mismatch` | ⬜ 제목 없음 | 🔴 다른 등급 낱말이 주어다({'asiad': ['asian games'], 'women': ['women' |
+| `s4` | `team_tier_mismatch` | ⬜ 제목 없음 | 🔴 다른 등급 낱말이 주어다({'asiad': ['asian games']}) — 이 경기는 `senior` |
+| `s4` | `team_tier_mismatch` | ⬜ 제목 없음 | 🔴 다른 등급 낱말이 주어다({'asiad': ['asian games']}) — 이 경기는 `senior` |
 | `s3/신원` | `identity_mismatch` | Celtic handed injury boost during international break | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'celtic handed injury boost du |
 | `s3/신원` | `identity_mismatch` | Korean Track and Field Concludes Asian Games Without a Silver Medal fo | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'korean track and field conclu |
 | `s3/신원` | `identity_mismatch` | [ASIAN GAMES] S. Korea reach men's football final | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — "[asian games] s. korea reach  |
@@ -56,20 +70,6 @@
 | `s3/신원` | `identity_mismatch` | Maccabi Tel Aviv FC Israeli Premier League Soccer Odds 2026 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'maccabi tel aviv fc israeli p |
 | `s3/신원` | `identity_mismatch` | 월드컵, worldcup | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '월드컵, worldcup ' |
 | `s3/신원` | `identity_mismatch` | CH! 와 텍스트 또는 음성으로 채팅하세요 - AI 채팅을 무료로 안전하게 즐기세요 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'ch! 와 텍스트 또는 음성으로 채팅하세요 - ai  |
-| `s3/신원` | `identity_mismatch` | 싸이룩스 코리아 네트워크 :: CYLOOKS KOREA NETWORK | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '싸이룩스 코리아 네트워크 :: cylooks kore |
-| `s3/신원` | `identity_mismatch` | 2034년 유방암 치료제 시장 규모, 점유율, 성장 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '2034년 유방암 치료제 시장 규모, 점유율, 성장  |
-| `s3/도메인` | `type_off_catalog` | South Korea vs Uzbekistan Prediction: The hosts will confirm their cla | 도메인 등급 — 🔴 등급 `tip` — 본문을 받지 않는다(§4-3) · 변수 근거 금지 |
-| `s3/신원` | `identity_mismatch` | Asian Games 2026 Updates: India Clinch Historic Gold in Women's Compou | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'asian games 2026 updates: ind |
-| `s3/신원` | `identity_mismatch` | Asian Games 2026: Sumit Nagal in men's Tennis singles QFs; Dhakshinesw | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — "asian games 2026: sumit nagal |
-| `s3/신원` | `identity_mismatch` | Asian Games 2026: Five golds, historic breakthroughs make archery one  | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'asian games 2026: five golds, |
-| `s3/신원` | `identity_mismatch` | FAO Council · FAO Governing Bodies · Food and Agriculture Organization | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'fao council · fao governing b |
-| `s3/신원` | `identity_mismatch` | J Manual Coffee Grinder | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'j manual coffee grinder 17시간  |
-| `s3/신원` | `identity_mismatch` | Cosmetics, Health & Beauty Fulfilment · J&J | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'cosmetics, health & beauty fu |
-| `s3/신원` | `identity_mismatch` | FLY WING FW450 RC 헬리콥터 스페어 파트 안티 로테이션 브래킷 세일 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'fly wing fw450 rc 헬리콥터 스페어 파트 |
-| `s3/신원` | `identity_mismatch` | KC-SH531 로테이션 스테인레스 스틸 탑 승강식 프레셔 샤워 헤드 욕실 스프링클러.... | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'kc-sh531 로테이션 스테인레스 스틸 탑 승강식  |
-| `s3/신원` | `identity_mismatch` | '카멜레온' 리오넬 스칼로니 감독은 "2026년 월드컵에서 모든 선수를 기용할 팀.... | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '\'카멜레온\' 리오넬 스칼로니 감독은 "2026년  |
-| `s3/신원` | `identity_mismatch` | 외국인 고용허가제 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '외국인 고용허가제 160페이지28mb외국인 고용허가제 |
-| `s3/신원` | `identity_mismatch` | 직장에서 사회적 거리두기를 실천하는 방법 - Ideas (ko-KR) | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '직장에서 사회적 거리두기를 실천하는 방법 - idea |
 - ⚠️ **53줄 더 있다**(표는 40줄까지 적는다)
 - 합계 — `s3/body_missing` 6건 · `s3/sport_mismatch` 5건 · `s3/날짜/stale` 2건 · `s3/도메인/type_off_catalog` 3건 · `s3/신원/identity_mismatch` 63건 · `s4/team_tier_mismatch` 4건 · `s5/conflict` 1건 · `s5/duplicate` 5건 · `s5/stakes_vague` 1건 · `s5/type_content_mismatch` 1건 · `s6/replay_miss` 2건
 
