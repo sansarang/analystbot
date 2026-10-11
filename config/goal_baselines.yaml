@@ -89,6 +89,12 @@ kinds:
     n: 810
     n_home: 810
     source: football-data SA ['2024', '2025', '2026']
+  league:fotmob8974:
+    goals_per_match: 2.6458
+    home_share: 1.4792
+    n: 96
+    n_home: 96
+    source: fotmob 리그 8974 결과 ['2026/2027'] · ⚠️ 중립 경기 표시를 안 준다(홈 몫에 섞일 수 있다)
   national_friendly:
     goals_per_match: 2.5324
     home_share: 1.6177
