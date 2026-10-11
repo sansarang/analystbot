@@ -423,3 +423,23 @@ def test_s2_facts_keeps_the_table_per_team() -> None:
     """🔴 배선 — 선수단 기록을 **팀별로도** 담는다."""
     from app.core.stages import s2_facts
     assert "player_stats_team" in _code(s2_facts)
+
+
+def test_weapons_off_says_why_it_is_zero() -> None:
+    """🔴🔴 #3 조용한 0 금지 — 꺼진 무기가 0 이면 **까닭**이 사유에 남는다.
+
+    ⚠️ 실사고 2026-10-11(재현 4·5회차): `꺼진 무기 away 0` 만 적혀 있어
+       *평소 XI 를 못 만든 것인지 · 빠진 선수가 없는 것인지 · 비중이 모자란
+       것인지* 를 가릴 수 없었다 — 그래서 고치는 데 두 번을 더 돌렸다.
+    """
+    from app.core.stages import s2e_matchup
+    src = _code(s2e_matchup)
+    assert "off_why" in src, "꺼진 무기의 까닭을 안 적는다"
+    got = s2e_matchup._off_why(usual={"Thomas Müller", "Brian White"},
+                               out_today={"Thomas Müller"},
+                               share=0.176, table=25)
+    assert "평소 XI 2명" in got and "Thomas Müller" in got
+    assert "17.6%" in got or "18%" in got
+    none = s2e_matchup._off_why(usual=set(), out_today={"X"}, share=0.0,
+                                table=0)
+    assert "평소 XI 를 못 만들었다" in none

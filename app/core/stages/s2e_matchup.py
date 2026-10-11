@@ -130,10 +130,18 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
                                      usual=usual[side],
                                      out_today=out_today[side])
             for side in ("home", "away")}
-    state.note("s2e ③ 평소 XI·오늘 빠짐 — "
-               + " · ".join(f"{s} 평소 {len(usual[s])}명 · 빠짐 "
-                            f"{sorted(out_today[s] & usual[s]) or '없다'}"
-                            for s in ("home", "away")))
+    # 🔴 #3 — **왜 0 인가**를 적는다(평소 XI 없음 · 빠짐 없음 · 비중 모자람)
+    off_why = {}
+    for side in ("home", "away"):
+        hit = sorted(usual[side] & out_today[side])
+        att = dict(getattr(reads[side], "att_table", None) or {})
+        off_why[side] = _off_why(
+            usual=usual[side], out_today=out_today[side],
+            share=_style._att_share(reads[side], hit) if hit else 0.0,
+            table=len(att))
+    out["off_why"] = off_why
+    state.note("s2e ③ 꺼진 무기 — "
+               + " · ".join(f"{s} {off_why[s]}" for s in ("home", "away")))
     # 🔴 F2 — **변수(결장·복귀)도 무기를 끄고 켠다**(XI 만 보던 자리다)
     for side in ("home", "away"):
         gone, back = _style.off_from_vars(varset, side)
@@ -156,6 +164,9 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
                     " · ".join(f"{s} {one.why}" for s, one in styles.items())
                     + f" · 발동 {len(fired2)}건"
                     + (f" · 꺼진 무기 {offs}" if any(offs.values()) else "")
+                    # 🔴 #3 — 0 이어도 **까닭**을 적는다
+                    + " · 꺼짐 판정 " + " / ".join(
+                        f"{s} {off_why[s]}" for s in ("home", "away"))
                     + (f" · 후반 무기 {late}" if any(late.values()) else ""))})
     # ── 축1 보정 폼(운 요소 할인은 축3 의 T12 가 준다)
     elo = _elo_of(ref, rows)
@@ -297,6 +308,31 @@ def games_of(rows: list[dict]) -> list[dict]:
 #     22명이다(로테이션·컵 경기까지). 그 목록으로는 *"오늘 빠졌다"* 가 뜻을
 #     잃는다. 🔴 실측 선발 횟수 — 뮐러 **6/8** · 바드왈 2/8 · 에보비세 **3/10**.
 USUAL_SHARE = 0.5
+
+
+def _off_why(*, usual: set[str], out_today: set[str], share: float,
+             table: int) -> str:
+    """🔴🔴 **꺼진 무기의 까닭** — #3 조용한 0 금지.
+
+    ⚠️ 실사고 2026-10-11: 카드에 `꺼진 무기 away 0` 만 적혀 있어 *평소 XI 를 못
+       만든 것인지 · 빠진 선수가 없는 것인지 · 비중이 모자란 것인지* 를 가릴 수
+       없었다(그 셋은 서로 다른 고장이다).
+    """
+    if not usual:
+        return ("🔴 평소 XI 를 못 만들었다(과거 선발 명단 0건) — 꺼진 무기를 "
+                "안 센다")
+    hit = sorted(usual & out_today)
+    return (f"평소 XI {len(usual)}명 · 오늘 빠짐 "
+            + (", ".join(hit) if hit else "없다")
+            + (f" · 공격 기여 비중 {share:.1%}"
+               f"(문턱 {_style_cuts()}) · 기여표 {table}명"
+               if hit else ""))
+
+
+def _style_cuts() -> str:
+    """🔴 무기 꺼짐 문턱을 **원본에서** 읽어 적는다(사본 금지)."""
+    from app.core import style as _st
+    return f"{_st.OFF_SMALL:.0%}/{_st.OFF_BIG:.0%}"
 
 
 def _gate_off(axes: list[str], *, usual: set[str],
