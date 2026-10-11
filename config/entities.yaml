@@ -60,6 +60,15 @@ teams:
       실측 2026-10-11 — fotmob 팀 색인 슬러그 `orlando-city` · id 267810
       ⚠️ 같은 색인에 `orlando-city-b`(722266 · 2군)·`orlando-pride`(여자)가 있다
 
+  Minnesota United:
+    aliases:
+      ko: [미네소타, 미네소타 유나이티드, 미네소타 유나이티드 FC]
+      en: [Minnesota United FC, Minnesota]
+    source: |
+      사용자 지시 2026-10-11 — 사용자가 `미네소타 유나이티드 FC` 로 물었다(MLS)
+      실측 2026-10-11 — fotmob 팀 색인 슬러그 `minnesota-united` · id 207242
+      ⚠️ 같은 색인에 `minnesota-united-2`(1348105 · 2군)가 있다
+
   Sporting Kansas City:
     aliases:
       ko: [스포팅 캔자스시티, 캔자스시티, 스포팅 캔자스, 캔자스]
