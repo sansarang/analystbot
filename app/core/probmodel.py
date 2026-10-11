@@ -110,7 +110,7 @@ def league_mean(facts, *, ref=None) -> tuple[float | None, str]:
                   f"`{kind}` 표도 없다) — S3 를 안 돈다")
 
 
-def home_mul(facts, varset, *, ref=None) -> tuple[float, str]:
+def home_mul(facts, varset, *, ref=None) -> tuple[float | None, str]:
     """🔴🔴 3-1 — **홈 이점(리그 실측)**. ⚠️ 없으면 **1.0**(다른 대회에서 안 빌린다).
 
     🔴 실측은 `config/goal_baselines.yaml` 의 `home_share` 다 — *"홈 개최 경기의
@@ -135,9 +135,19 @@ def home_mul(facts, varset, *, ref=None) -> tuple[float, str]:
             if str(one.type) == "home_field"]
     tag = f" · 변수 `{rows[0].id}`" if rows else ""
     if share is None or not per:
-        return (float(box.get("home_mul_default") or 1.0),
-                f"🔴 홈 이점 **실측 없음**(대회 `{kind}`) — 배율 1.0"
-                f"(빌리지 않는다){tag}")
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **"실측 없음 → 1.0" 경로를 지웠다**(사용자 지시 2026-10-11 ①)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 1.0 은 *"홈 이점이 없다"* 는 **주장**이다 — 못 쟀다는 말과 다르다.
+        #     실측 2026-10-11: MLS 가 그 길로 1.0 을 썼는데, 리그 결과 414경기를
+        #     재 보니 **홈 1.845 · 원정 1.394(×1.139)** 였다. 조용한 1.0 이
+        #     원정 쪽으로 확률을 밀고 있었다.
+        #  🔴 못 쟀으면 **`None` 과 사유**다 — 표를 채우는 길은
+        #     `tools/measure_fotmob_baselines.py`(그 리그 결과로 잰다).
+        return (None, f"🔴 홈 이점 **실측 없음**(대회 `{kind}`) — "
+                      f"`tools/measure_fotmob_baselines.py` 로 그 리그 결과를 "
+                      f"재서 표에 적어야 한다{tag}")
     mul = float(share) / float(per)
     return mul, (f"홈 이점 실측 — 홈 팀 평균 {float(share):g} ÷ 한 팀 몫 "
                  f"{float(per):g} = ×{mul:.3f}(대회 `{kind}`){tag}")
@@ -190,6 +200,11 @@ def run(ref, facts, mr, varset, *, edge: dict | None = None,
     beta = float(conf.get("beta") or 0.0)
     cap = float(conf.get("cap_pct") or 35.0) / 100.0
     mul, why_home = home_mul(facts, varset, ref=ref)
+    if mul is None:
+        # 🔴 홈 이점을 못 쟀으면 **S3 를 안 돈다** — 조용히 1.0 으로 가지 않는다.
+        got.gap = why_home
+        _note(state, f"S3 {why_home}")
+        return got
     # 🔴 3-1 — 축 차 하나로 두 팀 λ 를 **반대 방향으로** 기울인다
     gaps = mr.gaps()
     weights = dict(_m.table().get("weights") or {})
@@ -294,5 +309,7 @@ def league_base(ref, facts, varset) -> dict | None:
     if mean is None:
         return None
     mul, _said = home_mul(facts, varset, ref=ref)
+    if mul is None:
+        return None            # 🔴 기준 분포도 홈 이점 없이는 안 만든다
     out = _sim.run(mean * mul, mean)
     return {"home": out.home, "draw": out.draw, "away": out.away}

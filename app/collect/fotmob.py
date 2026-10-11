@@ -2032,6 +2032,47 @@ def group_table(j: dict, names: list[str]) -> dict:
     return {}
 
 
+def league_matches_url(lid: object, slug: str = "x") -> str:
+    """🔴 리그 **경기 목록** 주소 — robots 가 허용하는 `/leagues/{id}/matches/{slug}`."""
+    return f"{BASE}/leagues/{lid}/matches/{slug}"
+
+
+def league_results(j: dict) -> list[dict]:
+    """🔴🔴 그 리그의 **끝난 경기**들 — `{home, away, gh, ga, utc, neutral}`.
+
+    > 리그 홈 이점은 **그 리그 경기 결과로 실측**한다(자동 등록 리그 포함, fotmob
+    > 결과).  — 사용자 지시 2026-10-11 ①
+
+    🔴 점수는 `status.scoreStr`(`"2 - 0"`)에서 읽는다. ⚠️ 못 읽는 줄은 **버린다**
+       (0 으로 세지 않는다 · #3) — 호출부가 그 수를 보고한다.
+    """
+    pp = ((j.get("props") or {}).get("pageProps") or {})
+    box = pp.get("fixtures") if isinstance(pp.get("fixtures"), dict) else {}
+    out: list[dict] = []
+    for m in (box.get("allMatches") or []):
+        st = m.get("status") or {}
+        if not st.get("finished"):
+            continue
+        said = str(st.get("scoreStr") or "")
+        bits = [x.strip() for x in said.replace("–", "-").split("-")]
+        if len(bits) != 2 or not all(x.isdigit() for x in bits):
+            continue
+        out.append({"home": str((m.get("home") or {}).get("name") or ""),
+                    "away": str((m.get("away") or {}).get("name") or ""),
+                    "gh": int(bits[0]), "ga": int(bits[1]),
+                    "utc": str(st.get("utcTime") or ""),
+                    # ⚠️ fotmob 이 중립 표시를 **안 준다** — 홈 몫을 셀 때 그 한계를
+                    #    호출부가 적는다(지어내지 않는다 · #4)
+                    "neutral": None})
+    return out
+
+
+def league_seasons(j: dict) -> list[str]:
+    """🔴 그 리그 페이지가 아는 **시즌 목록**(최신부터)."""
+    pp = ((j.get("props") or {}).get("pageProps") or {})
+    return [str(x) for x in (pp.get("allAvailableSeasons") or [])]
+
+
 def group_fixtures(j: dict, names: list[str]) -> list[dict]:
     """🔴 같은 조의 **모든 일정**(치른 것·남은 것). 🔴 라운드·킥오프·결과를 그대로.
 

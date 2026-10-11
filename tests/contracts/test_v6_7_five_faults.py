@@ -681,7 +681,9 @@ def test_v7_람다_이동이_상한을_지킨다():
     got = _pm.run(ref, facts, big, vs, state=RunState(match_key="x"))
     cap = float(dict(_mu.table()["lambda_model"]).get("cap_pct")) / 100.0
     mean, _why = _pm.league_mean(facts, ref=ref)
-    mul, _said = _pm.home_mul(facts, vs)
+    # 🔴 `ref` 를 넘긴다 — 안 넘기면 대회 이름이 **빈 글자**가 되어
+    #    홈 이점을 못 찾는다(실사고 2026-10-10 과 같은 자리다)
+    mul, _said = _pm.home_mul(facts, vs, ref=ref)
     # ⚠️ λ 는 소수 넷째 자리로 **반올림**해 담긴다 — 그 폭을 둔다
     assert float(got.lam["home"]) <= mean * mul * math.exp(cap) + 1e-3
     assert "상한" in got.why, got.why

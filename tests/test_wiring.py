@@ -622,6 +622,12 @@ NOT_WIRED: set[str] = {
 TOOL_ONLY: dict[str, str] = {
     "app.core.backfill.features": "tools/fit_matchup_model.py",
     "app.core.backfill.score_of": "tools/fit_matchup_model.py",
+    # 🔴 사용자 지시 2026-10-11 ① — 리그 홈 이점을 **그 리그 결과로** 잰다.
+    #    ⚠️ 측정은 **실행 중에 안 한다**(적합과 같은 규율) — 도구가 표에 적고
+    #       봇은 그 표를 **읽기만** 한다.
+    "app.collect.fotmob.league_matches_url": "tools/measure_fotmob_baselines.py",
+    "app.collect.fotmob.league_results": "tools/measure_fotmob_baselines.py",
+    "app.collect.fotmob.league_seasons": "tools/measure_fotmob_baselines.py",
 }
 
 
