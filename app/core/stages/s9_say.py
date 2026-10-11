@@ -206,7 +206,7 @@ def check(got: SayOut, *, card: Card, box: Bundle) -> list[str]:
     #     여기서 **리스트**를 넘겼다 — 그래서 *"(i) 이유 문단이 없다"* 가 내용과
     #     무관하게 **늘** 떴다(1039자 문단에도 떴다 · 실측 재현 5회차).
     #  🔴 `new_fact_check`·`strategy_check` 는 **줄 목록**을 읽는다(그대로 넘긴다).
-    para = _para_of(got)
+    para = _para_of(got, card=card)
     said_reason = list(para.sentences)
     out += list(new_fact_check(said_reason, card=card) or [])
     out += list(strategy_check(said_reason, card=card) or [])
@@ -510,7 +510,55 @@ def _ask(card: Card, box: Bundle, *, state: RunState,
     return None
 
 
-def _para_of(got):
+#: 🔴 A — 이름으로 맞출 때의 **최소 글자**(한글·가나·한자는 2, 라틴은 3)
+_NAME_MIN_CJK, _NAME_MIN_LATIN = 2, 3
+_CJK_RE = __import__("re").compile(r"[가-힣ぁ-んァ-ヴー一-龥]")
+
+
+def _refs_in(said: str, box: dict) -> list[str]:
+    """🔴🔴 **A 안** — 문장 글자에서 **카탈로그에 있는 근거**를 읽는다.
+
+    > 선례: `new_fact_check` 는 *"`fact_refs` 만 보면 모델이 번호를 안 적었을 때
+    > 멀쩡한 문장을 위반으로 센다 — 그래서 **글자도 본다**"*.
+
+    두 가지를 본다:
+      ① **id 를 글자 그대로** 쓴 것 — `S01-home`·`IR02-home`·`H2H`·`XI:home`·`TOTAL`
+      ② `PREFIX:이름` 꼴 id 의 **이름 쪽** — `P:Marcinho` ↔ 글에 `Marcinho`
+
+    🔴 **카탈로그에 있는 것만** 돌려준다 — 없는 id 를 짓지 않는다(#4).
+    ⚠️ 짧은 글자가 남의 낱말 안에서 걸리지 않게 **경계**를 본다(라틴 3자·CJK 2자).
+    """
+    import re as _re
+    said = str(said or "")
+    if not said.strip():
+        return []
+    out: list[str] = []
+    for fid in sorted(box or {}, key=lambda x: -len(str(x))):
+        key = str(fid)
+        if not key:
+            continue
+        # ① id 를 그대로 썼나 — 앞뒤가 글자·숫자·`-`·`:` 가 아니어야 한다
+        if _re.search(r"(?<![0-9A-Za-z:\-])" + _re.escape(key)
+                      + r"(?![0-9A-Za-z:\-])", said):
+            out.append(key)
+            continue
+        # ② `PREFIX:이름` 의 이름 쪽
+        tail = key.split(":", 1)[-1].strip() if ":" in key else ""
+        if not tail or tail == key:
+            continue
+        need = (_NAME_MIN_CJK if _CJK_RE.search(tail) else _NAME_MIN_LATIN)
+        if len(tail) < need:
+            continue
+        if _CJK_RE.search(tail):
+            if tail in said:
+                out.append(key)
+        elif _re.search(r"(?<![0-9A-Za-z])" + _re.escape(tail)
+                        + r"(?![0-9A-Za-z])", said):
+            out.append(key)
+    return list(dict.fromkeys(out))
+
+
+def _para_of(got, *, card=None):
     """🔴🔴 평의 이유 문단을 **검열이 읽는 꼴**(`ReasonPara`)로.
 
     🔴 모델이 `reason_lines`(문장 + 근거 id)를 줬으면 그것을 쓴다 — 검열 (i)·(j)
@@ -527,8 +575,16 @@ def _para_of(got):
     import re as _re
     parts = [x.strip() for x in _re.split(r"(?<=[.!?。])\s+|(?<=다\.)\s*",
                                           said) if x.strip()]
-    return ReasonPara(sentences=[ReasonLine(text=x, fact_refs=[])
-                                 for x in parts])
+    # 🔴🔴 **A 안**(사용자 결정 2026-10-11) — 글자에 쓴 근거를 읽어 채운다.
+    #    ⚠️ 종전엔 `fact_refs=[]` 로 비웠다 — 그래서 검열 (i) 의 *"고유 사실 종류"*
+    #       가 **언제나 0종**이었고 글이 아무리 좋아도 통과할 수 없었다(실측
+    #       2026-10-11 가와사키: 552자 문단도 `(i) 0종`으로 떨어졌다).
+    box = {}
+    if card is not None:
+        from app.core import layer1 as _l1
+        box = dict(_l1.facts_catalog(card) or {})
+    return ReasonPara(sentences=[
+        ReasonLine(text=x, fact_refs=_refs_in(x, box)) for x in parts])
 
 
 #: 🔴 이유 문단 검열의 글자 — 이 머리글만 걸렸으면 **그 문단만** 다시 묻는다

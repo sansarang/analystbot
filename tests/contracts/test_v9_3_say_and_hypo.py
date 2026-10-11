@@ -269,3 +269,87 @@ def test_prompt_asks_for_sentence_level_refs() -> None:
     said = "\n".join(str(getattr(m, "content", ""))
                      for m in s9_say._prompt(card, saybundle.build(card)))
     assert "reason_lines" in said and "fact_refs" in said
+
+
+# ══════════════════════════════════════════════════════════════════
+# ①-f 글자에 쓴 근거를 읽는다(A 안 · 사용자 결정 2026-10-11)
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 실측 2026-10-11(가와사키 확정 XI): 마지막 문이 `(i) 구체성 — 고유 사실
+#     종류가 **0종**`이었다. 까닭은 글이 나빠서가 아니다 — `_para_of` 가
+#     `fact_refs` 를 **비운 채** 넘겨서, 종류를 셀 재료가 아예 없었다.
+#  🔴 선례: `new_fact_check` 는 *"`fact_refs` 만 보면 모델이 번호를 안 적었을 때
+#     멀쩡한 문장을 위반으로 센다 — 그래서 **글자도 본다**"*.
+
+def _card_with_catalog():
+    """🔴 카탈로그에 player·absence·form 셋이 있는 카드."""
+    from app.core.schema import (Card, Facts, MatchRef, Missing, Player,
+                                 ProbTriple, Variable, XI)
+    ref = MatchRef(id="m", sport="soccer", competition="K League 1",
+                   competition_short="KL1", home="team:000001",
+                   away="team:000002", home_name="Gwangju FC",
+                   away_name="Ulsan HD", kickoff_utc="2026-10-11T05:00:00Z")
+    facts = Facts(
+        xi={"team:000001": XI(team="team:000001", state="confirmed",
+                              formation="4-4-2",
+                              lineup=[Player(name="Marcinho", pos="FW")],
+                              players=["Marcinho"])},
+        missing={"team:000002": [Missing(name="Pedrinho", pos="FW",
+                                         reason="injury")]})
+    v = [Variable(id="S01-home", type="recent_pattern", subject="team:000001",
+                  favors="home", hardness="soft", weight=0.7,
+                  usable_as_basis=True, claim="최근 5경기", quote="q"),
+         Variable(id="IR02-home", type="absence", subject="team:000001",
+                  favors="away", hardness="soft", weight=0.7,
+                  usable_as_basis=True, claim="결장", quote="q")]
+    return Card(match=ref, facts=facts, variables=v,
+                our_prob=ProbTriple(home=0.4, draw=0.3, away=0.3))
+
+
+def test_para_reads_the_ids_the_model_wrote() -> None:
+    """🔴🔴 A — 문장에 **적힌 id**를 `fact_refs` 로 읽는다."""
+    from app.core.stages import s9_say
+    card = _card_with_catalog()
+    got = s9_say._para_of(type("G", (), {
+        "reason_lines": [],
+        "reason": ("홈은 S01-home 으로 최근 흐름이 살아 있다. "
+                   "원정은 IR02-home 결장이 걸려 있다. "
+                   "Marcinho 가 선발로 나온다.")})(), card=card)
+    refs = [list(x.fact_refs) for x in got.sentences]
+    assert len(got.sentences) == 3, refs
+    assert "S01-home" in refs[0], refs
+    assert "IR02-home" in refs[1], refs
+    #: 🔴 선수 **이름**도 읽는다(`P:{이름}` 꼬리 · `new_fact_check` 와 같은 수법)
+    assert any("Marcinho" in x for x in refs[2]), refs
+
+
+def test_para_never_invents_an_id() -> None:
+    """🔴 카탈로그에 **없는** 글자는 근거로 세지 않는다(#4)."""
+    from app.core.stages import s9_say
+    card = _card_with_catalog()
+    got = s9_say._para_of(type("G", (), {
+        "reason_lines": [],
+        "reason": ("ZZ9 가 어쩌고 한다. Ronaldo 가 뛴다. 그래서 홈이 낫다.")})(),
+        card=card)
+    flat = [x for one in got.sentences for x in (one.fact_refs or [])]
+    assert flat == [], flat
+
+
+def test_i_censor_passes_with_three_kinds() -> None:
+    """🔴🔴 그 결과로 `(i) 구체성` 이 **열린다**(종류 셋이면 통과)."""
+    from app.core.stages import s9_audit, s9_say
+    card = _card_with_catalog()
+    para = s9_say._para_of(type("G", (), {
+        "reason_lines": [],
+        "reason": ("홈은 S01-home 으로 최근 흐름이 살아 있다. "
+                   "원정은 IR02-home 결장이 걸려 있다. "
+                   "Marcinho 가 선발로 나온다.")})(), card=card)
+    bad = [x for x in (s9_audit.reason_check(para, card=card) or [])
+           if "(i)" in x]
+    assert not bad, bad
+
+
+def test_check_passes_the_card_to_para() -> None:
+    """🔴 배선 — `check` 가 카드를 넘긴다(카탈로그가 거기서 나온다)."""
+    from app.core.stages import s9_say
+    assert "_para_of(got, card=card)" in _src(s9_say.check)
