@@ -174,6 +174,21 @@ async def find(*, team: str, opponent: str = "", day: date | None = None,
     if found is not None:
         got.rows.append(found)
         return got
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **3번 — LLM 이 이름 후보만 댄다**(사용자 지시 2026-10-11)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 2026-10-11 하루에 **네 번** 경기를 못 찾았다(`openworld_not_found` 둘 ·
+    #     `match_not_found` · 한글 `위트레흐트` 미등록) — 넷 다 **이름 문제**다.
+    #  🔴 LLM 은 **글자(팀 이름·슬러그)** 만 내고, 우리가 **팀 색인에서 확인한
+    #     것만** 쓴다 — 지어낸 슬러그는 색인에 없어 자동으로 버려진다(#4).
+    #  🔴 **색인 사다리 뒤**에 둔다(여기) — 흔한 길에서는 LLM 을 안 부른다.
+    found = await _by_llm_names(net, asked=team, day=day, league=league,
+                                opponent=opponent, got=got,
+                                board_text=board_text, spell=spell)
+    if found is not None:
+        got.rows.append(found)
+        return got
 
     opened = 0
     seen_ids: set[str] = set()
@@ -425,6 +440,57 @@ async def find_and_store(pool, *, team: str, opponent: str = "",
     logger.info("[findgame] %d경기를 슬레이트에 적었다 — id %s",
                 len(got.ids), got.ids)
     return got
+
+
+async def _by_llm_names(net, *, asked: str, day: date, league: str,
+                        opponent: str, got: Found, board_text: str,
+                        spell: dict | None) -> dict | None:
+    """🔴🔴 3번 — **LLM 이 댄 이름 후보로 색인을 한 번 더** 돈다.
+
+    🔴 LLM 출력은 글자뿐이고, `findwriter.confirm` 이 **팀 색인에서 확인**한
+       것만 남긴다. 확인된 이름으로 `_by_index` 를 다시 부른다(사다리 재사용).
+    ⚠️ **재생에서는 안 돈다** — 녹음이 그 질문을 모른다.
+    ⚠️ 못 찾으면 `None` 이고 검색 단(④)이 그대로 돈다.
+    """
+    # 🔴 재생 판정은 `cassette.mode()` 하나가 한다(사본 금지) — ⚠️ 내가
+    #    `replaying()` 으로 적었다가 `ImportError` 를 봤다(없는 이름이다).
+    from app import cassette as _cas
+    if _cas.mode() == _cas.REPLAY:
+        got.tried.append("3번 LLM 이름 후보 — ⬜ 재생이라 **안 돌렸다**")
+        return None
+    from app.collect import fotmob as _fm
+    from app.core import discover as _d
+    from app.core import findwriter as _fw
+    # 🔴 `findwriter` 는 상태 기록에 적는다 — 이 함수에는 `RunState` 가 없다.
+    #    ⚠️ 그래서 **얇은 그릇**을 주고, 그 줄을 `got.tried` 로 옮긴다(사라지지
+    #    않게 · #3). 새 전역을 만들지 않는다.
+    from app.core.state import RunState as _RS
+    said_state = _RS()
+    plan = _fw.ask(str(asked), state=said_state, day=str(day),
+                   aliases=_d.aliases_of(str(asked)))
+    got.tried += [f"3번 {x}" for x in said_state.notes[-4:]]
+    if plan is None:
+        return None
+    teams, bad_t = _fw.keep_teams(list(plan.teams))
+    slugs, bad_s = _fw.keep_slugs(list(plan.slugs))
+    try:
+        idx = await _fm.team_index(net)
+    except Exception as exc:                                # noqa: BLE001
+        got.tried.append(f"3번 — 팀 색인을 못 받았다({exc!r:.40})")
+        return None
+    ok, said = _fw.confirm(idx, names=teams, slugs=slugs)
+    said_all = _fw.said_of(teams=teams, slugs=slugs, ok=ok,
+                           bad=[*bad_t, *bad_s])
+    got.tried.append(f"3번 LLM 이름 후보 — {said_all} · {said}")
+    logger.info("[findgame] 3번 LLM 이름 후보 — %s", said_all)
+    for _tid, slug in ok:
+        # 🔴 확인된 **슬러그 글자**로 사다리를 다시 돈다(그 함수가 일정까지 본다)
+        row = await _by_index(net, team=str(slug).replace("-", " "),
+                              opponent=opponent, day=day, league=league,
+                              got=got, board_text=board_text, spell=spell)
+        if row is not None:
+            return row
+    return None
 
 
 async def _by_index(net, *, team: str, opponent: str, day: date,
