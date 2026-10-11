@@ -162,6 +162,13 @@ async def main(argv: list[str]) -> int:
     t0 = time.monotonic()
     # 🔴 `--deep` 이면 **긴 카드**(열네 블록)를 낸다 — 1겹은 `/analyze` 가 기본이고
     #    긴 카드는 `/자세히` 다(지시 2026-10-09(3차) §1). ⚠️ 같은 핸들러를 쓴다.
+    # 🔴🔴 **사람이 준 라인업 캡처**(사용자 지시 2026-10-11) — `--xi <그림>`
+    #    ⚠️ fotmob 이 킥오프 40분 전에도 `predicted` 인 일이 있다(실측).
+    if "--xi" in argv:
+        import app.bot.main as _bm
+        said = argv[argv.index("--xi") + 1]
+        _bm.XI_IMAGE = said
+        print(f"[run_stage8] 🖼 XI 캡처 — {said}")
     if "--deep" in argv:
         from app.bot.main import cmd_deep
         msg = _Msg(f"/자세히 {arg}")

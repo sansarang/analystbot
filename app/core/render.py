@@ -195,6 +195,15 @@ def block3_gaps(card: Card) -> list[str]:
     return out
 
 
+def _host_of(said: object) -> str:
+    """🔴 주소에서 **호스트**만. 주소가 아니면 그 글자를 그대로(`user_capture`)."""
+    one = str(said or "").strip()
+    if "://" not in one:
+        return one
+    got = one.split("/")
+    return got[2] if len(got) > 2 else one
+
+
 def _head(card: Card) -> str:
     from app import timefmt
     m = card.match
@@ -240,7 +249,11 @@ def _head(card: Card) -> str:
     if card.facts.xi:
         from app.core import lineups as _ln
         kinds = {str(v.state or "") for v in card.facts.xi.values()} - {""}
-        got_src = sorted({str(getattr(v, "source_url", "") or "").split("/")[2]
+        # 🔴🔴 **주소가 아닌 출처도 있다** — ⚠️ 실사고 2026-10-11(스포팅 KC):
+        #    사람이 준 캡처 XI 의 출처는 `user_capture` 라 `/` 가 없고,
+        #    `split("/")[2]` 가 **IndexError 로 봇을 통째로 죽였다**(카드 0장).
+        #    🔴 호스트를 못 뽑으면 **그 글자를 그대로** 쓴다(버리지 않는다 · #3).
+        got_src = sorted({_host_of(getattr(v, "source_url", ""))
                           for v in card.facts.xi.values()
                           if str(getattr(v, "source_url", "") or "")})
         when = next((getattr(v, "fetched_at", None)

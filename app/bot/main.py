@@ -209,6 +209,11 @@ async def cmd_debug(m: Message) -> None:
         await m.answer(chunk)
 
 
+#: 🔴🔴 **사람이 준 라인업 캡처 경로**(도구가 넣는다 · 운영에서는 빈 글자다).
+#  ⚠️ 텔레그램 입구는 사진을 받으면 여기 대신 `analyze(xi_image=…)` 로 바로 준다.
+XI_IMAGE: str = ""
+
+
 async def _v6_card(pool, *, team: str = "", opponent: str = "", said: str = "",
                    again: bool = False, board_text: str = "",
                    debug: bool = False, deep: bool = False,
@@ -238,6 +243,9 @@ async def _v6_card(pool, *, team: str = "", opponent: str = "", said: str = "",
     fn = pipeline.reanalyze if again else pipeline.analyze
     got = await fn(asked, pool=pool, net=_net_mod.Net(),
                    chain=_search.build_chain(),
+                   # 🔴 **사람이 준 라인업 캡처**는 두 길에 다 간다(실사고
+                   #    2026-10-11: `--deep` 은 재분석 길이라 안 갔다)
+                   xi_image=XI_IMAGE,
                    **({} if again else {"board_text": board_text,
                                         "pick_key": pick_key}))
     if isinstance(got, Ambiguous):

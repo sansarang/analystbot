@@ -30,10 +30,49 @@ _LAST: dict[str, dict] = {}
 LAST_TTL_HOURS = 24
 
 
+def _xi_of(path: str, *, state: RunState) -> dict | None:
+    """🔴🔴 **사람이 준 라인업 캡처 → `{"home": 글, "away": 글}`**.
+
+    ══════════════════════════════════════════════════════════════════
+    🔴 왜 — 사용자 지시 2026-10-11 (스포팅 KC vs 포틀랜드)
+    ══════════════════════════════════════════════════════════════════
+
+    > 확정 XI 뜨면 다시 돌려라. 만일에 확인하지 못하면 내 데스크탑 바탕화면에
+    > 있다..캡쳐..
+
+    🔴 fotmob 이 **킥오프 40분 전에도 `predicted`** 였고(실측), 사용자 캡처에는
+       확정 XI 가 있었다 — 세 자리가 달랐다. ⚠️ 그런데 `s2_facts._fill_capture`
+       (소비자)와 `xicapture.parse`(파서)는 있는데 **채우는 곳이 없었다**(#2).
+    🔴 OCR 은 **로컬**(`app/core/ocr.py` · tesseract)이고 외부 API 를 안 부른다.
+    🔴 가름은 **차례**다 — 캡처 한 장에 두 팀이 위아래로 있으면 앞 11명이 홈,
+       다음 11명이 원정이다. ⚠️ 22줄이 안 되면 **쓰지 않는다**(지어내지 않는다).
+    """
+    said = str(path or "").strip()
+    if not said:
+        return None
+    from app.core import ocr as _ocr
+    from app.core import xicapture as _cap
+    text, why = _ocr.read(said)
+    rows = _cap.parse(text)
+    forms = _cap.forms_of(text)
+    state.note(f"XI 캡처 — {why} · 글자 {len(text)} · 번호 줄 {len(rows)} · "
+               f"포메이션 {forms or '못 읽음'}")
+    if len(rows) < 22:
+        state.note(f"XI 캡처 — 🔴 번호 줄이 {len(rows)}개다(22 미만) — **쓰지 않는다**")
+        return None
+
+    def _block(got: list[dict], form: str) -> str:
+        head = f"{form}\n" if form else ""
+        return head + "\n".join(f"{r['number']} {r['name']}" for r in got)
+
+    return {"home": _block(rows[:11], forms[0] if forms else ""),
+            "away": _block(rows[11:22], forms[1] if len(forms) > 1 else "")}
+
+
 async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
                   state: RunState | None = None, board: Board | None = None,
                   board_text: str = "", board_image: str = "",
-                  pick_key: str = "",
+                  pick_key: str = "", xi_image: str = "",
                   now: datetime | None = None) -> Card | Ambiguous:
     """🔴 질문 하나 → 카드 하나. ⚠️ 경기를 **못 고르면** `Ambiguous`(묻는다).
 
@@ -66,7 +105,8 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
                 f"{len(getattr(got_board, 'lines', []) or [])}줄 · 못 읽음 {len(bad)}")
         # 🔴 OCR 글자가 **경기 찾기의 단서**다(§1-1 ①)
         board_text = ocr_text or board_text
-    elif board_text.strip():
+    xi_said = _xi_of(xi_image, state=st)
+    if board_text.strip():
         from app.core import board as _board
         got_board, extra, bad = _board.parse(board_text)
         st.note(f"보드 {len(got_board.lines)}줄 · 추가 {len(extra)} · "
@@ -83,7 +123,7 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #  ⚠️ 한 층이 실패해도 다른 층을 막지 않는다(§1 마지막 줄) — 그래서 `gather` 로
     #     나란히 돌리고 **사유를 들고 빈 층**이 지나간다.
     facts, (feed_mk, user_mk) = await asyncio.gather(
-        s2_facts.run(ref, state=st, net=net),
+        s2_facts.run(ref, state=st, net=net, xi_capture=xi_said),
         s2c_market.run(ref, pool=pool, net=net, state=st, board=got_board))
     base_p, adj_p = await s2b_base.run(ref, facts, state=st, net=net)
     # 🔴🔴 §2 경우의 수 — **코드만**(LLM 없음). 순위표가 없으면 빈 표다
@@ -324,7 +364,7 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     return card
 
 
-async def reanalyze(raw: str, *, pool: Any, net: Any, chain: Any,
+async def reanalyze(raw: str, *, pool: Any, net: Any, chain: Any, xi_image: str = "",
                     state: RunState | None = None,
                     now: datetime | None = None) -> Card | Ambiguous:
     """🔴🔴 **재분석**(축구 완성 지시서 §4) — s2 만 다시 돌고 s3·s4 는 **안 돈다**.
@@ -349,13 +389,13 @@ async def reanalyze(raw: str, *, pool: Any, net: Any, chain: Any,
     if last is None:
         st.note("재분석 — 🔴 마지막 실행이 **없다** → 전체를 새로 돈다(§4-5)")
         return await analyze(raw, pool=pool, net=net, chain=chain, state=st,
-                             now=now)
+                             now=now, xi_image=xi_image)
     old = last["at"]
     if (when - old).total_seconds() > LAST_TTL_HOURS * 3600:
         st.note(f"재분석 — 마지막 실행이 {LAST_TTL_HOURS}시간을 넘었다"
                 f"({old:%m-%d %H:%M}Z) → 전체를 새로 돈다(§4-5)")
         return await analyze(raw, pool=pool, net=net, chain=chain, state=st,
-                             now=now)
+                             now=now, xi_image=xi_image)
     before: Card = last["card"]
     # ── ② s2 만 다시 돈다(기사·추출은 그대로 쓴다)
     facts = await s2_facts.run(ref, state=st, net=net)

@@ -23,22 +23,59 @@ import re
 logger = logging.getLogger(__name__)
 
 #: 🔴 `41 박만호` · `9 엘쿠라노` · `33 대니 바커` — 번호와 이름
-_ROW = re.compile(r"(?<!\d)(\d{1,2})\s+([^\d\n][^\n]{0,24}?)\s*(?=$|\n|\d{1,2}\s)")
+#
+#  🔴🔴 **번호 뒤 공백이 없을 수 있다** — ⚠️ 실사고 2026-10-11(스포팅 KC 캡처):
+#     OCR 이 한 줄에 선수 **셋**을 담았고(`10 다비드 … 21차라 … 80 오르티스`)
+#     `21차라` 가 번호+이름 사이에 공백이 없어 **그 줄 전체가 안 잡혔다**
+#     (두 선수를 통째로 잃었다). 🔴 `\s*` 로 받고, 다음 선수의 시작도
+#     `\d{1,2}\D`(번호 뒤가 글자여도 된다)로 본다.
+_ROW = re.compile(r"(?<!\d)(\d{1,2})\s*([^\d\n][^\n]{0,24}?)\s*(?=$|\n|\d{1,2}\D)")
 #: 🔴 포메이션 글자 — `4-4-2`·`4-2-3-1`
 _FORM = re.compile(r"\b(\d(?:-\d){1,3})\b")
+
+
+#: 🔴 선수 줄이 **아닌** 것을 가리키는 낱말(캡처 머리글)
+NOT_PLAYER: tuple[str, ...] = ("감독", "코치", "선발", "교체", "벤치", "후보",
+                               "경기", "포메이션", "lineup", "coach", "manager")
+#: 🔴 이름에 **글자**가 이만큼은 있어야 한다(한글 음절 또는 로마자)
+_LETTER = re.compile(r"[가-힣A-Za-z]")
 
 
 def parse(said: str) -> list[dict]:
     """🔴 캡처 글 → `[{"number": "41", "name": "박만호"}]`. 순서는 글 그대로.
 
     ⚠️ 번호가 없는 줄은 **버린다** — 번호가 이 통로의 열쇠다.
+    🔴🔴 **OCR 잡음을 거른다**(실사고 2026-10-11 · 스포팅 KC 캡처):
+       `2 감독 위키` · `7 3) €` · `0 ()` · `0 a` 가 선수 줄로 섞여 **11/11 가름이
+       밀렸다**(홈에 10명, 원정에 엉뚱한 줄). 거르는 기준은 셋이고 **이름을
+       지어내지 않는다**:
+         ① 등번호 `0` 은 버린다(OCR 이 동그라미를 0 으로 읽는다)
+         ② 이름에 글자(한글·로마자)가 **2개 미만**이면 버린다
+         ③ `감독`·`코치` 같은 **머리글 낱말**이 들어 있으면 버린다
     """
     out: list[dict] = []
     for num, nm in _ROW.findall(str(said or "")):
         one = " ".join(str(nm).split()).strip(" ·-")
-        if one and not one.isdigit():
-            out.append({"number": str(int(num)), "name": one})
+        if not one or one.isdigit():
+            continue
+        if int(num) == 0:
+            continue
+        if len(_LETTER.findall(one)) < 2:
+            continue
+        low = one.lower()
+        if any(w in low for w in NOT_PLAYER):
+            continue
+        out.append({"number": str(int(num)), "name": one})
     return out
+
+
+def forms_of(said: str) -> list[str]:
+    """🔴 캡처 글의 **포메이션 전부**(위→아래 차례). 없으면 빈 목록.
+
+    ⚠️ 한 장에 두 팀이 있으면 포메이션도 둘이다 — `formation_of` 는 **첫 것**만
+       주므로 원정 포메이션이 홈 것으로 붙을 자리였다(실측 2026-10-11).
+    """
+    return [m.group(1) for m in _FORM.finditer(str(said or ""))]
 
 
 def formation_of(said: str) -> str:

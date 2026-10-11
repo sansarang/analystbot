@@ -40,9 +40,18 @@ class _Page:
 
 
 async def run(ref: MatchRef, *, state: RunState, net: Any = None,
-              search: Any = None) -> Facts:
-    """🔴 그 경기의 구조 사실. ⚠️ 실패해도 **빈 `Facts`** 를 돌려준다(§5)."""
+              search: Any = None,
+              xi_capture: dict | None = None) -> Facts:
+    """🔴 그 경기의 구조 사실. ⚠️ 실패해도 **빈 `Facts`** 를 돌려준다(§5).
+
+    🔴🔴 `xi_capture` 는 **사람이 준 라인업**이다(`{"home": 글, "away": 글}`).
+       ⚠️ 실사고 2026-10-11: 소비자(`_fill_capture`)와 파서는 있는데 **채우는 곳이
+       없었다** — 통로가 통째로 안 이어져 있었다(#2 배선). 사용자가 캡처를 보내도
+       봇이 쓸 수 없었다.
+    """
     box: dict[str, Any] = {}
+    if xi_capture:
+        box["xi_capture"] = dict(xi_capture)
     xi: dict[str, XI] = {}
     missing: dict[str, list] = {}
     coach: dict[str, Any] = {}

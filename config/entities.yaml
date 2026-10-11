@@ -60,6 +60,26 @@ teams:
       실측 2026-10-11 — fotmob 팀 색인 슬러그 `orlando-city` · id 267810
       ⚠️ 같은 색인에 `orlando-city-b`(722266 · 2군)·`orlando-pride`(여자)가 있다
 
+  Sporting Kansas City:
+    aliases:
+      ko: [스포팅 캔자스시티, 캔자스시티, 스포팅 캔자스, 캔자스]
+      en: [Sporting KC, Kansas City]
+    source: |
+      사용자 지시 2026-10-11 — 사용자가 `스포팅 캔자스시티` 로 물었다(MLS)
+      실측 2026-10-11 — fotmob 팀 색인 슬러그 `sporting-kansas-city` · id 6604
+      ⚠️ 같은 색인에 `sporting-kansas-city-ii`(722268 · 2군)·`kansas-city-current`
+         (1237561 · NWSL 여자)가 있다
+
+  Portland Timbers:
+    aliases:
+      ko: [포틀랜드 팀버스, 포틀랜드, 포틀랜드 팀버]
+      en: [Timbers]
+    source: |
+      사용자 지시 2026-10-11 — 사용자가 `포틀랜드 팀버스` 로 물었다(MLS)
+      실측 2026-10-11 — fotmob 팀 색인 슬러그 `portland-timbers` · id 307690
+      ⚠️ 같은 색인에 `portland-timbers-2`(614322 · 2군)·`portland-thorns`
+         (433029 · NWSL 여자)가 있다
+
   Seattle Sounders FC:
     aliases:
       ko: [시애틀, 시애틀 사운더스, 시애틀 사운더스 FC]

@@ -932,3 +932,57 @@ def test_v7_카드가_상성_확률의_유도를_적는다():
     assert "36%" in got and "24%" in got and "40%" in got, got
     assert "1.398" in got and "1.456" in got, got
     assert "유도 사슬" in got and "axis0" in got, got
+
+
+def test_v7_캡처_XI_통로가_이어져_있고_카드를_안_죽인다():
+    """🔴🔴 **실사고 2026-10-11**(스포팅 KC vs 포틀랜드) — 둘이 한꺼번에 났다.
+
+    ① 🔴 **통로가 안 이어져 있었다** — 소비자(`s2_facts._fill_capture`)와 파서
+       (`xicapture.parse`)는 있는데 `box["xi_capture"]` 를 **채우는 곳이 없었다**
+       (#2 배선). 사용자가 캡처를 보내도 봇이 쓸 수 없었다.
+    ② 🔴 캡처 XI 의 출처는 `user_capture`(주소가 아니다)인데 카드 머리글이
+       `split("/")[2]` 를 해서 **IndexError 로 봇이 통째로 죽었다**(카드 0장).
+
+    ⚠️ 돌연변이: `_xi_of` 를 지우면 캡처가 다시 안 들어가고, `_host_of` 를 되돌리면
+       캡처 실행이 다시 죽는다.
+    """
+    import inspect
+
+    from app.core import pipeline as _pl
+    from app.core import render as _r
+    from app.core.stages import s2_facts as _s2
+
+    # ① 배선 — 파이프라인이 캡처를 읽고 s2 가 받는다
+    assert "xi_image" in inspect.signature(_pl.analyze).parameters
+    assert "xi_capture" in inspect.signature(_s2.run).parameters
+    said = inspect.getsource(_pl.analyze)
+    assert "xi_capture=xi_said" in said, "🔴 s2 로 안 넘긴다"
+    assert "xi_image" in inspect.signature(_pl.reanalyze).parameters, (
+        "🔴 재분석 길(`--deep`)로는 캡처가 안 간다")
+    # ② 주소가 아닌 출처가 카드를 죽이지 않는다
+    assert _r._host_of("user_capture") == "user_capture"
+    assert _r._host_of("https://www.fotmob.com/match/1") == "www.fotmob.com"
+
+
+def test_v7_캡처_파서가_OCR_잡음과_붙은_번호를_견딘다():
+    """🔴 실측 2026-10-11 — 그 캡처 한 장이 파서의 구멍 **둘**을 드러냈다.
+
+    ① OCR 잡음이 선수 줄로 섞였다 — `2 감독 위키` · `0 ()` · `7 3) €`
+       → 11/11 가름이 **밀렸다**(홈 10명 · 원정에 엉뚱한 줄).
+    ② 한 줄에 선수가 셋이고 `21차라` 처럼 **번호 뒤 공백이 없었다**
+       → 그 줄이 통째로 안 잡혀 **두 선수를 잃었다**.
+    """
+    from app.core import xicapture as _cap
+    said = ("4-4-2                    감독 위키\n"
+            "30 클리블랜드\n0 ()\n7 3) €\n"
+            "10 다비드 페레이라 다 코스타     21차라        80 오르티스\n")
+    rows = _cap.parse(said)
+    got = {r["number"]: r["name"] for r in rows}
+    assert "0" not in got and not any("감독" in v for v in got.values()), got
+    assert got.get("30") == "클리블랜드", got
+    # 🔴 **붙은 번호**도 잡는다(그 줄의 셋 다)
+    assert got.get("21") == "차라", got
+    assert got.get("80") == "오르티스", got
+    assert "다비드" in str(got.get("10")), got
+    # 🔴 포메이션은 **둘 다** 읽는다(한 장에 두 팀)
+    assert _cap.forms_of("4-4-2 … 4-3-3") == ["4-4-2", "4-3-3"]
