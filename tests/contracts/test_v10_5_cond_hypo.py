@@ -52,7 +52,7 @@ def test_cond_hypo_from_losing_streak() -> None:
              "Shonan Bellmare **3연패** — 승리에 더 간절하다")])
     assert got, got
     one = got[0]
-    assert one.side in ("home", "away")
+    assert one.team in ("home", "away")
     rows = [*one.reasons, *one.breaks]
     assert rows and all(x.signal is not None for x in rows), rows
     assert any("먼저" in x.text for x in rows), [x.text for x in rows]

@@ -473,9 +473,23 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, chain: Any,
                  if str(getattr(sub, "group", "")) in box else sub)
                 for sub in subs]
         state.note(f"s3 개념 추가 — {box}(선수단 교체 의심)")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 ②③ **LLM 이 질의를 쓰고 매체를 고른다**(사용자 지시 2026-10-11)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실측 2026-10-11(네 경기): 수확이 전부 0이었고 상류 원인이 *"그 경기
+    #     기사를 애초에 못 집어 온다"* 였다 — 질의가 **영어 한 꼴뿐**이어서다
+    #     (`리그 미상`이면 코드가 영어만 던진다). 일본어 매체에 소식이 있는데
+    #     `Shonan Bellmare injury news` 를 던졌다.
+    #  🔴 LLM 은 **글자만** 낸다(질의·도메인) — 사실·숫자·판정에 닿지 않는다.
+    #     던지는 통로는 **기존 사슬**이고, 매체는 `site:` 질의로 들어간다.
+    #  ⚠️ 실패하면 빈 목록이고 **코드 질의가 그대로 돈다**(퇴로가 있다).
+    said_extra = await _llm_queries(ref, state=state, net=net)
     # ── ① 찾기 — **동시에**(순서가 결과를 바꾸지 않는다)
     found = await asyncio.gather(
-        *[_candidates(sub, ref, state=state, chain=chain) for sub in subs],
+        *[_candidates(sub, ref, state=state, chain=chain,
+                      queries=[*queries_for(sub, ref), *said_extra])
+          for sub in subs],
         return_exceptions=True)
     # ── ② 자리 잡고 받기 — 🔴 **하위 순서대로**(배분이 결정적이어야 한다)
     claimed: set[str] = set(cache)
@@ -531,6 +545,32 @@ class _RefShim:
         self.home_id, self.away_id = ref.home, ref.away
         self.competition, self.sport = ref.competition, ref.sport
         self.langs = tuple(ref.langs)
+
+
+async def _llm_queries(ref: MatchRef, *, state: RunState, net: Any
+                       ) -> list[tuple[str, str]]:
+    """🔴🔴 ②③ — LLM 질의 + 확인된 매체의 `site:` 질의. `[(질의, 언어)]`.
+
+    🔴 언어 꼬리표는 **`und`**(모름)로 붙인다 — 현지어가 섞여 있어 한 언어로
+       말할 수 없다. ⚠️ 사슬은 그 꼬리표를 엔진 선택에만 쓴다.
+    ⚠️ 재생(카세트)에서는 **안 부른다** — 녹음이 그 질의를 모른다(실사고
+       2026-10-10 과 같은 병: 라이브에만 이득인 질의가 고정물을 깎는다).
+    """
+    if _replaying():
+        state.note("②③ 질의 쓰기 — ⬜ 재생이라 **안 돌렸다**(녹음이 모른다)")
+        return []
+    from app.core import discover as _d
+    from app.core import querywriter as _qw
+    aliases = [*_d.aliases_of(str(getattr(ref, "home_name", "") or "")),
+               *_d.aliases_of(str(getattr(ref, "away_name", "") or ""))]
+    langs = list(getattr(ref, "langs", None) or ["en"])
+    rows, sites, _why = _qw.ask(ref, state=state, aliases=aliases,
+                                langs=langs)
+    ok: list[str] = []
+    if sites:
+        ok, _said = await _qw.check_hosts(net, sites, state=state)
+    said = [*rows, *_qw.site_queries(ok, rows)]
+    return [(q, "und") for q in said[:_qw.MAX_QUERIES]]
 
 
 async def _candidates(sub: Any, ref: MatchRef, *, state: RunState,
