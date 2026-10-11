@@ -77,10 +77,19 @@ class RunState:
             raise KeyError(f"🔴 모르는 깔때기 칸이다: {stage!r} — {STAGES}")
         self.counts[stage] = int(n)
 
-    def drop(self, what: str, reason: DropReason, detail: str = "") -> None:
-        """🔴 버린다 — **까닭이 반드시 남는다**(#3)."""
-        self.drops.append(Drop(what=str(what), reason=reason,
-                               detail=str(detail)))
+    def drop(self, what: str, reason: DropReason, detail: str = "",
+             *, stage: str = "", title: str = "") -> None:
+        """🔴 버린다 — **까닭이 반드시 남는다**(#3).
+
+        🔴 `stage`·`title` 은 **손실 감사**가 쓴다(사용자 지시 2026-10-11 ②) —
+           *"버린 단계·사유·제목을 표로"*. ⚠️ 안 주면 `what` 앞머리에서 단계를
+           짚는다(옛 호출부를 고치지 않아도 표가 선다).
+        """
+        said = str(what or "")
+        self.drops.append(Drop(
+            what=said, reason=reason, detail=str(detail),
+            stage=str(stage or (said.split("/", 1)[0] if "/" in said else "")),
+            title=str(title or "")))
 
     def note(self, said: str) -> None:
         self.notes.append(str(said))

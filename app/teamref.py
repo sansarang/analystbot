@@ -508,6 +508,36 @@ class Registry:
         k = norm(text)
         got = list(self.index.get(k) or [])
         why_bare = ""
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **이름 없는 임시 열쇠는 합친다**(사용자 지시 2026-10-11 ②)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 실사고 2026-10-11(광주–울산): fotmob 이 `Ulsan HD FC` 로 주는데
+        #     54팀 표는 `Ulsan HD` 다. 조직 표시를 걷으면 같지만(`ulsanhd`)
+        #     **먼저 임시 열쇠가 발급돼 저장소에 남아**(`name:ulsanhdfc →
+        #     team:000620`) 그 뒤로는 정확 색인이 먼저 맞아 버렸다. 그 열쇠는
+        #     **이름이 하나도 없어서** 신원 선필터가 한글 기사를 전부 버렸다
+        #     (`identity_mismatch` 7건 · 문서 0건).
+        #  🔴 그래서 *정확 색인이 **이름 없는 열쇠**만 주면* 조직 표시를 걷어 한 번
+        #     더 보고, **이름 있는 팀이 딱 하나면 합친다**(먼저 발급된 번호가 남는다).
+        #  ⚠️ 둘 이상이면 **합치지 않는다** — 남의 팀과 섞는 길이다.
+        if got and all(not (self.teams.get(x).names if self.teams.get(x)
+                            else None) for x in got):
+            # ⚠️ `bare_index` 에는 **조직 표시가 없는 이름이 안 들어간다**
+            #    (`add` 의 `bk != k` 조건) — `Ulsan HD` 는 걷어도 그대로이므로
+            #    그 색인에 없다. 🔴 그래서 **정확 색인도 걷은 꼴로 한 번 본다**.
+            bk = bare(text)
+            cand = [x for x in [*(self.index.get(bk) or []),
+                                *(self.bare_index.get(bk) or [])]
+                    if x not in got and self.teams.get(x)
+                    and self.teams[x].names]
+            cand = list(dict.fromkeys(cand))
+            if len(cand) == 1:
+                keep, drop = sorted((cand[0], got[0]))
+                self.merge(keep, drop)
+                got = [keep]
+                why_bare = (f" (🔴 이름 없는 임시 열쇠 `{drop}` 를 `{keep}` 로 "
+                            f"합쳤다 — 조직 표시를 걷어 맞췄다)")
         if not got:
             # ══════════════════════════════════════════════════════════
             # 🔴🔴 **조직 표시를 걷고 한 번 더**(사용자 지시 2026-10-04 ①)

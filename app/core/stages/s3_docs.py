@@ -226,7 +226,22 @@ def names_of(ref: MatchRef) -> tuple[list[str], list[str]]:
     #    쓴 표기를 버린다(⚠️ 열쇠가 어긋났을 때 그 사실이 조용히 묻힌다).
     home = [n for n in (*adapt.names_of_key(ref.home), ref.home_name) if n]
     away = [n for n in (*adapt.names_of_key(ref.away), ref.away_name) if n]
-    return list(dict.fromkeys(home)), list(dict.fromkeys(away))
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **한글 보탬**(사용자 지시 2026-10-11 ②) — 영어 표기만으로 판정 금지
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실측 2026-10-11(광주–울산): 원정 열쇠가 **이름 없는 임시 열쇠**여서
+    #     쓸 이름이 `Ulsan HD FC` 한 글자뿐이었다 — 한글 기사가 통과할 길이
+    #     없었다(`identity_mismatch` 7건 · 문서 0건). 열쇠 갈림은 `teamref` 가
+    #     고쳤고, 그래도 **표에 없는 약칭**은 이 표가 더한다.
+    #  🔴 원본은 `config/names_ko.yaml` 하나다(`rules.ko_of` 가 읽는다).
+    from app import rules as _rules
+    for box, side in ((home, ref.home_name), (away, ref.away_name)):
+        for nm in list(box):
+            box.extend(_rules.ko_of(nm))
+        box.extend(_rules.ko_of(str(side or "")))
+    return (list(dict.fromkeys(x for x in home if x)),
+            list(dict.fromkeys(x for x in away if x)))
 
 
 def identity_ok(title: str, snippet: str, names: tuple[list[str], list[str]]
@@ -542,19 +557,23 @@ async def _candidates(sub: Any, ref: MatchRef, *, state: RunState,
         ok_d, tier, said = domains.verdict(url, sport=ref.sport)
         if not ok_d:
             state.drop(f"s3/{name}/{url[:40]}", DropReason.TYPE_OFF_CATALOG,
-                       f"도메인 등급 — {said[:70]}")
+                       f"도메인 등급 — {said[:70]}", stage="s3/도메인",
+                       title=str(getattr(h, "title", "") or "")[:70])
             continue
         # 🔴 **신원 선필터**(§5 s3-3) — 두 팀 어느 이름도 없으면 남의 글이다
-        ok_i, said_i = identity_ok(str(getattr(h, "title", "") or ""),
+        said_t = str(getattr(h, "title", "") or "")
+        ok_i, said_i = identity_ok(said_t,
                                    str(getattr(h, "snippet", "") or ""), who)
         if not ok_i:
+            # 🔴 ② — **제목을 함께 남긴다**(손실 감사가 그 글이 무엇이었나를 본다)
             state.drop(f"s3/{name}/{url[:40]}", DropReason.IDENTITY_MISMATCH,
-                       said_i[:90])
+                       said_i[:90], stage="s3/신원", title=said_t[:70])
             continue
         old, said_old = datehint.too_old(url, str(getattr(h, "snippet", "")
                                                  or ""))
         if old:
-            state.drop(f"s3/{name}/{url[:40]}", DropReason.STALE, said_old[:80])
+            state.drop(f"s3/{name}/{url[:40]}", DropReason.STALE,
+                       said_old[:80], stage="s3/날짜", title=said_t[:70])
             continue
         _count("kept_date")
         kept.append((h, str(tier)))

@@ -26,6 +26,53 @@
 
 🆕 **새 사실(72시간)** — 🔴 **0건** · 기사 변수 5개(F 하위에서 온 것 0개) · docs 8 · hits 199 · kept_date 131 · queries 20
 
+🧾 **손실 표**(버린 단계 · 사유 · 제목)
+
+| 단계 | 사유 | 제목 | 상세 |
+|---|---|---|---|
+| `s3/신원` | `identity_mismatch` | Celtic handed injury boost during international break | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'celtic handed injury boost du |
+| `s3/신원` | `identity_mismatch` | Korean Track and Field Concludes Asian Games Without a Silver Medal fo | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'korean track and field conclu |
+| `s3/신원` | `identity_mismatch` | [ASIAN GAMES] S. Korea reach men's football final | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — "[asian games] s. korea reach  |
+| `s3/신원` | `identity_mismatch` | Asian Games 2026 Updates: India Clinch Historic Gold in Women's Compou | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'asian games 2026 updates: ind |
+| `s3/신원` | `identity_mismatch` | Asian Games 2026: Sumit Nagal in men's Tennis singles QFs; Dhakshinesw | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — "asian games 2026: sumit nagal |
+| `s3/신원` | `identity_mismatch` | Asian Games 2026: Five golds, historic breakthroughs make archery one  | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'asian games 2026: five golds, |
+| `s3/신원` | `identity_mismatch` | FAO Council · FAO Governing Bodies · Food and Agriculture Organization | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'fao council · fao governing b |
+| `s3/신원` | `identity_mismatch` | J Manual Coffee Grinder | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'j manual coffee grinder 17시간  |
+| `s3/신원` | `identity_mismatch` | Cosmetics, Health & Beauty Fulfilment · J&J | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'cosmetics, health & beauty fu |
+| `s3/도메인` | `type_off_catalog` | South Korea vs Uzbekistan Prediction: The hosts will confirm their cla | 도메인 등급 — 🔴 등급 `tip` — 본문을 받지 않는다(§4-3) · 변수 근거 금지 |
+| `s3/신원` | `identity_mismatch` | Endless search for graves of forgotten independence fighters | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'endless search for graves of  |
+| `s3/신원` | `identity_mismatch` | S. Korea's Jang Se-yun wins silver in women's judo at Asian Games | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — "s. korea's jang se-yun wins s |
+| `s3/날짜` | `stale` | South Korea Uzbekistan | 🔴 **7일 밖이다** — 스니펫 날짜 2026-09-14, 지금보다 22일 전 (받지 않는다) |
+| `s3/신원` | `identity_mismatch` | [KOR] The Quantum Mechanics Success Law Changing the Future | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '[kor] the quantum mechanics s |
+| `s3/신원` | `identity_mismatch` | Sahan Bidappa - Gulf Times | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'sahan bidappa - gulf times 4일 |
+| `s3/신원` | `identity_mismatch` | [KOR] The Quantum Mechanics Success Law Changing the Future | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '[kor] the quantum mechanics s |
+| `s3/신원` | `identity_mismatch` | Tennis Player Kwon Soon-woo Retires in 11 Minutes Due to Left Knee Inj | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'tennis player kwon soon-woo r |
+| `s3/신원` | `identity_mismatch` | [ASIAN GAMES] S. Korea reach men's football final | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — "[asian games] s. korea reach  |
+| `s3/신원` | `identity_mismatch` | 잉글랜드는 노르웨이와의 경기를 앞두고 세 명의 선수가 결장하는 것을 우려하.... | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '잉글랜드는 노르웨이와의 경기를 앞두고 세 명의 선수가 |
+| `s3/신원` | `identity_mismatch` | 축구 뉴스, 페이지 1 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '축구 뉴스, 페이지 1 2일 전‘이미 전용기 타고 사 |
+| `s3/신원` | `identity_mismatch` | 국가별 사망원인 추정을 위한 WHO 자료 및 방법론 2000-2021 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '국가별 사망원인 추정을 위한 who 자료 및 방법론  |
+| `s3/신원` | `identity_mismatch` | Korea Republic World Cup Soccer Odds 2026 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'korea republic world cup socc |
+| `s3/신원` | `identity_mismatch` | World Cup 순위표 및 스탯 정보 · GoalAIFC | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'world cup 순위표 및 스탯 정보 · goala |
+| `s3/신원` | `identity_mismatch` | Maccabi Tel Aviv FC Israeli Premier League Soccer Odds 2026 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'maccabi tel aviv fc israeli p |
+| `s3/신원` | `identity_mismatch` | 월드컵, worldcup | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '월드컵, worldcup ' |
+| `s3/신원` | `identity_mismatch` | CH! 와 텍스트 또는 음성으로 채팅하세요 - AI 채팅을 무료로 안전하게 즐기세요 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'ch! 와 텍스트 또는 음성으로 채팅하세요 - ai  |
+| `s3/신원` | `identity_mismatch` | 싸이룩스 코리아 네트워크 :: CYLOOKS KOREA NETWORK | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '싸이룩스 코리아 네트워크 :: cylooks kore |
+| `s3/신원` | `identity_mismatch` | 2034년 유방암 치료제 시장 규모, 점유율, 성장 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '2034년 유방암 치료제 시장 규모, 점유율, 성장  |
+| `s3/도메인` | `type_off_catalog` | South Korea vs Uzbekistan Prediction: The hosts will confirm their cla | 도메인 등급 — 🔴 등급 `tip` — 본문을 받지 않는다(§4-3) · 변수 근거 금지 |
+| `s3/신원` | `identity_mismatch` | Asian Games 2026 Updates: India Clinch Historic Gold in Women's Compou | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'asian games 2026 updates: ind |
+| `s3/신원` | `identity_mismatch` | Asian Games 2026: Sumit Nagal in men's Tennis singles QFs; Dhakshinesw | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — "asian games 2026: sumit nagal |
+| `s3/신원` | `identity_mismatch` | Asian Games 2026: Five golds, historic breakthroughs make archery one  | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'asian games 2026: five golds, |
+| `s3/신원` | `identity_mismatch` | FAO Council · FAO Governing Bodies · Food and Agriculture Organization | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'fao council · fao governing b |
+| `s3/신원` | `identity_mismatch` | J Manual Coffee Grinder | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'j manual coffee grinder 17시간  |
+| `s3/신원` | `identity_mismatch` | Cosmetics, Health & Beauty Fulfilment · J&J | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'cosmetics, health & beauty fu |
+| `s3/신원` | `identity_mismatch` | FLY WING FW450 RC 헬리콥터 스페어 파트 안티 로테이션 브래킷 세일 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'fly wing fw450 rc 헬리콥터 스페어 파트 |
+| `s3/신원` | `identity_mismatch` | KC-SH531 로테이션 스테인레스 스틸 탑 승강식 프레셔 샤워 헤드 욕실 스프링클러.... | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'kc-sh531 로테이션 스테인레스 스틸 탑 승강식  |
+| `s3/신원` | `identity_mismatch` | '카멜레온' 리오넬 스칼로니 감독은 "2026년 월드컵에서 모든 선수를 기용할 팀.... | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '\'카멜레온\' 리오넬 스칼로니 감독은 "2026년  |
+| `s3/신원` | `identity_mismatch` | 외국인 고용허가제 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '외국인 고용허가제 160페이지28mb외국인 고용허가제 |
+| `s3/신원` | `identity_mismatch` | 직장에서 사회적 거리두기를 실천하는 방법 - Ideas (ko-KR) | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '직장에서 사회적 거리두기를 실천하는 방법 - idea |
+- ⚠️ **53줄 더 있다**(표는 40줄까지 적는다)
+- 합계 — `s3/body_missing` 6건 · `s3/sport_mismatch` 5건 · `s3/날짜/stale` 2건 · `s3/도메인/type_off_catalog` 3건 · `s3/신원/identity_mismatch` 63건 · `s4/team_tier_mismatch` 4건 · `s5/conflict` 1건 · `s5/duplicate` 5건 · `s5/stakes_vague` 1건 · `s5/type_content_mismatch` 1건 · `s6/replay_miss` 2건
+
 **🧠 라인업 전략 (자세히)** — 판정 `확정 XI 전`
 - 🔴 home: 🔴 **확정 XI 전 — 전략 분석 없음**(§1) · 지금 XI 는 `없음` · away: 🔴 **확정 XI 전 — 전략 분석 없음**(§1) · 지금 XI 는 `없음`
 

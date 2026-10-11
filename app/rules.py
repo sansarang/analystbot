@@ -882,6 +882,29 @@ OUTLOOK_MAX_OTHER = 2
 GOAL_BASELINES = "config/goal_baselines.yaml"
 
 
+#: 🔴 한글 이름 보탬 — 이름 대조(사용자 지시 2026-10-11 ②)
+NAMES_KO = "config/names_ko.yaml"
+
+
+def names_ko() -> dict:
+    """🔴🔴 **한글 이름 보탬** — `{"teams": {영문: [한글…]}, "players": {…}}`.
+
+    ⚠️ 팀 한글명의 **원본은 `teams_54.yaml`·`entities.yaml`** 이다 — 이 표는 그
+       둘이 말하지 않는 것만 든다(사본 금지 · #1).
+    """
+    box = dict(_load(NAMES_KO) or {})
+    return {"teams": dict(box.get("teams") or {}),
+            "players": dict(box.get("players") or {})}
+
+
+def ko_of(name: str) -> list[str]:
+    """🔴 그 영문 이름의 **한글 표기들**(팀·선수 둘 다 본다). 없으면 빈 목록."""
+    box = names_ko()
+    said = str(name or "").strip()
+    out = [*(box["teams"].get(said) or []), *(box["players"].get(said) or [])]
+    return [str(x) for x in out if str(x).strip()]
+
+
 #: 🔴 연맹 징계 공지 표 — 결장 사다리 칸 3(사용자 지시 2026-10-11 ①)
 LEAGUE_DISCIPLINE = "config/league_discipline.yaml"
 

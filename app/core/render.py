@@ -53,6 +53,9 @@ def card_text(card: Card, *, debug: bool = False) -> str:
         #    ⚠️ 왜 거기인가: 새 사실의 대부분이 **결장·복귀**라 같이 읽힌다.
         if num == "2b":
             out.append("\n" + new_facts_block(card))
+            # 🔴🔴 ② **손실 표**(사용자 지시 2026-10-11) — 새 사실 0건의 까닭이
+            #    *"버린 것: identity_mismatch 7건"* 한 줄로만 적혀 있었다
+            out.append("\n" + loss_table(card))
             # 🔴🔴 §4 — **전략 블록**은 기준 XI·결장 바로 뒤다(같은 명단 얘기다)
             out.append("\n" + strategy_long(card))
             # 🔴🔴 §6 — 전술 예측은 전략 블록 바로 뒤다(같은 명단 얘기다)
@@ -1159,6 +1162,43 @@ def new_facts(card: Card) -> list:
     """
     return [v for v in (card.variables or [])
             if not v.from_rule and str(v.subtask or "") in NEW_SUBS]
+
+
+#: 🔴 ② 손실 표에 적는 최대 줄 수 — ⚠️ 넘치면 **그 사실을 적고** 자른다(#3)
+LOSS_ROWS = 40
+
+
+def loss_table(card: Card) -> str:
+    """🔴🔴 ② **손실 표** — 버린 것 하나하나를 `단계 · 사유 · 제목` 으로.
+
+    > 새 사실 손실 감사: 광주–울산 hits 17 → docs 0. **17건 각각 버린 단계·사유·
+    > 제목을 표로.** — 사용자 지시 2026-10-11 ②
+
+    ⚠️ 종전엔 블록 1 이 *"버린 것: `identity_mismatch` 7건 · `stale` 14건"* 처럼
+       **수만** 적었다 — 그 글이 무엇이었는지, 어느 문에서 걸렸는지 알 길이 없었다.
+    🔴 제목이 빈 줄은 **빈 채로 적는다**(그 통로가 제목을 안 준다는 사실이다).
+    """
+    rows = list(card.drops or [])
+    if not rows:
+        return "🧾 **손실 표** — ⬜ 버린 것이 없다"
+    out = ["🧾 **손실 표**(버린 단계 · 사유 · 제목)",
+           "", "| 단계 | 사유 | 제목 | 상세 |", "|---|---|---|---|"]
+    for d in rows[:LOSS_ROWS]:
+        stage = str(getattr(d, "stage", "") or "?")
+        title = str(getattr(d, "title", "") or "").replace("|", "·")
+        said = str(d.detail or "").replace("|", "·")[:60]
+        out.append(f"| `{stage}` | `{d.reason.value}` | "
+                   f"{title or '⬜ 제목 없음'} | {said} |")
+    if len(rows) > LOSS_ROWS:
+        out.append(f"- ⚠️ **{len(rows) - LOSS_ROWS}줄 더 있다**(표는 "
+                   f"{LOSS_ROWS}줄까지 적는다)")
+    by: dict[str, int] = {}
+    for d in rows:
+        key = f"{getattr(d, 'stage', '') or '?'}/{d.reason.value}"
+        by[key] = by.get(key, 0) + 1
+    out.append("- 합계 — " + " · ".join(f"`{k}` {v}건"
+                                       for k, v in sorted(by.items())))
+    return "\n".join(out)
 
 
 def new_facts_block(card: Card) -> str:
