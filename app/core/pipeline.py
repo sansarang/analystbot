@@ -351,7 +351,8 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     hypo = _reweight.of(hypo, layers.get("ours"), ref=ref, state=st)
     said = s7_judge.run(ref, facts, variables, hypo, state=st, board=got_board,
                         board_source=board_src, now=now)
-    said = _direction(_lower(said, layers, state=st), layers, ref)
+    said = _direction(_grade_by_check(said, layers, state=st),
+                      layers, ref)
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **먼저 숫자를 고치고, 그 숫자에서 논평을 만든다**(2026-10-07 ②③)
     # ══════════════════════════════════════════════════════════════════
@@ -766,36 +767,35 @@ def _direction(said: Judgement, layers: dict, ref: MatchRef) -> Judgement:
                                             market, ref)})
 
 
-def _lower(said: Judgement, layers: dict, *, state: RunState,
-           found_new: bool = False) -> Judgement:
-    """🔴🔴 §7 — 세 열 규칙은 **등급을 내리기만** 한다. 올리는 길이 없다.
+def _grade_by_check(said: Judgement, layers: dict, *,
+                    state: RunState) -> Judgement:
+    """🔴🔴 **F4** — 등급을 내리는 길은 **⑫ 검증 하나**다(지시서 2026-10-11).
 
-    🔴 `grade_step` 이 내릴 칸 수를 주고(99 면 `없음`), 여기서 **사다리를 내려간다**.
-    ⚠️ 시장 확률이 등급 **계산에** 들어가는 것이 아니다 — 계산은 이미 끝났고 그
-       결과를 내리기만 한다(§7 금지 첫 줄).
+    > `s7_judge` 의 `_lower`(세 열 규칙) **삭제**. 등급 조정은 ⑫ 검증 규칙
+    > (5-3: 상성 사각 hard 반대·가설 지지 0)만. 시장은 **카드 표시만**(C12).
+
+    ══════════════════════════════════════════════════════════════════
+    🔴 왜 세 열 규칙을 걷었나
+    ══════════════════════════════════════════════════════════════════
+
+    종전에는 `compare.grade_step`(기준·우리·시장 세 열)이 **먼저** 칸 수를 주고
+    거기에 검증 조정을 더했다. 그런데 그 표의 절반이 **시장**(`시장이 다르다`·
+    `시장만 튄다`)이었다 — 시장이 등급에 닿는 길이 남아 있던 것이다(C12 위반 소지).
+    🔴 그래서 **검증 하나만** 남긴다. 🔴 `우리만 반대`(= 기준과 앞세우는 쪽이
+    다르다)는 시장 규칙이 아니라 **기준(V1) 규칙**이라 검증 쪽으로 옮겨 둔다.
+
+    ⚠️ **확률은 안 바뀐다**(S5 머리줄) — 등급만 움직인다.
     """
-    from app.core import compare
-    step, why = compare.grade_step(str(layers.get("compare") or ""),
-                                   found_new=found_new)
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **S5-3 등급 조정**(상성 엔진 지시서 2026-10-10 여섯째) — 여기 더한다
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  > (c) 중 hard·강 반대 1개 이상 → **한 단계 내림** · (c) 반대 2개 이상 →
-    #  > **등급 없음** · V7 주 가설 지지 0개 → 한 단계 내림 ·
-    #  > (a)(b)·V6 은 등급 영향 **없음**.
-    #
-    #  🔴 내리는 길은 **이 함수 하나**다(사본 금지) — 세 열 규칙과 같은 사다리다.
-    #  ⚠️ **확률은 안 바뀐다**(S5 머리줄) — 등급만 움직인다.
+    step, why = 0, ""
     box = dict(dict(layers.get("check") or {}).get("grade") or {})
     if box.get("none"):
-        step, why = 99, " · ".join([why, *box.get("why", [])]).strip(" ·")
+        step, why = 99, " · ".join(box.get("why", [])).strip(" ·")
     elif int(box.get("steps") or 0) > 0:
-        step += int(box["steps"])
-        why = " · ".join([why, *box.get("why", [])]).strip(" ·")
+        step = int(box["steps"])
+        why = " · ".join(box.get("why", [])).strip(" ·")
     if step <= 0:
         if why:
-            state.note(f"§7 등급 유지 — {why}")
+            state.note(f"⑫ 검증 — 등급 유지 — {why}")
         return said
     ladder: list[str] = ["낸다", "소액", "소액하단", "없음"]
     if step >= 99:
@@ -808,7 +808,7 @@ def _lower(said: Judgement, layers: dict, *, state: RunState,
             grade = ladder[i]                              # type: ignore[assignment]
         out.append(ev.model_copy(update={"grade": grade,
                                          "why": f"{ev.why} · {why}".strip(" ·")}))
-    state.note(f"§7 등급 **내림** {step}칸 — {why}")
+    state.note(f"⑫ 검증 — 등급 **내림** {step}칸 — {why}")
     return said.model_copy(update={"evals": out,
                                    "conclusion": f"{said.conclusion} · {why}"})
 

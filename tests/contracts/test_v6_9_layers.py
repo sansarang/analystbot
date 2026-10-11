@@ -311,40 +311,53 @@ def test_2가_계산되면_결장_계열_무게가_0이다():
 
 
 def test_시장은_등급을_못_바꾼다():
-    """🔴🔴 **원칙 수정**(사용자 지시 2026-10-06(8차) ①) — 시장 열은 등급·확률을
-    **어떤 경우에도** 바꾸지 않는다. 남은 규칙은 *"우리만 반대(기준과 다름)"* 뿐이다.
+    """🔴🔴 **원칙 수정**(2026-10-06(8차) ①) + **F4**(2026-10-11) — 시장 열은
+    등급·확률을 **어떤 경우에도** 바꾸지 않는다.
 
-    돌연변이: `시장이 다르다` 에 한 단계 내림을 되살리기 / 세 열 일치에 올림 주기.
+    🔴 F4 가 세 열 규칙(`compare.grade_step`)을 **통째로 지웠다** — 표의 절반이
+       시장이었기 때문이다. 등급을 내리는 자리는 ⑫ 검증 하나다.
+    돌연변이: `grade_step` 을 되살려 파이프라인에 잇기.
     """
-    from app.core import compare
-    for verdict in ("기준과 맞는다", "우리만 반대", "시장이 다르다", "시장만 튄다",
-                    "우리만 튄다", "기준 없음", "시장 없음", "세 열 불일치"):
-        step, why = compare.grade_step(verdict, found_new=False)
-        assert step >= 0, (verdict, step, why)
-    assert compare.grade_step("기준과 맞는다", found_new=False)[0] == 0
-    # 🔴 **기준**과 반대면 등급 없음(기준은 우리 데이터다)
-    assert compare.grade_step("우리만 반대", found_new=False)[0] >= 3
-    # 🔴 시장이 반대·치우쳐도 **0칸**이다
-    for v in ("시장이 다르다", "시장만 튄다", "세 열 불일치"):
-        step, why = compare.grade_step(v, found_new=False)
-        assert step == 0, (v, step)
-        assert "바꾸지 않는다" in why, why
+    import inspect
+
+    from app.core import compare, pipeline
+    assert not hasattr(compare, "grade_step"), (
+        "🔴 세 열 등급 규칙이 돌아왔다 — 시장이 등급에 닿는 길이다(F4)")
+    # 🔴 **D46** — 독스트링·주석은 뺀다(문서가 그 이름을 *설명하는* 것과 코드가
+    #    그것을 *부르는* 것은 다르다 · CLAUDE.md 7). AST 로 **호출**만 센다.
+    tree = ast.parse(inspect.getsource(pipeline))
+    called = {n.func.attr for n in ast.walk(tree)
+              if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)}
+    called |= {n.func.id for n in ast.walk(tree)
+               if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)}
+    assert "grade_step" not in called, "🔴 파이프라인이 그 규칙을 부른다"
 
 
 def test_등급_내림이_사다리_아래로만_간다():
-    """🔴 §7 — `_lower` 가 **아래로만** 옮긴다(실제 판정 묶음으로 센다)."""
+    """🔴 F4 — `_grade_by_check` 가 **아래로만** 옮긴다(⑫ 검증이 입력이다)."""
     from app.core import pipeline
     from app.core.schema import BoardLine, Judgement, MarketEval
     from app.core.state import RunState
     evals = [MarketEval(line=BoardLine(market="win", side="home"),
                         marks={}, survival=0.9, cap=1.0, grade="낸다")]
     said = Judgement(evals=evals, direction="d", conclusion="c")
-    # 🔴 시장이 달라도 **그대로**다(8차 ①)
-    got = pipeline._lower(said, {"compare": "시장이 다르다"}, state=RunState())
+    # 🔴 **시장이 달라도 그대로**다 — 시장은 이제 등급 경로에 아예 없다
+    got = pipeline._grade_by_check(said, {"compare": "시장이 다르다"},
+                                   state=RunState())
     assert got.evals[0].grade == "낸다", got.evals[0].grade
-    none = pipeline._lower(said, {"compare": "우리만 반대"}, state=RunState())
+    # 🔴 ⑫ 검증이 `없음` 이라고 하면 **없음**까지 내려간다
+    none = pipeline._grade_by_check(
+        said, {"check": {"grade": {"none": True, "why": ["(c) 반대 2건"]}}},
+        state=RunState())
     assert none.evals[0].grade == "없음"
-    keep = pipeline._lower(said, {"compare": "기준과 맞는다"}, state=RunState())
+    # 🔴 한 칸 내림
+    one = pipeline._grade_by_check(
+        said, {"check": {"grade": {"steps": 1, "why": ["(c) hard·강 1건"]}}},
+        state=RunState())
+    assert one.evals[0].grade == "소액"
+    # 🔴 조정이 없으면 **그대로**(올리는 길은 없다)
+    keep = pipeline._grade_by_check(said, {"check": {"grade": {}}},
+                                    state=RunState())
     assert keep.evals[0].grade == "낸다"
 
 
@@ -757,8 +770,9 @@ def test_시장_확률이_우리확률_등급_함수의_입력이_아니다():
     banned_args = ("market", "mkt", "odds", "price", "vig", "book")
     targets = {
         "app/core/compare.py": ("our_prob", "_apply", "_from_scenarios",
-                                "grade_step", "weight_rules", "tilt_reasons"),
-        "app/core/pipeline.py": ("_lower",),
+                                "weight_rules", "tilt_reasons"),
+        # 🔴 F4 — `_lower`(세 열) 가 `_grade_by_check`(⑫ 검증)로 바뀌었다
+        "app/core/pipeline.py": ("_grade_by_check",),
         "app/core/stages/s7_judge.py": ("_grade", "_enough", "_cap",
                                         "_same_direction_cap"),
         "app/survive.py": ("verdict_word",),

@@ -182,8 +182,9 @@ def card(replaying) -> Card:
         hypo = _reweight.of(hypo, layers.get("ours"), ref=ref, state=state)
         said = s7_judge.run(ref, facts, variables, hypo, state=state, now=NOW,
                             board=BOARD, board_source="user_board")
-        said = pipeline._direction(pipeline._lower(said, layers, state=state),
-                                  layers, ref)
+        said = pipeline._direction(
+            pipeline._grade_by_check(said, layers, state=state),
+            layers, ref)
         # 🔴🔴 **양상·논평도 재생이 센다**(사용자 지시 2026-10-07 ②③) — ⚠️ 논평
         #    호출은 녹화본에 없다(미스 → `None`) → **코드 템플릿**으로 간다. 그
         #    템플릿은 수를 이어 붙이는 것뿐이라 **결정적**이다(스냅샷이 그것을 센다).
