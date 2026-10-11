@@ -242,7 +242,9 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     # 🔴🔴 **상성 세 축**(사용자 지시 2026-10-10(셋째)) — 축1 폼 · 축3 골 내용
     #    ⚠️ 축2(T1~T8)는 스타일 프로필 자료가 없어 아직 안 돈다(사유가 들어온다)
     from app.core.stages import s2e_matchup as _s2e
-    edge = await _s2e.run(ref, facts, state=st, net=net)
+    # 🔴 F2 — 재료가 **변수·깃발·전략**을 받는다(전략은 바로 위에서 섰다)
+    edge = await _s2e.run(ref, facts, state=st, net=net,
+                          varset=varset, turnover=turn, strategy=plan)
     # 🔴 **가설은 S2 뒤에 선다**(C3) — 그래서 여기서는 **빈 묶음**으로 열을 만든다.
     #    ⚠️ `_layers` 는 시나리오를 **읽지 않는다**(확률을 S3 가 낸다) — 빈 묶음이
     #       뜻을 바꾸지 않는다.

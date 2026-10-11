@@ -25,9 +25,32 @@ logger = logging.getLogger(__name__)
 BACK = 10
 
 
+def _plan_of(strategy: Any, side: str) -> str:
+    """🔴 그 팀의 **전략 판정 글자**(없으면 빈 글자 — 지어내지 않는다)."""
+    for one in (getattr(strategy, "lines", None) or []):
+        if str(getattr(one, "side", "")) == side:
+            return str(getattr(one, "strategy", "") or "")
+    return ""
+
+
 async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
-              ) -> dict:
-    """🔴🔴 세 축을 모은다. ⚠️ 못 모은 축은 **사유를 담아** 돌려준다."""
+              varset: Any = None, turnover: dict | None = None,
+              strategy: Any = None) -> dict:
+    """🔴🔴 세 축을 모은다. ⚠️ 못 모은 축은 **사유를 담아** 돌려준다.
+
+    ══════════════════════════════════════════════════════════════════
+    🔴🔴 **F2 — 변수·깃발·전략이 재료로 들어온다**(지시서 2026-10-11)
+    ══════════════════════════════════════════════════════════════════
+
+    > ⑧ 입력 시그니처: `(ref, facts, varset_axis, turnover, strategy)`.
+    >   · 결장·징계 변수 → 그 선수가 쥔 무기 **꺼짐**, 복귀 변수 → **켜짐**
+    >   · 교체 운용 선수(선발 비율 30% 미만) → **후반 무기**
+    >   · turnover r → 폼·골 내용·스타일 집계에서 **과거 경기 가중**
+    >   · 전략(수비 위주·3백 전환 등) → **스타일 6축 조정**
+    > 규칙 T1~T13 발동은 **이 조정된 재료**로 판정한다.
+
+    🔴 그래서 **전략 판정(⑦)이 이 단계보다 먼저** 돈다(파이프라인이 그 순서다).
+    """
     from app.core import form as _form
     from app.core import goals as _goals
     out: dict = {}
@@ -66,10 +89,27 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
         for side in ("home", "away")}
     reads = {side: _strat.read(ref, facts, side=side)
              for side in ("home", "away")}
+    # 🔴 F2 — **전략으로 6축을 조정한 뒤** 규칙을 발동한다(재료가 먼저 굳으면
+    #    전략은 뒤늦은 장식이 된다)
+    said_plan = {side: _plan_of(strategy, side) for side in ("home", "away")}
+    styles = {side: _style.adjust(styles[side], said_plan[side])
+              for side in ("home", "away")}
     offs = {side: _style.off_weapons(reads[side], styles[side])
             for side in ("home", "away")}
+    # 🔴 F2 — **변수(결장·복귀)도 무기를 끄고 켠다**(XI 만 보던 자리다)
+    for side in ("home", "away"):
+        gone, back = _style.off_from_vars(varset, side)
+        offs[side] = sorted({*offs[side], *gone} - set(back))
     late = {side: _style.late_weapons(reads[side]) for side in ("home", "away")}
     fired2 = _style.fire(styles["home"], styles["away"], off=offs)
+    # 🔴 F2/R3 — **r 가중**(선수단 교체)을 재료에 적어 둔다 — 축1·축3 이 그 수로
+    #    과거 경기를 깎고, 보고가 그 사실을 적는다(조용히 깎지 않는다 · #3)
+    from app.core import matchup as _mu
+    out["r"] = _mu.r_of(varset, ref, turnover=turnover)
+    out["turnover"] = dict(turnover or {})
+    out["strategy_move"] = {s: said_plan[s] for s in ("home", "away")}
+    state.note(f"s2e F2 — 전략 {said_plan} · r {out['r']} · "
+               f"꺼진 무기 { {s: len(v) for s, v in offs.items()} }")
     out.update({"style": styles, "fired2": fired2, "off": offs, "late": late,
                 "axis2_why": (
                     " · ".join(f"{s} {one.why}" for s, one in styles.items())

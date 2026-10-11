@@ -177,7 +177,10 @@ def test_v5_9_3_M_R_계약도_센다():
     #     `tests/unit_v6_s5_s7.py`, 카드는 E2E 불변식 10개, 구조는
     #     `test_v6_7_static.py`. 그 대응은 `v5_contracts_map.md` 가 든다.
     #  🔴 **18 → 25** — ⑧ 삭제가 끝난 뒤 실측(2026-10-06).
-    BASELINE = 26
+    #  🔴 **26 → 24** — 실측 2026-10-11. 지시서 "상성을 뿌리로"의 계약이
+    #     `R1`(상성 지문)·`R2`(꺼진 무기)·`R3`(r 가중)을 덮었다
+    #     (`tests/contracts/test_v8_f1_reanalyze.py`·`test_v8_f2_materials.py`).
+    BASELINE = 24
     assert len(missing) <= BASELINE, (
         f"🔴 계약 없는 M·R 이 **늘었다** {len(missing)} > {BASELINE}:\n  "
         + "\n  ".join(missing))
