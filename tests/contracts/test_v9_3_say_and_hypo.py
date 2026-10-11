@@ -69,6 +69,8 @@ def test_prompt_asks_for_the_reason_paragraph() -> None:
     msgs = s9_say._prompt(card, saybundle.build(card))
     said = "\n".join(str(getattr(m, "content", "")) for m in msgs)
     assert "reason" in said and "이유 문단" in said, said[-400:]
+    #: 🔴 시스템 메시지에서도 요구한다(긴 규칙 끝에만 적으면 모델이 비운다)
+    assert "reason" in str(getattr(msgs[0], "content", ""))
     #: 🔴 새 사실 id 를 **그 자리에서** 든다(검열이 요구하는 그 id 다)
     assert "R1" in said
     #: 🔴 문장 수 요구(검열 (i) 가 세는 그 수)도 적는다
@@ -92,6 +94,9 @@ def test_reason_only_repair_exists_and_is_wired() -> None:
     #: 🔴 이유 문단 위반만 골라내는 자리
     assert s9_say._reason_only(["(i) 이유 문단이 없다",
                                 "(o) 새 사실 1건이 있는데 이유 문단이 …"])
+    #: ⚠️ 실측 3회차 — `(p)`(전략 문장)도 **이유 문단 검열**이다
+    assert s9_say._reason_only(["(p) 전략 판정이 있는데 이유 문단이 …",
+                                "(o) 새 사실 …", "(i) 이유 문단이 없다"])
     assert not s9_say._reason_only(["🔴 (q) 근거 id 1개 — 2개 이상이다"])
     assert not s9_say._reason_only([])
 
