@@ -993,3 +993,18 @@ def test_v7_캡처_파서가_OCR_잡음과_붙은_번호를_견딘다():
     assert "다비드" in str(got.get("10")), got
     # 🔴 포메이션은 **둘 다** 읽는다(한 장에 두 팀)
     assert _cap.forms_of("4-4-2 … 4-3-3") == ["4-4-2", "4-3-3"]
+
+
+def test_v7_OCR_잡티가_선수_줄로_안_샌다():
+    """🔴 실측 2026-10-11(LAFC 캡처) — `6 OO a` 가 **글자 3개**라 선수 줄로 통과했고
+    11/11 가름이 **밀렸다**(부앙가가 원정으로 넘어갔다).
+
+    🔴 한 글자 토막은 버리고, **같은 글자만 반복되는 토막**(`OO`)도 이름이 아니다.
+    ⚠️ 돌연변이: 그 가름을 지우면 잡티가 다시 샌다.
+    """
+    from app.core import xicapture as _cap
+    got = {r["number"]: r["name"] for r in _cap.parse(
+        "1 요리스\n6 OO a\n14 세르히 팔렌시아\n99 부앙가\n")}
+    assert "6" not in got, got
+    assert got.get("1") == "요리스" and got.get("99") == "부앙가", got
+    assert got.get("14") == "세르히 팔렌시아", got

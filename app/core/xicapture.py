@@ -60,8 +60,14 @@ def parse(said: str) -> list[dict]:
             continue
         if int(num) == 0:
             continue
-        if len(_LETTER.findall(one)) < 2:
+        # 🔴 한 글자 토막은 버리고(`a`·`b`) 남은 것으로 센다 — ⚠️ 실측 2026-10-11
+        #    (LAFC 캡처): `6 OO a` 가 **글자 3개**라 선수 줄로 통과했고 11/11 가름이
+        #    밀렸다. 🔴 **같은 글자만 반복되는 토막**(`OO`)도 이름이 아니다.
+        parts = [x for x in one.split() if len(_LETTER.findall(x)) >= 2
+                 and len(set(x.lower())) > 1]
+        if not parts or len(_LETTER.findall(" ".join(parts))) < 2:
             continue
+        one = " ".join(parts)
         low = one.lower()
         if any(w in low for w in NOT_PLAYER):
             continue
