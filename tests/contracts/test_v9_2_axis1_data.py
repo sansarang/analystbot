@@ -455,3 +455,25 @@ def test_card_prints_the_weapons_reason() -> None:
     assert "off_why" in [f.name for f in
                          __import__("dataclasses").fields(
                              matchup.MatchupReport)]
+
+
+def test_att_table_ignores_the_other_teams_key_players() -> None:
+    """🔴🔴 ③ — `standings["key_players"]` 도 **그 팀 칸만** 더한다.
+
+    ⚠️ 실사고 2026-10-11(재현 7회차): 모든 팀의 상위 2명을 더해 밴쿠버 기여표가
+       27명(합 120)이 되어 뮐러가 **12.5%** 로 읽혔다(실제 15/85=17.6%) — 문턱
+       15% 를 못 넘어 꺼진 무기 0 이었다.
+    """
+    from app.core import strategy
+    from app.core.schema import Facts
+    facts = Facts(
+        player_stats_team={"team:000002": {
+            "Thomas Müller": {"goals": 10, "assists": 5},
+            "Brian White": {"goals": 12, "assists": 7}}},
+        standings={"key_players": {
+            "team:000002": [{"name": "Brian White", "value": 19}],
+            "team:000001": [{"name": "Denis Bouanga", "value": 19},
+                            {"name": "Heung-Min Son", "value": 16}]}})
+    one = strategy._att_table(facts, key="team:000002")
+    assert "Denis Bouanga" not in one and "Heung-Min Son" not in one
+    assert abs(one["Thomas Müller"] / sum(one.values()) - 15 / 34) < 1e-6

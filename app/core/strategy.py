@@ -449,8 +449,16 @@ def _att_table(facts, *, key: str = "") -> dict:
             continue
         out[str(nm)] = float(int(box.get("goals") or 0)
                              + int(box.get("assists") or 0))
+    # 🔴🔴 ③ — **그 팀 칸만** 본다(사용자 지시 2026-10-11 ③ · 비중의 분모)
+    #
+    #  ⚠️ 실사고 2026-10-11(재현 7회차): 여기서 `box.values()` 로 **모든 팀**의
+    #     상위 2명을 더했다 → 밴쿠버 기여표가 25명이 아니라 **27명**(합 85 →
+    #     120)이 되어 뮐러 비중이 17.6% 대신 **12.5%** 로 읽혔고, 문턱 15% 를
+    #     못 넘어 꺼진 무기가 0 이었다. 🔴 카드의 `꺼짐 판정` 줄이 그것을 잡았다.
     box = dict((facts.standings or {}).get("key_players") or {})
-    for rows in box.values():
+    for team_key, rows in box.items():
+        if key and str(team_key) != str(key):
+            continue
         for one in (rows or []):
             got = dict(one)
             nm = str(got.get("name") or "")
