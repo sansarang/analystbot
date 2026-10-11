@@ -137,6 +137,9 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
     # 🔴 F2 — **변수(결장·복귀)도 무기를 끄고 켠다**(XI 만 보던 자리다)
     for side in ("home", "away"):
         gone, back = _style.off_from_vars(varset, side)
+        # 🔴 ③ — **변수 경로도 같은 문을 지난다**(실측 2026-10-11: `IR02-home`
+        #    이 에보비세(3/10 선발)로 공격 축 셋을 통째로 껐다)
+        gone = _gate_off(gone, usual=usual[side], out_today=out_today[side])
         offs[side] = sorted({*offs[side], *gone} - set(back))
     late = {side: _style.late_weapons(reads[side]) for side in ("home", "away")}
     fired2 = _style.fire(styles["home"], styles["away"], off=offs)
@@ -294,6 +297,21 @@ def games_of(rows: list[dict]) -> list[dict]:
 #     22명이다(로테이션·컵 경기까지). 그 목록으로는 *"오늘 빠졌다"* 가 뜻을
 #     잃는다. 🔴 실측 선발 횟수 — 뮐러 **6/8** · 바드왈 2/8 · 에보비세 **3/10**.
 USUAL_SHARE = 0.5
+
+
+def _gate_off(axes: list[str], *, usual: set[str],
+              out_today: set[str]) -> list[str]:
+    """🔴🔴 ③ **꺼진 무기의 문** — 평소 XI 중 오늘 빠진 선수가 있어야 끈다.
+
+    > "평소 XI(최근 폼 계산 기간)에 있었는데 오늘 빠진 선수"만 무기를 끈다.
+    >   — 사용자 지시 2026-10-11 ③
+
+    ⚠️ `usual` 이 **비면 막지 않는다** — 선발 자료를 못 받았다는 뜻이고, 없는
+       자료로 **있는 사실(결장)을 지우면** 조용한 0 이 된다(#3).
+    """
+    if not axes or not usual:
+        return list(axes)
+    return list(axes) if (usual & out_today) else []
 
 
 def _out_today(facts, key: str) -> set[str]:

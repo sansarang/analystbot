@@ -365,3 +365,26 @@ def test_out_today_reads_the_real_absence_field() -> None:
     facts = Facts(missing={"team:000002": [
         Missing(name="Thomas Müller", pos="AM", reason="injury")]})
     assert s2e_matchup._out_today(facts, "team:000002") == {"Thomas Müller"}
+
+
+def test_variable_path_obeys_the_same_gate() -> None:
+    """🔴🔴 ③ — **변수 경로**(`off_from_vars`)도 평소 XI 문을 지난다.
+
+    ⚠️ 실측 2026-10-11(재현 3회차): 꺼진 무기가 여전히 `home 3 · away 0` 이었다.
+       까닭은 `off_weapons` 가 아니라 **`off_from_vars`** 다 — `IR02-home`
+       (*"직전 선발 Jeremy Ebobisse 가 오늘 명단에 없다"*)이 공격 축 셋을
+       통째로 껐다. 🔴 에보비세는 **3/10 선발**로 평소 XI 가 아니다.
+    """
+    from app.core.stages import s2e_matchup
+    src = _code(s2e_matchup)
+    assert "off_from_vars" in src
+    #: 🔴 문은 `usual ∩ out_today` 다 — 그 교집합이 비면 끌 무기가 없다
+    assert "_gate_off" in src, "변수 경로에 문이 없다"
+    assert s2e_matchup._gate_off(["forward"], usual={"A"},
+                                 out_today={"B"}) == []
+    assert s2e_matchup._gate_off(["forward"], usual={"A"},
+                                 out_today={"A"}) == ["forward"]
+    #: ⚠️ 평소 XI 를 못 만들었으면(선발 자료 0) **막지 않는다** — 없는 자료로
+    #    있는 사실을 지우지 않는다(#3)
+    assert s2e_matchup._gate_off(["forward"], usual=set(),
+                                 out_today=set()) == ["forward"]
