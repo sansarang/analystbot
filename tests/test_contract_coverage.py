@@ -180,7 +180,9 @@ def test_v5_9_3_M_R_계약도_센다():
     #  🔴 **26 → 24** — 실측 2026-10-11. 지시서 "상성을 뿌리로"의 계약이
     #     `R1`(상성 지문)·`R2`(꺼진 무기)·`R3`(r 가중)을 덮었다
     #     (`tests/contracts/test_v8_f1_reanalyze.py`·`test_v8_f2_materials.py`).
-    BASELINE = 24
+    #  🔴 **24 → 22** — 실측 2026-10-11. F3 의 계약이 `R4`(이중 계산)·`R5`(홈·원정
+    #     분리)를 덮었다(`test_v8_f3_lambda.py`).
+    BASELINE = 22
     assert len(missing) <= BASELINE, (
         f"🔴 계약 없는 M·R 이 **늘었다** {len(missing)} > {BASELINE}:\n  "
         + "\n  ".join(missing))

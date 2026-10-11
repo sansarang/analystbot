@@ -473,9 +473,16 @@ def test_v7_C9_관찰만은_람다에_안_들어간다():
     # 🔴 `관찰만` 의 0.5 가 빠졌으니 홈 λ 는 1.1 쪽이다(1.6 이 아니다)
     assert abs(float(got["lam_home"]) - 1.1) < 1e-6, got["lam_home"]
     assert thin.moves() == {}, "🔴 `관찰만` 이 이동량을 내놓는다"
-    # 🔴 S3 가 그 함수를 쓴다(배선)
+    # 🔴🔴 **지시서 2026-10-11 F3 이 이 배선을 바꿨다** — ⑪ 은 규칙 λ 를 **안
+    #    더한다**(축 안에서 한 번만 · R4). 걸러내기는 그대로 `goals` 가 하고,
+    #    S3 는 **λ 를 안 주는** `sim_extras` 를 쓴다.
     src = (ROOT / "app" / "core" / "probmodel.py").read_text(encoding="utf-8")
-    assert "_g.sim_input(" in src, "🔴 S3 가 규칙 λ·상태 배율을 안 쓴다"
+    assert "_g.sim_extras(" in src, "🔴 S3 가 시간대·상태 배율을 안 쓴다"
+    assert "_g.sim_input(" not in src, (
+        "🔴 S3 가 규칙 λ 를 다시 더한다 — 이중 계산이다(F3/R4)")
+    # 🔴 `관찰만` 걸러내기는 **그 길에서도** 산다
+    got2 = _g.sim_extras({"fired": [thin, fat], "fired2": []})
+    assert "T9" not in str(got2.get("why") or ""), got2
 
 
 def test_v7_C10_임시값이면_카드에_보인다():

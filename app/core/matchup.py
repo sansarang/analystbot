@@ -44,9 +44,32 @@ class Axis:
     why: str = ""
     #: 🔴 표준화한 차(홈 − 원정) — S3 가 λ 를 세는 재료다
     gap: float | None = None
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **F3 — 공격 특징·수비 특징을 쪽별로**(지시서 2026-10-11)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > log λ홈 = … + Σ_축 β_축 ·(**홈 공격**_축 − **원정 수비**_축)
+    #  > log λ원정 = … + Σ_축 β_축 ·(**원정 공격**_축 − **홈 수비**_축)
+    #  > 축 종합 숫자 **하나로 두 λ 를 만들지 않는다**.
+    #
+    #  ⚠️ 공격·수비를 **가를 자료가 없는 축**은 그 팀의 값 하나를 둘 다로 쓴다
+    #     (그러면 `홈공격 − 원정수비 = gap` 이라 종전과 **같은 수**다). 🔴 그
+    #     사실을 `split` 이 들고 `why` 가 적는다 — 가른 척하지 않는다(#4).
+    att: dict = field(default_factory=dict)
+    dfn: dict = field(default_factory=dict)
+    #: 🔴 공격·수비를 **실제로 갈랐나**(거짓이면 값 하나를 둘 다로 썼다)
+    split: bool = False
 
     def ok(self) -> bool:
         return self.home is not None and self.away is not None
+
+    def sides(self) -> dict:
+        """🔴 F3 — `{"att": {home, away}, "dfn": {home, away}}`.
+
+        🔴 안 갈린 축은 **그 팀의 값**을 둘 다로 쓴다(= 종전과 같은 수).
+        """
+        base = {"home": self.home, "away": self.away}
+        return {"att": dict(self.att or base), "dfn": dict(self.dfn or base)}
 
 
 @dataclass

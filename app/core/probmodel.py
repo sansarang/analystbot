@@ -143,6 +143,32 @@ def home_mul(facts, varset, *, ref=None) -> tuple[float, str]:
                  f"{float(per):g} = ×{mul:.3f}(대회 `{kind}`){tag}")
 
 
+def sides_move(box: dict, weights: dict, *, beta: float, cap: float) -> dict:
+    """🔴🔴 **F3** — 축별 공격·수비 특징 → **쪽별 λ 이동**(로그).
+
+    > log λ홈  = … + Σ_축 β_축 ·(홈 공격_축 − 원정 수비_축)
+    > log λ원정 = … + Σ_축 β_축 ·(원정 공격_축 − 홈 수비_축)
+
+    `box` 한 줄: `{"axis0": {"att": {"home": …, "away": …}, "dfn": {…}}}`.
+    🔴 **쪽마다 자기 식**이다 — 축 종합 숫자 하나로 두 λ 를 만들지 않는다(R5).
+    ⚠️ 못 잰 칸(`None`)은 **0 이 아니라 건너뛴다** — 그 축은 그 쪽 λ 를 안 민다(#3).
+    """
+    out = {"home": 0.0, "away": 0.0}
+    for key, one in (box or {}).items():
+        w = float(dict(weights or {}).get(key) or 0.0)
+        if not w:
+            continue
+        att = dict((one or {}).get("att") or {})
+        dfn = dict((one or {}).get("dfn") or {})
+        pairs = (("home", att.get("home"), dfn.get("away")),
+                 ("away", att.get("away"), dfn.get("home")))
+        for side, mine, theirs in pairs:
+            if mine is None or theirs is None:
+                continue
+            out[side] += w * float(beta) * (float(mine) - float(theirs))
+    return {k: max(-float(cap), min(float(cap), v)) for k, v in out.items()}
+
+
 def run(ref, facts, mr, varset, *, edge: dict | None = None,
         state=None) -> ProbOut:
     """🔴🔴 S3 — **상성만으로** λ 를 세고 시뮬로 바꾼다.
@@ -168,9 +194,20 @@ def run(ref, facts, mr, varset, *, edge: dict | None = None,
     gaps = mr.gaps()
     weights = dict(_m.table().get("weights") or {})
     tilt = sum(float(weights.get(k) or 0.0) * float(v) for k, v in gaps.items())
-    move = max(-cap, min(cap, beta * tilt))
-    lam_h = mean * mul * math.exp(move)
-    lam_a = mean * math.exp(-move)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **F3 — 쪽마다 자기 식**(지시서 2026-10-11)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  log λ홈  = log(리그 평균) + 홈 이점 + Σ_축 β_축 ·(홈 공격_축 − 원정 수비_축)
+    #  log λ원정 = log(리그 평균)          + Σ_축 β_축 ·(원정 공격_축 − 홈 수비_축)
+    #
+    #  ⚠️ 종전에는 **축 종합 하나**로 `exp(+move)`·`exp(-move)` 를 만들었다 — 두 λ 가
+    #     거울이라 *"홈이 좋으면 원정이 그만큼 나쁘다"* 가 **식에 박혀** 있었다.
+    #  🔴 `tilt` 는 이제 **보고용**이다(카드가 종합을 적는다) — λ 는 안 만든다.
+    sides = {k: mr.axis(k).sides() for k in weights}
+    move = sides_move(sides, weights, beta=beta, cap=cap)
+    lam_h = mean * mul * math.exp(move["home"])
+    lam_a = mean * math.exp(move["away"])
     got.lam = {"home": round(lam_h, 4), "away": round(lam_a, 4)}
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **3-2 시간대·경기 상태** — 축3 이 구간과 상태 배율을 준다
@@ -183,12 +220,12 @@ def run(ref, facts, mr, varset, *, edge: dict | None = None,
     #     `lambda_own_late`·T11 상태 배율을 거기서 읽는다.
     #  ⚠️ C9 — `관찰만` 규칙은 그 함수가 **빼고** 준다(λ 에 안 들어간다).
     from app.core import goals as _g
-    args = _g.sim_input(dict(edge or {}), lam_home=lam_h, lam_away=lam_a)
-    out = _sim.run(args["lam_home"], args["lam_away"],
+    # 🔴 F3/R4 — **규칙 λ 를 더하지 않는다**(축 안에서 이미 한 번 셌다).
+    #    시간대·상태 배율만 시뮬 안으로 보낸다(`sim_extras` 는 λ 를 안 준다).
+    args = _g.sim_extras(dict(edge or {}))
+    out = _sim.run(lam_h, lam_a,
                    late_home=args["late_home"], late_away=args["late_away"],
                    lead_mul=args["lead_mul"])
-    got.lam = {"home": round(float(args["lam_home"]), 4),
-               "away": round(float(args["lam_away"]), 4)}
     _fill(got, out)
     why_rules = str(args.get("why") or "")
     # 🔴 3-4 — **리그 평균 대비** 축별 기여(합 = 전체 변화)
@@ -196,10 +233,11 @@ def run(ref, facts, mr, varset, *, edge: dict | None = None,
     got.share, got.share_refs = _share(mean, mul, beta, cap, weights, gaps, mr,
                                        base=base)
     got.why = (f"{why_mean} → 한 팀 평균 {mean:.3f} · {why_home} · 축 종합 "
-               f"{tilt:+.3f} × β {beta:g} → λ 이동 {move:+.3f}"
-               + (f"(상한 ±{cap:.0%} 로 잘렸다)"
-                  if abs(beta * tilt) > cap else "")
-               + (f" · 규칙 λ {why_rules}" if why_rules else "")
+               f"{tilt:+.3f} × β {beta:g} → λ 이동 홈 {move['home']:+.3f} · "
+               f"원정 {move['away']:+.3f}"
+               + (f"(상한 ±{cap:.0%})"
+                  if max(abs(move['home']), abs(move['away'])) >= cap else "")
+               + (f" · 규칙(축 안에서 셌다) {why_rules}" if why_rules else "")
                + (f" · {_m.PROVISIONAL}" if got.provisional else ""))
     _note(state, f"S3 확률(상성) — 홈 {got.home:.1%} · 무 {got.draw:.1%} · "
                  f"원정 {got.away:.1%} · {got.why}")

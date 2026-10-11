@@ -473,6 +473,23 @@ def _t13(rows: dict, side: str, mine: Profile, theirs: Profile,
 # 🔴🔴 §4 **세 축 → 시뮬레이션 입력** · 기여 분해
 # ══════════════════════════════════════════════════════════════════
 
+def sim_extras(box: dict, *, axis2: bool = True, axis3: bool = True) -> dict:
+    """🔴🔴 **F3** — 시뮬에 줄 것 중 **λ 를 안 미는 것만**: 시간대·상태 배율.
+
+    > 규칙 효과는 **축 안에서 한 번만**. ⑪ 에서 "규칙 λ 를 따로 더하는" 항 삭제.
+    > 시간대·경기 상태 배율(축3)은 **시뮬 안에서만**.  — 지시서 2026-10-11 F3
+
+    🔴 그래서 `sim_input` 과 달리 **`lam_*` 을 안 돌려준다** — 규칙이 λ 를 두 번
+       미는 길을 아예 끊는다(계약 R4).
+    ⚠️ `sim_input` 은 남겨 둔다 — 적합 도구·계약이 규칙 λ 를 따로 재는 데 쓴다.
+    """
+    got = sim_input(box, lam_home=1.0, lam_away=1.0, axis2=axis2, axis3=axis3)
+    return {"late_home": got["late_home"], "late_away": got["late_away"],
+            "lead_mul": got["lead_mul"],
+            # 🔴 규칙이 **무엇을 했는지**는 그대로 적는다(축이 이미 셌다는 뜻)
+            "why": str(got.get("why") or "")}
+
+
 def sim_input(box: dict, *, lam_home: float, lam_away: float,
               axis2: bool = True, axis3: bool = True) -> dict:
     """🔴🔴 §4 — 상성 묶음(`s2e_matchup` 산출) → **시뮬레이션 인자**.
