@@ -212,10 +212,11 @@ def run(ref: MatchRef, facts: Facts, hypo: HypoSet, sim: dict, *,
                 rows.append(_one(line, side=side, kind=kind, sim=sim,
                                  league=league))
     stale = _stale(ref, facts, turnover)
+    sides = _stale_sides(ref, facts, turnover)
     for r in rows:
         if r.verdict == _sg.NO:
             r.cause, r.why = _cause(r, variables=variables, stale=stale,
-                                    why=r.why)
+                                    why=r.why, stale_sides=sides, ref=ref)
     counts = {k: sum(1 for r in rows if r.verdict == k)
               for k in (_sg.OK, _sg.NO, _sg.NA)}
     rerun = _rerun_why(rows, stale=stale)
@@ -258,6 +259,27 @@ def _one(line, *, side: str, kind: str, sim: dict, league: dict) -> Row:
                                                               or ""))
 
 
+def _stale_sides(ref: MatchRef, facts: Facts,
+                 turnover: dict | None) -> set[str]:
+    """🔴🔴 **어느 쪽 기준이 낡았나** — `{"home"}`·`{"away"}`·둘·빈 집합.
+
+    ⚠️ 실사고 2026-10-11(LAFC): `_stale` 은 **경기 단위 글자**였고 `_cause` 가
+       그것만 보고 그 경기의 **모든** 반박에 (b) 를 붙였다 — 결장과 아무 관계 없는
+       폼 가설(`S01-home`)까지 *"기준 낡음"* 이 됐다(반박 6건 중 2건이 그랬다).
+    🔴 그래서 쪽을 가려 돌려준다 — 조건은 `_stale` 과 **같은 둘**이다(사본 금지:
+       선수단 교체 깃발 · 결장 `ABSENT_STALE` 명 이상).
+    """
+    got: set[str] = set()
+    for side, one in dict(turnover or {}).items():
+        if dict(one).get("on") and str(side) in ("home", "away"):
+            got.add(str(side))
+    for side in ("home", "away"):
+        key = str(getattr(ref, side))
+        if len(list((facts.missing or {}).get(key) or [])) >= ABSENT_STALE:
+            got.add(side)
+    return got
+
+
 def _stale(ref: MatchRef, facts: Facts, turnover: dict | None) -> str:
     """🔴🔴 §4-2 (b) — **기준 낡음 의심**인가. 맞으면 사유, 아니면 빈 글자.
 
@@ -286,8 +308,52 @@ def _stale(ref: MatchRef, facts: Facts, turnover: dict | None) -> str:
     return "🔴 **기준 낡음 의심** — " + " · ".join(said)
 
 
+#: 🔴🔴 **기준을 낡게 만드는 변수 유형** — 그 가설이 이 유형을 근거로 들고,
+#  그 변수가 **낡은 쪽** 것일 때만 (b) 다. ⚠️ 목록은 배치표의 그 유형들이다.
+STALE_TYPES = ("absence", "def_absence", "absence_att", "suspension",
+               "squad_rotation", "returning", "national_duty_return",
+               "coach_change")
+
+
+def _var_side(one, ref=None) -> str:
+    """🔴 그 변수가 **어느 팀 것인가** — `subject` 열쇠, 없으면 id 꼬리.
+
+    ⚠️ `favors`(누구에게 유리한가)로 뒤집어 재지 않는다 — 그것은 추측이다(#4).
+    """
+    rid = str(getattr(one, "id", "") or "")
+    if rid.endswith("-home"):
+        return "home"
+    if rid.endswith("-away"):
+        return "away"
+    said = str(getattr(one, "subject", "") or "")
+    if ref is not None and said:
+        if said == str(getattr(ref, "home", "")):
+            return "home"
+        if said == str(getattr(ref, "away", "")):
+            return "away"
+    return ""
+
+
+def _stale_hit(row: Row, variables: list | None, sides: set[str],
+               ref=None) -> str:
+    """🔴 ②-a — 그 가설의 근거 중 **낡은 쪽의 결장·교체 변수**를 적는다."""
+    box = {str(v.id): v for v in (variables or [])}
+    out: list[str] = []
+    for vid in row.var_ids:
+        one = box.get(str(vid))
+        if one is None:
+            continue
+        if str(getattr(one, "type", "")) not in STALE_TYPES:
+            continue
+        side = _var_side(one, ref)
+        if side and side in sides:
+            out.append(f"`{vid}`({one.type}·{side})")
+    return " · ".join(out)
+
+
 def _cause(row: Row, *, variables: list | None, stale: str,
-           why: str) -> tuple[str, str]:
+           why: str, stale_sides: set[str] | None = None, ref=None
+           ) -> tuple[str, str]:
     """🔴🔴 §4-2 — 반박된 가설의 **원인 분류**. `(원인, 사유)`.
 
     | 원인 | 언제 |
@@ -299,8 +365,21 @@ def _cause(row: Row, *, variables: list | None, stale: str,
     gone = _missing_inputs(row, variables)
     if gone:
         return MISS, f"{why} · 🔴 (a) **입력 누락** — {gone}"
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 ②-a **(b) 는 그 가설의 근거가 낡은 쪽일 때만** — 2026-10-11
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 종전엔 `stale`(경기 단위 글자)만 보고 **모든** 반박에 (b) 를 붙였다 —
+    #     폼 가설까지 *"기준 낡음"* 이 됐고(실측: 반박 6건 전부 (b)) 그래서 원인
+    #     분류가 **아무 말도 하지 않았다**.
     if stale:
-        return STALE, f"{why} · 🔴 (b) {stale}"
+        hit = _stale_hit(row, variables, set(stale_sides or ()), ref)
+        if hit:
+            return STALE, f"{why} · 🔴 (b) {stale} — 이 가설의 근거 {hit}"
+        # 🔴 낡은 쪽 근거가 없으면 (c) 다 — 그래도 **그 사실을 적는다**(#3)
+        return WRONG, (f"{why} · 🔴 (c) **가설 오류** — 시뮬과 반대다"
+                       f"(⚠️ 경기에는 기준 낡음 의심이 있지만 이 가설의 근거는 "
+                       f"그 쪽 결장·교체가 **아니다**)")
     return WRONG, f"{why} · 🔴 (c) **가설 오류** — 시뮬과 반대다"
 
 

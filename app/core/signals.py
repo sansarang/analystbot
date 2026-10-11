@@ -194,10 +194,31 @@ def ref_of(sig, sim: dict, *, league: dict | None = None,
         got, why = value_of(_flip(sig, other), sim)
         return (got * mul if got is not None else None), why
     if said == "리그평균":
-        per = dict(league or {}).get("per_team")
+        box = dict(league or {})
+        per = box.get("per_team")
         if per is None:
             return None, ("🔴 리그 평균을 **모른다** — 이 경기 총골 기준이 없다"
                           "(지어내지 않는다)")
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **측별 기준**(사용자 지시 2026-10-11) — 홈은 홈 이점을 머금는다
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 종전엔 양 쪽이 **같은 수**(한 팀 몫)를 봤다. 홈 λ 는 홈 이점을
+        #     머금으므로 *거의 언제나* 그 수를 넘어 **홈 폼 가설이 구조적으로
+        #     반박**됐다(실측 2026-10-11 LAFC: 반박 6건 중 넷).
+        #  🔴 `기대득점`(그 팀의 한 경기 기대 득점)에만 쓴다 — `구간득점` 은 한
+        #     경기 몫이 아니라 **구간 몫**이므로 그 기준을 그대로 두면 거짓이 된다.
+        side = str(getattr(sig, "side", "") or "")
+        metric = str(getattr(sig, "metric", "") or "")
+        if metric == "기대득점" and side in ("home", "away"):
+            one = box.get("per_home" if side == "home" else "per_away")
+            if one is not None:
+                return float(one) * mul, (
+                    f"측별 리그 기준({side} {float(one):.3f}) — "
+                    + str(box.get("sides_why") or ""))
+            return float(per) * mul, (
+                "⚠️ 측별 기준을 못 만들어 **한 팀 몫**을 썼다 — "
+                + str(box.get("sides_why") or ""))
         return float(per) * mul, ""
     try:
         return float(said) * mul, ""
@@ -267,11 +288,34 @@ def league_of(facts, *, ref=None) -> dict:
     got = dict(getattr(facts, "standings", None) or {}).get(
         "match_total_baseline")
     if got is not None:
-        return {"per_team": float(got) / 2.0, "total": float(got),
-                "why": "순위표의 그 리그 총골 기준"}
+        return _sides_of({"per_team": float(got) / 2.0, "total": float(got),
+                          "why": "순위표의 그 리그 총골 기준"},
+                         facts, ref=ref)
     from app.core import probmodel as _pm
     per, why = _pm.league_mean(facts, ref=ref)
     if per is None:
         return {}
-    return {"per_team": float(per), "total": float(per) * 2.0,
-            "why": f"S3 와 같은 수 — {why}"}
+    return _sides_of({"per_team": float(per), "total": float(per) * 2.0,
+                      "why": f"S3 와 같은 수 — {why}"}, facts, ref=ref)
+
+
+def _sides_of(box: dict, facts, *, ref=None) -> dict:
+    """🔴🔴 **측별 리그 기준** — 홈은 홈 이점을 머금는다(사용자 지시 2026-10-11).
+
+    ⚠️ 실사고 2026-10-11(LAFC): `리그평균` 기준이 양 쪽에 **같은 수**(한 팀 몫
+       1.476)였다. 홈 λ 는 홈 이점(×1.139)을 머금으므로 *거의 언제나* 그 수를
+       넘는다 — 그래서 **홈 폼 가설은 구조적으로 반박**됐다(실측: 반박 6건 중
+       넷이 `기대득점 vs 리그평균` 이었다).
+    🔴 측별 기준: 홈 = 한 팀 몫 × 홈 배율 · 원정 = 총골 − 홈 기준.
+       그 배율은 **S3 가 쓰는 그 함수**다(`probmodel.home_mul` · 사본 금지).
+    ⚠️ 배율을 못 받으면 측별 칸을 **안 만든다**(지어내지 않는다 · #4) — 그러면
+       `ref_of` 가 한 팀 몫으로 돌아가고 그 사실을 사유에 적는다.
+    """
+    from app.core import probmodel as _pm
+    mul, why = _pm.home_mul(facts, None, ref=ref)
+    if mul is None:
+        return {**box, "sides_why": f"🔴 홈 배율을 못 받았다 — {why}"}
+    home = float(box["per_team"]) * float(mul)
+    return {**box, "home_mul": float(mul), "per_home": round(home, 4),
+            "per_away": round(float(box["total"]) - home, 4),
+            "sides_why": f"홈 배율 ×{float(mul):.3f} — {why}"}

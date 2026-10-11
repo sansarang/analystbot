@@ -227,9 +227,25 @@ def test_v6_반박_원인을_셋으로_가른다():
     cause, why = _s6c._cause(row, variables=[ctx], stale="", why="기본")
     assert cause == _s6c.MISS and "근거 불가" in why, (cause, why)
     ok = ctx.model_copy(update={"usable_as_basis": True, "weight": 2.0})
-    cause2, why2 = _s6c._cause(row, variables=[ok], stale="🔴 낡음",
-                               why="기본")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **(b) 의 조건이 좁아졌다** — 사용자 지시 2026-10-11(둘 다 고쳐라)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  종전: 경기에 낡음 의심이 있으면 **모든** 반박이 (b) 였다.
+    #  이제: 그 가설의 **근거 변수가 낡은 쪽의 결장·교체**일 때만 (b) 다.
+    #  🔴 새 보장은 `tests/contracts/test_v9_3_say_and_hypo.py` 가 센다.
+    #  ⚠️ 실측 2026-10-11(LAFC): 반박 6건이 **전부** (b) 로 찍혀 원인 분류가
+    #     아무 말도 하지 않았다 — 폼 가설(`S01-home`)까지 "기준 낡음"이었다.
+    gone_v = ok.model_copy(update={"id": "R9", "type": "absence",
+                                   "subject": "team:000318"})
+    row_gone = _s6c.Row(verdict="반박", var_ids=["R9"], why="기본")
+    cause2, why2 = _s6c._cause(row_gone, variables=[gone_v], stale="🔴 낡음",
+                               why="기본", stale_sides={"home"}, ref=_ref())
     assert cause2 == _s6c.STALE, (cause2, why2)
+    # 🔴 폼 변수는 **(c)** 다 — 결장과 관계가 없다(그래도 낡음 의심은 적는다)
+    cause2b, why2b = _s6c._cause(row, variables=[ok], stale="🔴 낡음",
+                                 why="기본", stale_sides={"home", "away"})
+    assert cause2b == _s6c.WRONG and "낡음" in why2b, (cause2b, why2b)
     cause3, _ = _s6c._cause(row, variables=[ok], stale="", why="기본")
     assert cause3 == _s6c.WRONG
     # 🔴 변수 목록을 모르면 (a) 라고 하지 않는다(#4)

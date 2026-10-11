@@ -740,6 +740,17 @@ class KeyPoint(Frozen):
     refs: list[str] = Field(default_factory=list)
 
 
+class ReasonOnly(Frozen):
+    """🔴🔴 **이유 문단 하나만** 받는 꼴(사용자 지시 2026-10-11).
+
+    ⚠️ 실사고 2026-10-11: 이유 문단이 비어 전체 재작성을 걸었더니 그 요청이
+       `llm_truncated` 로 끊기고 **멀쩡한 주장 다섯 줄까지 버려졌다**. 🔴 짧은
+       질문은 잘리지 않는다 — 그래서 칸이 하나인 꼴을 둔다.
+    """
+
+    reason: str = ""
+
+
 class SayOut(Frozen):
     """🔴 s9say 산출 — **최종 평** + 검열 결과(§7 타입 하나)."""
 

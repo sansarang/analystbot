@@ -43,6 +43,7 @@ def _src(fn) -> str:
 
 def _card():
     """🔴 최소 카드 — 새 사실 한 건(`R1`)이 있는 꼴."""
+    from app.core import render
     from app.core.schema import (Card, Facts, MatchRef, ProbTriple, Variable)
     ref = MatchRef(id="m", sport="soccer", competition="Major League Soccer",
                    competition_short="MLS", home="team:000584",
@@ -53,7 +54,9 @@ def _card():
                  target="absence:Thomas Muller", favors="home",
                  hardness="hard", weight=0.7, usable_as_basis=True,
                  claim="Thomas Muller will be absent", quote="q",
-                 doc_ids=["d1"])
+                 doc_ids=["d1"],
+                 #: 🔴 새 사실은 **F 하위**가 나른 것이다(`render.NEW_SUBS`)
+                 subtask=sorted(render.NEW_SUBS)[0])
     return Card(match=ref, facts=Facts(), variables=[v],
                 our_prob=ProbTriple(home=0.37, draw=0.24, away=0.39))
 
@@ -113,9 +116,12 @@ def test_stale_cause_needs_a_stale_side_variable() -> None:
     v2 = [Variable(id="R1", type="absence", subject="team:000585",
                    favors="home", hardness="hard", weight=0.7,
                    usable_as_basis=True, claim="결장", quote="q")]
-    kind2, _ = s6c._cause(row2, variables=v2, stale="🔴 결장 5명",
-                          why="w", stale_sides={"away"})
-    assert kind2 == s6c.STALE, kind2
+    #: ⚠️ `R*`(기사 변수)는 id 꼬리가 없다 — **`subject` + `ref`** 로 쪽을 가린다
+    kind2, why2 = s6c._cause(row2, variables=v2, stale="🔴 결장 5명",
+                             why="w", stale_sides={"away"},
+                             ref=_card().match)
+    assert kind2 == s6c.STALE, (kind2, why2)
+    assert "R1" in why2
 
 
 def test_stale_cause_ignores_the_other_side() -> None:
@@ -126,9 +132,11 @@ def test_stale_cause_ignores_the_other_side() -> None:
     v = [Variable(id="R1", type="absence", subject="team:000585",
                   favors="home", hardness="hard", weight=0.7,
                   usable_as_basis=True, claim="결장", quote="q")]
-    kind, _ = s6c._cause(row, variables=v, stale="🔴 결장 3명", why="w",
-                         stale_sides={"home"})
+    kind, why = s6c._cause(row, variables=v, stale="🔴 결장 3명", why="w",
+                           stale_sides={"home"}, ref=_card().match)
     assert kind == s6c.WRONG, kind
+    #: 🔴 #3 — 그래도 **경기에는 낡음 의심이 있다**는 사실을 적는다
+    assert "기준 낡음 의심" in why
 
 
 def test_league_mean_is_side_aware() -> None:
@@ -158,6 +166,8 @@ def test_league_mean_is_side_aware() -> None:
 def test_league_of_builds_both_sides() -> None:
     """🔴 ②-b 배선 — `league_of` 가 측별 기준을 만든다(홈 배율은 S3 의 그 함수)."""
     from app.core import signals
-    src = _src(signals.league_of)
+    #: 🔴 측별 기준을 만드는 자리는 `_sides_of` 다 — `league_of` 가 그것을 부른다
+    assert "_sides_of" in _src(signals.league_of)
+    src = _src(signals._sides_of)
     assert "per_home" in src and "per_away" in src
     assert "home_mul" in src, "홈 배율을 제 손으로 세고 있다(사본 금지)"

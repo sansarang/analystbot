@@ -79,6 +79,25 @@ def run(card: Card, *, state: RunState) -> SayOut:
         logger.info("[s9say] 통과 — %s · %d개", got.verdict,
                     len(got.key_points))
         return got.model_copy(update={"audit": "통과", "used": _used(got, box)})
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **이유 문단만 어긋났으면 그 문단만 다시 묻는다**(2026-10-11)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실사고 2026-10-11(LAFC): 주장 다섯 줄은 멀쩡했는데 이유 문단이 비어
+    #     있었고, **전체 재작성**이 `llm_truncated` 로 끊겨(출력 10991 중 추론
+    #     7822) 그 멀쩡한 글까지 버려졌다. 🔴 짧은 질문은 잘리지 않는다.
+    if _reason_only(bad):
+        said = _ask_reason(card, box, state=state, bad=bad)
+        if said:
+            fixed = got.model_copy(update={"reason": said})
+            bad2 = check(fixed, card=card, box=box)
+            if not bad2:
+                state.note("s9say 최종 평 — **이유 문단만 다시 받아** 통과")
+                return fixed.model_copy(update={
+                    "audit": "이유 문단 수선 후 통과",
+                    "used": _used(fixed, box)})
+            state.note(f"s9say 이유 문단 수선 — 아직 위반 {len(bad2)}건")
+            bad = bad2
     state.note(f"s9say 최종 평 **재작성** — 위반 {len(bad)}건")
     again = _ask(card, box, state=state, bad=bad)
     if again is not None:
@@ -461,6 +480,39 @@ def _ask(card: Card, box: Bundle, *, state: RunState,
     return None
 
 
+#: 🔴 이유 문단 검열의 글자 — 이 머리글만 걸렸으면 **그 문단만** 다시 묻는다
+REASON_TAGS = ("(i)", "(j)", "(k)", "(l)", "(o)", "이유 문단")
+
+
+def _reason_only(bad: list[str]) -> bool:
+    """🔴 위반이 **이유 문단 것뿐인가**. 비었으면 `False`(수선할 것이 없다)."""
+    rows = [str(x) for x in (bad or [])]
+    if not rows:
+        return False
+    return all(any(t in one for t in REASON_TAGS) for one in rows)
+
+
+def _ask_reason(card: Card, box: Bundle, *, state: RunState,
+                bad: list[str]) -> str:
+    """🔴🔴 **이유 문단 하나만** 다시 묻는다(짧은 질문은 잘리지 않는다).
+
+    ⚠️ 돌려주는 것은 **글자**다 — 못 받으면 빈 글자이고 호출부가 전체 재작성으로
+       간다(그 사실이 상태 기록에 남는다 · #3).
+    """
+    from app.core import llm
+    from app.core.schema import ReasonOnly
+    msgs = _prompt(card, box) + [llm.Message(role="user", content=(
+        "🔴 **이 번만은 `reason`(이유 문단) 하나만** 내라 — 다른 칸은 쓰지 "
+        "않는다. 아래가 검열에서 어긋난 자리다:\n"
+        + "\n".join(f"- {x}" for x in (bad or [])[:6])))]
+    got = llm.ask(provider="deepseek", purpose="say", messages=msgs,
+                  out=ReasonOnly, state=state)
+    if isinstance(got, ReasonOnly):
+        return str(got.reason or "").strip()
+    state.note(f"s9say 이유 문단 수선 실패 — {getattr(got, 'reason', '?')}")
+    return ""
+
+
 def _prompt(card: Card, box: Bundle) -> list:
     """🔴🔴 §2 — 지시서의 글을 프롬프트에 **그대로** 둔다(사본 금지)."""
     from app.core import llm, saybundle
@@ -471,6 +523,22 @@ def _prompt(card: Card, box: Bundle) -> list:
         for one in box.items.values())
     empty = "\n".join(f"- {x}" for x in box.empty) or "- (없음)"
     want = saybundle.direction_of(card)
+    # 🔴 **새 사실 id** — `new_fact_check` 가 보는 그 목록이다(사본 금지)
+    from app.core import render as _render
+    news = [str(v.id) for v in (_render.new_facts(card) or [])]
+    # 🔴 문장 수·종류 수는 **검열의 그 수**다(사본 금지 · #1)
+    from app.core.stages import s9_audit as _au
+    reason_rule = (
+        f"🔴🔴 **`reason`(이유 문단)을 반드시 쓴다** — 문장 "
+        f"**{_au.MIN_SENT}~{_au.MAX_SENT}개**를 한 문단으로. 그 문단은 *왜 이 "
+        f"방향인가*를 **이 경기 고유 사실로만** 말하고, 서로 **종류가 다른 고유 "
+        f"사실 {_au.NEED_KINDS}가지 이상**을 담는다(일반론·단정어 금지 · 문장마다 "
+        f"고유 사실이 하나 이상).\n"
+        + (f"🔴🔴 **새 사실 {news} 를 이유 문단에 쓴다** — 쓰지 않으면 검열이 "
+           f"평을 버린다(§3-5 새 뉴스는 판단에 반드시 들어간다).\n"
+           if news else "")
+        + "🔴 `ops_home`·`ops_away` — 두 팀이 각각 **무엇을 하려 하는가**를 한 "
+          "줄씩(확정 XI·자리 변화로).\n")
     rule = (
         f"🔴 **확률 방향은 코드가 정했다 — `{want}`**. `verdict` 는 그 글자와 "
         "**같아야** 한다. 반반이면 한쪽 승리를 단정하지 않는다.\n"
@@ -502,7 +570,18 @@ def _prompt(card: Card, box: Bundle) -> list:
         "적는다 — *우위 팀·강도*와 *같은 방향 n · 반대 n*.\n"
         "🔴🔴 **`B*`(상성 사각)이 있으면 주장 중 한 줄을 그 얘기로** 쓴다 — "
         "그 정보는 확률에 **안 들어갔다**(상성 밖이다).\n"
-        "⚠️ 아래 **`없음` 칸은 말하지 않는다**:\n" + empty)
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **이유 문단(`reason`)을 요구한다** — 사용자 지시 2026-10-11
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 실사고 2026-10-11(LAFC): 검열은 *"(o) 새 사실이 있는데 이유 문단이
+        #     하나도 안 썼다 · (i) 이유 문단이 없다"* 로 두 번 걸렸는데 **프롬프트는
+        #     그 칸을 한 번도 요구하지 않았다**. 모델은 요구받지 않은 칸을 비워
+        #     뒀고(그 뒤 재작성이 `llm_truncated` 로 끊겨) 템플릿으로 떨어졌다.
+        #  🔴 검열이 요구하는 것을 **프롬프트도 요구한다** — 새 사실 목록은
+        #     `render.new_facts`(검열이 보는 그 함수)에서 든다(사본 금지).
+        + reason_rule
+        + "⚠️ 아래 **`없음` 칸은 말하지 않는다**:\n" + empty)
     return [
         llm.Message(role="system", content=(
             "너는 축구 전술 분석가다. 주어진 사실 묶음만 쓰고, 없는 것을 "
