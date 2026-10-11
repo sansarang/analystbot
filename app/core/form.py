@@ -51,6 +51,10 @@ class TeamForm:
     luck_cut_goals: float = 0.0
     #: 🔴 한 원천에서 자른 두 창(`{"5": {...}, "10": {...}}`) — 카드가 그대로 적는다
     windows: dict = field(default_factory=dict)
+    #: 🔴🔴 C — **그 쪽(홈·원정) 폼**과 그 표본 수
+    side_at: str = ""
+    side_index: float | None = None
+    side_n: int = 0
     #: 🔴🔴 A — **xG 폼**(최근 창의 xG 합)과 그 수를 센 골 수
     xgf: float | None = None
     xga: float | None = None
@@ -73,6 +77,10 @@ class TeamForm:
         if self.xg_n and self.xgf is not None and self.xga is not None:
             xg = (float(self.xgf) - float(self.xga)) / self.n
             said = (1.0 - XG_MIX) * said + XG_MIX * xg
+        # 🔴🔴 C — **그 쪽 폼으로 수축**한다(표본만큼만)
+        if self.side_index is not None:
+            said = shrink(whole=said, side=float(self.side_index),
+                          n=self.side_n)
         return round(said, 3)
 
 
@@ -115,6 +123,31 @@ def window_sums(games: list[dict], n: int) -> dict:
             "games": rows}
 
 
+#: 🔴🔴 C — 그 쪽(홈·원정) 경기가 이만큼이면 **쪽 폼을 그대로** 쓴다.
+#   ⚠️ 그보다 적으면 전체 폼으로 **수축**한다(표본이 반으로 줄기 때문이다).
+SIDE_FULL = 5
+
+
+def side_sums(games: list[dict], side: str) -> dict:
+    """🔴 C — 그 쪽 경기만 모은 득·실. 꼴은 `window_sums` 와 같다."""
+    rows = [dict(g) for g in (games or [])
+            if str(dict(g).get("side") or "") == str(side)]
+    return {"n": len(rows),
+            "gf": sum(float(g.get("gf") or 0.0) for g in rows),
+            "ga": sum(float(g.get("ga") or 0.0) for g in rows),
+            "games": rows}
+
+
+def shrink(*, whole: float, side: float, n: int) -> float:
+    """🔴🔴 C — **표본으로 수축**. `n=0` 이면 전체 폼, `n>=SIDE_FULL` 이면 쪽 폼.
+
+    🔴 새 계수를 만들지 않는다 — 가중은 `min(n, SIDE_FULL) / SIDE_FULL` 이다
+       (표본 비율 그 자체다).
+    """
+    w = min(max(int(n or 0), 0), SIDE_FULL) / float(SIDE_FULL)
+    return round((1.0 - w) * float(whole) + w * float(side), 4)
+
+
 def sums_bad(small: dict, big: dict) -> str:
     """🔴🔴 ① 계약 — **최근 n경기 합 ≤ 최근 m경기 합**(n<m, 득·실 각각).
 
@@ -148,7 +181,8 @@ def windows_bad(games: list[dict]) -> str:
 
 def form_of(team: str, rows: list[dict], *, elo: dict | None = None,
             luck_goals: float | None = None,
-            games: list[dict] | None = None) -> TeamForm:
+            games: list[dict] | None = None,
+            side_at: str = "") -> TeamForm:
     """🔴🔴 §1 — **경기 목록 → 보정 폼**.
 
     `rows` 한 줄: `{"home_name","away_name","gf","ga","opp"}` —
@@ -219,6 +253,28 @@ def form_of(team: str, rows: list[dict], *, elo: dict | None = None,
         else:
             said.append(f"⬜ xG 폼 안 섞음 — xG 를 센 골이 {n_xg}개"
                         f"(<{XG_MIN})")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 C **홈/원정을 가른다**(사용자 지시 2026-10-11) — 재료는 이미 있다
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 축1 은 최근 10경기를 **섞어서** 셌다. 그런데 한 경기 목록에 `side` 가
+    #     이미 있다(①에서 만들었다). 홈팀은 홈 경기 폼, 원정팀은 원정 경기 폼으로
+    #     보면 **같은 자료로 더 맞는다**.
+    #  🔴 표본이 반으로 줄므로 **전체 폼으로 수축**한다(`shrink`) — 그 비율을 적는다.
+    if games and str(side_at or "") in ("home", "away"):
+        box_side = side_sums(games[-RECENT:], str(side_at))
+        if box_side["n"]:
+            got.side_at = str(side_at)
+            got.side_n = int(box_side["n"])
+            got.side_index = round(
+                (float(box_side["gf"]) - float(box_side["ga"]))
+                / float(box_side["n"]), 3)
+            said.append(
+                f"{'홈' if side_at == 'home' else '원정'} 경기 폼 "
+                f"{got.side_index:+.3f}({got.side_n}경기) · 수축 가중 "
+                f"{min(got.side_n, SIDE_FULL) / SIDE_FULL:.0%}")
+        else:
+            said.append(f"⬜ {side_at} 경기가 창 안에 0건 — 쪽 폼 안 쓴다")
     got.why = (f"최근 {got.n}경기 — 득점 {got.gf:.0f}→보정 {got.adj_gf:.1f} · "
                f"실점 {got.ga:.0f}→보정 {got.adj_ga:.1f}"
                + (" · " + " · ".join(said) if said else ""))

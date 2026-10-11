@@ -701,7 +701,15 @@ def test_v7_홈_배율이_리그_평균과_같은_열쇠를_본다():
     assert "ref=None" in inspect.signature(_pm.home_mul).__str__() or (
         "ref" in inspect.signature(_pm.home_mul).parameters)
     said = inspect.getsource(_pm)
-    assert said.count("home_mul(facts, varset, ref=ref)") == 2, (
+    # 🔴🔴 **뜻은 "ref 를 빼먹은 자리가 없다"** 다 — ⚠️ 글자 수를 세던 계약이라
+    #    E(2026-10-11: 팀별 홈 이점)로 인자가 붙자 빨개졌다. 🔴 그래서 **ref 가
+    #    없는 호출**을 센다(인자가 더 붙어도 견딘다).
+    import re as _re
+    bad_calls = [m for m in _re.findall(r"(?<![a-z_])home_mul\([^)]*\)", said)
+                 if not m.startswith("home_mul(facts, varset, ref=ref")
+                 and "games: list" not in m and "facts, varset, *, ref" not in m]
+    assert not bad_calls, bad_calls
+    assert said.count("home_mul(facts, varset, ref=ref") == 2, (
         "🔴 `home_mul` 을 `ref` 없이 부르는 자리가 남았다 — 그 자리는 대회 이름이 "
         "빈 글자가 되어 홈 이점을 **조용히 버린다**")
     assert "_kind(ref, facts)" in inspect.getsource(_pm.home_mul)

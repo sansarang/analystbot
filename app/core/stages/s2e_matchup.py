@@ -215,7 +215,9 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
     form = {side: _form.form_of(
         str(getattr(ref, f"{side}_name", "")),
         _as_form(rows[side], str(getattr(ref, f"{side}_name", ""))),
-        elo=elo, luck_goals=cut[side], games=games[side])
+        elo=elo, luck_goals=cut[side], games=games[side],
+        # 🔴 C — 홈팀은 **홈 경기 폼**, 원정팀은 **원정 경기 폼**으로 본다
+        side_at=side)
         for side in ("home", "away")}
     pool = [f.index() for f in form.values() if f.index() is not None]
     for side, one in form.items():

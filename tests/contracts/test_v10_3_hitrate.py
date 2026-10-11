@@ -154,3 +154,60 @@ def test_axis2_says_when_style_is_missing() -> None:
     got = matchup.axis2({"style": {}, "fired2": [], "fired": []}, None)
     assert got.gap is None or got.gap == 0.0
     assert "자료" in got.why or "안 센다" in got.why or "6축" in got.why
+
+
+# ══════════════════════════════════════════════════════════════════
+# C — 홈/원정 분리 폼(수축해서 섞는다)
+# ══════════════════════════════════════════════════════════════════
+
+def test_side_form_splits_home_and_away() -> None:
+    """🔴🔴 C — 홈팀은 **홈 경기**, 원정팀은 **원정 경기** 폼으로 본다."""
+    from app.core import form
+    games = ([{"gf": 3, "ga": 0, "side": "home"}] * 5
+             + [{"gf": 0, "ga": 2, "side": "away"}] * 5)
+    at_home = form.side_sums(games, "home")
+    at_away = form.side_sums(games, "away")
+    assert at_home["n"] == 5 and at_home["gf"] == 15, at_home
+    assert at_away["n"] == 5 and at_away["ga"] == 10, at_away
+
+
+def test_side_form_shrinks_on_small_sample() -> None:
+    """🔴 C — 표본이 적으면 **전체 폼으로 수축**한다(그 비율을 적는다)."""
+    from app.core import form
+    whole, side = 1.0, -1.0
+    a = form.shrink(whole=whole, side=side, n=0)
+    b = form.shrink(whole=whole, side=side, n=form.SIDE_FULL)
+    assert a == whole, a
+    assert abs(b - side) < 1e-9, b
+    mid = form.shrink(whole=whole, side=side, n=form.SIDE_FULL // 2)
+    assert side < mid < whole, mid
+
+
+def test_form_of_uses_the_side() -> None:
+    """🔴 C 배선 — `form_of(side_at=…)` 가 그 쪽 폼을 섞는다."""
+    from app.core import form
+    rows = [{"gf": 1, "ga": 1, "opp": "X"}] * 10
+    games = ([{"gf": 3, "ga": 0, "side": "home"}] * 5
+             + [{"gf": 0, "ga": 3, "side": "away"}] * 5)
+    at_home = form.form_of("홈", rows, elo={}, games=games, side_at="home")
+    at_away = form.form_of("원정", rows, elo={}, games=games, side_at="away")
+    assert at_home.index() > at_away.index(), (at_home.index(),
+                                               at_away.index())
+    assert "홈 경기 폼" in at_home.why or "쪽 폼" in at_home.why
+
+
+# ══════════════════════════════════════════════════════════════════
+# E — 팀별 홈 이점(수축)
+# ══════════════════════════════════════════════════════════════════
+
+def test_team_home_edge_from_games() -> None:
+    """🔴🔴 E — 그 팀의 **홈/원정 득실**로 홈 효과를 센다(표본 적으면 수축)."""
+    from app.core import probmodel
+    games = ([{"gf": 3, "ga": 0, "side": "home"}] * 8
+             + [{"gf": 1, "ga": 2, "side": "away"}] * 8)
+    got, why = probmodel.team_home_mul(games, league=1.1)
+    assert got is not None and got > 1.1, (got, why)
+    assert "표본" in why
+    #: ⚠️ 표본이 없으면 **리그 값을 그대로** 쓴다(지어내지 않는다)
+    none, why2 = probmodel.team_home_mul([], league=1.1)
+    assert none == 1.1 and "리그" in why2

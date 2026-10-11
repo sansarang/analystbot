@@ -110,7 +110,47 @@ def league_mean(facts, *, ref=None) -> tuple[float | None, str]:
                   f"`{kind}` 표도 없다) — S3 를 안 돈다")
 
 
-def home_mul(facts, varset, *, ref=None) -> tuple[float | None, str]:
+#: 🔴🔴 E — 팀별 홈 효과를 **그대로 쓰기 시작하는 표본**(그보다 적으면 수축)
+TEAM_HOME_FULL = 8
+#: 🔴 팀별 배율의 **상한·하한**(한 팀이 리그를 벗어나지 않게)
+TEAM_HOME_LO, TEAM_HOME_HI = 0.80, 1.40
+
+
+def team_home_mul(games: list[dict], *, league: float) -> tuple[float, str]:
+    """🔴🔴 E — 그 팀의 **홈/원정 득실**로 홈 배율. `(배율, 사유)`.
+
+    > 홈 이점을 팀별로 — `games` 의 홈/원정 득실로, 표본 적으면 리그 값으로 수축.
+    >   — 사용자 지시 2026-10-11 E
+
+    ⚠️ 실측 2026-10-11: 카드가 *"홈 이점 실측 — 홈 팀 평균 1.6047 ÷ 한 팀 몫
+       1.4651 = ×1.095(league:J1)"* 로 **리그 한 수**를 모든 팀에 썼다. 팀별 홈/원정
+       득실은 **경기 목록에 이미 있다**.
+    🔴 표본이 없으면 **리그 값 그대로**다(지어내지 않는다 · #4). 새 계수를 만들지
+       않고 **표본 비율로 수축**한다.
+    """
+    rows = [dict(g) for g in (games or [])]
+    at_home = [g for g in rows if str(g.get("side") or "") == "home"]
+    at_away = [g for g in rows if str(g.get("side") or "") == "away"]
+    n = min(len(at_home), len(at_away))
+    if not n:
+        return float(league), (f"리그 값 그대로 ×{float(league):.3f} — 그 팀의 "
+                               f"홈 {len(at_home)}경기 · 원정 {len(at_away)}경기")
+    gf_h = sum(float(g.get("gf") or 0.0) for g in at_home) / len(at_home)
+    gf_a = sum(float(g.get("gf") or 0.0) for g in at_away) / len(at_away)
+    if gf_a <= 0:
+        return float(league), (f"리그 값 그대로 ×{float(league):.3f} — 원정 득점이 "
+                               f"0 이라 비를 못 만든다")
+    raw = max(TEAM_HOME_LO, min(TEAM_HOME_HI, gf_h / gf_a))
+    w = min(n, TEAM_HOME_FULL) / float(TEAM_HOME_FULL)
+    got = (1.0 - w) * float(league) + w * raw
+    return round(got, 4), (f"팀별 홈 효과 ×{raw:.3f}(홈 {gf_h:.2f}골 ÷ 원정 "
+                           f"{gf_a:.2f}골) · 표본 {n}쌍 → 수축 가중 {w:.0%} · "
+                           f"리그 ×{float(league):.3f} → **×{got:.3f}**")
+
+
+def home_mul(facts, varset, *, ref=None,
+             home_games: list[dict] | None = None
+             ) -> tuple[float | None, str]:
     """🔴🔴 3-1 — **홈 이점(리그 실측)**. ⚠️ 없으면 **1.0**(다른 대회에서 안 빌린다).
 
     🔴 실측은 `config/goal_baselines.yaml` 의 `home_share` 다 — *"홈 개최 경기의
@@ -149,6 +189,12 @@ def home_mul(facts, varset, *, ref=None) -> tuple[float | None, str]:
                       f"`tools/measure_fotmob_baselines.py` 로 그 리그 결과를 "
                       f"재서 표에 적어야 한다{tag}")
     mul = float(share) / float(per)
+    # 🔴🔴 E — **팀별 홈 효과로 수축**한다(그 팀 경기 목록이 있으면)
+    if home_games:
+        got, said_team = team_home_mul(home_games, league=mul)
+        return got, (f"홈 이점 실측 — 홈 팀 평균 {float(share):g} ÷ 한 팀 몫 "
+                     f"{float(per):g} = ×{mul:.3f}(대회 `{kind}`){tag}"
+                     f" · {said_team}")
     return mul, (f"홈 이점 실측 — 홈 팀 평균 {float(share):g} ÷ 한 팀 몫 "
                  f"{float(per):g} = ×{mul:.3f}(대회 `{kind}`){tag}")
 
@@ -199,7 +245,11 @@ def run(ref, facts, mr, varset, *, edge: dict | None = None,
     got.provisional = bool(fit.get("provisional", True))
     beta = float(conf.get("beta") or 0.0)
     cap = float(conf.get("cap_pct") or 35.0) / 100.0
-    mul, why_home = home_mul(facts, varset, ref=ref)
+    # 🔴 E — **홈팀의 경기 목록**을 넘긴다(팀별 홈 효과로 수축한다)
+    said_games = list(dict((getattr(facts, "recent", None) or {})
+                           .get(str(getattr(ref, "home", "")) or "") or {})
+                      .get("games") or [])
+    mul, why_home = home_mul(facts, varset, ref=ref, home_games=said_games)
     if mul is None:
         # 🔴 홈 이점을 못 쟀으면 **S3 를 안 돈다** — 조용히 1.0 으로 가지 않는다.
         got.gap = why_home
