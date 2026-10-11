@@ -188,7 +188,10 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
         gone, back = _style.off_from_vars(varset, side)
         # 🔴 ③ — **변수 경로도 같은 문을 지난다**(실측 2026-10-11: `IR02-home`
         #    이 에보비세(3/10 선발)로 공격 축 셋을 통째로 껐다)
-        gone = _gate_off(gone, usual=usual[side], out_today=out_today[side])
+        hit0 = sorted(usual[side] & out_today[side])
+        gone = _gate_off(gone, usual=usual[side], out_today=out_today[side],
+                         share=(_style._att_share(reads[side], hit0)
+                                if hit0 else 0.0))
         offs[side] = sorted({*offs[side], *gone} - set(back))
     late = {side: _style.late_weapons(reads[side]) for side in ("home", "away")}
     fired2 = _style.fire(styles["home"], styles["away"], off=offs)
@@ -396,7 +399,7 @@ def _style_cuts() -> str:
 
 
 def _gate_off(axes: list[str], *, usual: set[str],
-              out_today: set[str]) -> list[str]:
+              out_today: set[str], share: float | None = None) -> list[str]:
     """🔴🔴 ③ **꺼진 무기의 문** — 평소 XI 중 오늘 빠진 선수가 있어야 끈다.
 
     > "평소 XI(최근 폼 계산 기간)에 있었는데 오늘 빠진 선수"만 무기를 끈다.
@@ -407,7 +410,28 @@ def _gate_off(axes: list[str], *, usual: set[str],
     """
     if not axes or not usual:
         return list(axes)
-    return list(axes) if (usual & out_today) else []
+    if not (usual & out_today):
+        return []
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **비중도 같은 문을 지난다**(사용자 지시 2026-10-11 ⑤)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실측 2026-10-11(엘체–셀타): `off_weapons`(XI 경로)는 비중으로 걸러
+    #     0개였는데, **변수 경로**(`off_from_vars`)가 고정 세 축을 통째로 켜서
+    #     카드가 *양 팀 똑같이 3개*(`box_entry`·`direct`·`forward`)를 적었다 —
+    #     그 자리에 적힌 공격 기여 비중은 **0.0%**(문턱 15%)였다. 양 팀이 늘 같은
+    #     값이면 축2 의 차는 언제나 0 이다.
+    #  🔴 그래서 변수 경로도 **빠진 선수의 공격 기여 비중**을 본다 — 모자라면
+    #     **공격 무기는 끄지 않고**(`matchup.SIX_DEF` 밖) 수비 쪽만 남긴다.
+    #  ⚠️ `share` 를 **안 주면 막지 않는다** — 못 쟀다는 뜻이고, 없는 자료로
+    #     있는 사실(결장)을 지우면 조용한 0 이다(#3).
+    if share is None:
+        return list(axes)
+    from app.core import style as _st0
+    if float(share) >= float(_st0.OFF_SMALL):
+        return list(axes)
+    from app.core.matchup import SIX_DEF
+    return [x for x in axes if x in SIX_DEF]
 
 
 def _ko_players() -> dict:
@@ -469,6 +493,7 @@ def usual_starts(rows: list[dict]) -> tuple[dict[str, int], int]:
     return got, n
 
 
+#: 🔴 한 팀의 선발 수 — `lineupgate.XI_N` 하나가 든다(#1 사본 금지)
 def usual_xi(rows: list[dict]) -> set[str]:
     """🔴🔴 ③ — **평소 XI**: 폼 창에서 **주로 선발로 뛴 선수**.
 
@@ -481,7 +506,19 @@ def usual_xi(rows: list[dict]) -> set[str]:
     got, n = usual_starts(rows)
     if not n:
         return set()
-    return {nm for nm, k in got.items() if k / n >= USUAL_SHARE}
+    hit = {nm: k for nm, k in got.items() if k / n >= USUAL_SHARE}
+    # 🔴🔴 **열한 명을 넘지 않는다**(사용자 지시 2026-10-11 ⑤).
+    #  ⚠️ 실측 2026-10-11(엘체–셀타): 문턱만 보니 셀타의 평소 XI 가 **12명**이
+    #     됐다 — 한 경기에 열두 명이 선발로 뛰지는 않는다. 🔴 선발 빈도 상위
+    #     **11명**까지만 본다(전략 블록의 "상위 11명"과 같은 뜻이다 · #1 사본 금지:
+    #     그 쪽은 `s2d_strategy` 가 자기 목록으로 센다).
+    #  ⚠️ 11명보다 **적은 것은 그대로 둔다** — 문턱을 넘은 선수가 그만큼인 것이고,
+    #     없는 선수를 채워 넣는 것은 추측이다(#4).
+    from app.core.lineupgate import XI_N
+    if len(hit) > XI_N:
+        order = sorted(hit.items(), key=lambda kv: (-kv[1], str(kv[0])))
+        hit = dict(order[:XI_N])
+    return set(hit)
 
 
 def _as_form(rows: list[dict], name: str) -> list[dict]:

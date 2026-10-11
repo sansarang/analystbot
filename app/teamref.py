@@ -532,6 +532,19 @@ class Registry:
                     if x not in got and self.teams.get(x)
                     and self.teams[x].names]
             cand = list(dict.fromkeys(cand))
+            # 🔴🔴 **낱말 대조로 한 칸 더**(사용자 지시 2026-10-11 ④)
+            #  ⚠️ 실사고 2026-10-11(엘체–셀타): fotmob 이 `Celta Vigo` 로 주는데
+            #     이름표는 `RC Celta de Vigo`·`셀타` 다 — 조직 표시를 걷어도
+            #     (`celtavigo` ≠ `rcceltadevigo`·`celta`) 안 맞아 **이름 없는
+            #     열쇠 `team:000672`** 가 그대로 남았고 카드가 그 번호를 적었다.
+            #  🔴 그래서 대조 입구 하나(`discover.same_any`)로 **낱말 포함**을 본다.
+            #     ⚠️ 둘 이상 맞으면 **합치지 않는다**(남의 팀과 섞는 길이다).
+            if not cand:
+                from app.core import discover as _dc
+                hit = [key for key, team in self.teams.items()
+                       if key not in got and (team.names if team else None)
+                       and _dc.same_any(text, team.all_names(), loose=True)]
+                cand = list(dict.fromkeys(hit))
             if len(cand) == 1:
                 keep, drop = sorted((cand[0], got[0]))
                 self.merge(keep, drop)

@@ -388,6 +388,39 @@ def _type_words(kind: str) -> tuple[str, ...]:
     return tuple(got)
 
 
+#: 🔴🔴 **복귀를 결장으로 세지 않는다**(사용자 지시 2026-10-11 ③).
+#  ⚠️ 실사고 2026-10-11(엘체–셀타): `R1` 본문이 *"Sangare는 햄스트링 부상에서
+#     **회복하여 출전 가능**하다"* 인데 유형이 `absence` 로 들어와 승패 방향이
+#     **엘체에 불리**(away)하게 축0·축2 에 닿았다 — 복귀가 결장으로 센 셈이다.
+#  🔴 `부상` 은 **결장 쪽 낱말로 쓰지 않는다** — 복귀 문장에도 늘 들어 있다.
+_BACK_WORDS: tuple[str, ...] = ("복귀", "회복", "출전 가능", "출전가능", "합류",
+                                "돌아", "뛸 수 있", "available", "returns",
+                                "return to", "back in", "fit to", "cleared")
+_GONE_WORDS: tuple[str, ...] = ("결장", "빠진", "빠졌", "빠질", "제외", "정지",
+                                "징계", "불참", "못 나", "못나", "의심",
+                                "불투명", "ruled out", "sidelined", "miss",
+                                "doubt", "unavailab", "out of")
+_BACK_FROM: tuple[str, ...] = ("absence", "def_absence", "absence_att",
+                               "suspension")
+
+
+def _retype(kind: str, said: str) -> tuple[str, str]:
+    """🔴 ③ — 결장 계열인데 내용이 **복귀**면 `returning` 으로 바꾼다. `(유형, 사유)`.
+
+    ⚠️ 복귀 낱말과 결장 낱말이 **둘 다** 있으면 바꾸지 않는다(모호하면 그대로).
+    """
+    now = str(kind or "")
+    if now not in _BACK_FROM:
+        return now, ""
+    low = str(said or "").lower()
+    back = [w for w in _BACK_WORDS if w.lower() in low]
+    gone = [w for w in _GONE_WORDS if w.lower() in low]
+    if back and not gone:
+        return "returning", (f"🔴 유형 `{now}` → `returning` — 내용이 **복귀**다"
+                             f"({back[:2]}) · 결장 낱말이 없다")
+    return now, ""
+
+
 def _type_fits(kind: str, said: str) -> str:
     """🔴 V-2 — 유형이 그 내용과 **맞나**. 어긋나면 사유 글자, 맞으면 빈 글자.
 
@@ -417,6 +450,12 @@ def _one(c: VarCandidate, ref: MatchRef, by_id: dict[str, Doc], *,
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **유형–내용 일치 검사**(상성 엔진 지시서 V-2)
     # ══════════════════════════════════════════════════════════════════
+    # 🔴 ③ **유형 바로잡기 먼저** — 복귀를 결장으로 세지 않는다(위 `_retype`)
+    kind_now, why_type = _retype(str(c.type), f"{c.claim} {c.quote}")
+    if why_type:
+        state.note(f"s5 {what} {why_type}")
+        c = c.model_copy(update={"type": kind_now})
+        what = f"s5/{c.subtask}/{c.type}/{n}"
     said_bad = _type_fits(str(c.type), f"{c.claim} {c.quote}")
     if said_bad:
         state.drop(what, DropReason.TYPE_CONTENT_MISMATCH, said_bad)

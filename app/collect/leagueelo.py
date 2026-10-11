@@ -360,8 +360,18 @@ def rating_of(team: str, *, comps: list[str] | None = None,
         #    fotmob 으로 받은 J1·K리그1 카드에 거짓 출처가 찍혔다(실측 2026-10-09:
         #    가시마 1671.66 의 사유가 `football-data` 라고 적혔다).
         via = str(box_file.get("via") or "football-data")
+        # 🔴🔴 **대조 입구 하나로 한 칸 더**(사용자 지시 2026-10-11 ⑤)
+        #  ⚠️ 실측 2026-10-11(엘체–셀타): 등급 파일의 열쇠는 `RC Celta de Vigo` 인데
+        #     봇이 쥔 이름은 fotmob 의 `Celta Vigo` 였다 — 글자 그대로도, ` fc` 를
+        #     걷어도 안 맞아 **기준 열이 통째로 비었다**(카드: *"Elo 를 못 받았다"*).
+        #  🔴 그래서 `discover.same_any`(느슨한 대조)로 한 번 더 본다 — 이름을
+        #     손으로 늘리지 않는다(#1 사본 금지).
+        from app.core import discover as _dc
+        got_names = sorted(names)
         for nm, val in said.items():
-            if nm.lower() in names or nm.lower().replace(" fc", "") in names:
+            if (nm.lower() in names
+                    or nm.lower().replace(" fc", "") in names
+                    or _dc.same_any(nm, got_names, loose=True)):
                 return float(val), f"{comp} 자체 Elo({via} 결과로 계산)"
     return None, f"`{team}` 이 리그 Elo 표에 없다(대회 파일을 받았나 보라)"
 

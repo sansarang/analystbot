@@ -59,6 +59,11 @@ STAGES = ("new_fact_check", "strategy_check", "reason_check", "h2h_direction_che
 
 
 # 🔴 F7 삭제에 함께 잘린 상수들(원본 그대로)
+#: 🔴🔴 (m) 검열은 **맞대결을 말하는 문장만** 본다(사용자 지시 2026-10-11 ②).
+#  ⚠️ 실사고 2026-10-11(엘체–셀타): *"휴식 23일과 22일이 **비슷한** 조건"* ·
+#     *"리드를 **좁게**"* 가 (m) 위반으로 잡혀 최종 평·전술 예측이 **둘 다**
+#     템플릿으로 떨어졌다 — 맞대결 얘기가 아닌 문장이었다.
+H2H_TOPIC_WORDS = ("맞대결", "상대전적", "전적", "역대", "h2h", "H2H", "S02")
 H2H_EVEN_WORDS = ("대등", "비슷", "팽팽", "좁게", "좁은", "좁다", "호각",
                   "우열을 가리기", "격차가 좁", "크게 벌어지지", "밀리지 않")
 
@@ -384,6 +389,9 @@ def h2h_direction_check(got: Commentary, *, ref: MatchRef,
     bad: list[str] = []
     for line in [*[x.text for x in got.reasons], got.flow, got.title]:
         said_line = str(line or "")
+        # 🔴 그 문장이 **맞대결을 말하고 있을 때만** 검사한다(위 주석)
+        if not any(x in said_line for x in H2H_TOPIC_WORDS):
+            continue
         hit = [x for x in H2H_EVEN_WORDS if x in said_line]
         if hit:
             bad.append(f"(m) 맞대결 해석 방향 — 전적이 {w}승 {lose}패로 "

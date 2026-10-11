@@ -337,6 +337,14 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
                                    *[x for x in (layers.get("compare_lines")
                                                  or []) if "시장 열 —" in str(x)]]
         st.note(f"§6 세 열 판정 **다시** — {said6['compare']}(S3 가 낸 우리 열로)")
+        # 🔴🔴 ④ **근거 검열도 다시 센다** — ⚠️ 실사고 2026-10-11(엘체–셀타):
+        #    `_layers` 가 S3 **앞에서** 돌아 `ours=None` 이었고, `compare.py` 의
+        #    대체(*"시장이 미는 쪽의 반대가 우리 결론"*)가 우리 27%/45% 를
+        #    **Elche 쪽**이라고 적었다. 🔴 수를 덮으면 그 수로 **근거 줄도 다시**.
+        from app.core import compare as _cmp
+        layers["market_why"] = _cmp.market_reasons(
+            base_p, adj_p, layers.get("market"), variables, ref,
+            ours=layers["ours"])
         # 🔴 3-4 — 기여는 **리그 평균 대비**다. 그래서 `잠정` 열은 **리그 평균**
         #    확률이다(옛 `잠정`=전략 전 확률이 아니다 · §2: 옛 경로를 지웠다).
         base_sim = _pm.league_base(ref, facts, varset)
