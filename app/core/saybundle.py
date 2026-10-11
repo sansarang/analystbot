@@ -88,11 +88,40 @@ def build(card) -> Bundle:
     _checked(card, got)         # 🔴 단계 5 — 지지/반박된 가설
     _s7(card, got)              # 🔴 S7 — 상성 판정·검증 요약·상성 사각
     _names_item(card, got)      # 🔴 팀 이름 표기(음역 금지)
+    trim(got)                   # 🔴 ⑦ — 작성 입력을 **상위 근거로** 줄인다
     return got
 
 
 def _put(got: Bundle, item: Item) -> None:
     got.items[item.id] = item
+
+
+#: 🔴 ⑦(2026-10-11) — 변수에서 온 항목은 **상위 이만큼**만 작성 입력으로 간다
+TOP_VARS = 8
+#: 🔴 그 묶음에서 **늘 남기는** 글자(확률·상성·검증·이름표·가설)
+KEEP = ("P", "M", "H", "R", "N", "S7")
+
+
+def trim(got: Bundle) -> None:
+    """🔴🔴 **⑦ 작성 입력을 상위 근거로 줄인다**(사용자 지시 2026-10-11).
+
+    > 작성 입력을 상위 근거로 줄이고(**변수 상위 8**·가설 **지지분만**), 출력 칸을
+    > 나눠 두 번 받지 말고 한 번에 들어가게 상한을 맞춘다.
+
+    ⚠️ 실사고 2026-10-11(LAFC·스포팅KC·상파울루): 묶음이 커져 평이 `llm_truncated`
+       로 잘렸고 **템플릿**으로 떨어졌다 — 경기마다 그랬다.
+    🔴 **지우는 것이 아니라 줄인다** — 몇 개를 뺐는지 `empty` 에 적는다(#3).
+    """
+    rows = [k for k in got.items
+            if not any(str(k).startswith(x) for x in KEEP)]
+    if len(rows) <= TOP_VARS:
+        return
+    # 🔴 뒤쪽(덜 중요한 쪽)을 뺀다 — 묶음은 **중요한 것부터** 쌓인다(1-1→1-7)
+    drop = rows[TOP_VARS:]
+    for key in drop:
+        got.items.pop(key, None)
+    got.empty.append(f"작성 입력 줄이기 — 변수 항목 {len(drop)}개를 뺐다"
+                     f"(상위 {TOP_VARS}개만 쓴다 · ⑦)")
 
 
 def _none(got: Bundle, what: str, why: str) -> None:

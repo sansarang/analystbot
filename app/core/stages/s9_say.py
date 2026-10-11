@@ -53,6 +53,24 @@ def run(card: Card, *, state: RunState) -> SayOut:
         return SayOut(audit="안 돌았다", violations=[said])
     got = _ask(card, box, state=state, bad=None)
     if got is None:
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **잘리면 축약판**(사용자 지시 2026-10-11 ⑦)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > 잘리면 템플릿 대신 **"잘림 — 핵심 3줄만"** 축약판.
+        #
+        #  ⚠️ 실사고: LAFC·스포팅KC·상파울루가 **전부** `llm_truncated` 로 템플릿에
+        #     떨어졌다. 템플릿은 *"코드가 고른 근거"* 를 그대로 읽어 사람이 읽을
+        #     글이 아니다 — 잘린 것과 **못 쓴 것**은 다르다.
+        why = str(getattr(state, "last_llm_reason", "") or "")
+        if "truncat" in why.lower():
+            said = template(card, box, why="🔴 **잘림 — 핵심 3줄만**")
+            state.note("s9say 최종 평 — 🔴 잘렸다 → **축약판**(핵심 3줄)")
+            return said.model_copy(update={
+                "audit": "잘림 — 핵심 3줄만",
+                "key_points": list(said.key_points)[:3],
+                "flow_first": "⬜ 잘림 — 흐름은 적지 않는다",
+                "flow_second": "⬜ 잘림 — 흐름은 적지 않는다"})
         state.note("s9say 최종 평 — LLM 실패 → **템플릿 평**")
         return template(card, box, why="LLM 이 실패했다")
     bad = check(got, card=card, box=box)
@@ -435,6 +453,8 @@ def _ask(card: Card, box: Bundle, *, state: RunState,
                   out=SayOut, state=state)
     if isinstance(got, SayOut):
         return got
+    # 🔴 ⑦ — **왜 실패했는지**를 호출부가 읽는다(잘림이면 축약판으로 간다)
+    state.last_llm_reason = str(getattr(got, "reason", "") or "")
     state.note(f"s9say 최종 평 — LLM 실패({getattr(got, 'reason', '?')} · "
                f"{getattr(got, 'detail', '')[:80]})")
     logger.info("[s9say] 🔴 LLM 실패 — %s", getattr(got, "reason", "?"))

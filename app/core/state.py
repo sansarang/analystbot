@@ -57,6 +57,10 @@ class Wallet:
 class RunState:
     """🔴🔴 **한 실행의 전부** — 비용·깔때기·장부·사유가 여기 모인다."""
 
+    #: 🔴 ⑦(2026-10-11) — **마지막 LLM 실패 사유**(`llm_truncated` 등).
+    #  ⚠️ 잘린 것과 못 쓴 것은 다르다 — 호출부가 그것으로 **축약판**을 고른다.
+    last_llm_reason: str = ""
+
     match_key: str = ""
     wallet: Wallet = field(default_factory=Wallet)
     #: 🔴 칸별로 **센 수**. ⚠️ 안 잰 칸은 넣지 않는다(`None` 으로 보인다)

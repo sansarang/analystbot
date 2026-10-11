@@ -217,3 +217,43 @@ def test_v9_자동_등록_리그도_자체_Elo_표에_있다():
     assert int(said.get("id") or 0) == 130 and said.get("slug") == "mls", said
     # 🔴 K리그1·J1 도 그대로 있다(지우지 않았다)
     assert {"KL1", "J1"} <= set(box)
+
+
+def test_v9_작성_입력을_상위_근거로_줄인다():
+    """🔴🔴 **⑦**(사용자 지시 2026-10-11) — 작성 입력을 **변수 상위 8**로 줄인다.
+
+    ⚠️ 실사고: LAFC·스포팅KC·상파울루가 **전부** `llm_truncated` 로 템플릿에 떨어졌다.
+    🔴 **지우는 것이 아니라 줄인다** — 몇 개를 뺐는지 `empty` 에 적는다(#3).
+    """
+    from app.core import saybundle as _sb
+
+    got = _sb.Bundle()
+    for i in range(20):
+        got.items[f"L{i}"] = object()
+    for key in ("P1", "M0", "H1"):
+        got.items[key] = object()
+    _sb.trim(got)
+    rows = [k for k in got.items if k.startswith("L")]
+    assert len(rows) == _sb.TOP_VARS, rows
+    # 🔴 확률·상성·가설은 **늘 남는다**
+    assert {"P1", "M0", "H1"} <= set(got.items)
+    assert any("줄이기" in x for x in got.empty), got.empty
+
+
+def test_v9_잘리면_템플릿이_아니라_축약판이다():
+    """🔴 *"잘리면 템플릿 대신 **'잘림 — 핵심 3줄만'** 축약판"*(⑦).
+
+    ⚠️ 돌연변이: 잘림을 템플릿으로 되돌리면 빨개진다.
+    """
+    import inspect
+
+    from app.core.stages import s9_say as _say
+    said = inspect.getsource(_say.run)
+    assert "잘림 — 핵심 3줄만" in said, "🔴 축약판이 없다"
+    assert "last_llm_reason" in said, "🔴 **왜 실패했는지**를 안 본다"
+    i = said.index('"audit": "잘림 — 핵심 3줄만"')
+    assert "key_points" in said[i:i + 300], "🔴 핵심 3줄로 안 줄인다"
+    assert "[:3]" in said[i:i + 300], said[i:i + 200]
+    # 🔴 그 사유 칸이 `RunState` 에 있다
+    from app.core.state import RunState
+    assert hasattr(RunState(), "last_llm_reason")
