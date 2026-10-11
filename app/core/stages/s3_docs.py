@@ -240,8 +240,70 @@ def names_of(ref: MatchRef) -> tuple[list[str], list[str]]:
         for nm in list(box):
             box.extend(_rules.ko_of(nm))
         box.extend(_rules.ko_of(str(side or "")))
+    # ⚠️ 🔴 **짧은 이름은 여기서 더하지 않는다** — 이 목록은 본문 검사
+    #    (`verify.ended_this_match`)도 쓴다. 실사고 2026-10-11: 짧은 토막을 여기
+    #    넣자 그 검사가 멀쩡한 기사를 *"끝난 경기"* 로 읽어 **기사 변수가 0개**가
+    #    됐다(e2e 불변식17 이 잡았다). 🔴 짧은 이름은 **신원 선필터만** 쓴다
+    #    (`identity_ok` 가 그 자리에서 더한다).
     return (list(dict.fromkeys(x for x in home if x)),
             list(dict.fromkeys(x for x in away if x)))
+
+
+#: 🔴🔴 **짧은 이름에 쓰지 않는 흔한 낱말**(사용자 지시 2026-10-11 1번)
+#
+#  ⚠️ `United`·`City`·`Real` 같은 토막을 넣으면 **남의 경기 기사**가 통과한다 —
+#     그것이 *"남의 경기를 분석하는"* 길이다(§8-1 의 그 위험).
+#  🔴 늘릴 때는 **실측으로 걸린 것만** 더한다(추측해 늘리지 않는다).
+SHORT_SKIP: frozenset[str] = frozenset({
+    "fc", "sc", "afc", "cf", "ac", "sk", "bk", "cd", "ud", "rc", "ss", "fk",
+    "if", "sv", "club", "calcio", "united", "city", "town", "real", "royal",
+    "sporting", "athletic", "atletico", "dynamo", "deportivo", "olympique",
+    "new", "york", "los", "angeles", "san", "sankt", "saint", "west", "east",
+    "north", "south", "fussball", "football", "soccer", "sports", "sport",
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **대표팀 꼬리말과 나라 조각**(실사고 2026-10-11)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 재생 고정물(South Korea vs Uzbekistan)에서 `South Korea` → **`Korea`**,
+    #     한글 별칭에서 **`대표팀`** 이 나왔다. 그 둘이 남의 글을 들여보내 **기사
+    #     변수가 0개**가 됐다(e2e 불변식17·2 가 잡았다).
+    #  🔴 나라 이름의 **한 조각**(`Korea`)은 다른 나라 기사(북한·여자대표팀 …)와
+    #     겹친다 — 짧은 이름으로 쓰지 않는다.
+    "korea", "대표팀", "국가대표", "협회", "리그", "클럽", "축구",
+    "republic", "islands", "island", "states", "arab", "emirates",
+})
+#: 🔴 라틴 토막은 이만큼은 돼야 쓴다(짧은 토막은 아무 글에나 걸린다)
+SHORT_MIN = 4
+
+
+def short_forms(names: list[str]) -> list[str]:
+    """🔴🔴 1번 — 긴 이름에서 **짧은 이름**(도시 토막)을 뽑는다.
+
+    ⚠️ 실측 2026-10-11(손실 표): `Kawasaki vs. Nagoya (Oct 11, 2026) Live Score
+       - ESPN` 이 `identity_mismatch` 로 버려졌다 — **두 팀 이름이 다 있는데**
+       우리가 아는 이름은 `Kawasaki Frontale`·`Nagoya Grampus` 뿐이었다.
+
+    🔴 뽑는 것은 **여러 낱말 이름의 첫·끝 토막**이다(도시가 앞에도 뒤에도 온다:
+       `Kawasaki Frontale` ↔ `Albirex Niigata`). ⚠️ `SHORT_SKIP` 의 흔한 낱말과
+       `SHORT_MIN` 미만 토막은 **넣지 않는다**. 한 낱말 이름은 이미 그 자체로
+       쓰이므로 더하지 않는다.
+    """
+    out: list[str] = []
+    for nm in (names or []):
+        toks = [t for t in re.split(r"[\s·.\-]+", str(nm or "")) if t]
+        if len(toks) < 2:
+            continue
+        for tok in (toks[0], toks[-1]):
+            low = tok.lower().strip(".")
+            if low in SHORT_SKIP:
+                continue
+            if _CJK.search(tok):
+                if len(tok) >= 2:
+                    out.append(tok)
+                continue
+            if len(low) >= SHORT_MIN:
+                out.append(tok)
+    return list(dict.fromkeys(out))
 
 
 def identity_ok(title: str, snippet: str, names: tuple[list[str], list[str]]
@@ -258,6 +320,9 @@ def identity_ok(title: str, snippet: str, names: tuple[list[str], list[str]]
     said = f"{title} {snippet}".lower()
     if not said.strip():
         return False, "🔴 제목·스니펫이 비었다 — 신원을 볼 글이 없다"
+    # 🔴 1번 — **짧은 이름을 여기서만 더한다**(도시 토막 · 흔한 낱말은 뺀다).
+    #    ⚠️ 실측: `Kawasaki vs. Nagoya … - ESPN` 이 두 팀을 다 말하는데 버려졌다.
+    names = tuple([*side, *short_forms(list(side))] for side in names)
     for side in names:
         for n in side:
             got = str(n or "").strip().lower()

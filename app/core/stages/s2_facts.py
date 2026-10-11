@@ -867,6 +867,12 @@ def _recent_from_games(games: list[dict], *, kickoff=None) -> dict:
     return {
         # 🔴 승패 글자는 **득실로 센다**(다른 파서의 글자를 베끼지 않는다)
         "last5": [x["result"] for x in seq],
+        # 🔴🔴 **연패**(사용자 지시 2026-10-11) — *"연패한 팀일수록 승리에 더
+        #    간절하다"* 를 가설에 넣으려면 그 수가 있어야 한다.
+        #  🔴 **최신부터 연속**인 것만 센다(가운데 무승부·승리에서 끊긴다).
+        #  ⚠️ `seq` 는 최신이 앞이다 — 그 순서를 쓴다.
+        "streak_losing": next(
+            (i for i, x in enumerate(seq) if x["result"] != "L"), len(seq)),
         "matches": n,
         "sequence": seq,
         "rest_days": rest,

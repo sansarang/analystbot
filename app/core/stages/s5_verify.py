@@ -1436,6 +1436,46 @@ def _ir_soccer(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
                                    f"{_name(ref, key)} {said}", ref))
         if not out:
             state.note(f"s5 {rid} — 3경기 이상 연속이 없다")
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **연패 = 간절함**(사용자 지시 2026-10-11) — **가설 근거로만**
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > 연패한 팀일수록 승리에 더 간절하다도 **가설에 추가해라**.
+        #
+        #  🔴 유형은 `stakes` 다 — 배치표가 그 유형을 **`V2`·`hypo`** 로만 보낸다
+        #     (확률에 닿지 않는다 · C7). ⚠️ 그래서 이 변수는 λ 를 **안 움직인다**.
+        #  🔴 수는 `facts.recent[*]["streak_losing"]`(그 한 경기 목록에서 센 것)
+        #     하나다 — 여기서 다시 세지 않는다(사본 금지).
+        out += _ir_desperate(rid, row, ref, facts, state=state)
+    return out
+
+
+#: 🔴 **연패 간절함**의 문턱(경기 수). ⚠️ 문턱 아래면 변수를 만들지 않는다.
+DESPERATE_MIN = 2
+
+
+def _ir_desperate(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
+                  state: RunState) -> list[Variable]:
+    """🔴🔴 **연패한 팀일수록 승리에 더 간절하다**(사용자 지시 2026-10-11).
+
+    🔴 유형 `stakes` — 배치표가 **`V2`·`hypo`** 로만 보낸다(확률 금지 · C7).
+    ⚠️ 이것은 **해석**이다(연패 → 간절함). 그래서 `hardness` 는 soft 이고
+       근거 가능 여부는 배치표가 정한다 — 숫자(연패 수)는 사실이고 그 해석을
+       가설이 쓴다.
+    """
+    out: list[Variable] = []
+    for key, raw in (facts.recent or {}).items():
+        box = dict(raw) if isinstance(raw, dict) else {}
+        n = int(box.get("streak_losing") or 0)
+        if n < DESPERATE_MIN:
+            continue
+        out.append(_ir_var(
+            _rid_for(f"{rid}D", key, ref), "stakes", row, key,
+            f"{_name(ref, key)} **{n}연패** — 승리에 더 간절하다"
+            f"(연패가 길수록 간절함이 크다 · 해석이고 확률에 닿지 않는다)",
+            ref))
+    if not out:
+        state.note(f"s5 {rid}D — {DESPERATE_MIN}연패 이상인 팀이 없다")
     return out
 
 
