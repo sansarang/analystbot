@@ -245,6 +245,21 @@ def run(ref: MatchRef, facts: Facts, docs: list[Doc],
             name = _LEVEL_NAME.get(level, "soft")
             state.drop(f"s5/xi/{row['target'][:20]}", DropReason.CONFLICT,
                        clash)
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **구조 사실에 있는 결장은 hard·근거 가능**(사용자 지시 2026-10-11 ⑤)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > fotmob **결장 명단(구조 사실)** 에 있는 결장은 **기사 출처 수와
+        #  > 상관없이 hard·근거 가능**.
+        #
+        #  ⚠️ 실사고 2026-10-11(LAFC): 뮐러 결장이 **fotmob 결장 명단에 있는데도**
+        #     기사가 1곳이라 `soft · 🔴 근거 불가(맥락)` 로 내려갔다 — 구조 사실을
+        #     기사 수로 깎은 것이다. 🔴 명단에 있으면 그것이 **더 센 근거**다.
+        if row["type"] in ABSENCE_KINDS and row.get("target") \
+                and _in_missing(str(row["target"]), row["subject"], facts):
+            level, usable = 2, True
+            state.note(f"s5 R{i} `{row['target']}` — **구조 결장 명단에 있다** → "
+                       f"hard·근거 가능(기사 출처 수와 무관 · ⑤)")
         # 🔴 **팀 귀속을 못 가린 결장 변수는 근거로 못 쓴다**(지시 2 · 맥락만)
         if row.get("_basis_off"):
             usable = False
@@ -1532,6 +1547,17 @@ def _outlier_weak(box: dict, row: dict, *, state: RunState) -> tuple[bool, str]:
     if float(rank) >= cut:
         return True, f"이상치 상대 `{who}` {rank}/{total}위 — 하위 {pct:.0f}%"
     return False, (f"이상치 상대 `{who}` {rank}/{total}위 — 하위 {pct:.0f}% 가 아니다")
+
+def _in_missing(name: str, key: object, facts) -> bool:
+    """🔴 그 선수가 **구조 결장 명단**(fotmob `missing_of`)에 있나.
+
+    🔴 이름 대조는 `s5_verify._in` 하나가 한다(사본 금지) — 한 낱말 이름은 성으로만
+       맞춘다(실사고 2026-10-11 의 그 규칙).
+    """
+    rows = dict(getattr(facts, "missing", None) or {}).get(str(key)) or []
+    pool = [str(getattr(m, "name", "") or "") for m in rows]
+    return _in(str(name), pool)
+
 
 def _xi_clash(target: str, subject: str, facts: Facts) -> str:
     """🔴 그 선수가 **XI 에 들어 있나** — 들어 있으면 충돌 사유 글자(아니면 빈 글자).

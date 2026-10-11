@@ -163,3 +163,40 @@ def test_v9_손흥민이_선발인데_수비_위주면_버린다():
     off = {"Heung-Min Son": "명단 제외", "Denis Bouanga": "벤치"}
     assert not [x for x in _s2d.check([_Line()], {"home": _Read(off)})
                 if "핵심 공격 선수" in x]
+
+
+def test_v9_구조_결장은_기사_수와_무관하게_hard다():
+    """🔴🔴 **⑤**(사용자 지시 2026-10-11) — fotmob **결장 명단(구조 사실)** 에 있는
+    결장은 **기사 출처 수와 상관없이 hard·근거 가능**.
+
+    ⚠️ 실사고(LAFC): 뮐러 결장이 명단에 있는데도 기사가 1곳이라
+       `soft · 🔴 근거 불가(맥락)` 로 내려갔다 — 구조 사실을 기사 수로 깎았다.
+    """
+    import inspect
+
+    from app.core.stages import s5_verify as _s5
+    said = inspect.getsource(_s5)
+    assert "_in_missing" in said, "🔴 구조 결장 명단을 안 본다"
+    i = said.index("def _in_missing")
+    assert "missing" in said[i:i + 500]
+    # 🔴 **그 자리에서 level 2·usable** 로 올린다
+    j = said.index("구조 결장 명단에 있다")
+    win = said[max(0, j - 400):j]
+    assert "level, usable = 2, True" in win, win[-200:]
+
+
+def test_v9_구조_결장_대조가_이름_규칙을_지킨다():
+    """🔴 이름 대조는 `_in` 하나다 — 한 낱말 이름은 **성으로만** 맞춘다."""
+    from app.core.stages import s5_verify as _s5
+
+    class _M:
+        def __init__(self, nm):
+            self.name = nm
+
+    class _F:
+        missing = {"team:000001": [_M("Thomas Müller"), _M("Rafael")]}
+
+    assert _s5._in_missing("Thomas Müller", "team:000001", _F()) is True
+    assert _s5._in_missing("Müller", "team:000001", _F()) is True
+    # 🔴 `Rafael`(한 낱말)이 `Rafael Tolói` 같은 **다른 사람**을 끌어오지 않는다
+    assert _s5._in_missing("Rafael Tolói", "team:000001", _F()) is False
