@@ -351,11 +351,19 @@ def _b1(card: Card) -> str:
             out.append(f"🔴 {d.detail}")
     # 🔴🔴 **결장 귀속 정정**(사용자 지시 2026-10-07) — 고친 것을 카드에 적는다
     #    ⚠️ 조용히 고치면 사용자가 *"모델이 틀렸다"* 를 못 본다(#3).
+    #    🔴 **같은 줄은 한 번만** — ⚠️ 실측 2026-10-11(LAFC): 같은 선수를 여러
+    #       문서에서 고쳐 *"Thomas Muller …→…"* 가 **다섯 번** 찍혔다. 수를 함께
+    #       적어 **몇 번 고쳤는지**는 남긴다(지우는 것이 아니다).
+    said: dict[str, int] = {}
     for d in card.drops:
         if d.reason.value == "team_reattached":
-            out.append(f"🔴 {d.detail}")
+            key = f"🔴 {d.detail}"
         elif d.reason.value in ("team_unresolved", "team_ambiguous"):
-            out.append(f"⚠️ 결장 귀속 미확정 → 근거 불가 — {d.detail}")
+            key = f"⚠️ 결장 귀속 미확정 → 근거 불가 — {d.detail}"
+        else:
+            continue
+        said[key] = said.get(key, 0) + 1
+    out += [(x if n == 1 else f"{x} ×{n}") for x, n in said.items()]
     return "\n".join(f"- {x}" for x in out)
 
 

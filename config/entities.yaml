@@ -60,6 +60,16 @@ teams:
       실측 2026-10-11 — fotmob 팀 색인 슬러그 `orlando-city` · id 267810
       ⚠️ 같은 색인에 `orlando-city-b`(722266 · 2군)·`orlando-pride`(여자)가 있다
 
+  Los Angeles FC:
+    aliases:
+      ko: [로스앤젤레스 FC, 엘에이FC, 엘에이 FC, 로스앤젤레스]
+      en: [LAFC, LA FC]
+    source: |
+      사용자 지시 2026-10-11 — 사용자가 `로스앤젤레스 FC` 로 물었다(MLS)
+      실측 2026-10-11 — fotmob 팀 색인 슬러그 `los-angeles-fc` · id 867280
+      ⚠️ 같은 색인에 `los-angeles-fc-ii`(1451871 · 2군)·`los-angeles-force`가 있다
+      ⚠️ `LA Galaxy` 는 **다른 팀**이다(별칭에 넣지 않는다)
+
   Minnesota United:
     aliases:
       ko: [미네소타, 미네소타 유나이티드, 미네소타 유나이티드 FC]
