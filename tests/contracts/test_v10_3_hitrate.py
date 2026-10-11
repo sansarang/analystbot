@@ -137,15 +137,28 @@ def test_axis2_uses_the_six_axis_gap() -> None:
         def __init__(self, box):
             self.axis = dict(box)
 
+    #: 🔴 축 이름은 **`style.axes()` 표**가 든다(여섯째는 `setpiece` 다 —
+    #   내가 `wide` 로 적어 축2 가 계속 ⬜ 였던 실사고 2026-10-11)
     box = {"style": {"home": _S({"forward": 0.47, "box_entry": 1.64,
-                                 "press": 0.04, "low_block": 0.06}),
+                                 "direct": 0.10, "press": 0.04,
+                                 "low_block": 0.06, "setpiece": 0.20}),
                      "away": _S({"forward": 0.44, "box_entry": 2.50,
-                                 "press": 0.05, "low_block": 0.07})},
+                                 "direct": 0.12, "press": 0.05,
+                                 "low_block": 0.07, "setpiece": 0.18})},
            "fired2": [], "fired": [], "off": {}, "late": {}}
     got = matchup.axis2(box, None)
     assert got.gap is not None, got.why
     assert abs(float(got.gap)) > 0.0, (got.gap, got.why)
     assert "6축" in got.why
+
+
+def test_six_axis_names_come_from_the_table() -> None:
+    """🔴 B — 축 이름을 **베껴 적지 않는다**(`style.axes()` 가 원본)."""
+    from app.core import matchup, style
+    src = _src(matchup._six_gap)
+    assert "axes()" in src, "표에서 이름을 안 받는다"
+    assert set(matchup.SIX_DEF) <= set(style.axes()), (
+        matchup.SIX_DEF, list(style.axes()))
 
 
 def test_axis2_says_when_style_is_missing() -> None:

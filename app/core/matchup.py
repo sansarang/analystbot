@@ -410,10 +410,13 @@ def axis1(box: dict, varset, *, r: dict) -> Axis:
                                     .get("scale") or 1.0))
 
 
-#: 🔴🔴 B — **6축의 쪽**(공격 쪽은 그대로, 수비 쪽은 상대 공격을 막는 값이다)
-#  ⚠️ 이름은 `style` 이 쓰는 그 여섯이다(사본 금지 — 여기서 늘리지 않는다).
-SIX_ATT: tuple[str, ...] = ("forward", "box_entry", "direct")
-SIX_DEF: tuple[str, ...] = ("press", "low_block", "wide")
+#: 🔴🔴 B — **막는 쪽 축**(그 값이 높을수록 *상대 공격*을 막는다 → 내 우위다)
+#
+#  🔴 축 **이름 목록은 `style.axes()`(설정 표) 하나가 든다** — 여기 베껴 적지
+#     않는다(#1 사본 금지). ⚠️ 실사고 2026-10-11: 여섯째를 `wide` 로 적었는데
+#     실제 표는 **`setpiece`** 였다 — 그래서 축2 가 계속 ⬜ 였다.
+#  ⚠️ `setpiece` 는 공격 쪽이다(세트플레이 xG 비중) — 막는 쪽은 둘뿐이다.
+SIX_DEF: frozenset[str] = frozenset({"press", "low_block"})
 
 
 def _six_gap(box: dict, *, per: float) -> float | None:
@@ -428,15 +431,17 @@ def _six_gap(box: dict, *, per: float) -> float | None:
     home, away = rows.get("home"), rows.get("away")
     if home is None or away is None:
         return None
+    from app.core import style as _st
     a = dict(getattr(home, "axis", None) or {})
     b = dict(getattr(away, "axis", None) or {})
     got: list[float] = []
-    for key in SIX_ATT:
-        if key in a and key in b:
-            got.append(float(a[key]) - float(b[key]))
-    for key in SIX_DEF:
-        if key in a and key in b:
+    for key in _st.axes():                     # 🔴 표가 이름을 준다(사본 금지)
+        if key not in a or key not in b:
+            continue                            # ⚠️ 한쪽이 없으면 건너뛴다(#3)
+        if key in SIX_DEF:
             got.append(float(b[key]) - float(a[key]))
+        else:
+            got.append(float(a[key]) - float(b[key]))
     if not got:
         return None
     return round(per * sum(got) / len(got), 4)
