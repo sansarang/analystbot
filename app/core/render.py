@@ -554,6 +554,51 @@ def _who(card: Card, key: str) -> str:
     return key
 
 
+def _b3_games(card: Card) -> str:
+    """🔴🔴 ① — **상성이 쓴 한 경기 목록**으로 폼 블록을 적는다(두 창 다).
+
+    `matchup["games"][side]` 한 줄은 `s2e_matchup.games_of` 가 만든 것이다 —
+    `{date, league, side, opp, score, gf, ga}`. 🔴 창 합은 `form.window_sums`
+    하나가 센다(사본 금지) — **축1 이 보는 그 수**다.
+    ⚠️ 목록이 없으면 **빈 글자**를 내고 호출부가 옛 폼 블록을 적는다(그 사실이
+       블록에 남는다 · #3).
+    """
+    from app.core import form as _form
+    box = dict(getattr(card, "matchup", None) or {})
+    games = dict(box.get("games") or {})
+    if not games:
+        return ""
+    bad = dict(box.get("window_bad") or {})
+    out: list[str] = []
+    for side in ("home", "away"):
+        rows = list(games.get(side) or [])
+        who = (card.match.home_name if side == "home"
+               else card.match.away_name)
+        if not rows:
+            out.append(f"- **{who}** — ⬜ 경기 목록을 못 받았다")
+            continue
+        said = []
+        for n in _form.WINDOWS:
+            win = _form.window_sums(rows, n)
+            if not win["n"]:
+                continue
+            said.append(f"최근 {win['n']}경기 득 {win['gf']:.0f}·"
+                        f"실 {win['ga']:.0f}"
+                        f"(경기당 {win['gf'] / win['n']:.2f}·"
+                        f"{win['ga'] / win['n']:.2f})")
+        out.append(f"- **{who}** — " + " · ".join(said)
+                   + (f" · 🔴 {bad.get(side)}" if bad.get(side) else ""))
+        for one in rows[-5:][::-1]:
+            out.append(f"    {one.get('date')} "
+                       f"{'홈' if one.get('side') == 'home' else '원정'} "
+                       f"{one.get('opp')} {one.get('score')}"
+                       + (f" [{one.get('league')}]" if one.get("league")
+                          else ""))
+    out.append("- 🔴 **두 창은 같은 경기 목록에서 잘랐다** — 폼 블록과 축1 이 "
+               "같은 수를 본다(사용자 지시 2026-10-11 ①)")
+    return "\n".join(out)
+
+
 def _b3(card: Card) -> str:
     """블록 3 폼 — 🔴 **사람이 읽는 꼴**(사용자 지시 2026-10-06 ⑦).
 
@@ -564,9 +609,23 @@ def _b3(card: Card) -> str:
     🔴 **없는 칸은 이름으로** 남긴다(#3) — 못 잰 것과 0 을 가른다.
     """
     f = card.facts
-    if not (f.recent or f.standings or f.h2h):
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 ① **경기 목록은 하나다** — 사용자 지시 2026-10-11 ①
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 폼 블록(5경기)과 축1(10경기)의 경기 목록을 날짜·대회·스코어로 나란히
+    #  > 찍어라. **한 원천(같은 경기 목록)에서 두 창을 자른다.**
+    #
+    #  ⚠️ 실사고 2026-10-11(LAFC–밴쿠버): 이 블록은 **fotmob 폼 블록**(`f.recent`)
+    #     을, 축1 은 **경기 페이지 목록**(`matchup["games"]`)을 읽었다 — 그래서
+    #     *"최근5 실점 10"* 과 *"최근10 실점 9"* 가 한 카드에 나란히 찍혔다.
+    #  🔴 그래서 **상성이 쓴 그 목록**이 있으면 이 블록도 그것으로 센다.
+    said_games = _b3_games(card)
+    if not (f.recent or f.standings or f.h2h or said_games):
         return "- ⬜ 없다 — 구조 자료를 못 받았다(사유는 블록 1)"
     out: list[str] = []
+    if said_games:
+        return said_games
     for key, raw in f.recent.items():
         box = dict(raw) if isinstance(raw, dict) else {}
         who = (card.match.home_name if key == card.match.home

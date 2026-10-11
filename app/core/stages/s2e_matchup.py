@@ -67,6 +67,26 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
         out["why"] = "🔴 두 팀 과거 경기를 다 못 받아 **상성을 안 센다**"
         state.note(f"s2e 상성 — {out['why']}")
         return out
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 ① **한 경기 목록** — 폼 블록·축1·두 창이 전부 이것을 본다
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실사고 2026-10-11(LAFC–밴쿠버): 카드의 폼 블록은 **fotmob 폼 블록**
+    #     (5경기)을, 축1 은 **경기 페이지 목록**(10경기)을 읽었다 — 그래서
+    #     *"최근5 실점 10, 최근10 실점 9"* 라는 **불가능한 수**가 나란히 찍혔다.
+    games = {side: games_of(rows[side]) for side in ("home", "away")}
+    usual = {side: usual_xi(rows[side]) for side in ("home", "away")}
+    # 🔴 ① 계약 — 창이 어긋나면 **축1 미계산 + 운영자 알림**
+    window_bad = {side: _form.windows_bad(games[side])
+                  for side in ("home", "away")}
+    out["games"] = games
+    out["window_bad"] = window_bad
+    out["usual_xi"] = {s: sorted(v) for s, v in usual.items()}
+    for side, said in window_bad.items():
+        if said:
+            state.note(f"🔴🔴 **운영자 알림** — {side} 경기 목록의 두 창이 "
+                       f"어긋났다: {said} → 축1 을 안 센다")
+            logger.error("[s2e] 창 불일치 %s — %s", side, said)
     # ── 축3 골 프로필
     prof = {side: _goals.profile_of(str(getattr(ref, f"{side}_name", "")),
                                     rows[side])
@@ -94,7 +114,9 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
     said_plan = {side: _plan_of(strategy, side) for side in ("home", "away")}
     styles = {side: _style.adjust(styles[side], said_plan[side])
               for side in ("home", "away")}
-    offs = {side: _style.off_weapons(reads[side], styles[side])
+    # 🔴 ③ — **평소 XI 에 있었던 선수만** 무기를 끈다(장기 결장은 폼에 이미 있다)
+    offs = {side: _style.off_weapons(reads[side], styles[side],
+                                     usual=usual[side])
             for side in ("home", "away")}
     # 🔴 F2 — **변수(결장·복귀)도 무기를 끄고 켠다**(XI 만 보던 자리다)
     for side in ("home", "away"):
@@ -120,9 +142,10 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
     elo = _elo_of(ref, rows)
     cut = {side: _luck_cut(fired, side) for side in ("home", "away")}
     form = {side: _form.form_of(
-        str(getattr(ref, f"{side}_name", "")), _as_form(rows[side],
-                                                        str(getattr(ref, f"{side}_name", ""))),
-        elo=elo, luck_discount=cut[side]) for side in ("home", "away")}
+        str(getattr(ref, f"{side}_name", "")),
+        _as_form(rows[side], str(getattr(ref, f"{side}_name", ""))),
+        elo=elo, luck_goals=cut[side], games=games[side])
+        for side in ("home", "away")}
     pool = [f.index() for f in form.values() if f.index() is not None]
     for side, one in form.items():
         one.pct_att = _form.percentile(one.index(), pool)
@@ -131,6 +154,8 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
     out["table"] = {side: _goals.table_of(rows[side])
                     for side in ("home", "away")}
     out.update({"form": form, "profile": prof, "fired": fired, "rest": rest,
+                # 🔴 ① — 축1 이 이 칸을 보고 **안 센다**(틀린 수가 λ 로 가는 길을 끊는다)
+                "window_bad": window_bad,
                 "why": (f"축1 폼 {', '.join(f'{s} {f.index()}' for s, f in form.items())}"
                         f" · 축3 발동 {len(fired)}건")})
     # ══════════════════════════════════════════════════════════════════
@@ -187,8 +212,19 @@ async def _history(net: Any, name: str, *, state: RunState
             #    이름 비교를 금지한다. ⚠️ 그 가림을 이름으로 하되 **한 곳**이다.
             mine = _d.same_any(str(m["home"]), _d.aliases_of(name), loose=True)
             them = _d.same_any(str(m["away"]), _d.aliases_of(name), loose=True)
+            # 🔴🔴 **평소 XI 의 재료**(사용자 지시 2026-10-11 ③) — 그 경기의
+            #    **우리 쪽 선발 11명**이다. 이것이 있어야 *"폼 창에 있었는데 오늘
+            #    빠진 선수"* 와 *"그 창 내내 빠져 있던 장기 결장"* 을 가른다.
+            lu = ((fm._page(j).get("content") or {}).get("lineup") or {})
+            which = "homeTeam" if (mine and not them) else "awayTeam"
+            starters = [str(r.get("name") or "")
+                        for r in fm.players_of(dict(lu.get(which) or {}))]
             out.append({"home_name": m["home"], "away_name": m["away"],
                         "mine_home": (mine if mine != them else None),
+                        # 🔴 ① — **날짜·대회**를 들고 다닌다(두 창 표의 재료)
+                        "utc": str(m.get("utc") or ""),
+                        "league": str(m.get("league_name") or ""),
+                        "starters": [x for x in starters if x],
                         "goals": fm.goals_of(j),
                         # 🔴 §2 — **6축 재료**(경기 통계 · 같은 페이지에서 온다)
                         "stats": fm.stats_of(j)})
@@ -198,11 +234,17 @@ async def _history(net: Any, name: str, *, state: RunState
         return None
 
 
-def _as_form(rows: list[dict], name: str) -> list[dict]:
-    """🔴 §1 입력 꼴로 바꾼다 — `{gf, ga, opp}`(우리 기준).
+def games_of(rows: list[dict]) -> list[dict]:
+    """🔴🔴 ① — **한 원천의 경기 목록**. 두 창(5·10)을 이 목록에서 자른다.
 
-    🔴 홈/원정은 `_history` 가 이미 가려 뒀다(`mine_home`) — 여기서 이름을
-       다시 비교하지 않는다(신원 계약 3단계).
+    > 폼 블록(5경기)과 축1(10경기)의 경기 목록을 날짜·대회·스코어로 나란히 찍어라.
+    > **한 원천(같은 경기 목록)에서 두 창을 자른다.** — 사용자 지시 2026-10-11 ①
+
+    한 줄: `{date, league, side, opp, score, gf, ga, starters}`.
+    🔴 득·실은 **골 목록에서 센다**(자책골은 상대 득점으로) — 스코어 글자를 다시
+       파싱하지 않는다.
+    ⚠️ `mine_home` 이 `None` 인 줄(우리 팀을 못 가린 경기)은 **버린다** — 득실을
+       어느 쪽에 줄지 모르는 수를 폼에 넣지 않는다(#4).
     """
     out: list[dict] = []
     for row in (rows or []):
@@ -217,17 +259,54 @@ def _as_form(rows: list[dict], name: str) -> list[dict]:
                 gf += 1
             else:
                 ga += 1
-        out.append({"gf": gf, "ga": ga,
-                    "opp": (box.get("away_name") if mine_home
-                            else box.get("home_name"))})
+        at_home, at_away = ((gf, ga) if mine_home else (ga, gf))
+        out.append({
+            "date": str(box.get("utc") or "")[:10],
+            "league": str(box.get("league") or ""),
+            "side": ("home" if mine_home else "away"),
+            "opp": str(box.get("away_name") if mine_home
+                       else box.get("home_name")),
+            "score": f"{at_home}-{at_away}",
+            "gf": gf, "ga": ga,
+            "starters": list(box.get("starters") or [])})
     return out
 
 
+def usual_xi(rows: list[dict]) -> set[str]:
+    """🔴🔴 ③ — **평소 XI**: 폼 창 안에서 **한 번이라도 선발로 뛴 선수**.
+
+    > "평소 XI(최근 폼 계산 기간)에 있었는데 오늘 빠진 선수"만 무기를 끈다.
+    > 그 기간 내내 빠져 있던 장기 결장(에보비세)은 폼에 이미 들어 있으니 끄지
+    > 않는다(이중 계산). — 사용자 지시 2026-10-11 ③
+    """
+    got: set[str] = set()
+    for one in games_of(rows):
+        got |= {str(x) for x in (one.get("starters") or []) if x}
+    return got
+
+
+def _as_form(rows: list[dict], name: str) -> list[dict]:
+    """🔴 §1 입력 꼴로 바꾼다 — `{gf, ga, opp}`(우리 기준).
+
+    🔴 목록은 `games_of` 하나가 만든다(사본 금지) — 폼 블록·축1·두 창이 **같은
+       목록**을 본다(사용자 지시 2026-10-11 ①).
+    """
+    return [{"gf": one["gf"], "ga": one["ga"], "opp": one["opp"]}
+            for one in games_of(rows)]
+
+
 def _luck_cut(fired: list, side: str) -> float | None:
-    """🔴 §1 마지막 줄 — 그 팀에 **T12 공격 할인**이 걸렸나(없으면 `None`)."""
+    """🔴🔴 ② — 그 팀의 **운 요소 골 수**(k). 없으면 `None`.
+
+    > T12 "운 요소 득점 k/n"이면 빼는 골은 **최대 k**. ×0.5 일괄 할인 삭제.
+    >   — 사용자 지시 2026-10-11 ②
+
+    🔴 **비율이 아니다** — T12 가 센 골 수(`luck_goals`)를 그대로 낸다.
+    ⚠️ 그 수를 못 받으면 `None`(할인 없음)이다 — 비율로 되돌아가지 않는다.
+    """
     for f in (fired or []):
         if f.rule == "T12" and f.side == side and not f.watch_only:
-            got = dict(f.moves()).get("form_attack_discount")
+            got = dict(f.moves()).get("luck_goals")
             if got:
                 return float(got)
     return None

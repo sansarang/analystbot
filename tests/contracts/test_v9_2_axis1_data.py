@@ -114,7 +114,7 @@ def test_s2e_builds_one_game_list() -> None:
     assert "games" in src, "경기 목록을 안 낸다"
     assert "windows_bad" in src, "창 검사를 안 돈다"
     #: 🔴 날짜·대회·스코어를 들고 다닌다(사용자가 나란히 보는 표의 재료)
-    assert '"league"' in src and '"score"' in src
+    assert "league" in src and "score" in src
 
 
 def test_card_form_block_reads_the_same_list() -> None:
@@ -123,8 +123,10 @@ def test_card_form_block_reads_the_same_list() -> None:
     import inspect as _i
     from app.core import render
     src = ast.unparse(ast.parse(_i.getsource(render._b3)))
-    assert "games" in src, "폼 블록이 아직 다른 원천을 읽는다"
-    assert "matchup" in src, "폼 블록이 상성 재료의 목록을 안 본다"
+    assert "_b3_games" in src, "폼 블록이 아직 다른 원천만 읽는다"
+    made = ast.unparse(ast.parse(_i.getsource(render._b3_games)))
+    assert "matchup" in made and "games" in made, "상성 재료의 목록을 안 본다"
+    assert "window_sums" in made, "창 합을 제 손으로 세고 있다(사본 금지)"
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -210,8 +212,8 @@ def _ref() -> MatchRef:
 
 
 def _market(home: float, draw: float, away: float) -> MarketProb:
-    return MarketProb(probs={"home": home, "draw": draw, "away": away},
-                      source="test", used=True)
+    return MarketProb(probs={"win:home": home, "win:draw": draw,
+                             "win:away": away}, source="test", used=True)
 
 
 def test_evidence_against_us_cannot_support_us() -> None:

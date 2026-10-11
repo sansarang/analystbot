@@ -175,7 +175,7 @@ def _axis_of(one: Style, name: str) -> float | None:
     return float(got) if got is not None else None
 
 
-def off_weapons(read, prof) -> list[str]:
+def off_weapons(read, prof, *, usual: set[str] | None = None) -> list[str]:
     """🔴🔴 §2 둘째 줄 — **오늘 XI 에서 꺼진 무기**.
 
     > 오늘 XI 에서 무기를 쥔 선수가 빠졌거나 벤치면 그 무기는 **꺼진 것**으로 본다.
@@ -190,6 +190,21 @@ def off_weapons(read, prof) -> list[str]:
     gone = [nm for nm, st in said.items() if st in ("명단 제외", "벤치")]
     if not gone:
         return []           # 🔴 고정물 — **빠진 선수가 없으면 꺼진 무기도 없다**
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **평소 XI 에 있었던 선수만 끈다**(사용자 지시 2026-10-11 ③)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > "평소 XI(최근 폼 계산 기간)에 있었는데 오늘 빠진 선수"만 무기를 끈다.
+    #  > 그 기간 내내 빠져 있던 **장기 결장(에보비세)은 폼에 이미 들어 있으니 끄지
+    #  > 않는다(이중 계산)**. 이번에 새로 빠진 뮐러·바드왈은 공격 기여 비중으로 센다.
+    #
+    #  🔴 `usual` 은 **폼 창의 선발 명단 합집합**이다(`s2e_matchup.usual_xi`).
+    #  ⚠️ `usual` 을 **안 주면 거르지 않는다** — 그 자료가 없는 호출부(백필·옛
+    #     테스트)에서 *"없는 것을 없다"* 로 바꿔 조용히 무기를 켜지 않기 위해서다.
+    if usual is not None:
+        gone = [nm for nm in gone if _same_player(nm, usual)]
+        if not gone:
+            return []
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **비중으로 끈다**(사용자 지시 2026-10-11 ③)
     # ══════════════════════════════════════════════════════════════════
@@ -213,6 +228,26 @@ def off_weapons(read, prof) -> list[str]:
 
 #: 🔴 빠진 선수의 공격 기여가 팀의 이만큼이면 **공격 축 셋**이 꺼진다
 OFF_BIG, OFF_SMALL = 0.30, 0.15
+
+
+def _same_player(name: str, pool: set[str]) -> bool:
+    """🔴 ③ — 그 이름이 **평소 XI 안에 있나**.
+
+    ⚠️ 이름 표기가 두 통로에서 갈린다(`Müller` vs `Thomas Müller`). 🔴 그래서
+       **성(마지막 토큰)**으로도 맞춘다 — 단, 토큰이 하나뿐인 이름은 **성으로만**
+       맞춘다(`Rafael` 이 `Rafael Tolói` 를 잡던 실사고 2026-10-11 과 같은 규칙).
+    """
+    want = str(name or "").strip().lower()
+    if not want:
+        return False
+    tail = want.split()[-1]
+    for one in pool:
+        got = str(one or "").strip().lower()
+        if not got:
+            continue
+        if got == want or got.split()[-1] == tail:
+            return True
+    return False
 
 
 def _att_share(read, gone: list[str]) -> float:

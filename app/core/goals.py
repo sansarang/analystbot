@@ -423,8 +423,13 @@ def _t12(rows: dict, side: str, mine: Profile, min_n: int) -> list[Fired]:
     if a and a >= 0.30:
         out.append(Fired(
             rule="T12", side=side,
+            # 🔴🔴 ② — **운 요소 골 수**를 함께 낸다(사용자 지시 2026-10-11 ②:
+            #    *"T12 '운 요소 득점 k/n'이면 빼는 골은 최대 k"*). ⚠️ 비율만 내면
+            #    폼이 **전체 득점에 ×(1-비율)** 을 걸 수밖에 없다 — 그것이 지워진
+            #    "×0.5 일괄 할인"이다.
             effect={"form_attack_discount": float(eff.get(
-                "form_attack_discount") or 0.0)},
+                "form_attack_discount") or 0.0),
+                "luck_goals": float(mine.scored.lucky)},
             watch_only=(mine.scored.n < min_n),
             text=(f"운 요소 득점 {a:.0%}({mine.scored.lucky}/{mine.scored.n}) "
                   f"— 공격 폼을 할인한다"),

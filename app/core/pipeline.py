@@ -704,7 +704,9 @@ def _layers(ref: MatchRef, facts: Facts, variables: list[Variable],
     said3 = compare_block(base_for_compare, ours, market, hypo, variables,
                           measured=adj_p.measured, label=label)
     verdict, lines, tilt = said3["compare"], said3["_lines"], said3["tilt"]
-    reasons = compare.market_reasons(base_p, adj_p, market, variables, ref)
+    # 🔴 ④ — **우리 결론의 방향**을 넘긴다(근거 검열의 기준이다)
+    reasons = compare.market_reasons(base_p, adj_p, market, variables, ref,
+                                     ours=ours)
     # 🔴 §5 중복 금지 — ② 가 돌았으면 결장 계열 무게 0 · 전력/폼 절반
     _, notes = compare.weight_rules(variables, measured=adj_p.measured)
     for line in notes:

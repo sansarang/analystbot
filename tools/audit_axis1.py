@@ -38,7 +38,7 @@ async def audit(home: str, away: str) -> None:
     elo = _s2e._elo_of(_Ref(), rows)
     for side, name in (("home", home), ("away", away)):
         said = _s2e._as_form(rows[side], name)
-        got = _form.form_of(name, said, elo=elo, luck_discount=None)
+        got = _form.form_of(name, said, elo=elo, luck_goals=None)
         print(f"\n━━ {name} ━━ (Elo {'있다' if elo.get(name) else '🔴 **없다**'})")
         print(f"{'상대':<26}{'상대Elo':>8}{'득':>4}{'실':>4}"
               f"{'보정득':>9}{'보정실':>9}")

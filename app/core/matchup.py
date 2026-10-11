@@ -252,6 +252,7 @@ def axis1(box: dict, varset, *, r: dict) -> Axis:
 
     🔴 C8 — **선수단 교체 팀은 r 로 깎는다**(과거가 오늘 선수단의 기록이 아니다).
     """
+    from app.core import form as _form
     from app.core import routing
     got = Axis(name="axis1")
     form = dict(box.get("form") or {})
@@ -259,6 +260,20 @@ def axis1(box: dict, varset, *, r: dict) -> Axis:
             for side in ("home", "away")}
     if vals["home"] is None or vals["away"] is None:
         got.why = "🔴 보정 폼을 못 셌다 — 축1 을 안 센다"
+        return got
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **창이 어긋나면 축1 을 안 센다**(사용자 지시 2026-10-11 ①)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 계약: 최근 n경기 합 ≤ 최근 m경기 합(n<m, 득·실 각각).
+    #  > 어기면 **축1 미계산 + 운영자 알림**.
+    #
+    #  🔴 알림은 `s2e_matchup` 이 `state.note` 로 적고, 이 함수는 **수를 안 낸다** —
+    #     틀린 수가 λ 로 가는 길을 여기서 끊는다(조용히 쓰지 않는다 · #3).
+    bad = dict(box.get("window_bad") or {})
+    if any(bad.values()):
+        got.why = ("🔴 **경기 목록의 두 창이 어긋났다 — 축1 미계산** · "
+                   + " · ".join(f"{k} {v}" for k, v in bad.items() if v))
         return got
     # 🔴 r 가중 — 교체 팀의 폼을 **0 쪽으로** 당긴다(그 기록이 오늘 팀의 것이 아니다)
     pulled = {side: float(vals[side]) * float(dict(r or {}).get(side, 1.0))
@@ -285,9 +300,26 @@ def axis1(box: dict, varset, *, r: dict) -> Axis:
         n = int(one.n)
         raw[side] = (float(one.gf) - float(one.ga)) / n
         cut = getattr(one, "gf_after_luck", None)
+        k = float(getattr(one, "luck_cut_goals", 0.0) or 0.0)
+        # 🔴 ① — **두 창을 나란히 적는다**(한 목록에서 잘린 것임을 카드가 말한다)
+        wins = dict(getattr(one, "windows", None) or {})
+        if not wins:
+            # 🔴 ① — 폼이 창을 안 들고 있으면 **경기 목록에서 직접 자른다**
+            #    (창을 세는 함수는 `form.window_sums` 하나다 · 사본 금지)
+            rows = list(dict(box.get("games") or {}).get(side) or [])
+            wins = {str(w): _form.window_sums(rows, w)
+                    for w in _form.WINDOWS} if rows else {}
+        said_win = " · ".join(
+            f"최근 {int(w['n'])}경기 득 {float(w['gf']):.0f}·실 "
+            f"{float(w['ga']):.0f}"
+            for w in (wins.get(str(x)) for x in _form.WINDOWS)
+            if w and int(w.get("n") or 0))
         said_box.append(
-            f"{side} 최근 {n}경기 득 {one.gf:.0f}·실 {one.ga:.0f}"
-            + (f" · 운 할인 뒤 득 {float(cut):.1f}" if cut is not None else "")
+            f"{side} " + (said_win or f"최근 {n}경기 득 {one.gf:.0f}·"
+                          f"실 {one.ga:.0f}")
+            + (f" · 운 요소 골 {k:g}개를 뺐다(득 {one.gf:.0f} → "
+               f"{one.gf - k:.0f})" if k else "")
+            + (f" · 보정·할인 뒤 득 {float(cut):.1f}" if cut is not None else "")
             + f" → 지수 {vals[side]}")
     # 🔴 **경고 줄** — 원본 득실이 더 나쁜 팀이 축1 에서 **크게 앞서면** 적는다
     if len(raw) == 2:

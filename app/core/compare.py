@@ -220,15 +220,36 @@ def tilt_reasons(ours: ProbTriple | None, base: BaseProb, hypo: HypoSet | None,
 
 
 def market_reasons(base: BaseProb, adj: AdjProb, market: MarketProb,
-                   variables: list[Variable], ref: MatchRef) -> list[str]:
+                   variables: list[Variable], ref: MatchRef,
+                   *, ours: ProbTriple | None = None) -> list[str]:
     """🔴 §6-4 — *"시장이 우세로 보는 쪽의 근거 후보"* 를 ①② 에서 뽑는다.
 
     각 후보가 **우리 변수에 들어 있는지**(있음/없음/무게 낮음) 적는다.
+
+    🔴🔴 **근거 검열**(사용자 지시 2026-10-11 ④): `ours` 를 주면 *"우리 판단
+    유지"* 의 근거가 **우리 결론과 같은 방향**인지 본다 — 아니면 그 문장을 내지
+    않고 *"근거 부족 — 시장과 갈림"* 으로 적는다.
     """
     said = _market_triple(market)
     if said is None:
         return []
     side = "home" if said.home >= said.away else "away"
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 ④ **우리 결론의 방향** — 인용 근거는 이 방향과 같아야 한다
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 인용 근거의 방향이 우리 결론과 같아야 한다. 우세 팀의 결장·상대 우세
+    #  > 맞대결을 우세 근거로 쓰면 **실패**. 같은 방향 근거가 없으면 "우리 판단
+    #  > 유지"를 내지 않고 **"근거 부족 — 시장과 갈림"** 으로 적는다.
+    #
+    #  ⚠️ 실사고 2026-10-11(LAFC–밴쿠버): 우리 수는 **밴쿠버(원정) 43%** 였는데
+    #     카드는 *"우리 판단 유지 — 근거: IR02-home(LAFC 결장)"* 을 적었다. 그
+    #     결장은 **밴쿠버 쪽을 미는** 사실이므로 "LAFC 가 낫다"의 근거가 될 수
+    #     없다. 🔴 그래서 `favors` 가 **우리 쪽**인 변수만 근거로 쓴다.
+    #  🔴 `ours` 를 못 받으면 **시장이 미는 쪽의 반대**를 우리 결론으로 본다
+    #     (갈림이 있다는 전제 — 그 사실을 사유에 적는다).
+    mine = ("home" if float(ours.home) >= float(ours.away) else "away"
+            ) if ours is not None else ("away" if side == "home" else "home")
     name = ref.home_name if side == "home" else ref.away_name
     out: list[str] = []
     has = {v.type for v in variables}
@@ -251,9 +272,15 @@ def market_reasons(base: BaseProb, adj: AdjProb, market: MarketProb,
     found: list[str] = []
     if base.dr is not None:
         said_in = _in(("strength_gap",))
+        # 🔴 ④ — Elo 가 **우리와 같은 방향**이면 *"시장이 다르게 보는 까닭"* 이
+        #    아니다(우리 편인 사실을 시장의 근거로 적는 것은 거짓이다)
+        elo_side = "home" if float(base.dr) > 0 else "away"
+        agrees = (elo_side == mine)
         out.append(f"Elo 차 {base.dr:+.0f}점({base.home_elo:.0f} vs "
-                   f"{base.away_elo:.0f}) — 우리 정보에: **{said_in}**")
-        if said_in == "없음":
+                   f"{base.away_elo:.0f}) — 우리 정보에: **{said_in}**"
+                   + (f" · 🔴 방향은 **우리와 같다**({elo_side}) — 시장이 "
+                      f"다르게 보는 까닭이 아니다" if agrees else ""))
+        if said_in == "없음" and not agrees:
             found.append("Elo 차")
     if adj.strength_pct:
         got = " · ".join(f"{k} {v:+.1f}%" for k, v in adj.strength_pct.items())
@@ -264,23 +291,47 @@ def market_reasons(base: BaseProb, adj: AdjProb, market: MarketProb,
     said_in = _in(("home_field",))
     out.append(f"홈 — 우리 정보에: **{said_in}**")
     # 🔴 **우리 근거가 더 강한가** — 우리 쪽을 민 변수 중 `hard`·근거 가능한 것을 센다
+    # 🔴 ④ — **우리 결론과 같은 방향**인 hard 근거만 센다(반대 방향은 근거가 아니다)
     strong = [v for v in variables
               if v.hardness == "hard" and v.usable_as_basis
-              and v.favors in ("home", "away")]
-    if not found:
-        out.append("🔴 **우리 판단 유지** — 근거: 시장이 앞세우는 까닭이 우리 정보에 "
-                   "**다 들어 있다**(새 사실이 없다)")
-    elif strong:
-        out.append("🔴 **우리 판단 유지** — 근거: "
+              and v.favors == mine]
+    against = [v for v in variables
+               if v.hardness == "hard" and v.usable_as_basis
+               and v.favors in ("home", "away") and v.favors != mine]
+    if against:
+        out.append(f"⚠️ 반대 방향 근거 {len(against)}건은 **우리 근거로 쓰지 "
+                   f"않았다**(④ 검열): "
+                   + " · ".join(f"`{v.id}`({v.type}·{v.favors} 쪽)"
+                                for v in against[:3]))
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 ④ **"유지"는 같은 방향 근거가 있을 때만** — 사용자 지시 2026-10-11 ④
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 같은 방향 근거가 없으면 "우리 판단 유지"를 내지 않고 **"근거 부족 —
+    #  > 시장과 갈림"** 으로 적는다.
+    #
+    #  ⚠️ 그래서 *"시장이 앞세우는 까닭이 우리 정보에 다 들어 있다"* 도 **혼자서는
+    #     근거가 아니다**(그것은 "새 사실이 없다"는 말이지 "우리 쪽이 낫다"는
+    #     근거가 아니다 — 실사고 2026-10-11 의 그 문장이다).
+    who = ref.home_name if mine == "home" else ref.away_name
+    if strong:
+        out.append(f"🔴 **우리 판단 유지**(우리 결론 **{who}** 쪽) — 근거: "
                    + " · ".join(f"`{v.id}`({v.type}·{v.hardness}·무게 {v.weight})"
                                 for v in strong[:3])
-                   + f" — 시장이 다르게 보는 까닭({', '.join(found)})은 우리 "
-                     f"정보에 없지만, 위 근거가 **인용까지 검증된 사실**이다")
+                   + (f" — 시장이 다르게 보는 까닭({', '.join(found)})은 우리 "
+                      f"정보에 없지만, 위 근거가 **인용까지 검증된 사실**이다"
+                      if found else
+                      " — 그리고 시장이 앞세우는 까닭은 우리 정보에 **다 들어 "
+                      "있다**(새 사실이 없다)"))
     else:
-        out.append(f"⚠️ 시장이 다르게 보는 까닭({', '.join(found)})이 우리 정보에 "
-                   f"**없다** — 그리고 우리 쪽에 `hard` 근거도 없다. 🔴 그래도 "
-                   f"등급·확률은 **그대로 둔다**(시장은 참고용) · 다음 재분석에서 "
-                   f"그 사실을 찾아본다")
+        out.append(f"🔴 **근거 부족 — 시장과 갈림**: 우리 결론은 **{who}** 쪽인데"
+                   f" 그 방향의 `hard` 근거가 **없다**"
+                   + (f"(반대 방향 근거만 {len(against)}건)" if against else "")
+                   + (f" · 시장이 다르게 보는 까닭({', '.join(found)})도 우리 "
+                      f"정보에 없다" if found else
+                      " · 시장이 앞세우는 까닭은 우리 정보에 다 들어 있다")
+                   + " · 🔴 그래도 등급·확률은 **그대로 둔다**(시장은 참고용) · "
+                     "다음 재분석에서 그 사실을 찾아본다")
     return [f"시장은 **{name}** 쪽을 앞세운다({max(said.home, said.away):.0%}) — "
             f"🔴 **참고용**(판정에 안 쓴다)"] + out
 
