@@ -16,6 +16,11 @@
     ⬜ 선발 명단 없음
 
 **2b. 결장**
+- 🪜 **결장 사다리**
+    fotmob — **1건** · 경기 페이지 `unavailable` 칸
+    명단 대조 — **0건** · ⬜ **건너뛰었다** — 위 칸이 찼다
+    연맹 징계 — **0건** · ⬜ **통로 없음** — `config/league_discipline.yaml` 에 `national_friendly` 공지 주소가 없다(추측해 붙이지 않는다)
+    국내 기사 — **0건** · ⏸ **변수 단계에서 센다** — 기사 결장 변수(F 하위)의 매체 수를 카드가 적는다
 - **South Korea**
     Jens Castrop(?) — 부상 · 복귀 Mid October 2026 · www.fotmob.com
 

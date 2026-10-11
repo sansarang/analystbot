@@ -202,6 +202,8 @@ def facts_of(raw: dict, *, xi: dict[str, XI] | None = None,
              player_stats: dict | None = None,
              #: 🔴 ③ 같은 표를 **팀별로**(공격 기여 비중의 분모 · 2026-10-11)
              player_stats_team: dict | None = None,
+             #: 🔴 ① 결장 사다리의 칸별 결과(2026-10-11)
+             absence_rungs: list | None = None,
              gaps: list[str] | None = None) -> Facts:
     """🔴 구조 사실 묶음 → `schema.Facts`. ⚠️ 없는 칸은 **빈 것**으로 둔다.
 
@@ -226,6 +228,7 @@ def facts_of(raw: dict, *, xi: dict[str, XI] | None = None,
         squad={k: [str(x) for x in v] for k, v in (squad or {}).items()},
         player_stats=dict(player_stats or {}),
         player_stats_team=dict(player_stats_team or {}),
+        absence_rungs=[dict(x) for x in (absence_rungs or [])],
         match_format=(fmt if fmt in allowed else "unknown"),  # type: ignore[arg-type]
         # 🔴🔴 **리그 번호**(`general.parentLeagueId`) — 대회 판정이 글자로만
         #    가지 않게(실사고 2026-10-10: `Super League` 가 스위스·인도네시아 둘).

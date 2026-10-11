@@ -295,7 +295,13 @@ class Missing(Frozen):
     returns: str = ""
     source_url: str = ""
     #: 🔴 기사에서 온 것인가 — `article` 이면 등급을 **한 단계 낮춘다**(§2)
-    source: Literal["page", "article"] = "page"
+    #
+    #  🔴🔴 **사다리의 칸 이름이 그대로 들어온다**(사용자 지시 2026-10-11 ①):
+    #     `page`(fotmob 경기 페이지) · `roster`(명단 대조 · soft) ·
+    #     `discipline`(연맹 징계 공지 · hard) · `article`(국내 기사).
+    source: Literal["page", "article", "roster", "discipline"] = "page"
+    #: 🔴 #3 — **어떻게 찾았나**를 글자로(카드가 그대로 적는다)
+    why: str = ""
 
 
 class Coach(Frozen):
@@ -341,6 +347,11 @@ class Facts(Frozen):
     xi: dict[str, XI] = Field(default_factory=dict)
     #: 🔴🔴 **결장 명단**(§2) — 기사에서만 건지지 않는다
     missing: dict[str, list[Missing]] = Field(default_factory=dict)
+    #: 🔴🔴 **결장 사다리의 칸별 결과**(사용자 지시 2026-10-11 ①) — 카드가 적는다
+    #
+    #  ⚠️ 종전엔 fotmob 칸이 비면 카드가 *"결장 명단 미확보"* 한 줄만 적었다 —
+    #     어느 통로를 어떻게 시도했는지 사람이 알 길이 없었다(#3).
+    absence_rungs: list[dict] = Field(default_factory=list)
     #: 🔴 감독(§2) — 이름·부임일·임시 여부
     coach: dict[str, Coach] = Field(default_factory=dict)
     #: 🔴 직전 경기 선발(IR02·IR06 용) — 로테이션·주전 이탈을 보려면 이것이 필요하다

@@ -1,0 +1,191 @@
+"""🔴🔴 **결장 사다리** — 사용자 지시 2026-10-11(연쇄를 앞에서부터 고친다) ①.
+
+> 결장 사다리: fotmob 결장 → (없으면) 명단 대조 → 연맹 징계 공지 → 국내 기사 2매체.
+> 명단 대조: 최근 리그 5경기 선발 3회 이상인데 오늘 출전 명단(선발+벤치)에 없으면
+> "명단 제외(사유 미상)" — 구조 사실, soft. 징계(경고 누적·퇴장)는 hard.
+> "결장 명단 미확보"는 **네 칸 모두 0일 때만**, 칸별 시도 결과를 적는다.
+
+⚠️ 왜 이 파일이 생겼나 — 광주–울산 카드(2026-10-11)의 연쇄:
+
+    결장 미확보 → 기사 0 → 전략 버림 → 전술 예측 템플릿
+
+fotmob 경기 페이지의 `lineup.*.unavailable` 칸 **하나**에 결장이 매달려 있었고,
+그 칸이 비면 그 뒤가 전부 비었다. 🔴 사다리는 그 한 줄을 네 줄로 만든다.
+
+🔴 **이 파일은 결장을 '찾는' 곳이다 — 등급을 정하지 않는다.** 등급(soft/hard)은
+   변수 단계가 `Missing.source` 를 보고 정한다(사본 금지).
+"""
+from __future__ import annotations
+
+import logging
+
+logger = logging.getLogger(__name__)
+
+#: 🔴 사다리 네 칸의 **이름**(카드가 이 순서로 적는다)
+RUNGS: tuple[str, ...] = ("fotmob", "명단 대조", "연맹 징계", "국내 기사")
+
+#: 🔴 명단 대조 — 최근 몇 경기를 보나 · 그 안에서 **선발 몇 회 이상**이면 주전인가
+LOOK_BACK, STARTS_MIN = 5, 3
+
+#: 🔴 명단 대조가 적는 사유 글자(지시서의 그 말)
+ROSTER_WHY = "명단 제외(사유 미상) — 최근 {n}경기 중 {k}회 선발인데 오늘 명단에 없다"
+
+
+def _names(xi) -> list[str]:
+    """🔴 그 XI 의 **선발 이름**. 사본 금지: `strategy._names` 와 같은 규칙."""
+    return ([str(p.name) for p in (getattr(xi, "lineup", None) or [])]
+            or [str(x) for x in (getattr(xi, "players", None) or [])])
+
+
+def squad_known(facts, key: str) -> bool:
+    """🔴🔴 **오늘 출전 명단을 받았나** — 선발만으로는 모른다.
+
+    > 오늘 출전 명단(**선발+벤치**)에 없으면 … — 사용자 지시 2026-10-11 ①
+
+    ⚠️ 선발 11명만 아는 판에서 *"주전이 선발에 없다"* 는 **벤치인지 결장인지
+       모른다**는 뜻이다 — 그것을 결장으로 적으면 거짓이 된다(#4). 🔴 그래서
+       소집 명단(`facts.squad`)이나 **벤치**가 있어야 이 칸을 센다.
+    """
+    if ((facts.squad or {}).get(key) or []):
+        return True
+    one = (facts.xi or {}).get(key)
+    return bool(getattr(one, "bench", None) or [])
+
+
+def today_squad(facts, key: str) -> set[str]:
+    """🔴 **오늘 출전 명단**(선발+벤치). ⚠️ 못 받았으면 **빈 집합**이다.
+
+    🔴 원본은 둘이다 — `facts.squad`(소집 명단)와 오늘 `XI`(선발+벤치). 둘을
+       합친다(한쪽만 온 판이 있다 · 실측 2026-10-11 광주: 명단 18명 · XI 11명).
+    """
+    got = {str(x) for x in ((facts.squad or {}).get(key) or []) if x}
+    one = (facts.xi or {}).get(key)
+    if one is not None:
+        got |= {x for x in _names(one) if x}
+        got |= {str(x) for x in (getattr(one, "bench", None) or []) if x}
+    return got
+
+
+def starts_of(facts, key: str) -> tuple[dict[str, int], int]:
+    """🔴 `{선수: 선발 횟수}` 와 **본 경기 수** — 최근 `LOOK_BACK` 경기."""
+    rows = list((facts.past_xi or {}).get(key) or [])[-LOOK_BACK:]
+    got: dict[str, int] = {}
+    for xi in rows:
+        for nm in _names(xi):
+            if nm:
+                got[nm] = got.get(nm, 0) + 1
+    return got, len(rows)
+
+
+def roster_gap(facts, key: str) -> list:
+    """🔴🔴 칸 2 — **명단 대조**로 찾은 결장.
+
+    > 최근 리그 5경기 선발 3회 이상인데 오늘 출전 명단(선발+벤치)에 없으면
+    > "명단 제외(사유 미상)" — 구조 사실, soft.
+
+    ⚠️ 오늘 명단을 못 받았으면 **아무도 세지 않는다** — 없는 자료로 결장을
+       만들면 조용한 거짓이 된다(#4). 그 사실은 사다리가 사유로 적는다.
+    """
+    from app.core.schema import Missing
+    if not squad_known(facts, key):
+        return []
+    squad = today_squad(facts, key)
+    starts, n = starts_of(facts, key)
+    if n < LOOK_BACK:
+        # ⚠️ 5경기를 못 모았으면 **문턱을 그 수에 맞춰 올리지 않는다** — 적은
+        #    표본으로 주전을 가리면 로테이션이 결장으로 샌다. 그래서 안 센다.
+        return []
+    out = []
+    for nm, k in sorted(starts.items(), key=lambda x: (-x[1], x[0])):
+        if k < STARTS_MIN or nm in squad:
+            continue
+        out.append(Missing(name=str(nm), reason="other", source="roster",
+                           why=ROSTER_WHY.format(n=n, k=k)))
+    return out
+
+
+def ladder(facts, *, keys: list[str], league: str = "",
+           articles: dict | None = None) -> dict:
+    """🔴🔴 **사다리를 내려간다**. 돌려주는 표:
+
+    ```
+    {"add": {팀 열쇠: [Missing …]}, "rungs": [{"rung","got","why"} …]}
+    ```
+
+    🔴 **위 칸이 찼으면 아래 칸을 안 센다**(지시서의 *"(없으면)"*). 그래도 **칸별
+       시도 결과를 적는다** — 건너뛴 것과 0 건인 것을 가른다(#3).
+    ⚠️ 칸 4(국내 기사)는 이 단계에 자료가 없다 — 기사 변수는 **뒤 단계**가 만든다.
+       그래서 여기서는 `articles`(있으면 그 수)만 적고, 카드가 변수 단계의 수를
+       덮어 적는다(지어내지 않는다).
+    """
+    rows: list[dict] = []
+    add: dict[str, list] = {}
+    # ── 칸 1 — fotmob 경기 페이지(`lineup.*.unavailable`)
+    got1 = sum(len((facts.missing or {}).get(k) or []) for k in keys)
+    rows.append({"rung": "fotmob", "got": got1,
+                 "why": ("경기 페이지 `unavailable` 칸" if got1
+                         else "🔴 **0건** — 경기 페이지에 결장 칸이 비었다")})
+    # ── 칸 2 — 명단 대조
+    if got1:
+        rows.append({"rung": "명단 대조", "got": 0,
+                     "why": "⬜ **건너뛰었다** — 위 칸이 찼다"})
+    else:
+        made = {k: roster_gap(facts, k) for k in keys}
+        made = {k: v for k, v in made.items() if v}
+        n2 = sum(len(v) for v in made.values())
+        why = (f"최근 {LOOK_BACK}경기 선발 {STARTS_MIN}회 이상 ↔ 오늘 명단"
+               if n2 else "🔴 **0건** — " + _why_empty(facts, keys))
+        rows.append({"rung": "명단 대조", "got": n2, "why": why})
+        for k, v in made.items():
+            add.setdefault(k, []).extend(v)
+    # ── 칸 3 — 연맹 징계 공지
+    got3, why3 = _discipline(league)
+    rows.append({"rung": "연맹 징계", "got": got3, "why": why3})
+    # ── 칸 4 — 국내 기사 2매체(변수 단계가 센다)
+    box = dict(articles or {})
+    rows.append({"rung": "국내 기사", "got": int(box.get("n") or 0),
+                 "why": str(box.get("why") or
+                            "⏸ **변수 단계에서 센다** — 기사 결장 변수(F 하위)의 "
+                            "매체 수를 카드가 적는다")})
+    return {"add": add, "rungs": rows}
+
+
+def _why_empty(facts, keys: list[str]) -> str:
+    """🔴 #3 — 명단 대조가 0 인 **까닭을 이름으로** 적는다(셋이 다르다)."""
+    said = []
+    for key in keys:
+        if not squad_known(facts, key):
+            said.append(f"`{key}` 오늘 출전 명단(선발+벤치)을 못 받았다")
+            continue
+        _starts, n = starts_of(facts, key)
+        if n < LOOK_BACK:
+            said.append(f"`{key}` 과거 XI {n}경기(<{LOOK_BACK})")
+    return " · ".join(said) or f"주전({STARTS_MIN}회 이상)이 다 명단에 있다"
+
+
+def _discipline(league: str) -> tuple[int, str]:
+    """🔴🔴 칸 3 — **연맹 징계 공지**. `(건수, 사유)`.
+
+    ⚠️ 2026-10-11 현재 **공지 주소를 받아 둔 리그가 없다** — 그래서 이 칸은 늘
+       0 이고 그 사실을 적는다. 🔴 주소를 **추측해 붙이지 않는다**(#4: 받아서
+       확인한 것만 쓴다). 표는 `config/league_discipline.yaml` 이고, 그 파일에
+       리그가 적히면 이 함수가 받아 센다.
+    """
+    from app import rules
+    box = rules.discipline_of(str(league or ""))
+    if not box:
+        return 0, ("⬜ **통로 없음** — `config/league_discipline.yaml` 에 "
+                   f"`{league or '그 리그'}` 공지 주소가 없다(추측해 붙이지 않는다)")
+    return 0, (f"⏸ 주소는 있다({box.get('url')}) — 받아 읽는 통로는 아직 "
+               f"안 이었다(`tests/test_wiring.py` 의 `NOT_WIRED`)")
+
+
+def unknown(got: dict) -> bool:
+    """🔴🔴 *"결장 명단 미확보"는 **네 칸 모두 0일 때만**."*"""
+    return all(int(r.get("got") or 0) == 0 for r in (got.get("rungs") or []))
+
+
+def said_of(got: dict) -> str:
+    """🔴 카드·보고가 적는 **칸별 한 줄**."""
+    return " / ".join(f"{r['rung']} {r['got']}건 — {r['why']}"
+                      for r in (got.get("rungs") or []))

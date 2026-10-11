@@ -406,13 +406,30 @@ def _b2(card: Card) -> str:
     return "\n".join(out)
 
 
+def _b2b_rungs(card: Card) -> str:
+    """🔴 ① — 결장 사다리 **칸별 시도 결과** 한 줄씩. 없으면 빈 글자."""
+    rows = list(getattr(card.facts, "absence_rungs", None) or [])
+    if not rows:
+        return ""
+    out = ["- 🪜 **결장 사다리**"]
+    out += [f"    {r.get('rung')} — **{r.get('got')}건** · {r.get('why')}"
+            for r in rows]
+    return "\n".join(out)
+
+
 def _b2b(card: Card) -> str:
-    """블록 2b 결장(새 블록 · §5) — `이름(포지션) — 사유 · 출처 도메인`."""
+    """블록 2b 결장(새 블록 · §5) — `이름(포지션) — 사유 · 출처 도메인`.
+
+    🔴🔴 **결장 사다리의 칸별 결과를 함께 적는다**(사용자 지시 2026-10-11 ①) —
+       *"결장 명단 미확보"* 는 **네 칸 모두 0일 때만**이고, 그때도 칸별 시도
+       결과를 적는다(#3 조용한 0 금지).
+    """
+    rungs = _b2b_rungs(card)
     if not card.facts.missing:
-        return "- ⬜ **결장 명단 미확보**"
+        return ("- ⬜ **결장 명단 미확보**" + ("\n" + rungs if rungs else ""))
     ko = {"injury": "부상", "suspension": "징계", "doubtful": "출전 불확실",
           "international_duty": "대표팀 차출", "other": "사유 미상"}
-    out: list[str] = []
+    out: list[str] = ([rungs] if rungs else [])
     for key, rows in card.facts.missing.items():
         out.append(f"- **{_who(card, key)}**")
         for m in rows:

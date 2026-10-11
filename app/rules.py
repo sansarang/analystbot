@@ -882,6 +882,23 @@ OUTLOOK_MAX_OTHER = 2
 GOAL_BASELINES = "config/goal_baselines.yaml"
 
 
+#: 🔴 연맹 징계 공지 표 — 결장 사다리 칸 3(사용자 지시 2026-10-11 ①)
+LEAGUE_DISCIPLINE = "config/league_discipline.yaml"
+
+
+def discipline_of(league: str) -> dict:
+    """🔴 그 리그의 **연맹 징계 공지** 칸 — 없으면 빈 사전.
+
+    ⚠️ 주소를 **추측해 붙이지 않는다**(#4) — 받아서 확인한 리그만 표에 있다.
+    """
+    box = dict((_load(LEAGUE_DISCIPLINE) or {}).get("leagues") or {})
+    said = str(league or "")
+    for key in (said, said.split(":")[-1] if ":" in said else ""):
+        if key and isinstance(box.get(key), dict):
+            return dict(box[key])
+    return {}
+
+
 def goal_baseline(kind: str) -> dict:
     """🔴 그 대회 유형의 기준 — `{goals_per_match, n, …}` 또는 **빈 사전**.
 

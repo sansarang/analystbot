@@ -237,21 +237,54 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
         if said:
             state.note(f"s2 포지션 분류 — {key} {said}")
             box.setdefault("pos_fault", {})[key] = said
-    gaps = _gaps(xi=xi, missing=missing, coach=coach, box=box, pos=pos)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **결장 사다리**(사용자 지시 2026-10-11 ①) — fotmob 칸이 비면 내려간다
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실사고 2026-10-11(광주–울산): 결장이 fotmob 의 `unavailable` 칸 **하나**에
+    #     매달려 있었고 그 칸이 비자 *"결장 명단 미확보"* → 기사 0 → 전략 버림 →
+    #     전술 템플릿까지 **한 줄로 이어졌다**.
+    from app.core import absence as _ab
+    said_lad = _ab.ladder(
+        adapt.facts_of(box, xi=xi, missing=missing, squad=squad,
+                       past_xi=past, coach=coach),
+        keys=[str(getattr(ref, "home", "")), str(getattr(ref, "away", ""))],
+        league=_kind_of(ref, box))
+    for key, rows in dict(said_lad.get("add") or {}).items():
+        missing.setdefault(key, []).extend(rows)
+    state.note("s2 결장 사다리 — " + _ab.said_of(said_lad))
+    logger.info("[s2] 결장 사다리 — %s", _ab.said_of(said_lad))
+    gaps = _gaps(xi=xi, missing=missing, coach=coach, box=box, pos=pos,
+                 rungs=list(said_lad.get("rungs") or []))
     if gaps:
         state.note("s2 못 받은 칸 — " + " · ".join(gaps))
     return adapt.facts_of(box, xi=xi, match_format=fmt,
                           sources=sorted(set(sources)), missing=missing,
                           coach=coach, player_pos=pos, gaps=gaps, squad=squad,
                           player_value=values, past_xi=past,
+                          absence_rungs=list(said_lad.get("rungs") or []),
                           player_stats=dict(box.get("player_stats") or {}),
                           # 🔴 ③ — 팀별 공격 기여 표(비중의 분모)
                           player_stats_team=dict(
                               box.get("player_stats_team") or {}))
 
 
+def _kind_of(ref, box: dict) -> str:
+    """🔴 그 경기의 **대회 유형 열쇠** — 사다리의 징계 표가 이 글자를 본다.
+
+    🔴 그 글자를 만드는 함수는 하나다(`probmodel._kind`) — 사본 금지.
+    """
+    from app.core import probmodel as _pm
+    from app.core.schema import Facts
+    try:
+        return str(_pm._kind(ref, Facts(standings=dict(
+            box.get("standings") or {}))) or "")
+    except Exception:                                       # noqa: BLE001
+        return ""
+
+
 def _gaps(*, xi: dict, missing: dict, coach: dict, box: dict,
-          pos: dict) -> list[str]:
+          pos: dict, rungs: list | None = None) -> list[str]:
     """🔴🔴 **못 받은 칸을 이름으로**(축구 §2 마지막 줄 · #3 조용한 0 금지).
 
     > 어느 칸이든 못 받으면 `None` 과 사유. 블록 1 *"자료 한계"* 에 **칸별로** 적는다.
@@ -266,8 +299,13 @@ def _gaps(*, xi: dict, missing: dict, coach: dict, box: dict,
         out.append("오늘 XI 없음(상태 none — IR02·IR03 이 안 돈다)")
     elif all(v.state != "confirmed" for v in xi.values()):
         out.append("확정 XI 아직 없음(예상만)")
+    # 🔴🔴 ① — *"결장 명단 미확보"는 **네 칸 모두 0일 때만**"* (사다리가 판정한다)
     if not missing:
-        out.append("결장 명단 미확보")
+        from app.core import absence as _ab
+        said = {"rungs": list(rungs or [])}
+        if not rungs or _ab.unknown(said):
+            out.append("결장 명단 미확보 — " + (_ab.said_of(said)
+                                               if rungs else "사다리를 안 돌렸다"))
     if not coach:
         out.append("감독 미확보")
     if not box.get("standings"):
