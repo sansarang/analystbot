@@ -83,6 +83,19 @@ def claims(ref: MatchRef, facts: Facts, variables: list[Variable], *,
             #    그 사실을 적는다(#3 조용히 버리지 않는다).
             state.note(f"s6 §2-3 — 모델이 보낸 시나리오 {len(said.scenarios)}개를 "
                        f"**버렸다**(시나리오는 단계 4 에서 시뮬 분포로 만든다)")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 ③ **모델이 0줄이면 조건부 가설로 메운다**(사용자 지시 2026-10-11)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실측 2026-10-11(쇼난): 모델이 끊겨 `가설 0줄` 이었고 그 뒤 시나리오
+    #     일곱 줄이 전부 *"지지된 가설이 없다(무게만 있다)"* 였다.
+    #  🔴 코드가 짓는 가설은 **측정 불가 요인을 조건으로** 쓴다(동기·피로·결장) —
+    #     시뮬을 보지 않고(C3) 줄마다 검증 가능한 신호를 단다.
+    if not hypos:
+        from app.core import condhypo as _cond
+        hypos = _cond.lines(ref, basis)
+        state.note(f"s6 ③ 조건부 가설 — 모델이 0줄이라 코드가 메웠다 · "
+                   f"{_cond.said_of(hypos)}")
     n_sig = sum(1 for h in hypos for line in [*h.reasons, *h.breaks]
                 if line.signal is not None)
     state.note(f"s6 단계 2 — 가설 {len(hypos)}팀 · 신호 붙은 줄 {n_sig}개")
