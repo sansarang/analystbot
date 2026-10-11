@@ -233,6 +233,14 @@ def dir_side(card: Card) -> str:
 #     대조한다. 바꾸면 그 두 곳이 같이 어긋난다.
 
 
+def _xi_names(one) -> list[str]:
+    """🔴 그 XI 의 **선발 이름**(사본 금지: `strategy._names` 와 같은 규칙)."""
+    if one is None:
+        return []
+    return ([str(p.name) for p in (getattr(one, "lineup", None) or [])]
+            or [str(x) for x in (getattr(one, "players", None) or [])])
+
+
 def facts_catalog(card: Card) -> dict[str, dict]:
     """🔴 `{사실 id: {"kind": 종류, "text": 글}}`.
 
@@ -305,6 +313,30 @@ def facts_catalog(card: Card) -> dict[str, dict]:
     for v in (card.variables or []):
         if v.type in ("absence", "def_absence", "absence_att", "suspension"):
             out[v.id] = {"kind": "absence", "text": v.claim}
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 ⑤ **평소 XI 에서 빠진 선수**(사용자 지시 2026-10-11 ⑤) — `DROP:`
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 검열 카탈로그: 평소 XI 에서 빠진 선수를 **`DROP:id`** 로 넣는다(쇼난
+    #  > 가세·도하나). **코드가 계산한 사람은 모델이 써도 위반이 아니다.**
+    #
+    #  ⚠️ 실사고 2026-10-11(쇼난): 코드가 고른 주장이 `Naoki Kase`·`Kazuki Dohana`
+    #     를 말하는데 검열 (l) 이 *"XI·결장 명단·변수 대상에 없다"* 로 그 평을
+    #     버렸다 — **코드가 계산한 사람**을 모델이 쓰면 위반이 되는 모순이었다.
+    #  🔴 "빠진 선수" = **직전·과거 XI 에 있었는데 오늘 XI 에 없는 사람**이다.
+    for side in ("home", "away"):
+        key = str(getattr(card.match, side, "") or "")
+        now = {str(x) for x in _xi_names((f.xi or {}).get(key))}
+        past: set[str] = set()
+        for one in [(f.last_xi or {}).get(key),
+                    *list((f.past_xi or {}).get(key) or [])]:
+            past |= {str(x) for x in _xi_names(one)}
+        for nm in sorted(past - now):
+            if nm:
+                out[f"DROP:{nm}"] = {
+                    "kind": "player",
+                    "text": (f"{_nm(card, key)} 평소 XI 에 있었는데 오늘 XI 에 "
+                             f"없다 — {nm}")}
 
     # ③ 순위·컷·동기
     look = dict(card.outlook or {})

@@ -215,6 +215,23 @@ def new_fact_check(rows: list, *, card) -> list[str]:
             f"§3-5(새 뉴스는 판단에 반드시 들어간다) · 새 사실 {sorted(ids)}"]
 
 
+def _known_players(box, pool=()) -> set[str]:
+    """🔴🔴 ⑤ — 검열 (l) 이 **아는 선수 이름**들.
+
+    🔴 `P:`(선발) · `ABS:`(결장) · **`DROP:`(평소 XI 에서 빠진 사람)** · `KEY:`
+       (핵심 선수). ⚠️ `DROP:` 이 빠져 있어 *"코드가 계산한 사람"* 을 모델이 쓰면
+       위반이 됐다(실사고 2026-10-11 쇼난 — 가세·도하나).
+    ⚠️ `box` 가 카드면 카탈로그를 여기서 만든다(부르는 쪽을 편하게).
+    """
+    from app.core import layer1 as _l1
+    said = (dict(box) if isinstance(box, dict)
+            else dict(_l1.facts_catalog(box) or {}))
+    out: set[str] = set(pool or ())
+    for head in ("P:", "ABS:", "DROP:", "KEY:"):
+        out |= {str(k)[len(head):] for k in said if str(k).startswith(head)}
+    return {x for x in out if str(x).strip()}
+
+
 def reason_check(said, *, card) -> list[str]:
     """🔴🔴 **(i)~(l)** — 1겹 이유 문단의 코드 검열. 위반 목록(비면 통과).
 
@@ -303,9 +320,7 @@ def reason_check(said, *, card) -> list[str]:
                            f"({look.get('gate_why')})인데 {hit[:2]} 라고 적었다 — "
                            f"{low[:50]}")
     # ── (l) 선수 사실 — 사실 목록의 선수 id 로 대조한다
-    known = {str(k)[2:] for k in box if str(k).startswith("P:")}
-    known |= {str(k)[4:] for k in box if str(k).startswith("ABS:")}
-    known |= pool
+    known = _known_players(box, pool)
     for line in rows:
         for nm in _names_in(str(line.text or "")):
             if nm in teams:

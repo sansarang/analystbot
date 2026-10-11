@@ -75,7 +75,18 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
     #     (5경기)을, 축1 은 **경기 페이지 목록**(10경기)을 읽었다 — 그래서
     #     *"최근5 실점 10, 최근10 실점 9"* 라는 **불가능한 수**가 나란히 찍혔다.
     games = {side: games_of(rows[side]) for side in ("home", "away")}
-    usual = {side: usual_xi(rows[side]) for side in ("home", "away")}
+    # 🔴🔴 ④ — **평소 XI·오늘 빠짐을 id 로** 센다(사용자 지시 2026-10-11 ④).
+    #    ⚠️ 실사고 2026-10-11(가와사키): 캡처가 한글(`이즈미`)이고 결장 명단이
+    #       로마자(`Ryuji Izumi`)라 글자로는 **다른 사람**이었다 — 그래서 선발이
+    #       무기 꺼짐으로도 들어갔다.
+    from app.core import playerid as _pid
+    pid_box = {side: _pid.build(rows=_pid_rows(facts, getattr(ref, side, ""),
+                                               games[side]),
+                                ko=_ko_players())
+               for side in ("home", "away")}
+    usual = {side: {_pid.resolve(pid_box[side], said=x)[0] or f"name:{x}"
+                    for x in usual_xi(rows[side])}
+             for side in ("home", "away")}
     # 🔴 ① 계약 — 창이 어긋나면 **축1 미계산 + 운영자 알림**
     window_bad = {side: _form.windows_bad(games[side])
                   for side in ("home", "away")}
@@ -124,7 +135,8 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
     #     `facts.missing`(결장 목록)에서 직접 받아 넘긴다.
     #  🔴 끄는 대상은 **평소 XI ∩ 오늘 빠짐**이다 — 로테이션으로 빠진 선수(결장
     #     사실이 없는)는 **세지 않는다**(모르는 것을 결장으로 바꾸지 않는다 · #4).
-    out_today = {side: _out_today(facts, getattr(ref, side, ""))
+    out_today = {side: {_pid.resolve(pid_box[side], said=x)[0] or f"name:{x}"
+                        for x in _out_today(facts, getattr(ref, side, ""))}
                  for side in ("home", "away")}
     offs = {side: _style.off_weapons(reads[side], styles[side],
                                      usual=usual[side],
@@ -348,6 +360,34 @@ def _gate_off(axes: list[str], *, usual: set[str],
     if not axes or not usual:
         return list(axes)
     return list(axes) if (usual & out_today) else []
+
+
+def _ko_players() -> dict:
+    """🔴 `names_ko.yaml` 의 선수 한글 표기(원본은 그 파일 하나다)."""
+    from app import rules as _rules
+    return dict(_rules.names_ko().get("players") or {})
+
+
+def _pid_rows(facts, key: str, games: list) -> list[dict]:
+    """🔴 ④ — 신원표 재료(오늘 XI·최근 경기 선발·소집 명단·결장 명단)."""
+    out: list[dict] = []
+    one = (getattr(facts, "xi", None) or {}).get(key)
+    for p in (getattr(one, "lineup", None) or []):
+        out.append({"name": getattr(p, "name", ""),
+                    "number": getattr(p, "number", None),
+                    "pos": getattr(p, "pos", ""), "source": "오늘 XI"})
+    for nm in (getattr(one, "players", None) or []):
+        out.append({"name": str(nm), "source": "오늘 XI"})
+    for nm in (getattr(one, "bench", None) or []):
+        out.append({"name": str(nm), "source": "오늘 XI/벤치"})
+    for game in list(games or []):
+        out += [{"name": str(x), "source": "최근 경기"}
+                for x in (dict(game).get("starters") or []) if x]
+    out += [{"name": str(nm), "source": "소집 명단"}
+            for nm in ((getattr(facts, "squad", None) or {}).get(key) or [])]
+    out += [{"name": getattr(m, "name", ""), "source": "결장 명단"}
+            for m in ((getattr(facts, "missing", None) or {}).get(key) or [])]
+    return [r for r in out if str(r.get("name") or "").strip()]
 
 
 def _out_today(facts, key: str) -> set[str]:

@@ -66,6 +66,40 @@ def flags() -> dict:
     return dict(table().get("flags") or {})
 
 
+def _ko_players() -> dict:
+    """🔴 `names_ko.yaml` 의 선수 한글 표기(원본은 그 파일 하나다)."""
+    from app import rules as _rules
+    return dict(_rules.names_ko().get("players") or {})
+
+
+def _pid_rows(facts, key: str, xi) -> list[dict]:
+    """🔴 ④ — 그 팀 신원표의 재료 줄들(오늘 XI·직전·최근·명단·결장).
+
+    🔴 `pipeline._id_rows` 와 **같은 일**이다 — ⚠️ 그 함수는 파이프라인 안에
+       있어 여기서 못 부른다(순환 수입). 🔴 그래서 **이 파일이 쓰는 칸만** 짧게
+       모은다(오늘 XI 와 최근 선발 — 그 둘이 `off_matchday` 가 견주는 전부다).
+    """
+    out: list[dict] = []
+
+    def _add(one, src: str) -> None:
+        for p in (getattr(one, "lineup", None) or []):
+            out.append({"name": getattr(p, "name", ""),
+                        "number": getattr(p, "number", None),
+                        "pos": getattr(p, "pos", ""), "source": src})
+        for nm in (getattr(one, "players", None) or []):
+            out.append({"name": str(nm), "source": src})
+        for nm in (getattr(one, "bench", None) or []):
+            out.append({"name": str(nm), "source": f"{src}/벤치"})
+
+    _add(xi, "오늘 XI")
+    _add((getattr(facts, "last_xi", None) or {}).get(key), "직전 XI")
+    for past in list((getattr(facts, "past_xi", None) or {}).get(key) or []):
+        _add(past, "최근 경기")
+    out += [{"name": str(nm), "source": "소집 명단"}
+            for nm in ((getattr(facts, "squad", None) or {}).get(key) or [])]
+    return [r for r in out if str(r.get("name") or "").strip()]
+
+
 def off_matchday(facts, key: str, xi) -> tuple[list, str]:
     """🔴🔴 ① **오늘 경기 명단(선발+벤치) 기준** — 최근 N경기 선발 중 없는 선수들.
 
@@ -78,14 +112,24 @@ def off_matchday(facts, key: str, xi) -> tuple[list, str]:
     ⚠️ 오늘 명단이 비면 **셀 수 없다**(빈 목록 + 사유) — 모르는 것을 교체로 읽지
        않는다(#4).
     """
-    from app.core import discover as _d
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 ④ **id 로 센다**(사용자 지시 2026-10-11 ④) — 이름 문자열 비교 금지
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실사고 2026-10-11(가와사키 캡처): 오늘 XI 가 **한글**(`브로더센`)이고
+    #     과거 선발이 **로마자**(`Svend Brodersen`)라 `name_key` 로도 안 맞았고,
+    #     그 둘이 **"없는 선수"로 세어져** 깃발이 켜졌다(실제로는 선발이다).
+    #  🔴 신원표(`playerid`)로 양쪽을 **같은 id** 로 바꾼 뒤 센다.
+    from app.core import playerid as _pid
     box = flags()
     look = int(box.get("look_back") or 5)
+    said_box = _pid.build(rows=_pid_rows(facts, key, xi),
+                          ko=_ko_players())
     # 🔴🔴 **오늘 경기 명단 = 선발 + 벤치 + 경기 명단**(`facts.squad`).
     #    ⚠️ 실측 2026-10-10: `XI.bench` 만 보면 **12명**밖에 안 돼(벤치가 덜 찬
     #       판이 있다) 어느 팀이든 ① 이 켜졌다(안양이 13명 이탈로 잡혔다).
     #       🔴 경기 페이지가 주는 **선발 11 + 벤치 9 = 20명**이 `facts.squad` 다.
-    today = {_d.name_key(x) for x in
+    today = {_pid.resolve(said_box, said=str(x))[0] or f"name:{x}" for x in
              [*(getattr(xi, "players", None) or []),
               *(getattr(xi, "bench", None) or []),
               *((getattr(facts, "squad", None) or {}).get(key) or [])]}
@@ -97,7 +141,8 @@ def off_matchday(facts, key: str, xi) -> tuple[list, str]:
     out: list[str] = []
     for one in rows:
         for nm in (getattr(one, "players", None) or []):
-            if _d.name_key(nm) not in today and str(nm) not in out:
+            ident = _pid.resolve(said_box, said=str(nm))[0] or f"name:{nm}"
+            if ident not in today and str(nm) not in out:
                 out.append(str(nm))
     return out, (f"최근 {len(rows)}경기 선발 중 오늘 경기 명단"
                  f"(선발+벤치+명단 {len(today)}명)"

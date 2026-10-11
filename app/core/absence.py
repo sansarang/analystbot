@@ -67,14 +67,63 @@ def today_squad(facts, key: str) -> set[str]:
 
 
 def starts_of(facts, key: str) -> tuple[dict[str, int], int]:
-    """🔴 `{선수: 선발 횟수}` 와 **본 경기 수** — 최근 `LOOK_BACK` 경기."""
+    """🔴 `{선수: 선발 횟수}` 와 **본 경기 수**.
+
+    🔴🔴 ⑥(2026-10-11) — **경기 목록의 선발**(최근 10경기)을 먼저 본다.
+       ⚠️ 실측 2026-10-11(쇼난): `facts.past_xi` 는 **4경기**뿐이어서 칸이
+          *"과거 XI 4경기(<5)"* 로 0 이 됐다. 🔴 `s2e_matchup._history` 는 **10경기
+          선발**을 이미 들고 오고 그것이 `facts.recent[key]["games"]` 에 있다.
+       🔴 그 목록이 없으면 `past_xi` 로 떨어진다(있는 자료를 버리지 않는다).
+    """
+    games = list(dict((facts.recent or {}).get(key) or {}).get("games") or [])
+    if games:
+        got: dict[str, int] = {}
+        n = 0
+        for one in games[-10:]:
+            names = {str(x) for x in (dict(one).get("starters") or []) if x}
+            if not names:
+                continue           # ⚠️ 명단 없는 경기는 분모에서 뺀다(#3)
+            n += 1
+            for nm in names:
+                got[nm] = got.get(nm, 0) + 1
+        if n:
+            return got, n
     rows = list((facts.past_xi or {}).get(key) or [])[-LOOK_BACK:]
-    got: dict[str, int] = {}
+    got = {}
     for xi in rows:
         for nm in _names(xi):
             if nm:
                 got[nm] = got.get(nm, 0) + 1
     return got, len(rows)
+
+
+def _ko_players() -> dict:
+    """🔴 `names_ko.yaml` 의 선수 한글 표기(원본은 그 파일 하나다)."""
+    from app import rules as _rules
+    return dict(_rules.names_ko().get("players") or {})
+
+
+def _pid_rows(facts, key: str) -> list[dict]:
+    """🔴 ④ — 신원표 재료(오늘 XI·직전·최근 경기 선발·소집 명단·결장)."""
+    out: list[dict] = []
+    one = (facts.xi or {}).get(key)
+    for p in (getattr(one, "lineup", None) or []):
+        out.append({"name": getattr(p, "name", ""),
+                    "number": getattr(p, "number", None),
+                    "pos": getattr(p, "pos", ""), "source": "오늘 XI"})
+    for nm in (getattr(one, "players", None) or []):
+        out.append({"name": str(nm), "source": "오늘 XI"})
+    for nm in (getattr(one, "bench", None) or []):
+        out.append({"name": str(nm), "source": "오늘 XI/벤치"})
+    for game in list(dict((facts.recent or {}).get(key) or {})
+                     .get("games") or []):
+        out += [{"name": str(x), "source": "최근 경기"}
+                for x in (dict(game).get("starters") or []) if x]
+    out += [{"name": str(nm), "source": "소집 명단"}
+            for nm in ((facts.squad or {}).get(key) or [])]
+    out += [{"name": getattr(m, "name", ""), "source": "결장 명단"}
+            for m in ((facts.missing or {}).get(key) or [])]
+    return [r for r in out if str(r.get("name") or "").strip()]
 
 
 def roster_gap(facts, key: str) -> list:
@@ -89,7 +138,12 @@ def roster_gap(facts, key: str) -> list:
     from app.core.schema import Missing
     if not squad_known(facts, key):
         return []
-    squad = today_squad(facts, key)
+    # 🔴🔴 ④ — **id 로 견준다**(사용자 지시 2026-10-11 ④). ⚠️ 이름 글자로 보면
+    #    한글 캡처 XI 와 로마자 과거 선발이 **다른 사람**이 된다.
+    from app.core import playerid as _pid
+    box = _pid.build(rows=_pid_rows(facts, key), ko=_ko_players())
+    squad = {_pid.resolve(box, said=x)[0] or f"name:{x}"
+             for x in today_squad(facts, key)}
     starts, n = starts_of(facts, key)
     if n < LOOK_BACK:
         # ⚠️ 5경기를 못 모았으면 **문턱을 그 수에 맞춰 올리지 않는다** — 적은
@@ -97,7 +151,8 @@ def roster_gap(facts, key: str) -> list:
         return []
     out = []
     for nm, k in sorted(starts.items(), key=lambda x: (-x[1], x[0])):
-        if k < STARTS_MIN or nm in squad:
+        ident = _pid.resolve(box, said=nm)[0] or f"name:{nm}"
+        if k < STARTS_MIN or ident in squad:
             continue
         out.append(Missing(name=str(nm), reason="other", source="roster",
                            why=ROSTER_WHY.format(n=n, k=k)))
