@@ -79,6 +79,27 @@ teams:
       실측 2026-10-11 — fotmob 팀 색인 슬러그 `minnesota-united` · id 207242
       ⚠️ 같은 색인에 `minnesota-united-2`(1348105 · 2군)가 있다
 
+  Mito Hollyhock:
+    aliases:
+      ko: [미토, 미토 홀리호크, 미토홀리호크]
+      en: [Mito, Mito HollyHock]
+    source: |
+      사용자 지시 2026-10-11 — 사용자가 `미토` 로 물었다(일본 J2)
+      실측 2026-10-11 — fotmob 팀 색인 슬러그 `mito-hollyhock` · id 162195
+      ⚠️ 같은 색인에 2군·동명 팀이 **없다**(받아서 확인했다)
+      ⚠️ 54팀 표에는 `미토 홀리호크`(정식명)만 있어 **짧은 `미토` 가 안 풀렸다** —
+         그래서 봇이 `리그 미상`으로 떨어져 `openworld_not_found` 가 났다
+
+  Iwaki FC:
+    aliases:
+      ko: [이와키, 이와키 FC, 이와키FC]
+      en: [Iwaki, Iwaki FC]
+    source: |
+      사용자 지시 2026-10-11 — 사용자가 `이와키 fc` 로 물었다(일본 J2)
+      실측 2026-10-11 — fotmob 팀 색인 슬러그 `iwaki-fc` · id 860934
+      ⚠️ 같은 색인에 2군·동명 팀이 **없다**(받아서 확인했다)
+      ⚠️ 이 팀은 54팀 표·클럽 이름 표에 **아예 없었다**(J2)
+
   Sporting Kansas City:
     aliases:
       ko: [스포팅 캔자스시티, 캔자스시티, 스포팅 캔자스, 캔자스]
@@ -249,6 +270,7 @@ teams:
 #
 # ⚠️ ①에서 별칭을 **공식명과 함께** 쓰지 않는다 — `Colombia Tricolor` 는 아무 데도
 #    없는 문자열이다. **한 질의에 하나**다(별칭 질의와 공식명 질의를 따로 던진다).
+
 usage:
   search: true
   attribution: true
