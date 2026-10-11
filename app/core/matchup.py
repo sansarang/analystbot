@@ -112,7 +112,68 @@ class MatchupReport:
 #  > 선수 가치 합(오늘 XI vs 상대 오늘 XI, **로그**), 결장·복귀 변수 반영(빠진·
 #  > 들어온 선수 가치), **호흡**(오늘 선발끼리 함께 선발로 뛴 경기 수 평균).
 
-def axis0(ref, facts, varset, *, r: dict | None = None) -> Axis:
+#: 🔴🔴 D — **빠진 주전**이 축0 을 내리는 크기(비중 1.0 당). ⚠️ **임시값**이다.
+#
+#  > 결장을 λ 에 닿게 한다 · **결장선수가 핵심선수인지 확인하고** 닿게 해라.
+#  >   — 사용자 지시 2026-10-11
+#
+#  ⚠️ 실측 2026-10-11: 카드가 *"라인업 보정 -0.3% — 확률은 **안 움직였다**(환산
+#     계수 없음)"* 라고 적었다. 핵심 공격수가 빠져도 λ 가 그대로였다 — 결장이
+#     닿는 길이 **선수 가치 로그합** 하나뿐이고 그 차가 작아서다.
+#  🔴 축0 은 지시서가 *"오늘 XI 전력: **빠진 선수 가치**"* 로 정한 자리다 — 그래서
+#     새 경로를 만들지 않고 **이 축 안에서** 센다(C7: 확률에 닿는 길은 상성 축뿐).
+MISS_W = 2.0
+#: 🔴 한 팀에서 깎는 **상한**(여러 명이 빠져도 팀을 지우지 않는다)
+MISS_CAP = 1.0
+#: 🔴 "핵심"의 문턱 ① — 그 팀 공격 기여(득점+도움)의 이 몫 이상이면 핵심이다
+#   ⚠️ 수는 `style.OFF_SMALL`(무기 꺼짐 문턱) 하나를 쓴다 — 사본 금지.
+KEY_SHARE_SRC = "style.OFF_SMALL"
+
+
+def key_share() -> float:
+    """🔴 핵심 문턱 — `style.OFF_SMALL` 하나가 든다(사본 금지)."""
+    from app.core import style as _st
+    return float(_st.OFF_SMALL)
+
+
+def miss_move(share: float) -> float:
+    """🔴 D — 빠진 주전 비중 → **축0 이동**(음수). 상한 `MISS_CAP`."""
+    got = MISS_W * max(0.0, float(share or 0.0))
+    return -round(min(got, MISS_CAP), 4)
+
+
+def key_miss(*, shares: dict, keys: set, table: int) -> tuple[float, str]:
+    """🔴🔴 D — **핵심 선수만** 센다. `(비중 합, 사유)`.
+
+    `shares` — `{id: 그 팀 공격 기여 비중}`(오늘 빠진 주전들)
+    `keys`   — 리그 페이지가 꼽은 **핵심 선수** id 들(`strategy.key_state`)
+    `table`  — 기여표에 수가 있는 선수 수(0 이면 **못 쟀다**)
+
+    🔴 핵심의 뜻 둘(하나면 된다): ① 비중 ≥ `key_share()` · ② `keys` 에 있다.
+    ⚠️ 기여표가 비면(0명) **0 이고 그 사실을 적는다** — 0 으로 보지 않는다(#3).
+    """
+    if not int(table or 0):
+        return 0.0, "🔴 공격 기여표가 비었다 — 빠진 주전의 무게를 **못 쟀다**"
+    want = key_share()
+    said: list[str] = []
+    got = 0.0
+    for ident, share in dict(shares or {}).items():
+        val = float(share or 0.0)
+        is_key = ident in set(keys or ())
+        if val >= want:
+            got += val
+            said.append(f"`{ident}` 비중 {val:.0%}(≥{want:.0%})")
+        elif is_key:
+            got += val
+            said.append(f"`{ident}` **핵심 선수**(비중 {val:.0%})")
+    if not said:
+        return 0.0, (f"빠진 주전이 핵심이 아니다(비중 <{want:.0%} · 리그 핵심 "
+                     f"목록에도 없다) — 축0 을 안 움직인다")
+    return round(got, 4), " · ".join(said)
+
+
+def axis0(ref, facts, varset, *, r: dict | None = None,
+          miss_share: dict | None = None) -> Axis:
     """🔴 축0 — 전력·호흡. ⚠️ 가치 자료가 없으면 **두 값이 `None`**(#3)."""
     from app.core import routing
     got = Axis(name="axis0")
@@ -135,13 +196,24 @@ def axis0(ref, facts, varset, *, r: dict | None = None) -> Axis:
            for side in ("home", "away")}
     box = dict(table().get("axis0") or {})
     w_fit = float(box.get("together_weight") or 0.0)
-    got.home = round(float(sums["home"]) + w_fit * float(fit["home"]), 4)
-    got.away = round(float(sums["away"]) + w_fit * float(fit["away"]), 4)
+    # 🔴🔴 D — **빠진 주전(핵심)**이 그 팀 축0 을 내린다
+    miss = {side: float(dict(miss_share or {}).get(side) or 0.0)
+            for side in ("home", "away")}
+    got.home = round(float(sums["home"]) + w_fit * float(fit["home"])
+                     + miss_move(miss["home"]), 4)
+    got.away = round(float(sums["away"]) + w_fit * float(fit["away"])
+                     + miss_move(miss["away"]), 4)
     got.refs = [one.id for one in varset.of(routing.AXES[0])] if varset else []
     got.why = (f"선수 가치 로그합 홈 {sums['home']:.3f} · 원정 "
                f"{sums['away']:.3f} · 호흡(함께 선발 경기 평균) 홈 "
                f"{fit['home']:.2f} · 원정 {fit['away']:.2f}"
-               f"(무게 {w_fit:g} · {PROVISIONAL})")
+               f"(무게 {w_fit:g} · {PROVISIONAL})"
+               # 🔴 D — **빠진 주전**을 적는다(조용히 깎지 않는다 · #3)
+               + (f" · 빠진 주전 비중 홈 {miss['home']:.0%} → "
+                  f"{miss_move(miss['home']):+.3f} · 원정 "
+                  f"{miss['away']:.0%} → {miss_move(miss['away']):+.3f}"
+                  f"(무게 {MISS_W:g} · 상한 {MISS_CAP:g} · {PROVISIONAL})"
+                  if any(miss.values()) else " · 빠진 주전 없다(또는 핵심 아니다)"))
     return _settle(got, scale=float(box.get("scale") or 1.0))
 
 
@@ -435,7 +507,9 @@ def report(ref, facts, box: dict, varset, *, strategy=None,
     🔴 **확률을 세지 않는다** — S3 가 `gaps()` 를 받아 λ 를 만든다.
     """
     r = r_of(varset, ref, turnover=turnover)
-    axes = {"axis0": axis0(ref, facts, varset, r=r),
+    # 🔴 D — 빠진 주전(핵심) 비중을 축0 에 넘긴다(`s2e_matchup` 이 센 것)
+    axes = {"axis0": axis0(ref, facts, varset, r=r,
+                           miss_share=dict(box.get("miss_share") or {})),
             "axis1": axis1(box, varset, r=r),
             "axis2": axis2(box, varset),
             "axis3": axis3(box, varset, r=r)}

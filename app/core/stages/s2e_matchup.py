@@ -152,6 +152,35 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
             share=_style._att_share(reads[side], hit) if hit else 0.0,
             table=len(att))
     out["off_why"] = off_why
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 D **빠진 주전(핵심)의 비중을 축0 으로**(사용자 지시 2026-10-11)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 결장을 λ 에 닿게 · **결장선수가 핵심선수인지 확인하고** 닿게 해라.
+    #
+    #  🔴 "핵심"은 둘 중 하나다 — ① 공격 기여 비중 ≥ 문턱 · ② 리그 페이지가 꼽은
+    #     핵심 선수(`key_state`). ⚠️ 기여표가 비면 **못 쟀다**고 적고 0 이다(#3).
+    miss_share: dict = {}
+    miss_why: dict = {}
+    for side in ("home", "away"):
+        hit = sorted(usual[side] & out_today[side])
+        att = dict(getattr(reads[side], "att_table", None) or {})
+        shares = {x: _style._att_share(reads[side], [x]) for x in hit}
+        said_keys = {
+            _pid.resolve(pid_box[side], said=nm)[0] or f"name:{nm}"
+            for nm, st in dict(getattr(reads[side], "key_state", None)
+                               or {}).items()
+            if st in ("명단 제외", "벤치")}
+        from app.core import matchup as _mu0
+        got_share, said = _mu0.key_miss(shares=shares, keys=said_keys,
+                                       table=len(att))
+        miss_share[side] = got_share
+        miss_why[side] = said
+    out["miss_share"] = miss_share
+    out["miss_why"] = miss_why
+    state.note("s2e D 빠진 주전 — "
+               + " · ".join(f"{s} {miss_share[s]:.0%}({miss_why[s]})"
+                            for s in ("home", "away")))
     state.note("s2e ③ 꺼진 무기 — "
                + " · ".join(f"{s} {off_why[s]}" for s in ("home", "away")))
     # 🔴 F2 — **변수(결장·복귀)도 무기를 끄고 켠다**(XI 만 보던 자리다)
@@ -295,12 +324,27 @@ def games_of(rows: list[dict]) -> list[dict]:
             continue
         mine_home = bool(box.get("mine_home"))
         gf = ga = 0
+        # 🔴🔴 A — **xG 도 센다**(사용자 지시 2026-10-11) — 골 줄에 이미 있다.
+        #    ⚠️ 실측: 축1 은 **골 수만** 썼다(`form.py` 의 xG 언급은 독스트링뿐).
+        #    🔴 xG 가 없는 골은 **빼지 않고 센 수만** 더한다 — 그 사실을 칸으로
+        #       남긴다(`xg_n` = xG 가 있던 골 수 · #3 조용한 0 금지).
+        xgf = xga = 0.0
+        xg_n = 0
         for g in (box.get("goals") or []):
             scored_home = bool(g.get("home")) != bool(g.get("own_goal"))
-            if scored_home == mine_home:
+            mine = (scored_home == mine_home)
+            if mine:
                 gf += 1
             else:
                 ga += 1
+            val = g.get("xg")
+            if val is None:
+                continue
+            xg_n += 1
+            if mine:
+                xgf += float(val)
+            else:
+                xga += float(val)
         at_home, at_away = ((gf, ga) if mine_home else (ga, gf))
         out.append({
             "date": str(box.get("utc") or "")[:10],
@@ -310,6 +354,8 @@ def games_of(rows: list[dict]) -> list[dict]:
                        else box.get("home_name")),
             "score": f"{at_home}-{at_away}",
             "gf": gf, "ga": ga,
+            # 🔴 A — xG 합과 **그 수를 센 골 수**(없으면 0 이 아니라 0건이다)
+            "xgf": round(xgf, 3), "xga": round(xga, 3), "xg_n": xg_n,
             "starters": list(box.get("starters") or [])})
     return out
 

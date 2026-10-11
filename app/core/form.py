@@ -26,6 +26,12 @@ RECENT = 10
 #     Elo 는 `app/collect/leagueelo.py` 가 **경기 전 등급**으로 만들어 두므로
 #     재료는 있다 — 다만 그 적합을 아직 돌리지 않았다(`tools/fit_form_adjust.py`).
 ELO_SLOPE = 0.15
+#: 🔴🔴 A — **xG 폼을 섞는 비율**(사용자 지시 2026-10-11). ⚠️ **임시값**이다 —
+#   적합 전이고 그 사실을 `why` 가 적는다. 🔴 절반을 넘기지 않는다(실제 득실이
+#   여전히 결과에 가장 가까운 자료다).
+XG_MIX = 0.4
+#: 🔴 xG 를 센 골이 이만큼은 돼야 섞는다(모자라면 안 섞는다 · #4)
+XG_MIN = 5
 PROVISIONAL = "🔴 **임시값**(적합 전)"
 
 
@@ -45,17 +51,29 @@ class TeamForm:
     luck_cut_goals: float = 0.0
     #: 🔴 한 원천에서 자른 두 창(`{"5": {...}, "10": {...}}`) — 카드가 그대로 적는다
     windows: dict = field(default_factory=dict)
+    #: 🔴🔴 A — **xG 폼**(최근 창의 xG 합)과 그 수를 센 골 수
+    xgf: float | None = None
+    xga: float | None = None
+    xg_n: int = 0
     #: 🔴 같은 리그 팀 대비 백분위(0~1) — 비교 대상이 없으면 `None`
     pct_att: float | None = None
     pct_def: float | None = None
     why: str = ""
 
     def index(self) -> float | None:
-        """🔴 한 수로 본 폼 — `보정 득점 − 보정 실점`(경기당). 표본 0 이면 `None`."""
+        """🔴 한 수로 본 폼 — `보정 득점 − 보정 실점`(경기당). 표본 0 이면 `None`.
+
+        🔴🔴 A(2026-10-11) — **xG 폼을 섞는다**. xG 를 못 쟀으면(`xg_n` 0) 섞지
+           않는다. 섞는 비율은 `XG_MIX` 이고 그 사실은 `why` 에 적혀 있다.
+        """
         if not self.n:
             return None
         got = self.gf_after_luck if self.gf_after_luck is not None else self.adj_gf
-        return round((got - self.adj_ga) / self.n, 3)
+        said = (got - self.adj_ga) / self.n
+        if self.xg_n and self.xgf is not None and self.xga is not None:
+            xg = (float(self.xgf) - float(self.xga)) / self.n
+            said = (1.0 - XG_MIX) * said + XG_MIX * xg
+        return round(said, 3)
 
 
 def adjust_one(goals: float, *, mine_elo: float | None,
@@ -179,6 +197,28 @@ def form_of(team: str, rows: list[dict], *, elo: dict | None = None,
     if games:
         # 🔴 ① — **두 창을 여기서 자른다**(카드와 축1 이 같은 수를 본다)
         got.windows = {str(n): window_sums(games, n) for n in WINDOWS}
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 A **xG 폼을 섞는다**(사용자 지시 2026-10-11) — 재료는 이미 있다
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 실측 2026-10-11: 골 줄에 `xg` 가 **있는데**(카드도 `xG 0.79` 를 찍는다)
+        #     축1 은 **골 수만** 썼다. 그래서 *운 좋게 이긴 팀*과 *내용이 좋은 팀*이
+        #     같은 폼으로 섰다.
+        #  🔴 섞는 비율은 `XG_MIX` 다 — **계수를 새로 짓지 않는다**(쓰임만 바꾼다).
+        #     ⚠️ xG 를 센 골이 모자라면(`XG_MIN` 미만) **안 섞는다**(#4).
+        rows_xg = [dict(g) for g in games[-RECENT:]]
+        n_xg = sum(int(g.get("xg_n") or 0) for g in rows_xg)
+        if n_xg >= XG_MIN:
+            got.xgf = round(sum(float(g.get("xgf") or 0.0)
+                                for g in rows_xg), 3)
+            got.xga = round(sum(float(g.get("xga") or 0.0)
+                                for g in rows_xg), 3)
+            got.xg_n = n_xg
+            said.append(f"xG 폼 섞음 {XG_MIX:.0%} — xG 득 {got.xgf:.1f}·"
+                        f"실 {got.xga:.1f}(xG 센 골 {n_xg}개)")
+        else:
+            said.append(f"⬜ xG 폼 안 섞음 — xG 를 센 골이 {n_xg}개"
+                        f"(<{XG_MIN})")
     got.why = (f"최근 {got.n}경기 — 득점 {got.gf:.0f}→보정 {got.adj_gf:.1f} · "
                f"실점 {got.ga:.0f}→보정 {got.adj_ga:.1f}"
                + (" · " + " · ".join(said) if said else ""))
