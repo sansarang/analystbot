@@ -114,10 +114,26 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
     said_plan = {side: _plan_of(strategy, side) for side in ("home", "away")}
     styles = {side: _style.adjust(styles[side], said_plan[side])
               for side in ("home", "away")}
-    # 🔴 ③ — **평소 XI 에 있었던 선수만** 무기를 끈다(장기 결장은 폼에 이미 있다)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 ③ **평소 XI 의 결장만 무기를 끈다** — 사용자 지시 2026-10-11 ③
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실측 2026-10-11: `strategy._key_state` 는 리그 페이지의 **팀당 상위
+    #     2명**만 든다 — 그래서 뮐러(6/8 선발 · 오늘 결장)가 **어디에도 안 세어져**
+    #     밴쿠버의 꺼진 무기가 0 이었다. 🔴 그래서 **오늘 빠진 선수**를
+    #     `facts.missing`(결장 목록)에서 직접 받아 넘긴다.
+    #  🔴 끄는 대상은 **평소 XI ∩ 오늘 빠짐**이다 — 로테이션으로 빠진 선수(결장
+    #     사실이 없는)는 **세지 않는다**(모르는 것을 결장으로 바꾸지 않는다 · #4).
+    out_today = {side: _out_today(facts, getattr(ref, side, ""))
+                 for side in ("home", "away")}
     offs = {side: _style.off_weapons(reads[side], styles[side],
-                                     usual=usual[side])
+                                     usual=usual[side],
+                                     out_today=out_today[side])
             for side in ("home", "away")}
+    state.note("s2e ③ 평소 XI·오늘 빠짐 — "
+               + " · ".join(f"{s} 평소 {len(usual[s])}명 · 빠짐 "
+                            f"{sorted(out_today[s] & usual[s]) or '없다'}"
+                            for s in ("home", "away")))
     # 🔴 F2 — **변수(결장·복귀)도 무기를 끄고 켠다**(XI 만 보던 자리다)
     for side in ("home", "away"):
         gone, back = _style.off_from_vars(varset, side)
@@ -272,17 +288,58 @@ def games_of(rows: list[dict]) -> list[dict]:
     return out
 
 
+#: 🔴🔴 ③ **평소 XI 의 문턱** — 선발 명단이 있는 경기의 이 비율 이상 선발
+#
+#  ⚠️ 실측 2026-10-11: *"창에 한 번이라도 선발"* 로 세면 밴쿠버 **32명** · LAFC
+#     22명이다(로테이션·컵 경기까지). 그 목록으로는 *"오늘 빠졌다"* 가 뜻을
+#     잃는다. 🔴 실측 선발 횟수 — 뮐러 **6/8** · 바드왈 2/8 · 에보비세 **3/10**.
+USUAL_SHARE = 0.5
+
+
+def _out_today(facts, key: str) -> set[str]:
+    """🔴 ③ — **오늘 빠진 선수 이름**(결장 목록). ⚠️ 벤치는 `key_state` 가 든다.
+
+    🔴 원본은 `facts.missing[팀]` 이다(카드 블록 2b 가 적는 그 목록) — 사본을
+       만들지 않는다. ⚠️ 이름이 없으면 건너뛴다(빈 글자를 선수로 세지 않는다).
+    """
+    # 🔴 칸 이름은 **`name`** 이다(`schema.Missing`) — ⚠️ 나는 `player` 로 적어
+    #    조용히 빈 집합을 돌릴 뻔했다(계약이 그 칸을 센다).
+    rows = list((getattr(facts, "missing", None) or {}).get(key) or [])
+    return {str(getattr(one, "name", "") or "").strip()
+            for one in rows if str(getattr(one, "name", "") or "").strip()}
+
+
+def usual_starts(rows: list[dict]) -> tuple[dict[str, int], int]:
+    """🔴 ③ — `{선수: 선발 경기 수}` 와 **선발 명단이 있는 경기 수**.
+
+    ⚠️ 선발 명단을 못 받은 경기는 **분모에서 뺀다** — 없는 자료를 0 으로 세면
+       모두의 비율이 내려간다(#3 · 실측: 밴쿠버 10경기 중 2경기가 빈 명단이었다).
+    """
+    got: dict[str, int] = {}
+    n = 0
+    for one in games_of(rows):
+        names = {str(x) for x in (one.get("starters") or []) if x}
+        if not names:
+            continue
+        n += 1
+        for nm in names:
+            got[nm] = got.get(nm, 0) + 1
+    return got, n
+
+
 def usual_xi(rows: list[dict]) -> set[str]:
-    """🔴🔴 ③ — **평소 XI**: 폼 창 안에서 **한 번이라도 선발로 뛴 선수**.
+    """🔴🔴 ③ — **평소 XI**: 폼 창에서 **주로 선발로 뛴 선수**.
 
     > "평소 XI(최근 폼 계산 기간)에 있었는데 오늘 빠진 선수"만 무기를 끈다.
     > 그 기간 내내 빠져 있던 장기 결장(에보비세)은 폼에 이미 들어 있으니 끄지
     > 않는다(이중 계산). — 사용자 지시 2026-10-11 ③
+
+    🔴 "주로"는 `USUAL_SHARE`(절반) 이다 — 그 수와 까닭을 위에 적어 뒀다.
     """
-    got: set[str] = set()
-    for one in games_of(rows):
-        got |= {str(x) for x in (one.get("starters") or []) if x}
-    return got
+    got, n = usual_starts(rows)
+    if not n:
+        return set()
+    return {nm for nm, k in got.items() if k / n >= USUAL_SHARE}
 
 
 def _as_form(rows: list[dict], name: str) -> list[dict]:

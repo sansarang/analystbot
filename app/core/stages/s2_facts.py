@@ -781,13 +781,26 @@ def _recent_from_games(games: list[dict], *, kickoff=None) -> dict:
     from app.core import form as _form
     rows = [dict(g) for g in (games or [])]
     five = _form.window_sums(rows, 5)
+    # 🔴🔴 **칸 이름과 순서를 `fotmob.parse_form` 과 맞춘다**(사본 금지의 반대쪽
+    #    함정): ⚠️ 실측 2026-10-11 — 내가 `conceded` 로만 적었더니 `s5_verify.
+    #    _form_goal_dirs` 가 읽는 `goals_against` 가 없어 **실점 방향이 조용히
+    #    사라졌다**(#3 — 못 잰 칸은 이름으로 남아야 하는데 칸 자체가 없어졌다).
+    # 🔴 순서는 **최신이 앞**이다(`team_recent`·`parse_form` 이 그 순서다 —
+    #    연속 계산이 그것을 쓴다). ⚠️ `games` 는 반대로 **오래된 것이 앞**이고
+    #    창은 꼬리에서 자른다.
     seq = [{"date": g.get("date"), "side": g.get("side"),
-            "score": g.get("score"),
             "opponent": g.get("opp"),
             "tournament": g.get("league") or "",
+            "goals_for": int(g.get("gf") or 0),
+            "goals_against": int(g.get("ga") or 0),
+            "result": ("W" if float(g.get("gf") or 0) > float(g.get("ga") or 0)
+                       else "L" if float(g.get("gf") or 0)
+                       < float(g.get("ga") or 0) else "D"),
+            "score": f"{int(g.get('gf') or 0)}-{int(g.get('ga') or 0)}",
+            # 🔴 옛 칸 이름도 남긴다(`_recent_of` 를 읽던 자리)
             "scored": float(g.get("gf") or 0.0),
             "conceded": float(g.get("ga") or 0.0)}
-           for g in rows[-5:]]
+           for g in rows[-5:][::-1]]
     got = [float(g.get("gf") or 0.0) for g in rows[-5:]]
     trimmed, _why = _fm.trimmed_avg(got) if got else (None, "")
     rest = None
@@ -802,9 +815,7 @@ def _recent_from_games(games: list[dict], *, kickoff=None) -> dict:
     n = int(five["n"])
     return {
         # 🔴 승패 글자는 **득실로 센다**(다른 파서의 글자를 베끼지 않는다)
-        "last5": [("W" if float(g.get("gf") or 0) > float(g.get("ga") or 0)
-                   else "L" if float(g.get("gf") or 0) < float(g.get("ga") or 0)
-                   else "D") for g in rows[-5:]],
+        "last5": [x["result"] for x in seq],
         "matches": n,
         "sequence": seq,
         "rest_days": rest,

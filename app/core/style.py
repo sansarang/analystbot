@@ -175,7 +175,8 @@ def _axis_of(one: Style, name: str) -> float | None:
     return float(got) if got is not None else None
 
 
-def off_weapons(read, prof, *, usual: set[str] | None = None) -> list[str]:
+def off_weapons(read, prof, *, usual: set[str] | None = None,
+                out_today: set[str] | None = None) -> list[str]:
     """🔴🔴 §2 둘째 줄 — **오늘 XI 에서 꺼진 무기**.
 
     > 오늘 XI 에서 무기를 쥔 선수가 빠졌거나 벤치면 그 무기는 **꺼진 것**으로 본다.
@@ -188,6 +189,12 @@ def off_weapons(read, prof, *, usual: set[str] | None = None) -> list[str]:
     """
     said = dict(getattr(read, "key_state", None) or {})
     gone = [nm for nm, st in said.items() if st in ("명단 제외", "벤치")]
+    # 🔴🔴 ③ — **오늘 결장**도 받는다(사용자 지시 2026-10-11 ③). ⚠️ `key_state` 는
+    #    리그 페이지의 **팀당 상위 2명**만 들어서 뮐러처럼 자주 뛰는 선수의 결장이
+    #    통째로 빠졌다(실측 2026-10-11: 밴쿠버 꺼진 무기 0).
+    for nm in sorted(out_today or ()):
+        if nm not in gone:
+            gone.append(nm)
     if not gone:
         return []           # 🔴 고정물 — **빠진 선수가 없으면 꺼진 무기도 없다**
     # ══════════════════════════════════════════════════════════════════

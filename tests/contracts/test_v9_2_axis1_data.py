@@ -277,7 +277,11 @@ def test_facts_recent_comes_from_the_same_list() -> None:
     assert abs(got["recent_conceded_avg"] - five["ga"] / 5) < 1e-6
     #: 🔴 목록 자체도 들고 있다(카드·축1 이 같은 줄을 본다)
     assert len(got["games"]) == len(GAMES)
-    assert got["last5"] == ["L", "W", "L", "D", "D"]
+    #: 🔴 **최신이 앞**이다(`team_recent`·`parse_form` 과 같은 순서)
+    assert got["last5"] == ["D", "D", "L", "W", "L"]
+    assert got["sequence"][0]["date"] == GAMES[-1]["date"]
+    #: 🔴 `s5_verify._form_goal_dirs` 가 읽는 칸이 **있어야** 실점 방향이 남는다
+    assert "goals_against" in got["sequence"][0]
 
 
 def test_s2_facts_is_wired_to_that_list() -> None:
@@ -285,3 +289,79 @@ def test_s2_facts_is_wired_to_that_list() -> None:
     from app.core.stages import s2_facts
     src = _code(s2_facts)
     assert "games_of" in src and "_recent_from_games" in src
+
+
+# ══════════════════════════════════════════════════════════════════
+# 3-b. 평소 XI 는 **자주 선발로 뛴 선수**다 — 창에 한 번 낀 선수가 아니다
+# ══════════════════════════════════════════════════════════════════
+#
+#  🔴 실측 2026-10-11(밴쿠버 8경기 · LAFC 10경기):
+#     뮐러 **6/8** · 바드왈 2/8 · 아데쿠그베 1/8 · 에보비세 **3/10** · 틸먼 3/10.
+#  ⚠️ 그래서 *"창 안에 한 번이라도 선발"* 로 평소 XI 를 만들면 밴쿠버가 **32명**,
+#     LAFC 가 22명이다 — 로테이션 선수까지 다 들어와 "오늘 빠졌다"가 무의미해진다.
+#  🔴 사용자 지시 ③ 의 *"평소 XI"* 는 **그 창에서 주로 뛴 선수**로 읽는다.
+
+def _rows(starters: list[list[str]]) -> list[dict]:
+    """🔴 `_history` 꼴 줄들 — 선발 명단만 다르게."""
+    return [{"home_name": "A", "away_name": "B", "mine_home": True,
+             "utc": f"2026-09-0{i + 1}T00:00:00Z", "league": "MLS",
+             "starters": list(xs), "goals": [], "stats": {}}
+            for i, xs in enumerate(starters)]
+
+
+def test_usual_xi_needs_most_of_the_window() -> None:
+    """🔴 절반 이상 선발이면 평소 XI, 한두 번이면 아니다."""
+    from app.core.stages import s2e_matchup
+    rows = _rows([["Müller", "White"], ["Müller", "White"],
+                  ["Müller", "Badwal"], ["White", "Diaby"]])
+    got = s2e_matchup.usual_xi(rows)
+    assert "Müller" in got and "White" in got
+    assert "Badwal" not in got and "Diaby" not in got
+
+
+def test_usual_xi_skips_games_without_lineups() -> None:
+    """🔴 선발 명단이 없는 경기는 **분모에서 뺀다**(없는 것을 0 으로 세지 않는다)."""
+    from app.core.stages import s2e_matchup
+    rows = _rows([["Müller"], [], [], ["Müller"]])
+    assert "Müller" in s2e_matchup.usual_xi(rows)
+
+
+def test_weapons_off_counts_absences_outside_the_top_two() -> None:
+    """🔴🔴 ③ 고정물 — 평소 XI 의 **결장**이면 무기가 꺼진다.
+
+    ⚠️ 실측 2026-10-11: `key_state` 는 리그 페이지의 **팀당 상위 2명**만 든다 —
+       그래서 뮐러(6/8 선발 · 오늘 결장)가 **어디에도 안 세어져** 밴쿠버의 꺼진
+       무기가 0 이었다(양 팀 중 한쪽만 끄는 그 상태가 축2 를 끌었다).
+    """
+    read = _read({}, {"Thomas Müller": 8, "Brian White": 7, "Others": 20})
+    got = style.off_weapons(read, None, usual={"Thomas Müller", "Brian White"},
+                            out_today={"Thomas Müller"})
+    assert len(got) >= 1, "평소 XI 의 결장인데 무기가 안 꺼졌다"
+
+
+def test_fringe_absence_still_turns_nothing_off() -> None:
+    """🔴 평소 XI 가 아닌 선수의 결장은 **끄지 않는다**(폼에 이미 들어 있다)."""
+    read = _read({}, {"Jeremy Ebobisse": 9, "Others": 20})
+    got = style.off_weapons(read, None, usual={"Denis Bouanga"},
+                            out_today={"Jeremy Ebobisse"})
+    assert got == [], got
+
+
+def test_s2e_passes_todays_absences() -> None:
+    """🔴 배선 — 오늘 **결장·벤치**를 무기 꺼짐에 넘긴다(`facts.missing`)."""
+    from app.core.stages import s2e_matchup
+    src = _code(s2e_matchup)
+    assert "out_today" in src and "missing" in src
+
+
+def test_out_today_reads_the_real_absence_field() -> None:
+    """🔴 `facts.missing` 의 **그 칸 이름**으로 읽는다 — 빈 집합을 조용히 돌리지 않게.
+
+    ⚠️ 실사고 2026-10-11: 내가 `player` 로 적었다(실제 칸은 `name` · `schema.
+       Missing`). 계약이 없으면 *"꺼진 무기 0"* 으로 조용히 통과했을 자리다.
+    """
+    from app.core.schema import Facts, Missing
+    from app.core.stages import s2e_matchup
+    facts = Facts(missing={"team:000002": [
+        Missing(name="Thomas Müller", pos="AM", reason="injury")]})
+    assert s2e_matchup._out_today(facts, "team:000002") == {"Thomas Müller"}
