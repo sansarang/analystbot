@@ -200,3 +200,20 @@ def test_v9_구조_결장_대조가_이름_규칙을_지킨다():
     assert _s5._in_missing("Müller", "team:000001", _F()) is True
     # 🔴 `Rafael`(한 낱말)이 `Rafael Tolói` 같은 **다른 사람**을 끌어오지 않는다
     assert _s5._in_missing("Rafael Tolói", "team:000001", _F()) is False
+
+
+def test_v9_자동_등록_리그도_자체_Elo_표에_있다():
+    """🔴🔴 **⑥**(사용자 지시 2026-10-11) — 자동 등록 리그는 fotmob 결과로 자체
+    Elo 를 굴린다(V1 검증용).
+
+    ⚠️ 실사고(LAFC): **MLS 가 그 표에 없어서** 카드의 기준 열이 통째로 비었다
+       (`기준 없음 — Elo 를 못 받았다`) → 축1 의 상대 전력 보정도 **안 돌았다**.
+    🔴 id·slug 는 받아서 확인한 값이다(`/leagues/130/matches/mls` · 414경기).
+    """
+    from app.collect import leagueelo as _le
+    box = dict((_le.fotmob_table().get("competitions") or {}))
+    assert "MLS" in box, f"🔴 MLS 가 fotmob Elo 표에 없다 — {sorted(box)}"
+    said = dict(box["MLS"])
+    assert int(said.get("id") or 0) == 130 and said.get("slug") == "mls", said
+    # 🔴 K리그1·J1 도 그대로 있다(지우지 않았다)
+    assert {"KL1", "J1"} <= set(box)

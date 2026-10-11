@@ -75,3 +75,13 @@ fotmob:
       id: 223
       slug: j-league
       name: J. League
+    #: 🔴 사용자 지시 2026-10-11 ⑥ — **자동 등록 리그도 자체 Elo 를 굴린다**(V1 검증용).
+    #  ⚠️ 실사고 2026-10-11(LAFC): MLS 가 이 표에 **없어서** 카드의 기준 열이 통째로
+    #     비었다(`기준 없음 — Elo 를 못 받았다`). football-data 가 MLS 를 안 주므로
+    #     fotmob 결과로 굴려야 하는데 **적어 두지 않았다**.
+    #  🔴 id·slug 는 **받아서 확인한 값**이다(2026-10-11: `/leagues/130/matches/mls`
+    #     가 끝난 경기 414건을 줬다 · 추측해 적지 않는다 · #4).
+    MLS:
+      id: 130
+      slug: mls
+      name: Major League Soccer
