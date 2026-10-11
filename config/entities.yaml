@@ -100,6 +100,25 @@ teams:
       ⚠️ 같은 색인에 2군·동명 팀이 **없다**(받아서 확인했다)
       ⚠️ 이 팀은 54팀 표·클럽 이름 표에 **아예 없었다**(J2)
 
+  Shonan Bellmare:
+    aliases:
+      ko: [쇼난벨마레, 쇼난 벨마레, 쇼난]
+      en: [Shonan Bellmare, Shonan]
+    source: |
+      사용자 지시 2026-10-11 — 사용자가 `쇼난벨마레` 로 물었다(일본 J2)
+      실측 2026-10-11 — fotmob 팀 색인 슬러그 `shonan-bellmare` · id 6180
+      ⚠️ 같은 색인에 2군·여자팀이 **없다**(받아서 확인했다)
+
+  Albirex Niigata:
+    aliases:
+      ko: [알비레스 니가타, 알비렉스 니가타, 니가타, 알비렉스니가타]
+      en: [Albirex Niigata, Niigata]
+    source: |
+      사용자 지시 2026-10-11 — 사용자가 `알비레스 니가타` 로 물었다(일본 J2)
+      실측 2026-10-11 — fotmob 팀 색인 슬러그 `albirex-niigata` · id 4425
+      🔴 같은 색인에 **여자팀** `albirex-niigata-ladies`(588446)가 있다 —
+         별칭은 **남자팀**(4425)만 가리킨다(여자팀 이름을 넣지 않는다)
+
   Sporting Kansas City:
     aliases:
       ko: [스포팅 캔자스시티, 캔자스시티, 스포팅 캔자스, 캔자스]

@@ -174,7 +174,17 @@ async def main(argv: list[str]) -> int:
         msg = _Msg(f"/자세히 {arg}")
         await cmd_deep(msg)
     else:
-        msg = _Msg(f"/analyze {arg}")
+        # 🔴🔴 **사용자 보드**(사용자 지시 2026-10-11) — `--board "승무패 1.68 4.00 4.50"`
+        #    ⚠️ 실제 핸들러는 **질문 아래 줄**을 보드 글로 읽는다(`cmd_analyze` 의
+        #       `lines[1:]`) — 그래서 메시지를 **여러 줄**로 만든다(프로브 금지 #12:
+        #       통로를 새로 만들지 않고 그 핸들러가 읽는 꼴로 넣는다).
+        said_board = ""
+        if "--board" in argv:
+            said_board = str(argv[argv.index("--board") + 1] or "").strip()
+            if said_board and not said_board.startswith("보드"):
+                said_board = f"보드: {said_board}"
+            print(f"[run_stage8] 🎯 사용자 보드 — {said_board}")
+        msg = _Msg(f"/analyze {arg}" + (f"\n{said_board}" if said_board else ""))
         await cmd_analyze(msg)                  # 🔴 **실제 핸들러**다
     secs = time.monotonic() - t0
     mo1, d1 = solar.spent()
