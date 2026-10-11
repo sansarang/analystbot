@@ -65,9 +65,28 @@ def run(card: Card, *, state: RunState) -> SayOut:
         why = str(getattr(state, "last_llm_reason", "") or "")
         if "truncat" in why.lower():
             said = template(card, box, why="🔴 **잘림 — 핵심 3줄만**")
-            state.note("s9say 최종 평 — 🔴 잘렸다 → **축약판**(핵심 3줄)")
+            # ══════════════════════════════════════════════════════════
+            # 🔴🔴 **잘렸으면 짧게 핵심만 다시 받는다**(2026-10-11)
+            # ══════════════════════════════════════════════════════════
+            #
+            #  ⚠️ 축약판은 **코드 템플릿 글**이다 — *"코드가 고른 근거"* 를 그대로
+            #     읽어 사람이 읽을 평이 아니다. 🔴 짧은 질문(칸 둘)은 잘리지
+            #     않으므로 **한 줄·이유 문단**만 받아 그 자리에 넣는다.
+            #  🔴 판정(방향)은 **코드가 고른 것**을 그대로 둔다(검열 (u)).
+            core = _ask_core(card, box, state=state)
+            audit = "잘림 — 핵심 3줄만"
+            if core is not None and str(core.reason or "").strip():
+                said = said.model_copy(update={
+                    "one_line": (str(core.one_line or "").strip()
+                                 or said.one_line),
+                    "reason": str(core.reason or "").strip()})
+                audit = "잘림 — 핵심만 다시 받았다"
+                state.note("s9say 최종 평 — 🔴 잘렸다 → **핵심만 다시 받았다**"
+                           "(한 줄·이유 문단)")
+            else:
+                state.note("s9say 최종 평 — 🔴 잘렸다 → **축약판**(핵심 3줄)")
             return said.model_copy(update={
-                "audit": "잘림 — 핵심 3줄만",
+                "audit": audit,
                 "key_points": list(said.key_points)[:3],
                 "flow_first": "⬜ 잘림 — 흐름은 적지 않는다",
                 "flow_second": "⬜ 잘림 — 흐름은 적지 않는다"})
@@ -490,6 +509,25 @@ def _reason_only(bad: list[str]) -> bool:
     if not rows:
         return False
     return all(any(t in one for t in REASON_TAGS) for one in rows)
+
+
+def _ask_core(card: Card, box: Bundle, *, state: RunState):
+    """🔴🔴 **잘렸을 때의 핵심** — 한 줄 + 이유 문단만(칸 둘이라 잘리지 않는다).
+
+    ⚠️ 못 받으면 `None` 이고 호출부가 **축약판**(코드 템플릿)으로 간다 — 그 사실이
+       판정 글자에 남는다(`잘림 — 핵심 3줄만` vs `잘림 — 핵심만 다시 받았다`).
+    """
+    from app.core import llm
+    from app.core.schema import SayCore
+    msgs = _prompt(card, box) + [llm.Message(role="user", content=(
+        "🔴 **앞 요청이 잘렸다.** 이번에는 칸 **둘만** 내라 — `one_line`(한 줄 "
+        "요약)과 `reason`(이유 문단). 주장·흐름·승부처는 **쓰지 않는다**."))]
+    got = llm.ask(provider="deepseek", purpose="say", messages=msgs,
+                  out=SayCore, state=state)
+    if isinstance(got, SayCore):
+        return got
+    state.note(f"s9say 핵심 다시 받기 실패 — {getattr(got, 'reason', '?')}")
+    return None
 
 
 def _ask_reason(card: Card, box: Bundle, *, state: RunState,

@@ -740,6 +740,17 @@ class KeyPoint(Frozen):
     refs: list[str] = Field(default_factory=list)
 
 
+class SayCore(Frozen):
+    """🔴🔴 **잘렸을 때 받는 핵심** — 한 줄 + 이유 문단(2026-10-11).
+
+    ⚠️ `verdict`(판정)는 **받지 않는다** — 방향은 코드가 정했고(검열 (u)) 모델의
+       판정으로 덮으면 그 검열을 스스로 어기는 셈이다.
+    """
+
+    one_line: str = ""
+    reason: str = ""
+
+
 class ReasonOnly(Frozen):
     """🔴🔴 **이유 문단 하나만** 받는 꼴(사용자 지시 2026-10-11).
 

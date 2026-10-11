@@ -251,9 +251,13 @@ def test_v9_잘리면_템플릿이_아니라_축약판이다():
     said = inspect.getsource(_say.run)
     assert "잘림 — 핵심 3줄만" in said, "🔴 축약판이 없다"
     assert "last_llm_reason" in said, "🔴 **왜 실패했는지**를 안 본다"
-    i = said.index('"audit": "잘림 — 핵심 3줄만"')
+    # 🔴🔴 **판정 글자가 둘로 갈렸다**(2026-10-11): 잘린 뒤 핵심을 다시 받으면
+    #    `잘림 — 핵심만 다시 받았다`, 못 받으면 `잘림 — 핵심 3줄만` 이다.
+    #    ⚠️ 어느 쪽이든 **주장은 3줄로 줄인다** — 그 보장을 여기서 센다.
+    i = said.index('"audit": audit')
     assert "key_points" in said[i:i + 300], "🔴 핵심 3줄로 안 줄인다"
     assert "[:3]" in said[i:i + 300], said[i:i + 200]
+    assert "잘림 — 핵심만 다시 받았다" in said, "🔴 핵심을 다시 안 받는다"
     # 🔴 그 사유 칸이 `RunState` 에 있다
     from app.core.state import RunState
     assert hasattr(RunState(), "last_llm_reason")

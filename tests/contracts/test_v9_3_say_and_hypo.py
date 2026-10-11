@@ -171,3 +171,45 @@ def test_league_of_builds_both_sides() -> None:
     src = _src(signals._sides_of)
     assert "per_home" in src and "per_away" in src
     assert "home_mul" in src, "홈 배율을 제 손으로 세고 있다(사본 금지)"
+
+
+# ══════════════════════════════════════════════════════════════════
+# ①-b 잘림 — **템플릿이 아니라 짧게 다시 받는다**
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 실측 2026-10-11(재현 2회차): 첫 호출이 `llm_truncated` 로 끊겼다
+#     (`say` 상한 8000 · 추론이 7822). 축약판은 **코드 템플릿 글**이라 사람이
+#     읽을 평이 아니다 — 잘렸으면 **짧은 질문으로 핵심만** 받는다.
+
+def test_say_cap_is_above_the_measured_thinking() -> None:
+    """🔴 `say` 출력 상한이 **실측 추론량(8000)** 보다 커야 한다."""
+    from app import rules
+    got = rules.llm_purpose("say") if hasattr(rules, "llm_purpose") else None
+    if got is None:
+        import yaml
+        box = yaml.safe_load(open("config/llm.yaml", encoding="utf-8"))
+        got = _find_say(box)
+    assert int(got["max_tokens"]) >= 16000, got
+
+
+def _find_say(box):
+    """🔴 설정 나무에서 `say` 칸을 찾는다(경로를 베껴 적지 않는다)."""
+    if isinstance(box, dict):
+        if "say" in box and isinstance(box["say"], dict) \
+                and "max_tokens" in box["say"]:
+            return box["say"]
+        for v in box.values():
+            got = _find_say(v)
+            if got:
+                return got
+    return None
+
+
+def test_truncated_asks_for_the_core_instead_of_a_template() -> None:
+    """🔴 잘리면 **`_ask_core`** 로 한 줄·이유 문단만 받는다."""
+    from app.core.stages import s9_say
+    assert hasattr(s9_say, "_ask_core")
+    src = _src(s9_say.run)
+    assert "_ask_core" in src
+    #: 🔴 판정은 **코드가 고른 방향**을 쓴다 — 모델의 판정으로 덮지 않는다(검열 u)
+    assert "verdict" not in _src(s9_say._ask_core).split("model_copy")[-1]
