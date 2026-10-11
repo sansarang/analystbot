@@ -492,8 +492,13 @@ def test_v6_최종평이_파이프라인_마지막이다():
           and n.name == "analyze"]
     assert fn, "🔴 `pipeline.analyze` 가 없다"
     said = ast.unparse(fn[0])
-    i, j = said.find("with_tactic("), said.find("with_say(")
-    assert 0 <= i < j, f"🔴 최종 평이 전술 예측보다 앞이다(i={i} j={j})"
+    # 🔴🔴 **F7(2026-10-11)** — 전술 예측이 **최종 평 안으로** 들어왔다(글 한 편).
+    #    그래서 `with_tactic` 은 없다. 최종 평은 여전히 **마지막**이다.
+    assert "with_tactic(" not in said, "🔴 전술 예측이 아직 따로 돈다(F7)"
+    j = said.find("with_say(")
+    assert j > 0, "🔴 최종 평을 안 부른다"
+    for later in ("card_of(", "s7_judge.run("):
+        assert said.find(later) < j, f"🔴 최종 평이 `{later}` 보다 앞이다"
 
 
 # ══════════════════════════════════════════════════════════════════

@@ -123,11 +123,44 @@ def check(got: SayOut, *, card: Card, box: Bundle) -> list[str]:
         out.append(f"🔴 주장 수 {len(rows)}개 — §2 는 "
                    f"{MIN_POINTS}~{MAX_POINTS}개를 요구한다")
     for one in (got.one_line, got.flow_first, got.flow_second,
-                got.decisive_moment, got.flip_condition):
+                got.decisive_moment, got.flip_condition, got.reason):
         if not str(one or "").strip():
-            out.append("🔴 빈 칸이 있다 — §2 는 한 줄 요약·흐름 둘·승부처·"
-                       "뒤집히는 조건을 **다** 요구한다")
+            out.append("🔴 빈 칸이 있다 — §2 는 한 줄 요약·**이유 문단**·흐름 둘·"
+                       "승부처·뒤집히는 조건을 **다** 요구한다")
             break
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **F7 — 옛 논평·이유 문단 검열이 여기로 들어왔다**(지시서 2026-10-11)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  글을 한 편으로 합치면서 그 두 검열이 **갈 곳을 잃을 뻔했다**. 🔴 보장을
+    #  지우지 않는다 — 같은 함수를 여기서 부른다(사본 금지).
+    #    · `new_fact_check` — 새 사실(F 하위)이 **이유 문단에 쓰였나**(v6 §3)
+    #    · `strategy_check` — 전략 문장이 **최종 확률과 같은 방향인가**(v6 §4)
+    from app.core.schema import ReasonLine
+    from app.core.stages.s9_audit import (new_fact_check,
+                                          reason_check,
+                                          strategy_check)
+    said_reason = [ReasonLine(text=str(got.reason or ""), fact_refs=[])]
+    out += list(new_fact_check(said_reason, card=card) or [])
+    out += list(strategy_check(said_reason, card=card) or [])
+    #    · `reason_check` — 일반론·단정·없는 선수(v6 §3 1겹 검열)
+    out += list(reason_check(said_reason, card=card) or [])
+    #    · `h2h_direction_check` — **맞대결 해석 방향**(v6 §4 (m)). ⚠️ 그 검열은
+    #      옛 `Commentary` 꼴을 읽는다(`reasons`·`flow`·`title`) — 평의 글을 **그
+    #      꼴로 싸서** 넘긴다(보장을 버리지 않는다 · 사본도 아니다).
+    from app.core.stages.s9_audit import h2h_direction_check
+
+    class _AsComment:
+        def __init__(self, said: SayOut) -> None:
+            self.reasons = [type("L", (), {"text": x})()
+                            for x in (said.reason, said.flow_first,
+                                      said.flow_second, said.decisive_moment)
+                            if str(x or "").strip()]
+            self.flow = str(said.flow_first or "")
+            self.title = str(said.one_line or "")
+
+    out += list(h2h_direction_check(_AsComment(got), ref=card.match,
+                                    facts=card.facts) or [])
     known = box.ids()
     nums = _numbers_of(box)
     names = _names_of(box)

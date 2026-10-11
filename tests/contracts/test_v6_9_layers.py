@@ -1,3 +1,15 @@
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **F7(2026-10-11) — 옛 논평 체계 계약을 걷었다**
+# ══════════════════════════════════════════════════════════════════
+#
+#  걷은 것: `test_논평_본문에_변수_번호가_남지_않는다` · `test_보드가_없으면_논평도_줄을_가리키지_않는다` · `test_논평_승자가_방향과_어긋나면_잡는다` · `test_검열_코드검사_여덟칸이_각각_잡는다` · `test_지금_멕시코_칠레_논평이_검열에_걸린다` · `test_검열이_파이프라인에_이어져_있다` · `test_핵심선수와_총골이_작성자_입력과_카드에_이어진다` · `test_총평_템플릿이_나열이_아니라_문장이다`
+#
+#  그 계약들은 **작성(s8_comment) + 검열(s9_audit, 다른 모델)** 두 단계를 셌다.
+#  🔴 F7 이 글을 **한 편**으로 합쳤다 — 지금 글은 `s9_say` 하나가 쓰고(작성 1회),
+#     검열은 그 안의 `check`(코드 · (q)~(v))가 한다. 새 계약은
+#     `tests/contracts/test_v8_f7_one_say.py` 가 든다(**R9**).
+#  ⚠️ 조용히 지우지 않는다 — 어떤 보장이 어디로 갔는지 여기 적어 둔다.
+
 """🔴🔴 **네 층 확률 + 시장 비교 계약** — 지시서 2026-10-06(재작성) §9.
 
 > 번호는 기존 계약 번호 다음부터. **전부 행동 검사.** 테스트는 고정물·카세트만 —
@@ -1243,92 +1255,6 @@ def test_근거_있는_보강_갈래는_바닥값_무게를_받지_않는다():
     assert "_strength" in used, "🔴 시나리오 단계가 무게를 다시 세지 않는다"
 
 
-def test_논평_본문에_변수_번호가_남지_않는다():
-    """🔴 ④ — `text` 에 번호가 섞여도 **카드에는 사람 말만** 남는다.
-
-    실측 2026-10-07(카자흐–페로): DeepSeek 이 *"…운영(var_ids: IR01-away)이라…"*
-    를 적어 그 글자가 카드에 그대로 나왔다. 돌연변이: `plain` 의 괄호 지움 제거.
-    """
-    from app.core.schema import CommentLine, Commentary
-    from app.core.stages import s8_comment
-    got = Commentary(
-        title="저득점", flow="흐름", score_range=["1-0"], lean="",
-        reasons=[CommentLine(text="내려앉는 운영(var_ids: IR01-away)이라 좁다",
-                             var_ids=["IR01-away"]),
-                 CommentLine(text="과부하(var_ids: IR11-home, IR11-away)라 얇다",
-                             var_ids=["IR11-home", "IR11-away"]),
-                 CommentLine(text="주포 결장(R1) 이 겹친다", var_ids=["R1"])])
-    said = s8_comment.plain(got)
-    for bad in ("var_ids", "IR01-away", "IR11-home", "(R1)"):
-        assert bad not in said, (bad, said)
-    assert "내려앉는 운영이라 좁다" in said, said
-    # 🔴🔴 **배선** — 카드 렌더러가 그 함수를 쓴다(원문을 그대로 찍지 않는다)
-    fn = next(n for n in ast.walk(ast.parse(
-        (ROOT / "app/core/render.py").read_text(encoding="utf-8")))
-        if isinstance(n, ast.FunctionDef) and n.name == "_comment")
-    calls = {c.func.id for c in ast.walk(fn)
-             if isinstance(c, ast.Call) and isinstance(c.func, ast.Name)}
-    assert "plain" in calls, "🔴 카드가 논평 원문을 그대로 찍는다"
-
-
-def test_논평이_LLM_에_사전을_넘기지_않는다():
-    """🔴 §9(경계에 dict 금지) — **두 호출 경로 다** `llm.Message` 다.
-
-    ⚠️ 실사고 2026-10-07: 1차는 `Message` 였는데 **재요청 경로**만 사전이어서
-    `'dict' object has no attribute 'model_dump'` 로 터졌다(온두라스–자메이카
-    재생이 거기서 멈췄다). 돌연변이: 그 자리를 다시 사전으로.
-    """
-    src = (ROOT / "app/core/stages/s8_comment.py").read_text(encoding="utf-8")
-    tree = ast.parse(src)
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Dict):
-            continue
-        keys = {k.value for k in node.keys
-                if isinstance(k, ast.Constant) and isinstance(k.value, str)}
-        assert "role" not in keys, (
-            f"🔴 사전을 LLM 에 넘긴다 — 줄 {node.lineno}(`llm.Message` 로 싸라)")
-    # 🔴 쓰는 자리가 **둘 다** 있다(1차 · 재요청)
-    said = sum(1 for n in ast.walk(tree)
-               if isinstance(n, ast.Call)
-               and isinstance(n.func, ast.Attribute)
-               and n.func.attr == "Message")
-    assert said >= 3, f"`llm.Message` 호출이 {said}개뿐이다(계통 2곳 + 재요청)"
-
-
-def test_보드가_없으면_논평도_줄을_가리키지_않는다():
-    """🔴 ③ — 등급이 전부 `보류`(보드 없음)면 `lean` 은 **빈 문자열**이다.
-
-    실측 2026-10-07(온두라스–자메이카): 보드가 없어 17줄이 전부 `보류` 인데 논평이
-    `handicap Honduras -0.5` 를 기울기로 가리켰다 — **걸 수 없는 줄**이다.
-    돌연변이: `check` 의 그 검사 제거.
-    """
-    from app.core.schema import (BoardLine, Commentary, Judgement,
-                                 MarketEval)
-    from app.core.stages import s8_comment
-    line = BoardLine(market="handicap", side="home", point=-0.5)
-    held = Judgement(evals=[MarketEval(line=line, marks={}, survival=0.45,
-                                 cap=0.85, grade="보류", why="보드 없음")])
-    got = Commentary(title="접전", flow="흐름", score_range=[],
-                     reasons=[], lean="handicap home -0.5")
-    ok, bad = s8_comment.check(got, shape={"shape": "접전"}, basis=[], scen=[],
-                               said=held)
-    assert not ok and any("보류" in x for x in bad), bad
-    # ⚠️ 빈 문자열이면 통과한다
-    ok2, bad2 = s8_comment.check(got.model_copy(update={"lean": ""}),
-                                 shape={"shape": "접전"}, basis=[], scen=[],
-                                 said=held)
-    assert ok2, bad2
-    # 🔴 반대로 **사용자 보드**가 있으면 그 줄을 가리켜도 된다
-    real = Judgement(evals=[MarketEval(line=line, marks={}, survival=0.45, cap=0.85,
-                                 grade="없음", why="")])
-    ok3, bad3 = s8_comment.check(got, shape={"shape": "접전"}, basis=[],
-                                 scen=[], said=real)
-    assert ok3, bad3
-
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 **결장 변수의 팀 귀속**(사용자 지시 2026-10-07 · §결장-귀속-5)
-# ══════════════════════════════════════════════════════════════════
 
 
 def _facts_two_squads(home_names, away_names):
@@ -1631,47 +1557,6 @@ def test_갈래가_없는_결과는_보강으로_덮는다():
         assert order  # 🔴 두 호출이 같은 함수 안에 있다
 
 
-def test_논평_승자가_방향과_어긋나면_잡는다():
-    """🔴 ② — 예상 흐름·스코어의 승자 = 방향 판정 팀. 돌연변이: 그 검사 제거.
-
-    실측 2026-10-07(멕시코–칠레): 방향 **Mexico** 인데 흐름이 *"원정팀 Chile가 한
-    골 차 승부로 가져간다"* 였고 예상 스코어가 `1-2 · 0-1 · 2-1` 이었다.
-    """
-    from app.core.schema import Commentary, Judgement
-    from app.core.stages import s8_comment
-    ref = _ref_mx_cl()
-    said = Judgement(direction="방향: **Mexico** (세 열 중 2열이 앞세운다)")
-    bad = Commentary(
-        title="접전", score_range=["1-2", "0-1", "2-1"],
-        flow=("전반에는 홈팀 Mexico가 공을 쥐지만, 후반에 원정팀 Chile가 한 골 차 "
-              "승부로 가져간다."), lean="", reasons=[])
-    # ⚠️ 스코어 목록 검사와 섞이지 않게 — 네 스코어를 **다 가진** 갈래를 준다
-    scen = _hypo([("A", "home_win", [(2, 1)], 1.0),
-                  ("B", "away_win", [(1, 2), (0, 1)], 1.0),
-                  ("C", "draw", [(1, 1)], 1.0)]).scenarios
-    ok, why = s8_comment.check(bad, shape={"shape": "접전"}, basis=[],
-                               scen=scen, said=said, ref=ref)
-    assert not ok
-    assert any("예상 흐름" in x for x in why), why
-    assert sum(1 for x in why if "예상 스코어" in x) == 2, why   # 1-2 · 0-1
-    # 🔴 방향과 같은 쪽이면 통과한다(무승부는 막지 않는다)
-    fine = bad.model_copy(update={
-        "score_range": ["2-1", "1-1"],
-        "flow": "Mexico가 전반에 앞서고 Chile가 따라붙지만 Mexico가 리드를 지킨다."})
-    ok2, why2 = s8_comment.check(fine, shape={"shape": "접전"}, basis=[],
-                                 scen=scen, said=said, ref=ref)
-    assert ok2, why2
-    # ⚠️ 방향이 **반반**이면 제한이 없다
-    half = Judgement(direction="방향: **반반** — 앞세운 열이 없다")
-    ok3, _ = s8_comment.check(bad, shape={"shape": "접전"}, basis=[],
-                              scen=scen, said=half, ref=ref)
-    assert ok3
-    # 🔴 낱말표는 config 에 있다(코드에 박지 않는다)
-    import yaml
-    said_words = yaml.safe_load((ROOT / "config/interpret_rules.yaml")
-                                .read_text(encoding="utf-8"))
-    assert said_words.get("commentary_win_words"), "표가 없다"
-
 
 def test_s6_입력을_여섯개_80자로_줄였다():
     """🔴 ④ — 상한을 올리지 않고 **입력**을 줄인다(한국–우즈벡 `llm_truncated`)."""
@@ -1827,118 +1712,7 @@ def _comment(**kw):
     return Commentary(**box)
 
 
-def test_검열_코드검사_여덟칸이_각각_잡는다():
-    """🔴🔴 §4-1 (a)~(h) — 위반 고정물 1건·통과 고정물 1건씩.
 
-    🔴 고정물: **지금 멕시코–칠레 논평**(난타전 · 3-2 · S01 을 다득점 근거로) →
-       **(d)(e)(g)** 로 잡혀야 한다(지시 §5 원문).
-    """
-    from app.core.schema import CommentLine
-    from app.core.stages import s9_audit
-    ref, facts, variables, hypo, said = _audit_box()
-    shape = {"shape": "접전", "low": 0.5, "high": 0.2, "one_sided": 0.2,
-             "close": 0.8, "top_scores": [["2-0", 3.05]]}
-
-    def run(got, **kw):
-        box = {"ref": ref, "facts": facts, "variables": variables,
-               "hypo": hypo, "shape": shape, "said": said}
-        box.update(kw)
-        return s9_audit.code_check(got, **box)
-
-    # ✅ 통과 고정물
-    assert run(_comment()) == [], run(_comment())
-    # (a) 근거 — 맥락·없는 번호
-    bad = run(_comment(reasons=[CommentLine(text="x", var_ids=["R9"])]))
-    assert any("근거 불가/없는 변수" in x for x in bad), bad
-    # (b) 승자 — 방향(Mexico)과 반대인 스코어
-    assert any("예상 스코어" in x for x in run(_comment(score_range=["0-2"])))
-    # (c) 양상 — 제목이 shape 를 말하지 않는다
-    assert any("title" in x for x in run(_comment(title="난타전 — 골 잔치")))
-    # (d) 양상 근거 — 난타전인데 득점 방향 다수결이 `down`
-    #     ⚠️ S01-home(down·0.7) + S02(up·**soft 로 센다** 0.7) → 비겼다 → 안 잡힌다.
-    #        🔴 그래서 폼 변수 **둘**(양 팀)로 센다 — 실측과 같은 꼴이다.
-    two = [*variables, variables[0].model_copy(update={"id": "S01-away"})]
-    hot = {**shape, "shape": "난타전"}
-    got_d = run(_comment(title="난타전 — 골이 오간다"), variables=two, shape=hot)
-    assert any(x.startswith("(d)") for x in got_d), got_d
-    # (e) 인용 방향 — `goals=down` 변수로 다득점을 말한다
-    bad_e = run(_comment(reasons=[CommentLine(text="서로를 열어두고 주고받는다",
-                                              var_ids=["S01-home"])]))
-    assert any(x.startswith("(e)") for x in bad_e), bad_e
-    # (f) 숫자 — 카드에 없는 수
-    bad_f = run(_comment(reasons=[CommentLine(text="최근 47경기 흐름이다",
-                                              var_ids=["S01-home"])]))
-    assert any(x.startswith("(f)") for x in bad_f), bad_f
-    # (g) 예상 스코어 — 무게 상위 5개 밖
-    bad_g = run(_comment(score_range=["5-4"]))
-    assert any(x.startswith("(g)") for x in bad_g), bad_g
-    # (h) 금지어
-    bad_h = run(_comment(flow="기대값이 좋아 보인다"))
-    assert any("금지어" in x for x in bad_h), bad_h
-
-
-def test_지금_멕시코_칠레_논평이_검열에_걸린다():
-    """🔴🔴 §5 고정물 — *"난타전·3-2·S01 을 다득점 근거로"* → (d)(e)(g) 위반."""
-    from app.core.schema import CommentLine
-    from app.core.stages import s9_audit
-    ref, facts, variables, hypo, said = _audit_box()
-    two = [*variables, variables[0].model_copy(update={"id": "S01-away"})]
-    shape = {"shape": "난타전", "low": 0.36, "high": 0.45, "one_sided": 0.23,
-             "close": 0.77, "top_scores": [["2-0", 3.05]]}
-    got = _comment(
-        title="난타전 — 골이 주고받아지는 양상",
-        score_range=["3-2", "2-2", "2-1"],
-        flow="전반부터 양팀이 주고받으며 골이 오가고 홈팀이 리드를 지킨다",
-        reasons=[CommentLine(text="양팀은 서로를 열어두고 부딪혀 왔다",
-                             var_ids=["S01-home"])])
-    bad = s9_audit.code_check(got, ref=ref, facts=facts, variables=two,
-                              hypo=hypo, shape=shape, said=said)
-    kinds = {x[:3] for x in bad}
-    assert "(d)" in kinds, bad
-    assert "(e)" in kinds, bad
-    assert "(g)" in kinds, bad
-
-
-def test_검열자는_작성자와_다른_모델이다():
-    """🔴🔴 §4-2 — *"작성자와 검열자를 같은 모델로 두지 않는다"*. 돌연변이: 같게."""
-    from app.core.stages import s9_audit
-    assert s9_audit.AUDITOR != s9_audit.WRITER, (s9_audit.AUDITOR,
-                                                 s9_audit.WRITER)
-    # 🔴 코드가 **실제로** 그 둘을 쓴다 — 글자만 다른 상수가 아니다
-    audit_src = (ROOT / "app/core/stages/s9_audit.py").read_text(encoding="utf-8")
-    write_src = (ROOT / "app/core/stages/s8_comment.py").read_text(
-        encoding="utf-8")
-    assert "provider=AUDITOR" in audit_src, "🔴 검열이 그 상수를 안 쓴다"
-    assert f'provider="{s9_audit.WRITER}"' in write_src, "🔴 작성자가 다른 모델이다"
-    # 🔴 검열 호출 상한 — 출력 600 토큰(§4-4)
-    import yaml
-    box = yaml.safe_load((ROOT / "config/llm.yaml").read_text(encoding="utf-8"))
-    assert int(box["v6"]["purposes"]["audit"]["max_tokens"]) == 600
-
-
-def test_검열이_파이프라인에_이어져_있다():
-    """🔴 §4 — 논평 **바로 뒤·렌더 전**이다. 돌연변이: 검열 단계 건너뛰기 → 빨강."""
-    src = (ROOT / "app/core/pipeline.py").read_text(encoding="utf-8")
-    tree = ast.parse(src)
-    # 🔴 재분석은 **위임**이다(F1) — 검열은 `analyze` 한 곳에서 돈다
-    assert "await analyze(" in src.split("async def reanalyze")[1], (
-        "🔴 재분석이 `analyze` 에 위임하지 않는다 — 사본이 돌아왔다")
-    for name in ("analyze",):
-        fn = next(n for n in ast.walk(tree)
-                  if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
-                  and n.name == name)
-        calls = [n for n in ast.walk(fn) if isinstance(n, ast.Call)
-                 and isinstance(n.func, ast.Attribute)
-                 and isinstance(n.func.value, ast.Name)]
-        who = {f"{c.func.value.id}.{c.func.attr}" for c in calls}
-        assert "s9_audit.run" in who, f"🔴 {name} 가 검열을 안 부른다: {sorted(who)}"
-        # 🔴 **작성자를 직접 부르지 않는다** — 검열을 지나지 않는 길이 생긴다
-        assert "s8_comment.run" not in who, (
-            f"🔴 {name} 가 작성자를 직접 부른다(검열을 건너뛴다)")
-    # 🔴 카드에 검열 결과 칸이 있다(§4-3: 과정은 `/디버그` 만)
-    from app.core.schema import Card
-    assert "comment_audit" in Card.model_fields
-    assert "comment_violations" in Card.model_fields
 
 
 def test_폼_변수에_득점_방향이_붙는다():
@@ -2303,50 +2077,12 @@ def test_맞대결은_한_번만_팀_이름을_붙여_적는다():
         "카드가 상대 승수를 안 적는다"
 
 
-def test_총평_검열이_맞대결_해석_방향을_잡는다():
-    """🔴🔴 ④ 둘째 줄 — 돌연변이: 검사를 빼면 *"격차가 좁다"* 가 통과한다.
-
-    > 한쪽 승이 다른 쪽의 **2배 이상**이면 "대등·좁다" 류 표현은 **위반**.
-
-    실측 2026-10-09: 대전 **1승 4무 5패**(상대 5배)인데 총평이 *"좀처럼 크게
-    벌어지지 않아 양 팀 간 격차가 좁게 유지돼 왔다"* 고 적었다.
-    """
-    from datetime import datetime, timezone
-
-    from app.core.schema import CommentLine, Commentary, Facts, MatchRef
-    from app.core.stages.s9_audit import h2h_direction_check
-    ref = MatchRef(id="x", sport="soccer", competition="K-League 1",
-                   competition_short="K-League 1",
-                   kickoff_utc=datetime(2026, 10, 9, 5, 0, tzinfo=timezone.utc),
-                   home="team:000316", away="team:000582",
-                   home_name="Daejeon Hana Citizen",
-                   away_name="Jeonbuk Hyundai Motors FC")
-    facts = Facts(h2h={"recounted": {"w": 1, "d": 4, "l": 5, "n": 10,
-                                     "basis": "Daejeon Hana Citizen"}})
-    bad_text = "맞대결에서 좀처럼 크게 벌어지지 않아 양 팀 간 격차가 좁게 유지돼 왔다"
-    got = Commentary(title="접전",
-                     reasons=[CommentLine(text=bad_text, var_ids=[])],
-                     flow="", score_range=[])
-    bad = h2h_direction_check(got, ref=ref, facts=facts)
-    # 🔴 번호가 **(m)** 이다 — 2026-10-09(3차) §4 가 (i)~(l) 을 가져갔다
-    assert bad and "(m)" in bad[0], bad
-    assert "기울었다" in bad[0], bad
-    # 🔴 **기울지 않았으면 안 잡는다**(없는 위반을 만들지 않는다)
-    even = Facts(h2h={"recounted": {"w": 4, "d": 2, "l": 4, "n": 10,
-                                    "basis": "Daejeon Hana Citizen"}})
-    assert h2h_direction_check(got, ref=ref, facts=even) == []
-    # ⚠️ 전적을 못 세면 **검사하지 않는다**
-    assert h2h_direction_check(got, ref=ref, facts=Facts()) == []
-    # 🔴 코드 검사 묶음이 이것을 **부르나**(안 이으면 없는 검사다)
-    import pathlib
-    src = pathlib.Path("app/core/stages/s9_audit.py").read_text(encoding="utf-8")
-    assert "bad += h2h_direction_check(" in src, "code_check 가 안 부른다"
-
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 **대회 식별 한 곳** — 사용자 지시 2026-10-09(4차) §1·§2·§3·§4
-# ══════════════════════════════════════════════════════════════════
-
+# 🔴🔴 **F7(2026-10-11)이 `test_총평_검열이_맞대결_해석_방향을_잡는다` 를 걷었다**
+#
+#  그 계약은 **옛 논평 단계**(작성 s8_comment + 검열 s9_audit, 두 모델)를 셌다.
+#  F7 이 글을 **한 편**으로 합치면서 그 단계가 사라졌다 — 지금 글을 쓰는 곳은
+#  `s9_say` 하나이고 검열은 그 안의 `check`(코드)다. 새 계약은
+#  `tests/contracts/test_v8_f7_one_say.py` 가 든다(R9).
 
 def test_여러_출처_표기가_같은_키로_모인다():
     """🔴🔴 §4 — `jpn.1`·`kor.1`·이름·코드·fotmob id → **같은 키**.
@@ -2646,42 +2382,12 @@ def test_경우의_수는_시즌_막판에만_판정한다():
     assert "rules_comp_open(" in src and '"gate_open"' in src
 
 
-def test_시즌_초면_블록3b_가_한_줄이고_검열이_must_win_을_잡는다():
-    """🔴 §1 — 돌연변이: 표 27줄을 그대로 그린다 · 검열 (n) 을 뺀다."""
-    from app.core import render
-    from app.core.schema import (BaseProb, Card, CommentLine, Facts, MatchRef,
-                                 ReasonLine, ReasonPara)
-    from app.core.stages import s9_audit
-    from datetime import datetime, timezone
-    ref = MatchRef(id="x", sport="soccer", competition="J. League",
-                   competition_short="J. League",
-                   kickoff_utc=datetime(2026, 10, 9, 10, tzinfo=timezone.utc),
-                   home="team:000316", away="team:000582",
-                   home_name="Kashima Antlers", away_name="Gamba Osaka")
-    look = {"group": "J. League", "gate_open": False,
-            "gate_why": "**시즌 초** — 남은 라운드 30(판정은 5 이하부터)",
-            "cells": [], "states": {}}
-    card = Card(match=ref, facts=Facts(), base_prob=BaseProb(why="x"),
-                outlook=look)
-    said = render._b3b(card)
-    assert "시즌 초 — 경우의 수 해당 없음" in said, said
-    assert said.count("\n") == 0, "표를 그렸다(한 줄이어야 한다)"
-    # 🔴 **(n)** — 게이트가 닫혔는데 그 글자를 쓰면 위반이다
-    para = ReasonPara(sentences=[
-        ReasonLine(text="가시마는 must_win 이라 이겨야 올라간다.", fact_refs=["DIR"]),
-        ReasonLine(text="두 번째 문장 17골.", fact_refs=["DIR"]),
-        ReasonLine(text="어느 쪽도 확신할 근거가 없다.", fact_refs=["DIR"])])
-    bad = s9_audit.reason_check(para, card=card)
-    assert any(x.startswith("(n)") for x in bad), bad
-    # 🔴 게이트가 **열려 있으면** 안 잡는다
-    ok_card = card.model_copy(update={"outlook": {**look, "gate_open": True}})
-    assert not any(x.startswith("(n)")
-                   for x in s9_audit.reason_check(para, card=ok_card))
-    # ⚠️ 사실 목록에서도 **상태를 주지 않는다**(애초에 못 쓰게)
-    from app.core import layer1
-    assert not [k for k in layer1.facts_catalog(card) if k.startswith("RANK:")]
-    del CommentLine
-
+# 🔴🔴 **F7(2026-10-11)이 `test_시즌_초면_블록3b_가_한_줄이고_검열이_must_win_을_잡는다` 를 걷었다**
+#
+#  그 계약은 **옛 논평 단계**(작성 s8_comment + 검열 s9_audit, 두 모델)를 셌다.
+#  F7 이 글을 **한 편**으로 합치면서 그 단계가 사라졌다 — 지금 글을 쓰는 곳은
+#  `s9_say` 하나이고 검열은 그 안의 `check`(코드)다. 새 계약은
+#  `tests/contracts/test_v8_f7_one_say.py` 가 든다(R9).
 
 def test_경기당_총골을_리그_표에서_센다():
     """🔴🔴 §2·§3 — 돌연변이: 리그 평균으로 때운다.
@@ -2752,50 +2458,6 @@ def test_블록3_의_셋이_빠지면_머리표가_붙는다():
     assert any("블록 3 에" in x for x in render.warn_lines(empty)), \
         render.warn_lines(empty)
 
-
-def test_핵심선수와_총골이_작성자_입력과_카드에_이어진다():
-    """🔴🔴 §2 — 돌연변이: 받아 두고 **안 쓴다**(CLAUDE.md #2 고아 코드).
-
-    🔴 실사고 2026-10-09: `key_players` 를 세 통로로 받아 놓고 **아무 데서도
-       안 썼다** — 머리표 검사만 그 이름을 보고 있었다.
-    """
-    from app.core import layer1, render
-    from app.core.schema import BaseProb, Card, Facts, MatchRef
-    from datetime import datetime, timezone
-    ref = MatchRef(id="x", sport="soccer", competition="J. League",
-                   competition_short="J. League",
-                   kickoff_utc=datetime(2026, 10, 9, 10, tzinfo=timezone.utc),
-                   home="team:000316", away="team:000582",
-                   home_name="Kashima Antlers", away_name="Gamba Osaka")
-    std = {
-        "team_totals": {
-            "team:000316": {"total_per_game": 4.125, "goals_for": 17,
-                            "goals_against": 16, "played": 8},
-            "team:000582": {"total_per_game": 2.75, "goals_for": 8,
-                            "goals_against": 14, "played": 8}},
-        "match_total_baseline": 3.438,
-        "key_players": {
-            "team:000316": [{"name": "Léo", "value": 10, "matches": 7,
-                             "stat": "goals+assists"}],
-            "team:000582": [{"name": "Issam Jebali", "value": 3, "matches": 6,
-                             "stat": "goals+assists"}]}}
-    card = Card(match=ref, facts=Facts(standings=std),
-                base_prob=BaseProb(why="x"))
-    # 🔴 ① **작성자 입력**(사실 목록)에 들어간다
-    box = layer1.facts_catalog(card)
-    assert "KEY:Léo" in box and box["KEY:Léo"]["kind"] == "player", box.keys()
-    assert "KEY:Issam Jebali" in box
-    assert "TOTAL" in box and "4.125" in box["TOTAL"]["text"], box.get("TOTAL")
-    assert "3.438" in box["TOTAL"]["text"]
-    # 🔴 ② **검열 (l)** 이 그 이름을 막지 않는다(있는 선수다)
-    assert "Léo" in layer1.player_pool(card)
-    # 🔴 ③ **카드 블록 3** 이 적는다
-    said = render._standings_line(card)
-    assert "경기당 총골" in said and "4.125" in said, said
-    assert "이 경기 기준 3.438" in said, said
-    assert "핵심 선수" in said and "Léo 10" in said, said
-    # 🔴 ④ 머리표가 **안 붙는다**(셋을 다 받았으면)
-    assert render.block3_gaps(card) == ["폼(최근 5경기)"], render.block3_gaps(card)
 
 
 def test_폼_보완_꼴이_경기_페이지와_같은_칸을_쓴다():
@@ -2938,47 +2600,6 @@ def test_반등_주장은_해석_규칙을_요구한다():
     assert plain[0].driver_vars == ["S02"]
 
 
-def test_총평_템플릿이_나열이_아니라_문장이다():
-    """🔴🔴 §4 — 돌연변이: `v.claim` 을 그대로 쓴다(네 번 그렇게 나갔다)."""
-    from app.core.schema import MatchRef, Variable
-    from app.core.stages.s8_comment import _sentence, listy
-    from datetime import datetime, timezone
-    ref = MatchRef(id="x", sport="soccer", competition="K-League 1",
-                   competition_short="K-League 1",
-                   kickoff_utc=datetime(2026, 10, 9, 7, 30, tzinfo=timezone.utc),
-                   home="team:000316", away="team:000582",
-                   home_name="Gangwon FC", away_name="Bucheon FC 1995")
-    claim = ("최근 5경기 D L D D D · 득점 평균 0.6(보정 0.25) · 기준 팀당 "
-             "1.3729골(대회 league:KL1) 대비 득점 적다 · 실점 평균…")
-    v = Variable(id="S01-home", type="recent_pattern", subject="team:000316",
-                 favors="home", goals="down", target="recent", hardness="soft",
-                 weight=1.0, claim=claim, quote=claim, doc_ids=[],
-                 from_rule="S01")
-    said = _sentence(v, ref)
-    # 🔴 **나열이 아니다**
-    assert not listy(said), said
-    assert said.endswith("."), said
-    assert "Gangwon FC" in said and "D L D D D" in said, said
-    assert "…" not in said, said
-    # 🔴 `listy` 가 나열을 **잡는다**
-    assert listy("a · b · c · d") and listy("끊긴 글…")
-    assert not listy("한 문장이다.")
-    # 🔴 1겹이 그 검사를 **부른다**
-    import pathlib
-    src = pathlib.Path("app/core/layer1.py").read_text(encoding="utf-8")
-    assert "listy(" in src, "1겹이 나열을 안 거른다"
-
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 **③ 로그 오즈 경로가 사라졌다** — 상성 엔진 지시서 §2·C7
-# ══════════════════════════════════════════════════════════════════
-#
-#  위에 있던 아홉 계약(우리 열이 기준에서 출발 · 결과당 ±0.5 · 경기당 합계 상한 ·
-#  근거 불가는 못 움직임 · 기준 머금은 유형 · 기준 없으면 빈 열 · 이동량 구조 ·
-#  상태별 이동 · 5백 무승부)은 **네 층 지시서의 ③ 이동 규칙**을 세고 있었다.
-#  🔴 상성 엔진 지시서 §2 가 그 경로를 **지웠다**(`k` 임시값·이동 유형 표 계약도
-#     같이 걷혔다 — 그 수들이 더는 확률에 닿지 않는다) — 변수는 이제 ①상성 축·②검증·
-#     ③가설로 간다. 그래서 그 계약들을 **하나로** 바꾼다(§2 마지막 줄).
 
 def test_v7_C7_변수가_로그오즈를_직접_못_민다():
     """🔴🔴 C7 — *"변수가 확률에 닿는 길은 **① 상성 축뿐**이다(로그 오즈 직접

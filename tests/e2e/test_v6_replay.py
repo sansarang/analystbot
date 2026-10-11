@@ -103,7 +103,7 @@ def card(replaying) -> Card:
     from app.core import shape as _shape
     from app.core.stages import (s2_facts, s2b_base, s2c_market, s3_docs,
                                  s2d_strategy, s4_extract, s5_verify, s6_hypo,
-                                 s7_judge, s9_audit)
+                                 s7_judge)
     BOARD, _extra, _bad = _board.parse(BOARD_TEXT)
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **재정렬을 예열한다** — 실측 2026-10-06
@@ -189,18 +189,15 @@ def card(replaying) -> Card:
         #    호출은 녹화본에 없다(미스 → `None`) → **코드 템플릿**으로 간다. 그
         #    템플릿은 수를 이어 붙이는 것뿐이라 **결정적**이다(스냅샷이 그것을 센다).
         got_shape = _shape.of(hypo)
-        # 🔴🔴 **검열까지**(2026-10-07 §4) — 재생에서는 Solar·DeepSeek 호출이 녹화본에
-        #    없으면 미스이고, 그러면 **코드 템플릿**으로 간다(그 길도 결정적이다).
-        out = s9_audit.run(ref, facts, variables, hypo, said, got_shape,
-                           state=state, board_source="user_board",
-                           ours=layers.get("ours"))
-        layers.update(pipeline._comment_layers(out, got_shape))
+        # 🔴🔴 **F7(2026-10-11)** — 글은 **한 편**이다(작성 1 + 검열 1). 옛 논평
+        #    단계(s8_comment + s9_audit)는 사라졌다 — 양상만 층에 넣는다.
+        layers["shape"] = got_shape
         layers["board_source"] = "user_board"
         got_card = pipeline.card_of(ref, facts, variables, hypo, said,
                                     state=state, layers=layers)
-        # 🔴🔴 **1겹 이유 문단**(지시 2026-10-09(3차)) — 라이브 입구와 **같은 순서**
-        #    여야 재생이 재생이다(`pipeline.analyze` 도 카드 뒤에 이것을 부른다).
-        return pipeline.with_reason(got_card, state=state)
+        # 🔴🔴 **F7(2026-10-11)** — 이유 문단·전술 예측·논평이 **최종 평 한 편**
+        #    안으로 들어왔다. 라이브 입구와 같은 순서로 그 하나만 부른다.
+        return pipeline.with_say(got_card, state=state)
 
     got = asyncio.run(_go())
     # 🔴 **비용 0** — 재생은 지갑에 닿지 않는다(§7)
@@ -760,41 +757,6 @@ def test_불변식29_결장_변수는_그_팀_명단에_있다(card: Card):
             f"🔴 `{v.target}` 가 {v.subject} 명단에 없는데 **근거로 쓴다** — "
             f"팀 귀속이 뒤집혔을 수 있다(`team_unresolved` 로 내려야 한다)")
 
-
-def test_불변식30_카드의_논평은_검열_통과본이거나_템플릿이다(card: Card):
-    """30. 🔴🔴 **총평 검열**(사용자 지시 2026-10-07 §4-3).
-
-    > 사용자 카드(1겹)에는 **통과한 논평만** 나간다. 검열 과정은 `/디버그` 에만.
-
-    🔴 그래서 카드의 `comment_audit` 는 넷 중 하나이고, `템플릿` 이면 그 논평은
-       **코드 템플릿과 같아야** 한다(검열에 걸린 글이 몰래 나가지 않는다).
-    """
-    from app.core.stages import s8_comment
-    assert card.comment_audit in ("통과", "재작성 후 통과", "템플릿", "안 돌았다"), \
-        card.comment_audit
-    text = render.card_text(card)
-    if card.commentary is None:
-        assert card.comment_audit in ("템플릿", "안 돌았다")
-        return
-    if card.comment_audit == "템플릿":
-        from app.core.schema import Judgement
-        # 🔴 카드는 판정을 **펼쳐서** 들고 있다 — 템플릿이 보는 칸만 다시 싼다
-        said = Judgement(evals=list(card.evals), direction=card.direction)
-        want = s8_comment.template(card.match, card.shape, card.variables,
-                                   card.hypo, said)
-        assert card.commentary.title == want.title, (
-            "🔴 검열에 걸린 논평이 카드로 나갔다")
-        assert card.commentary.score_range == want.score_range
-    # 🔴 **검열 과정은 1겹에 안 나간다**(§4-3)
-    for word in ("검열", "위반"):
-        assert word not in text, f"🔴 1겹 카드에 `{word}` 가 나갔다"
-    # 🔴 `/디버그` 에는 나간다
-    assert "[검열]" in render.debug_text(card)
-
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 **1겹 카드** — 사용자 지시 2026-10-09(3차) §1·§2·§4·§5
-# ══════════════════════════════════════════════════════════════════
 
 
 def test_1겹_카드가_새_순서와_상한을_지킨다(card):

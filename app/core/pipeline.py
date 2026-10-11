@@ -372,15 +372,19 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     # 🔴🔴 **먼저 숫자를 고치고, 그 숫자에서 논평을 만든다**(2026-10-07 ②③)
     # ══════════════════════════════════════════════════════════════════
     from app.core import shape as _shape
-    from app.core.stages import s9_audit
     got_shape = _shape.of(hypo)
     if got_shape:
         st.note(f"s8 양상 — **{got_shape['shape']}** · {got_shape['why']}")
-    # 🔴🔴 **검열까지 끝낸 논평**(2026-10-07 §4) — 작성자 DeepSeek · 검열자 Solar
-    got_note = s9_audit.run(ref, facts, variables, hypo, said, got_shape,
-                            state=st, board_source=board_src,
-                            ours=layers.get("ours"))
-    layers.update(_comment_layers(got_note, got_shape))
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **F7 — 글은 한 편이다**(지시서 2026-10-11)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 논평(s9_audit 작성)·이유 문단(s8b)·전술 예측(s2f)·최종 평(s9_say)
+    #  > → **최종 평 한 번**(작성 1회 + 검열 1회).
+    #
+    #  ⚠️ 넷이 따로 돌던 때는 **서로 다른 말**을 했고 경기당 LLM 글 호출이 넷이었다.
+    #  🔴 양상(`shape`)은 **코드 산출**이라 그대로 둔다 — 글이 아니다.
+    layers["shape"] = got_shape
     # 🔴 F1 — 직전 카드가 있으면 **바뀐 것**을 함께 싣는다(머리줄이 그것을 적는다)
     changed = (_diff(before, facts, variables, said)
                + _market_moved(before, layers, state=st)
@@ -388,15 +392,8 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     card = card_of(ref, facts, variables, hypo, said, state=st,
                    board_extra=extra, board_bad=bad, layers=layers,
                    changed=(changed or None))
-    # 🔴🔴 **1겹 이유 문단**(사용자 지시 2026-10-09(3차) §3·§4) — 카드가 다 선 뒤다
-    #    ⚠️ 작성자 입력이 **카드의 사실 목록**이라 카드보다 **뒤**에 와야 한다.
-    card = with_reason(card, state=st)
-    # 🔴🔴 **전술 전문가 예측**(사용자 지시 2026-10-10(셋째) §6) — **확률을 다 센
-    #    뒤**다. ⚠️ *"이야기(LLM 문장)는 확률을 움직이지 못한다"*(§4) — 그래서
-    #    카드가 완성된 다음에 글만 더한다.
-    card = with_tactic(card, state=st)
-    # 🔴🔴 **최종 평**(사용자 지시 2026-10-10(넷째)) — *"카드의 **마지막 단계**"*.
-    #    ⚠️ 사실 묶음이 전술 예측·확률·상성을 **다** 들어야 하므로 가장 뒤다.
+    # 🔴🔴 **F7 — 글 한 편**(작성 1 + 검열 1). 카드가 다 선 **뒤**다 — 작성자
+    #    입력이 **카드의 사실 목록**이기 때문이다. ⚠️ 이야기가 확률을 못 움직인다.
     card = with_say(card, state=st)
     # 🔴 **마지막 실행을 기억한다** — 재분석이 s3·s4 를 다시 돌지 않게(§4-1)
     _LAST[ref.id] = {"at": (now or datetime.now(timezone.utc)), "ref": ref,
@@ -638,45 +635,6 @@ def _same_vars(before: list[Variable], now: list[Variable]) -> bool:
 # ══════════════════════════════════════════════════════════════════
 
 
-def with_reason(card, *, state: RunState):
-    """🔴🔴 **1겹 이유 문단을 카드에 붙인다** — 작성 → 검열 → (재작성 1회) → 템플릿.
-
-    사용자 지시 2026-10-09(3차) §4 마지막 줄:
-
-    > 위반 시 기존처럼 **재작성 1회** → 실패하면 **코드 템플릿 문단**.
-
-    🔴 **아무 수도 안 바꾼다** — 카드의 글 칸 셋만 채운다(`reason`·`reason_audit`·
-       `reason_violations`). ⚠️ `Card` 는 얼어 있으므로 `model_copy` 로 갈아낀다.
-    """
-    from app.core.stages import s8b_reason, s9_audit
-    said = s8b_reason.run(card, state=state)
-    audit, bad = "안 돌았다", []
-    if said is not None:
-        bad = s9_audit.reason_check(said, card=card)
-        if not bad:
-            audit = "통과"
-        else:
-            state.note(f"s8b 검열 위반 {len(bad)}건 → **재작성 1회** — "
-                       f"{'; '.join(bad[:3])}")
-            again = s8b_reason.run(card, state=state, bad=bad)
-            bad2 = (s9_audit.reason_check(again, card=card)
-                    if again is not None else ["(i) 재작성이 안 왔다"])
-            if again is not None and not bad2:
-                said, audit, bad = again, "재작성 후 통과", []
-            else:
-                # 🔴 두 번 어긋났다 — **코드 템플릿 문단**이다(지어내지 않는다)
-                said = s8b_reason.template(card)
-                audit, bad = "템플릿", list(bad) + list(bad2)
-                state.note(f"s8b 검열 두 번 어긋났다 → **코드 템플릿 문단** — "
-                           f"{'; '.join(bad2[:3])}")
-    else:
-        said = s8b_reason.template(card)
-        audit = "템플릿"
-        state.note("s8b 이유 문단을 못 받았다 → **코드 템플릿 문단**")
-    return card.model_copy(update={
-        "reason": said, "reason_audit": audit,
-        "reason_violations": [str(x) for x in bad]})
-
 
 def _comment_layers(got, shape: dict) -> dict:
     """🔴 논평·검열 결과를 카드 칸으로. ⚠️ **한 곳**이다(두 입구가 같은 것을 쓴다).
@@ -852,22 +810,47 @@ def with_say(card: Card, *, state: RunState) -> Card:
        묶음에는 골 내용·폼·확률처럼 XI 와 무관한 칸이 많다. ⚠️ 라인업 칸이 비면
        묶음이 그것을 `없음` 으로 적고, 프롬프트가 *"그 칸은 말하지 마라"* 로 준다.
     """
-    from app.core.stages import s9_say
-    return card.model_copy(update={"say": s9_say.run(card, state=state)})
-
-
-def with_tactic(card: Card, *, state: RunState) -> Card:
-    """🔴🔴 §6 — **전술 예측을 카드에 더한다**. ⚠️ 확률은 **건드리지 않는다**.
-
-    🔴 확정 XI 가 아니면 돌리지 않는다 — 입력에 *"오늘 XI 변화"* 가 있어야 한다
-       (§6 입력 목록). ⚠️ 그 사실을 산출에 적는다.
-    """
-    from app.core import layer1
     from app.core.schema import TacticOut
-    from app.core.stages import s2f_tactic
-    if not layer1.xi_confirmed(card):
-        said = "🔴 확정 XI 전 — 전술 예측을 돌리지 않는다(§6 입력에 XI 변화가 든다)"
-        state.note(f"s2f {said}")
-        return card.model_copy(update={
-            "tactic": TacticOut(audit="확정 XI 전", violations=[said])})
-    return card.model_copy(update={"tactic": s2f_tactic.run(card, state=state)})
+    from app.core.stages import s9_say
+    got = s9_say.run(card, state=state)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **F7 — 한 편이 네 칸을 먹인다**(지시서 2026-10-11)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  카드의 `reason`(1겹 이유 문단)·`tactic`(전술 예측)이 이제 **그 한 편에서**
+    #  나온다. ⚠️ 비면 **사유를 적는다**(빈 칸은 "안 돌았다"와 구분이 안 된다 · #3).
+    #  ⚠️ `commentary`(종합 논평)는 **구조 타입**(`Commentary`)이라 글 한 줄로
+    #     덮지 않는다 — 그 블록은 코드 템플릿이 만들고, 최종 평이 그 위에 선다.
+    from app.core.schema import TacticLine
+    said_tactic = TacticOut(
+        lines=[TacticLine(slot=k, text=v) for k, v in (
+            ("운영:home", got.ops_home), ("운영:away", got.ops_away),
+            ("흐름:전반", got.flow_first), ("흐름:후반", got.flow_second),
+            ("승부처", got.decisive_moment)) if v],
+        audit=got.audit or "안 돌았다")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴 카드의 `reason` 은 **문장 묶음**이다(`ReasonPara`)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  평의 한 문단을 문장으로 쪼개 담는다. ⚠️ **3문장이 안 되면**(LLM 이 못 썼거나
+    #  템플릿으로 갔으면) **코드 템플릿 문단**으로 간다 — 글은 `layer1.template_lines`
+    #  **하나**가 짓는다(사본 금지). 🔴 빈 칸을 남기지 않는다(#3).
+    from app.core import layer1 as _l1
+    from app.core.schema import ReasonLine, ReasonPara
+    bits = [x.strip() for x in str(got.reason or "").replace("\n", " ")
+            .split(". ") if x.strip()]
+    if len(bits) >= 3:
+        said_reason = ReasonPara(sentences=[
+            ReasonLine(text=x, fact_refs=[]) for x in bits[:5]])
+    else:
+        rows, refs = _l1.template_lines(card)
+        said_reason = ReasonPara(sentences=[
+            ReasonLine(text=t, fact_refs=r) for t, r in zip(rows, refs)])
+        state.note("s9say 이유 문단 — 🔴 평이 3문장을 못 냈다 → **코드 템플릿**")
+    return card.model_copy(update={
+        "say": got,
+        "reason": said_reason,
+        "reason_audit": (got.audit if len(bits) >= 3 else "템플릿"),
+        "tactic": said_tactic})
+
+

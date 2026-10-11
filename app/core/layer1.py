@@ -399,44 +399,6 @@ def facts_catalog(card: Card) -> dict[str, dict]:
     return out
 
 
-def player_pool(card: Card) -> set[str]:
-    """🔴 §4(l) — **있는 선수**의 이름 모음(XI · 결장 명단 · 변수 대상).
-
-    ⚠️ 이 모음에 없는 선수를 글에 적으면 **위반**이다(없는 선수 언급 금지).
-    """
-    out: set[str] = set()
-    m = card.match
-    for key in (m.home, m.away):
-        box = (card.facts.xi or {}).get(key)
-        out |= {str(x) for x in (getattr(box, "players", None) or [])}
-        out |= {str(x) for x in (getattr(box, "bench", None) or [])}
-        out |= {str(x) for x in ((card.facts.squad or {}).get(key) or [])}
-    for rows in (card.facts.missing or {}).values():
-        out |= {str(getattr(r, "name", "") or "") for r in (rows or [])}
-    # 🔴 **핵심 선수도 "있는 선수"** 다 — 검열 (l) 이 그 이름을 막으면 안 된다
-    for rows in ((card.facts.standings or {}).get("key_players") or {}).values():
-        out |= {str(dict(r).get("name") or "") for r in (rows or [])}
-    for v in (card.variables or []):
-        if v.target:
-            out.add(str(v.target))
-        # ══════════════════════════════════════════════════════════════
-        # 🔴🔴 **변수 claim 에서 이름을 뽑는다**(실사고 2026-10-09)
-        # ══════════════════════════════════════════════════════════════
-        #
-        #  ⚠️ 종전에는 claim 을 `·` 로 쪼개 **조각째** 담고 40자 상한을 뒀다.
-        #     🔴 `"Daejeon Hana Citizen 직전 선발 Anton Krivotsyuk"` 은 **45자**라
-        #        버려졌고, 그래서 검열 (l) 이 `Anton Krivotsyuk` 을 *"없는 선수"*
-        #        로 잡았다 — **거짓 위반**이다.
-        #  🔴 이제 이름 모양으로 **뽑는다**(`s9_audit._names_in` 과 같은 그물).
-        from app.core.stages.s9_audit import _names_in
-        out |= set(_names_in(str(v.claim or "")))
-        # ⚠️ 한글 이름은 조사가 붙어 그물에 안 걸린다 — 조각도 **함께** 담는다
-        for piece in str(v.claim or "").replace(",", " · ").split("·"):
-            said = piece.strip()
-            if 2 <= len(said) <= 80 and any(c.isalpha() for c in said):
-                out.add(said)
-    return {x for x in out if x}
-
 
 def reason_text(card: Card) -> str:
     """🔴 §1 【이유】 문단 — 문장들을 한 문단으로. ⚠️ **400자 상한**(§5)."""
@@ -1470,3 +1432,42 @@ def verify_block(card: Card) -> str:
     else:
         out.append(" 등급 영향: ⬜ 없다")
     return "\n".join(out)
+
+
+def player_pool(card: Card) -> set[str]:
+    """🔴 §4(l) — **있는 선수**의 이름 모음(XI · 결장 명단 · 변수 대상).
+
+    ⚠️ 이 모음에 없는 선수를 글에 적으면 **위반**이다(없는 선수 언급 금지).
+    """
+    out: set[str] = set()
+    m = card.match
+    for key in (m.home, m.away):
+        box = (card.facts.xi or {}).get(key)
+        out |= {str(x) for x in (getattr(box, "players", None) or [])}
+        out |= {str(x) for x in (getattr(box, "bench", None) or [])}
+        out |= {str(x) for x in ((card.facts.squad or {}).get(key) or [])}
+    for rows in (card.facts.missing or {}).values():
+        out |= {str(getattr(r, "name", "") or "") for r in (rows or [])}
+    # 🔴 **핵심 선수도 "있는 선수"** 다 — 검열 (l) 이 그 이름을 막으면 안 된다
+    for rows in ((card.facts.standings or {}).get("key_players") or {}).values():
+        out |= {str(dict(r).get("name") or "") for r in (rows or [])}
+    for v in (card.variables or []):
+        if v.target:
+            out.add(str(v.target))
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **변수 claim 에서 이름을 뽑는다**(실사고 2026-10-09)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 종전에는 claim 을 `·` 로 쪼개 **조각째** 담고 40자 상한을 뒀다.
+        #     🔴 `"Daejeon Hana Citizen 직전 선발 Anton Krivotsyuk"` 은 **45자**라
+        #        버려졌고, 그래서 검열 (l) 이 `Anton Krivotsyuk` 을 *"없는 선수"*
+        #        로 잡았다 — **거짓 위반**이다.
+        #  🔴 이제 이름 모양으로 **뽑는다**(`s9_audit._names_in` 과 같은 그물).
+        from app.core.stages.s9_audit import _names_in
+        out |= set(_names_in(str(v.claim or "")))
+        # ⚠️ 한글 이름은 조사가 붙어 그물에 안 걸린다 — 조각도 **함께** 담는다
+        for piece in str(v.claim or "").replace(",", " · ").split("·"):
+            said = piece.strip()
+            if 2 <= len(said) <= 80 and any(c.isalpha() for c in said):
+                out.add(said)
+    return {x for x in out if x}
