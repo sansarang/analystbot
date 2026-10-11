@@ -195,15 +195,23 @@ def check(got: SayOut, *, card: Card, box: Bundle) -> list[str]:
     #  지우지 않는다 — 같은 함수를 여기서 부른다(사본 금지).
     #    · `new_fact_check` — 새 사실(F 하위)이 **이유 문단에 쓰였나**(v6 §3)
     #    · `strategy_check` — 전략 문장이 **최종 확률과 같은 방향인가**(v6 §4)
-    from app.core.schema import ReasonLine
     from app.core.stages.s9_audit import (new_fact_check,
                                           reason_check,
                                           strategy_check)
-    said_reason = [ReasonLine(text=str(got.reason or ""), fact_refs=[])]
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **검열이 읽는 꼴로 넘긴다** — 사용자 지시 2026-10-11
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실사고: `reason_check` 는 **`.sentences` 를 가진 문단 객체**를 읽는데
+    #     여기서 **리스트**를 넘겼다 — 그래서 *"(i) 이유 문단이 없다"* 가 내용과
+    #     무관하게 **늘** 떴다(1039자 문단에도 떴다 · 실측 재현 5회차).
+    #  🔴 `new_fact_check`·`strategy_check` 는 **줄 목록**을 읽는다(그대로 넘긴다).
+    para = _para_of(got)
+    said_reason = list(para.sentences)
     out += list(new_fact_check(said_reason, card=card) or [])
     out += list(strategy_check(said_reason, card=card) or [])
     #    · `reason_check` — 일반론·단정·없는 선수(v6 §3 1겹 검열)
-    out += list(reason_check(said_reason, card=card) or [])
+    out += list(reason_check(para, card=card) or [])
     #    · `h2h_direction_check` — **맞대결 해석 방향**(v6 §4 (m)). ⚠️ 그 검열은
     #      옛 `Commentary` 꼴을 읽는다(`reasons`·`flow`·`title`) — 평의 글을 **그
     #      꼴로 싸서** 넘긴다(보장을 버리지 않는다 · 사본도 아니다).
@@ -502,6 +510,27 @@ def _ask(card: Card, box: Bundle, *, state: RunState,
     return None
 
 
+def _para_of(got):
+    """🔴🔴 평의 이유 문단을 **검열이 읽는 꼴**(`ReasonPara`)로.
+
+    🔴 모델이 `reason_lines`(문장 + 근거 id)를 줬으면 그것을 쓴다 — 검열 (i)·(j)
+       가 그 꼴을 센다. ⚠️ 글자만 왔으면 **문장으로 쪼개고 근거는 비운다** —
+       그러면 (j) 가 *"근거 없는 문장"* 으로 잡는다(없는 근거를 지어내지 않는다).
+    """
+    from app.core.schema import ReasonLine, ReasonPara
+    rows = list(getattr(got, "reason_lines", None) or [])
+    if rows:
+        return ReasonPara(sentences=rows)
+    said = str(getattr(got, "reason", "") or "").strip()
+    if not said:
+        return ReasonPara(sentences=[])
+    import re as _re
+    parts = [x.strip() for x in _re.split(r"(?<=[.!?。])\s+|(?<=다\.)\s*",
+                                          said) if x.strip()]
+    return ReasonPara(sentences=[ReasonLine(text=x, fact_refs=[])
+                                 for x in parts])
+
+
 #: 🔴 이유 문단 검열의 글자 — 이 머리글만 걸렸으면 **그 문단만** 다시 묻는다
 #
 #  ⚠️ 실측 2026-10-11(재현 3회차): `(p)`(전략 문장)를 빼 뒀더니 위반이
@@ -580,6 +609,10 @@ def _prompt(card: Card, box: Bundle) -> list:
         f"방향인가*를 **이 경기 고유 사실로만** 말하고, 서로 **종류가 다른 고유 "
         f"사실 {_au.NEED_KINDS}가지 이상**을 담는다(일반론·단정어 금지 · 문장마다 "
         f"고유 사실이 하나 이상).\n"
+        f"🔴🔴 **`reason_lines` 도 같은 문단을 문장별로** 낸다 — 각 줄은 "
+        f"`{{\"text\": 문장, \"fact_refs\": [위 목록의 id …]}}` 이고 **근거 id 를 "
+        f"문장마다 하나 이상** 적는다. ⚠️ 검열은 이 꼴을 센다 — 비우면 평이 "
+        f"버려진다. `reason` 은 그 문장들을 한 글자로 이은 것이다.\n"
         + (f"🔴🔴 **새 사실 {news} 를 이유 문단에 쓴다** — 쓰지 않으면 검열이 "
            f"평을 버린다(§3-5 새 뉴스는 판단에 반드시 들어간다).\n"
            if news else "")

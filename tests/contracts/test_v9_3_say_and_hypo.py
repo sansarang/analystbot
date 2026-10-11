@@ -238,3 +238,34 @@ def test_empty_reason_is_rejected_by_the_schema() -> None:
             cls(reason="짧다")
     got = ReasonOnly(reason="가" * MIN_REASON_CHARS)
     assert len(got.reason) == MIN_REASON_CHARS
+
+
+def test_reason_check_gets_a_paragraph_not_a_list() -> None:
+    """🔴🔴 ①-e — `reason_check` 는 **`.sentences` 를 가진 문단**을 받아야 한다.
+
+    ⚠️ 실사고 2026-10-11(재현 5회차): `check()` 가 **리스트**를 넘겨
+       *"(i) 이유 문단이 없다"* 가 **내용과 무관하게 늘** 떴다 — 1039자 문단에도
+       떴다. 그래서 평이 네 번 버려졌다.
+    """
+    from app.core.schema import ReasonLine
+    from app.core.stages import s9_say
+    src = _src(s9_say.check)
+    assert "_para_of" in src and "reason_check(para" in src
+    got = s9_say._para_of(type("G", (), {
+        "reason_lines": [], "reason": "첫 문장이다. 둘째 문장이다. 셋째다."})())
+    assert len(got.sentences) == 3, got
+    #: 🔴 모델이 문장별 근거를 줬으면 **그것을** 쓴다
+    rows = [ReasonLine(text="x", fact_refs=["S02"])]
+    got2 = s9_say._para_of(type("G", (), {"reason_lines": rows,
+                                          "reason": "y"})())
+    assert got2.sentences[0].fact_refs == ["S02"]
+
+
+def test_prompt_asks_for_sentence_level_refs() -> None:
+    """🔴 검열이 세는 꼴(`reason_lines`)을 프롬프트가 요구한다."""
+    from app.core import saybundle
+    from app.core.stages import s9_say
+    card = _card()
+    said = "\n".join(str(getattr(m, "content", ""))
+                     for m in s9_say._prompt(card, saybundle.build(card)))
+    assert "reason_lines" in said and "fact_refs" in said

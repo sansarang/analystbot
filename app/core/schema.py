@@ -760,6 +760,8 @@ class SayCore(Frozen):
     one_line: str = ""
     #: 🔴 빈 글자를 막는다 — 그래야 `llm.ask` 가 다시 묻는다
     reason: str = Field(min_length=MIN_REASON_CHARS)
+    #: 🔴🔴 **문장별 근거** — 검열 (i)·(j) 가 이 꼴을 센다
+    reason_lines: list[ReasonLine] = Field(default_factory=list)
 
 
 class ReasonOnly(Frozen):
@@ -772,6 +774,8 @@ class ReasonOnly(Frozen):
 
     #: 🔴 빈 글자를 막는다 — 그래야 `llm.ask` 가 다시 묻는다
     reason: str = Field(min_length=MIN_REASON_CHARS)
+    #: 🔴🔴 **문장별 근거** — 검열 (i)·(j) 가 이 꼴을 센다(아래 주석)
+    reason_lines: list[ReasonLine] = Field(default_factory=list)
 
 
 class SayOut(Frozen):
@@ -791,6 +795,17 @@ class SayOut(Frozen):
     #  ⚠️ 넷이 따로 돌던 때는 **서로 다른 말**을 했다(실측 2026-10-11 카드).
     #: 🔴 1겹의 이유 문단(종전 `s8b_reason`)
     reason: str = ""
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **문장별 근거** — 사용자 지시 2026-10-11(둘 다 고쳐라)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실사고 2026-10-11: 검열 `reason_check` 는 **`.sentences` 를 가진 문단
+    #     객체**(`ReasonPara`)를 읽는데 `s9_say.check` 가 **리스트**를 넘겼다 —
+    #     리스트에는 그 칸이 없으니 *"(i) 이유 문단이 없다"* 가 **내용과 무관하게
+    #     늘** 떴다(1039자 문단에도 떴다). 그래서 평이 네 번 버려졌다.
+    #  🔴 검열이 요구하는 꼴을 **모델이 직접** 낸다: 문장 3~5개 · 각 문장
+    #     `fact_refs` 1개 이상. `reason` 은 같은 문단을 한 글자로 이은 것이다.
+    reason_lines: list[ReasonLine] = Field(default_factory=list)
     #: 🔴 팀별 **예상 운영**(종전 `s2f_tactic` 의 `운영:home`·`운영:away`)
     ops_home: str = ""
     ops_away: str = ""
