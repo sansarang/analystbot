@@ -37,6 +37,25 @@ XGB = re.compile(r"\|\s*xG 판\s*\|\s*(\d+)%\s*\|\s*(\d+)%\s*\|\s*(\d+)%")
 ELO = re.compile(r"Elo:.*?→ 승 (\d+)% · 무 (\d+)% · 패 (\d+)%")
 #: 🔴 시장 — `| A 승 | … | 33% (2.75) |`
 MKT = re.compile(r"시장 홈 (\d+)% · 원정 (\d+)%")
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **§15 — 카드가 저장하는 새 열들**(지시서 2026-10-12(둘째))
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 카드마다 저장: 바닥만 · 최종 · **그림자 확률** · 항별 기여 · 경고 등급·S ·
+#  > **InfoQ** · 판 날짜 → `score_cards.py` 누적 채점(30경기마다 등급별 표).
+#
+#  🔴 카드 **글자에서** 읽는다 — 카드가 그때의 봇이다(다시 돌리지 않는다).
+#: 🔴 그림자(옛 구조) — `🕯 **그림자 확률**(…) — 홈 27% · 무 25% · 원정 48%`
+SHADOW = re.compile(r"그림자 확률\*\*.*?홈 (\d+)% · 무 (\d+)% · 원정 (\d+)%")
+#: 🔴 바닥(Elo) — `- 바닥(Elo) — 홈 33% · 무 28% · 원정 39%`
+FLOOR = re.compile(r"바닥\(Elo\) — 홈 (\d+)% · 무 (\d+)% · 원정 (\d+)%")
+#: 🔴 정보 품질 — `📏 InfoQ **2/5** — …`
+INFOQ = re.compile(r"InfoQ \*\*(\d)/(\d)\*\*")
+#: 🔴 이변 경고 — `⚠️ 이변 경고 S +0.800 → 🟡 …`
+UPSET = re.compile(r"이변 경고 S \*\*([+-][\d.]+)\*\* → (🟡|🔴)")
+
+#: 🔴 30경기 — 지시가 적은 자동 보고 묶음 크기
+REPORT_EVERY = 30
 
 
 def _pct(*vals: str) -> list[float]:
@@ -69,6 +88,20 @@ def read_card(path: Path) -> dict | None:
         h, a = float(said.group(1)) / 100.0, float(said.group(2)) / 100.0
         d = max(0.0, 1.0 - h - a)
         out["market"] = [x / (h + d + a) for x in (h, d, a)] if (h + a) else None
+    # 🔴🔴 §15 — 새 열들(없으면 **없는 채로** 둔다 · 0 으로 세지 않는다 · #3)
+    said = SHADOW.search(text)
+    if said:
+        out["shadow"] = _pct(*said.groups())
+    said = FLOOR.search(text)
+    if said:
+        out["floor"] = _pct(*said.groups())
+    said = INFOQ.search(text)
+    if said:
+        out["infoq"] = int(said.group(1))
+    said = UPSET.search(text)
+    if said:
+        out["upset_s"] = float(said.group(1))
+        out["upset"] = said.group(2)
     return out
 
 
@@ -171,6 +204,11 @@ async def main() -> None:
     models = {
         "봇(득실판)": [(r["ours"], r["hit"]) for r in scored],
         "봇(xG판)": [(r["xg"], r["hit"]) for r in scored if r.get("xg")],
+        # 🔴 §15 — **그림자(옛 구조)** 와 **바닥만**(Elo 바닥)도 같은 표에
+        "그림자(옛 구조)": [(r["shadow"], r["hit"]) for r in scored
+                      if r.get("shadow")],
+        "바닥만(Elo 바닥)": [(r["floor"], r["hit"]) for r in scored
+                       if r.get("floor")],
         "Elo만": [(r["elo"], r["hit"]) for r in scored if r.get("elo")],
         "리그 기본률": [(base, r["hit"]) for r in scored],
         "균등 33/33/33": [(even, r["hit"]) for r in scored],
@@ -191,6 +229,59 @@ async def main() -> None:
         got_brier[name] = sum(b) / len(b)
         print(f"| {name} | {len(box)} | **{sum(b) / len(b):.4f}** | "
               f"{lo:.4f}~{hi:.4f} | {sum(ll) / len(ll):.4f} |")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **§13·§15 InfoQ 구간별 적중률** · **§10 경고 등급별**
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 지난 카드 전부의 **InfoQ 분포**와 **구간별 적중률**(표본 수 함께 · §18).
+    #  > 경고 등급별: 경기 수 · 예측 강팀 승률 · 실제 강팀 승률.
+    #
+    #  🔴 등급·경고는 **확률을 안 바꿨다** — 이 표가 묻는 것은 *"그 등급이 뜻이
+    #     있었나"* 다. ⚠️ 30경기 미만 묶음은 **그 사실을 적는다**(작은 표본).
+    from app.core import metrics as _me
+    said_iq = [r for r in scored if r.get("infoq") is not None]
+    print()
+    if said_iq:
+        print("| InfoQ | n | 방향 적중률 | 95% | ⚠️ |")
+        print("|---|---|---|---|---|")
+        for lo, hi, name in ((0, 2, "0~2(얇다)"), (3, 3, "3"), (4, 5, "4~5")):
+            box = [r for r in said_iq if lo <= int(r["infoq"]) <= hi]
+            if not box:
+                print(f"| {name} | 0 | — | — | — |")
+                continue
+            hits = sum(1 for r in box
+                       if _me.direction_hit(r["ours"], r["hit"]))
+            w_lo, w_hi = _me.wilson(hits, len(box))
+            print(f"| {name} | {len(box)} | **{hits / len(box):.1%}** | "
+                  f"{w_lo:.1%}~{w_hi:.1%} | "
+                  + ("" if len(box) >= REPORT_EVERY
+                     else f"🔴 **{REPORT_EVERY}경기 미만**") + " |")
+    else:
+        print("⬜ **InfoQ 를 적은 카드가 없다** — 그 열은 이번 지시로 생겼다"
+              "(앞으로 쌓인다)")
+    said_up = [r for r in scored if r.get("upset")]
+    print()
+    if said_up:
+        print("| 경고 | n | 예측 강팀 승률 | 실제 강팀 승률 | 차이 95% |")
+        print("|---|---|---|---|---|")
+        for grade in ("🔴", "🟡"):
+            box = [r for r in said_up if r["upset"] == grade]
+            if not box:
+                print(f"| {grade} | 0 | — | — | — |")
+                continue
+            fav = [(0 if r["ours"][0] >= r["ours"][2] else 2) for r in box]
+            pred = sum(r["ours"][f] for r, f in zip(box, fav, strict=True))
+            real = sum(1 for r, f in zip(box, fav, strict=True)
+                       if r["hit"] == f)
+            diff = _me.paired(
+                [float(1 if r["hit"] == f else 0)
+                 for r, f in zip(box, fav, strict=True)],
+                [float(r["ours"][f]) for r, f in zip(box, fav, strict=True)])
+            print(f"| {grade} | {len(box)} | {pred / len(box):.1%} | "
+                  f"{real / len(box):.1%} | "
+                  f"{diff['lo']:+.3f}~{diff['hi']:+.3f} |")
+    else:
+        print("⬜ **이변 경고가 켜진 카드가 없다**(판이 없거나 신호가 0 이었다)")
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **1번 짝지은 비교** — 모든 모형이 예측을 가진 **같은 경기만**
     # ══════════════════════════════════════════════════════════════════
