@@ -45,12 +45,24 @@ def table() -> dict:
     return dict(rules._load(CONF) or {})
 
 
-def _rows(matches: list[dict]) -> list[tuple[datetime, str, str, int, int]]:
+from app import window as _w
+
+
+def _rows(matches: list[dict], *, as_of
+          ) -> list[tuple[datetime, str, str, int, int]]:
     """🔴 football-data 응답 → `(시각, 홈, 원정, 홈골, 원정골)`. ⚠️ 못 읽은 줄은 버린다."""
     out = []
+    # 🔴🔴 **누설 금지**(사용자 지시 2026-10-12 ⓐ · 계약 L1) — `as_of` 이후 경기로
+    #    Elo 를 굴리면 **미래를 본 등급**이 된다(그 등급이 기준 열로 나간다).
+    if as_of is None:
+        raise ValueError("🔴 `as_of` 가 없다 — Elo 를 굴릴 수 없다(누설 금지)")
+    if getattr(as_of, "tzinfo", None) is None:
+        raise ValueError("🔴 `as_of` 에 시간대가 없다 — naive 는 받지 않는다")
     for m in matches:
         try:
             when = datetime.fromisoformat(str(m["utcDate"]).replace("Z", "+00:00"))
+            if when >= as_of:
+                continue
             # 🔴 절대규칙 2 — **시간대 없는 값은 받지 않는다**(naive 가 새면 날짜가
             #    기계 시간대로 조용히 바뀐다). football-data 는 `Z` 로 주지만 **확인한다**.
             if when.tzinfo is None:
@@ -66,7 +78,7 @@ def _rows(matches: list[dict]) -> list[tuple[datetime, str, str, int, int]]:
     return sorted(out, key=lambda r: r[0])
 
 
-def compute(matches: list[dict], *, k: float, start: float
+def compute(matches: list[dict], *, k: float, start: float, as_of
             ) -> tuple[dict[str, float], list[dict]]:
     """🔴🔴 Elo 를 **시간 순으로** 굴린다. `(최종 등급표, 적합용 줄들)`.
 
@@ -77,7 +89,7 @@ def compute(matches: list[dict], *, k: float, start: float
     """
     rate: dict[str, float] = {}
     rows: list[dict] = []
-    for when, home, away, hg, ag in _rows(matches):
+    for when, home, away, hg, ag in _rows(matches, as_of=as_of):
         ra = rate.setdefault(home, start)
         rb = rate.setdefault(away, start)
         we = 1.0 / (10.0 ** (-(ra - rb) / 400.0) + 1.0)
@@ -290,7 +302,14 @@ async def refresh(net, *, when: date | None = None, state=None
             if state is not None:
                 state.note(f"리그Elo `{comp}` 못 받았다 — {how}")
             continue
-        rate, fit_rows = compute(matches, k=k, start=start)
+        # 🔴🔴 L1 — **그날 0시(UTC) 기준**으로 굴린다. ⚠️ `datetime.now()` 를 쓰면
+        #    같은 날 끝난 경기가 들어가 **그날 카드가 미래를 본 등급**을 쓴다.
+        #    🔴 "지금"은 `app/window.now_utc` 하나다(사본 금지).
+        from datetime import datetime as _dt
+        from datetime import timezone as _tz
+        said_day = when or _w.now_utc().date()
+        cut = _dt(said_day.year, said_day.month, said_day.day, tzinfo=_tz.utc)
+        rate, fit_rows = compute(matches, k=k, start=start, as_of=cut)
         said = {"competition": comp, "ratings": rate, "fit_rows": fit_rows,
                 "matches": len(matches),
                 # 🔴 어느 통로로 받았는지 **파일에 남긴다** — 카드의 출처 줄이

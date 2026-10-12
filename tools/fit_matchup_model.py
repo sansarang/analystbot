@@ -41,7 +41,7 @@ def _say(msg: str) -> None:
 # 🔴🔴 ① 백필 — 경기 목록 → 특징 줄
 # ══════════════════════════════════════════════════════════════════
 
-async def backfill(league: str, *, limit: int) -> list[dict]:
+async def backfill(league: str, *, limit: int, as_of: str = "") -> list[dict]:
     """🔴 그 리그의 **끝난 경기**를 시간순으로 돌며 특징 줄을 만든다.
 
     🔴🔴 **누설 금지**(C11): 경기 `m` 의 특징은 **그 전 경기들**로만 만든다 —
@@ -54,9 +54,21 @@ async def backfill(league: str, *, limit: int) -> list[dict]:
     from app.net import Net
     net = Net(cache=True)
     rows = await fm.league_matches(net, league)
-    done = sorted([r for r in rows if r.get("finished") and r.get("utc")],
+    # 🔴🔴 **누설 금지**(사용자 지시 2026-10-12 ⓐ · 계약 L1) — as-of 이후 경기로
+    #    적합하면 계수가 **미래를 본 값**이다. ⚠️ 백필은 경기마다 그 경기 **킥오프
+    #    전**으로 특징을 만들므로(`backfill.features` 의 C11) 목록 자체도 잘라야
+    #    두 겹으로 막힌다. 문은 `fotmob.before_as_of` 하나다.
+    from datetime import datetime as _dt
+    from datetime import timezone as _tz
+    said_cut = (_dt.fromisoformat(str(as_of).replace("Z", "+00:00"))
+                if as_of else _dt.now(_tz.utc))
+    if said_cut.tzinfo is None:
+        said_cut = said_cut.replace(tzinfo=_tz.utc)
+    done_all = [r for r in rows if r.get("finished") and r.get("utc")]
+    done = sorted(fm.before_as_of(done_all, as_of=said_cut),
                   key=lambda r: str(r["utc"]))[:limit]
-    _say(f"[백필] 리그 {league} — 끝난 경기 {len(done)}건을 돈다")
+    _say(f"[백필] 리그 {league} — 🔒 as-of {said_cut.isoformat()[:16]} · "
+         f"끝난 경기 {len(done_all)}건 중 {len(done)}건을 돈다(누설 금지)")
     mean = rules.goal_share("league")
     seen: dict[str, list] = {}
     out: list[dict] = []
@@ -341,7 +353,11 @@ def main(argv: list[str]) -> int:
         league = argv[argv.index("--league") + 1]
     if "--n" in argv:
         limit = int(argv[argv.index("--n") + 1])
-    asyncio.run(backfill(league, limit=limit))
+    # 🔴 L1 — `--as-of` 를 그대로 넘긴다(없으면 지금)
+    said_as_of = ""
+    if "--as-of" in argv:
+        said_as_of = argv[argv.index("--as-of") + 1]
+    asyncio.run(backfill(league, limit=limit, as_of=said_as_of))
     return 0
 
 

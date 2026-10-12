@@ -93,13 +93,26 @@ async def main() -> None:
     ap.add_argument("--name", required=True,
                     help="저장 이름(예: league:PL) — 운영이 그 이름으로 읽는다")
     ap.add_argument("--max", type=int, default=200, help="받을 끝난 경기 수")
+    ap.add_argument("--as-of", dest="as_of", default="",
+                    help="🔴 이 시각 **이전** 경기만 적합한다(누설 금지 · L1). "
+                         "비우면 **지금**이다(운영 갱신).")
     args = ap.parse_args()
 
     from app.collect import fotmob as fm
     from app.net import Net
     net = Net(cache=True)
     rows = await fm.league_matches(net, args.league_id)
-    done = [r for r in rows if r.get("finished")][-int(args.max):]
+    # 🔴🔴 **누설 금지**(사용자 지시 2026-10-12 ⓐ · 계약 L1) — as-of 이후 경기로
+    #    적합하면 그 계수는 **미래를 본 값**이다. 문은 `fotmob.before_as_of` 하나다.
+    from datetime import datetime, timezone
+    said_cut = (datetime.fromisoformat(str(args.as_of).replace("Z", "+00:00"))
+                if args.as_of else datetime.now(timezone.utc))
+    if said_cut.tzinfo is None:
+        said_cut = said_cut.replace(tzinfo=timezone.utc)
+    done_all = [r for r in rows if r.get("finished")]
+    done = fm.before_as_of(done_all, as_of=said_cut)[-int(args.max):]
+    logger.info("[fit] 🔒 as-of %s — 끝난 경기 %d건 중 %d건만 쓴다(누설 금지)",
+                said_cut.isoformat()[:16], len(done_all), len(done))
     logger.info("[fit] 리그 %s — 끝난 경기 %d건(받는다)", args.league_id, len(done))
     box: dict[str, dict] = {}
     names: dict[str, str] = {}

@@ -483,7 +483,12 @@ def test_리그_Elo_는_우리가_계산하고_clubelo_는_dead_다():
                {"utcDate": "2026-01-08T12:00:00Z", "homeTeam": {"name": "B"},
                 "awayTeam": {"name": "A"},
                 "score": {"fullTime": {"home": 0, "away": 0}}}]
-    rate, rows = leagueelo.compute(matches, k=20.0, start=1500.0)
+    # 🔴 `as_of` 는 **필수**다(사용자 지시 2026-10-12 ⓐ · 누설 금지 L1) —
+    #    Elo 를 as-of 이후 경기로 굴리면 **미래를 본 등급**이 된다.
+    from datetime import UTC as _UTC
+    from datetime import datetime as _dt
+    rate, rows = leagueelo.compute(matches, k=20.0, start=1500.0,
+                                   as_of=_dt(2030, 1, 1, tzinfo=_UTC))
     assert rate["A"] > 1500.0 > rate["B"], rate
     assert rows[0]["home_elo"] == 1500.0, rows[0]
     # 🔴 두 번째 줄의 **경기 전** 등급이 첫 경기 결과를 담고 있다(누설 없음)
@@ -1882,7 +1887,11 @@ def test_football_data_없는_리그는_fotmob_결과로_Elo_를_굴린다():
              "status": {"finished": False, "utcTime": "2026-10-09T05:00:00Z"}},
         ]}}}})
     assert len(said) == 1 and said[0]["score"]["fullTime"] == {"home": 2, "away": 1}
-    assert leagueelo._rows(said), "football-data 꼴로 안 맞춰 `_rows` 가 못 읽는다"
+    # 🔴 `as_of` 필수(위와 같은 까닭) — 먼 미래를 주면 **전부** 들어온다
+    from datetime import UTC as _UTC2
+    from datetime import datetime as _dt2
+    assert leagueelo._rows(said, as_of=_dt2(2030, 1, 1, tzinfo=_UTC2)), \
+        "football-data 꼴로 안 맞춰 `_rows` 가 못 읽는다"
 
 
 def test_fotmob_로_받은_리그에_계수가_있고_출처를_속이지_않는다():

@@ -670,7 +670,9 @@ async def _priority_of(ref: MatchRef, facts: Facts, *, net: Any,
         lineup = list(getattr(xi, "lineup", None) or []) or list(
             getattr(xi, "players", None) or [])
         today, why_today = _pr.today_xi(lineup=lineup, value=value)
-        rows = await _s2e._history(net, name, state=state, ref=ref)
+        # 🔴 L1 — 우선순위 지수의 선발 빈도도 **as-of 이전** 경기만 본다
+        rows = await _s2e._history(net, name, state=state, ref=ref,
+                                   as_of=getattr(ref, "kickoff_utc", None))
         starts, _n = _s2e.usual_starts(rows or [])
         best, why_best = _pr.best_xi(starts=starts, value=value)
         got, why_one = _pr.index_of(today=today, best=best)

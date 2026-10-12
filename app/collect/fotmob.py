@@ -2246,7 +2246,7 @@ def team_totals(tb_json: dict) -> dict[str, dict]:
     return out
 
 
-def team_recent(page_text: str, team_id: object, *, n: int = 5,
+def team_recent(page_text: str, team_id: object, *, as_of, n: int = 5,
                 before=None) -> list[dict]:
     """🔴🔴 **팀 페이지의 최근 n경기**(§2 첫째 줄) — 끝난 경기만, 최신순.
 
@@ -2254,9 +2254,13 @@ def team_recent(page_text: str, team_id: object, *, n: int = 5,
                   tournament, side, result}`.
 
     ⚠️ `before` 를 주면 **그 시각보다 앞선** 경기만 센다(이 경기 자신을 안 센다).
+    🔴🔴 `as_of` 는 **필수**다(사용자 지시 2026-10-12 ⓐ) — 없으면 예외다.
     🔴 대회를 섞어 싣는다(리그·컵·ACL) — 그 글자를 함께 주므로 읽는 쪽이 가른다.
        ⚠️ 실측 2026-10-09 가시마: 최근 6경기에 J리그·ACL·컵이 섞여 있었다.
     """
+    if as_of is None:
+        raise ValueError("🔴 `as_of` 가 없다 — 최근 경기를 고를 수 없다(누설 금지)")
+
     j = payload(page_text)
     if not j:
         return []
@@ -2273,7 +2277,11 @@ def team_recent(page_text: str, team_id: object, *, n: int = 5,
         if not got:
             continue
         when = str(st.get("utcTime") or "")
-        if before is not None and when and when[:19] >= str(before)[:19]:
+        # 🔴🔴 **as-of 보다 뒤는 안 센다**(계약 L1) — `before` 는 옛 이름이고
+        #    기준은 `as_of` 다(둘 중 **이른 쪽**을 쓴다 · 누설 금지).
+        said_cut = min(x for x in (str(as_of), str(before))
+                       if x and x != "None") if (as_of or before) else ""
+        if said_cut and when and when[:19] >= said_cut[:19]:
             continue
         home = str((r.get("home") or {}).get("name") or "")
         away = str((r.get("away") or {}).get("name") or "")
@@ -2718,6 +2726,39 @@ def player_adv(j: dict) -> dict[str, dict]:
                          "team_id": str(said.get("teamId") or ""),
                          "xg": round(got.get("xg", 0.0), 3),
                          "xa": round(got.get("xa", 0.0), 3)}
+    return out
+
+
+def before_as_of(rows: list[dict], *, as_of, key: str = "utc"
+                 ) -> list[dict]:
+    """🔴🔴 **누설 금지의 문 하나**(사용자 지시 2026-10-12 ⓐ) — `as_of` **이전** 줄만.
+
+    > 계약 L1: as-of 재현에서 킥오프 시각 **이후** 경기가 어떤 목록에도 없다
+    > (**분석 대상 경기 자신 포함**).
+
+    🔴 왜 한 문인가 — 과거 자료를 고르는 자리가 여러 곳이다(폼·골 시간·xG·Elo).
+       각자 거르면 한 곳만 고쳐지고 나머지로 **미래가 새 들어온다**(실사고
+       2026-10-12: 재현 카드 폼에 그 경기 자신이 들어갔다).
+    ⚠️ `as_of` 가 없거나 tz 가 없으면 **예외**다 — 조용히 넘어가면 누설이 남는다.
+    """
+    from datetime import datetime, timezone
+    if as_of is None:
+        raise ValueError("🔴 `as_of` 가 없다 — 과거 자료를 고를 수 없다(누설 금지)")
+    if getattr(as_of, "tzinfo", None) is None:
+        raise ValueError("🔴 `as_of` 에 시간대가 없다 — naive 는 받지 않는다")
+    out: list[dict] = []
+    for one in (rows or []):
+        said = str(dict(one).get(key) or "")
+        if not said:
+            continue
+        try:
+            when = datetime.fromisoformat(said.replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if when.tzinfo is None:
+            when = when.replace(tzinfo=timezone.utc)
+        if when < as_of:
+            out.append(dict(one))
     return out
 
 

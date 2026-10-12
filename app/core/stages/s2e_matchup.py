@@ -57,7 +57,9 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
     rows = {}
     for side in ("home", "away"):
         name = str(getattr(ref, f"{side}_name", "") or "")
-        got = await _history(net, name, state=state, ref=ref)
+        # 🔴 as-of 는 **킥오프**다 — 그 뒤 경기는 어떤 목록에도 없다(L1)
+        got = await _history(net, name, state=state, ref=ref,
+                             as_of=getattr(ref, "kickoff_utc", None))
         if got is None:
             out[f"{side}_why"] = f"🔴 `{name}` 의 과거 경기를 못 받았다"
             continue
@@ -312,7 +314,7 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
     return out
 
 
-async def _history(net: Any, name: str, *, state: RunState,
+async def _history(net: Any, name: str, *, state: RunState, as_of,
                    ref: Any = None) -> list[dict] | None:
     """🔴 그 팀 **최근 끝난 경기 + 골 목록**. 못 받으면 `None`.
 
@@ -333,8 +335,16 @@ async def _history(net: Any, name: str, *, state: RunState,
                                state=state, team=f"{name} 일정")
         if page is None:
             return None
-        fx = [r for r in _d.team_fixtures(getattr(page, "text", "") or "", tid)
-              if r.get("finished")][-BACK:]
+        # 🔴🔴 **누설 금지**(사용자 지시 2026-10-12 ⓐ · 계약 L1) — `as_of` **이전**
+        #    경기만 본다. ⚠️ 실사고 2026-10-12: 여기가 *"끝난 경기"* 만 걸러서
+        #    **분석 대상 경기 자신**(1-2 · xG 0.85/1.04)이 폼에 들어갔다.
+        #  🔴 거르는 문은 `fotmob.before_as_of` 하나다(사본 금지).
+        said_done = [r for r in _d.team_fixtures(
+            getattr(page, "text", "") or "", tid) if r.get("finished")]
+        fx = fm.before_as_of(said_done, as_of=as_of)[-BACK:]
+        if len(said_done) != len(fx):
+            state.note(f"s2e 누설 막음 — `{name}` 끝난 경기 {len(said_done)}건 중 "
+                       f"as-of 이전 {len(fx)}건만 본다")
         out: list[dict] = []
         for m in fx:
             url = str(m.get("page") or "")
