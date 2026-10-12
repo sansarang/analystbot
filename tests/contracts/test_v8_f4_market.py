@@ -60,10 +60,8 @@ def test_F4_R6_배당을_바꿔도_등급과_확률이_같다():
     assert _run({"check": {"grade": {"steps": 1, "why": ["x"]}}}) != base
 
 
-def test_F4_등급_조정은_검증_하나다():
-    """🔴 등급을 내리는 자리는 ⑫ 검증(`s6c_check.grade_move`) **하나**다."""
-    from app.core.stages import s6c_check as _s6c
-    assert hasattr(_s6c, "grade_move"), "🔴 검증 쪽 등급 조정이 없다"
-    from app.core import pipeline as _pl
-    said = inspect.getsource(_pl)
-    assert "grade_move" in said or "check" in said, "🔴 파이프라인이 그것을 안 쓴다"
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_F4_등급_조정은_검증_하나다`

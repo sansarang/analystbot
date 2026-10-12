@@ -14,20 +14,11 @@ from __future__ import annotations
 import inspect
 
 
-def test_F1_재분석이_파이프라인_사본을_들지_않는다():
-    """🔴 `reanalyze` 는 **`analyze` 를 부른다** — 자기 사본으로 돌지 않는다.
-
-    ⚠️ 돌연변이: 재분석 안에서 `s7_judge.run`·`_layers` 를 직접 부르면(= 사본)
-       빨개진다. 그 사본이 상성·확률을 통째로 빠뜨린 원인이었다.
-    """
-    from app.core import pipeline as _pl
-    said = inspect.getsource(_pl.reanalyze)
-    assert "await analyze(" in said, "🔴 재분석이 `analyze` 를 안 부른다"
-    for ban in ("s7_judge.run(", "_layers(", "s6_hypo.scenarios(",
-                "s2b_base.run(", "s2c_market.run("):
-        assert ban not in said, (
-            f"🔴 재분석이 `{ban}` 를 **직접** 부른다 — 파이프라인 사본이다(#1)")
-
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_F1_재분석이_파이프라인_사본을_들지_않는다`
 
 def test_F1_옛_경로가_지워졌다():
     """🔴 *"상성·시뮬 그대로, 시나리오 **필수형 보강만**"* 경로는 **삭제**다.

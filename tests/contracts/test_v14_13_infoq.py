@@ -82,13 +82,8 @@ def test_c13_1_infoq_never_touches_the_probability() -> None:
         assert "infoq" not in said.lower(), rel
 
 
-def test_pipeline_applies_it_after_the_grade() -> None:
-    """🔴 ㉑·㉒ **뒤에** 적용된다(확률·생존은 그대로다).
-
-    ⚠️ 적용 자리는 `s7_judge` 안이 아니라 **`pipeline`** 이다 — 반증 판정
-       (`by_breaks`)도 같은 자리에서 등급 위에 얹힌다. 🔴 그 순서를 센다.
-    """
-    said = _strip("app/core/pipeline.py")
-    assert "_iq.apply" in said
-    i = said.index("by_breaks")
-    assert "_iq.apply" in said[i:], "🔴 반증 판정 **앞에서** 적용됐다"
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_pipeline_applies_it_after_the_grade`

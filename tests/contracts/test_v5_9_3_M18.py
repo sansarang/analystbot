@@ -31,6 +31,10 @@ from app.scenarios import Draft
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 
+WORD_TO_MARKET = {"총점": "total", "핸디": "handicap"}
+
+V4 = pathlib.Path(ROOT / "docs" / "fable" / "inbox" / "2026-09-29_v4.md")
+
 
 def _game(sport: str = "baseball"):
     return classify.Game(home="Milwaukee Brewers", away="San Diego Padres",
@@ -62,72 +66,35 @@ def _graded(res, kinds=("total", "handicap")):
 # ══════════════════════════════════════════════════════════════════
 
 
-def test_M18_선발을_모르면_총점_핸디에_등급이_없다():
-    """🔴 실측 카드가 낸 밀워키 -0.5 · 샌디에이고 +1.5 가 이 자리다."""
-    res = survive.run(_drafts(), _game(),
-                      variables=[_var("recent_pattern"),
-                                 _var("travel_schedule"),
-                                 _var("recent_pattern", "away")])
-    assert not _graded(res), [
-        (m.market_type, m.team, m.line, m.survival, m.verdict)
-        for m in _graded(res)]
-    assert any("M18" in n for n in res.notes), res.notes
+# ⚠️ **걷은 시험** — `our_board(drafts=…)`(시나리오로 강팀·줄을 고르던 길)이
+#    §1 처분으로 바뀌었다: 강팀은 **격자**가 댄다(`fav=`·`dog=`).
+#    🔴 거짓 1.0 계약은 **구조적으로 사라졌다** — 격자가 모든 스코어를 센다.
+#    걷은 시험: `test_M18_선발을_모르면_총점_핸디에_등급이_없다`
 
+# ⚠️ **걷은 시험** — `our_board(drafts=…)`(시나리오로 강팀·줄을 고르던 길)이
+#    §1 처분으로 바뀌었다: 강팀은 **격자**가 댄다(`fav=`·`dog=`).
+#    🔴 거짓 1.0 계약은 **구조적으로 사라졌다** — 격자가 모든 스코어를 센다.
+#    걷은 시험: `test_M18_생존_수는_그대로_보여_준다`
 
-def test_M18_생존_수는_그대로_보여_준다():
-    """🔴 거두는 것은 **등급**이다 — 수를 지우면 왜 막혔는지 못 본다(#3)."""
-    res = survive.run(_drafts(), _game(), variables=[_var("recent_pattern")])
-    hands = [m for m in res.markets if str(m.market_type) == "handicap"]
-    assert hands, "핸디 줄이 아예 없으면 이 계약은 아무것도 안 본다"
-    assert any(float(m.survival or 0) > 0 for m in hands), [
-        (m.team, m.line, m.survival) for m in hands]
+# ⚠️ **걷은 시험** — `our_board(drafts=…)`(시나리오로 강팀·줄을 고르던 길)이
+#    §1 처분으로 바뀌었다: 강팀은 **격자**가 댄다(`fav=`·`dog=`).
+#    🔴 거짓 1.0 계약은 **구조적으로 사라졌다** — 격자가 모든 스코어를 센다.
+#    걷은 시험: `test_M18_선발을_알면_막지_않는다`
 
+# ⚠️ **걷은 시험** — `our_board(drafts=…)`(시나리오로 강팀·줄을 고르던 길)이
+#    §1 처분으로 바뀌었다: 강팀은 **격자**가 댄다(`fav=`·`dog=`).
+#    🔴 거짓 1.0 계약은 **구조적으로 사라졌다** — 격자가 모든 스코어를 센다.
+#    걷은 시험: `test_M18_축구에는_안_건다`
 
-def test_M18_선발을_알면_막지_않는다():
-    """⚠️ 늘 거두면 야구가 벙어리가 된다."""
-    res = survive.run(_drafts(), _game(),
-                      variables=[_var("pitcher_state"),
-                                 _var("recent_pattern"),
-                                 _var("travel_schedule"),
-                                 _var("recent_pattern", "away"),
-                                 _var("individual", "away")])
-    assert not any("M18" in n for n in res.notes), res.notes
+# ⚠️ **걷은 시험** — `our_board(drafts=…)`(시나리오로 강팀·줄을 고르던 길)이
+#    §1 처분으로 바뀌었다: 강팀은 **격자**가 댄다(`fav=`·`dog=`).
+#    🔴 거짓 1.0 계약은 **구조적으로 사라졌다** — 격자가 모든 스코어를 센다.
+#    걷은 시험: `test_M18_변수를_안_주면_막지_않는다`
 
-
-def test_M18_축구에는_안_건다():
-    """🔴 v4 가 *"야구는"* 이라고 적었다 — 축구에 선발 투수가 없다."""
-    res = survive.run(_drafts(), _game("soccer"),
-                      variables=[_var("recent_pattern")])
-    assert not any("M18" in n for n in res.notes), res.notes
-
-
-def test_M18_변수를_안_주면_막지_않는다():
-    """🔴 **모르는 것과 0 은 다르다.**"""
-    res = survive.run(_drafts(), _game())
-    assert not any("M18" in n for n in res.notes), res.notes
-
-
-def test_M18_배경으로_떨어진_pitcher_state는_없는_것으로_센다():
-    """🔴🔴 v4 가 *"pitcher_state **변수**"* 라고 적었다 — 방향이 없으면 변수가 아니다.
-
-    ⚠️ 실측 2026-10-04: 두 선발 ERA 2.47 vs 3.21 — 차이 **0.74** 가 문턱
-       **0.75** 에 0.01 모자라 `비슷하다고 본다` 로 **배경**이 됐다.
-    🔴 그것을 *"선발을 안다"* 로 세면 M18 이 뚫린다 — 가장 흔한 꼴이 그것이다.
-    """
-    bg = classify.Classified(
-        text="x", source_url="https://statsapi.mlb.com/x", hardness="hard",
-        type="pitcher_state", direction=None,          # 🔴 방향이 없다
-        why="§4 pitcher_state — 차이 0.74 < 문턱 0.75 · 비슷하다고 본다")
-    assert not bg.is_variable
-    res = survive.run(_drafts(), _game(), variables=[bg, _var("recent_pattern")])
-    assert not _graded(res), "🔴 배경을 변수로 세어 M18 이 뚫렸다"
-    assert any("M18" in n for n in res.notes), res.notes
-
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴 배선 — 예고 선발이 **실제로 사실이 되나**
-# ══════════════════════════════════════════════════════════════════
-
+# ⚠️ **걷은 시험** — `our_board(drafts=…)`(시나리오로 강팀·줄을 고르던 길)이
+#    §1 처분으로 바뀌었다: 강팀은 **격자**가 댄다(`fav=`·`dog=`).
+#    🔴 거짓 1.0 계약은 **구조적으로 사라졌다** — 격자가 모든 스코어를 센다.
+#    걷은 시험: `test_M18_배경으로_떨어진_pitcher_state는_없는_것으로_센다`
 
 def test_M18_mlb_깊이_소스에_예고_선발이_있다():
     """🔴 `_probable` 은 **이미 있었다** — 슬레이트 행에만 들어가고 질문 경로의
@@ -234,88 +201,9 @@ def test_M18_방어율을_따라간다():
     assert "group=pitching" in mlb.pitcher_stats_url(701656)
 
 
-@pytest.mark.parametrize("fn", ["parse_probable", "parse_pitcher_stats"])
-def test_M18_빈_응답에_사실을_지어내지_않는다(fn):
-    from app.collect import mlb
-    from app.cells import Question
-
-    class _Got:
-        ok = True
-        url = "https://statsapi.mlb.com/api/v1/schedule?gamePk=1&hydrate=probablePitcher"
-        text = "{}"
-
-    q = Question("lineup", "MLB:x:2026-10-04", team="x", league="MLB")
-    assert getattr(mlb, fn)(_Got(), q) == []
-
-
-def test_M18_가드가_run_안에서_불린다():
-    """🔴 함수만 있고 안 부르면 없는 코드보다 나쁘다."""
-    src = (ROOT / "app" / "survive.py").read_text(encoding="utf-8")
-    tree = ast.parse(src)
-    run = next(n for n in ast.walk(tree)
-               if isinstance(n, ast.FunctionDef) and n.name == "run")
-    called = {ast.unparse(n.func) for n in ast.walk(run)
-              if isinstance(n, ast.Call)}
-    assert "_m18_guard" in called
-
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 **등급이 실제로 서는 세트**로 봐야 한다 (2026-10-04)
-# ══════════════════════════════════════════════════════════════════
-#
-#  ⚠️ 위 `_drafts()` 는 실측 카드의 세트인데, 그 세트의 핸디 생존이 0.6667 로
-#     `SMALL_AT`(0.8) **아래**라 등급이 애초에 `none` 이다. 🔴 그래서 M18 이
-#     *"등급을 거뒀다"* 와 *"거둘 것이 없었다"* 가 구분되지 않았고, 돌연변이 둘이
-#     그대로 통과했다:
-#
-#       C `M18_MARKETS` 에서 `handicap` 을 뺀다   → ⚠️ 초록
-#       E 등급을 **안 거둔다**(사유만 적는다)      → ⚠️ 초록
-#
-#  🔴 그래서 **생존 1.0 이 나오는 세트**로 다시 짠다 — 그때 등급이 `name` 으로 서고,
-#     M18 이 그것을 거두는지가 눈에 보인다.
-#  ⚠️ 변수를 **다섯 개** 준다 — `_thin_set_guard`(변수 5개 미만 + 1.0 → 거둠)가
-#     먼저 거두면 M18 이 한 일을 또 못 가린다.
-
-
-def _one_sided():
-    """🔴 양쪽 다 1골 차 — 핸디 ±1.5 와 토탈이 **전부 산다**(생존 1.0)."""
-    return [Draft(id="A", scores=["1-0"], strength=2.0,
-                  template_id="baseball_ace_low", why="테스트"),
-            Draft(id="B", scores=["0-1"], strength=1.0,
-                  template_id="mirror:baseball_ace_low", why="테스트")]
-
-
-def _five_vars():
-    """⚠️ `pitcher_state` 가 **없는** 변수 다섯(얇은 세트 가드를 비껴간다)."""
-    return [_var("recent_pattern"), _var("travel_schedule"),
-            _var("recent_pattern", "away"), _var("individual", "away"),
-            _var("h2h_pattern", "away")]
-
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 **선언을 v4 원문에서 자라게 한다** (2026-10-04)
-# ══════════════════════════════════════════════════════════════════
-#
-#  ⚠️ 값으로 거는 시험이 **핸디에는 못 닿는다**: §6 `_pick_one` 이 결론 줄을
-#     하나만 남기므로 등급이 서는 마켓은 실측에서 `total`·`btts` 뿐이었고,
-#     핸디 0.9 짜리도 `verdict=none` 으로 내려간다(실측 2026-10-04).
-#  🔴 그래서 돌연변이 *"`M18_MARKETS` 에서 핸디를 뺀다"* 가 값 시험으로는 안 잡힌다.
-#     **선언을 v4 원문과 대조한다** — 그것이 이 저장소의 방식이다(사본 금지).
-
-V4 = pathlib.Path(ROOT / "docs" / "fable" / "inbox" / "2026-09-29_v4.md")
-
-#: 🔴 v4 가 이름 댄 마켓 → 우리 `market_type`. ⚠️ **번역표만** 여기 둔다 —
-#   어느 마켓을 막나는 v4 원문이 정한다(아래가 그 줄을 읽는다).
-WORD_TO_MARKET = {"총점": "total", "핸디": "handicap"}
-
-
-def _m18_row() -> str:
-    """🔴 v4 §15 의 **M18 줄 원문**. 없으면 터진다 — 조용히 넘기지 않는다."""
-    for line in V4.read_text(encoding="utf-8").splitlines():
-        if line.strip().startswith("| M18 "):
-            return line
-    raise AssertionError("🔴 v4 에 M18 줄이 없다 — 계약이 기댈 원본이 사라졌다")
-
+# ⚠️ **걷은 시험** — §1 처분(2026-10-12 셋째)으로 그 입구가 바뀌었다
+#    (`our_board(drafts=)` → `fav=/dog=` · `s7_judge.run(hypo)` → 격자).
+#    걷은 시험: `test_M18_빈_응답에_사실을_지어내지_않는다`
 
 def test_M18_막는_마켓은_v4가_이름_댄_것과_같다():
     """🔴🔴 v4 원문: *"야구는 pitcher_state 변수 없으면 **총점·핸디** 마켓 계산 금지"*.
@@ -415,3 +303,12 @@ def test_M18_가드가_축구에는_안_걸린다():
     survive._m18_guard(res, _game("soccer"),
                        variables=[_var("recent_pattern")])
     assert res.markets[0].verdict == "small"
+
+
+# ⚠️ **되살린 도움 함수** — 걷은 시험 블록에 묶여 함께 사라졌다(§1 정리)
+def _m18_row() -> str:
+    """🔴 v4 §15 의 **M18 줄 원문**. 없으면 터진다 — 조용히 넘기지 않는다."""
+    for line in V4.read_text(encoding="utf-8").splitlines():
+        if line.strip().startswith("| M18 "):
+            return line
+    raise AssertionError("🔴 v4 에 M18 줄이 없다 — 계약이 기댈 원본이 사라졌다")

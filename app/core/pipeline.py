@@ -88,7 +88,7 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     import asyncio
 
     from app.core.stages import (s1_resolve, s2_facts, s2b_base, s2c_market,
-                                 s3_docs, s4_extract, s5_verify, s6_hypo,
+                                 s3_docs, s4_extract, s5_verify,
                                  s7_judge)
     st = state if state is not None else RunState()
     q = _question(raw, now=now)
@@ -235,7 +235,7 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #
     #  ⚠️ 종전 순서는 s7(생존) → `_layers`(우리 열)였다. 그래서 **생존·양상·논평이
     #     우리 열과 다른 수**에서 나왔다(실측: 홈 73% 인데 논평이 원정 승).
-    #  🔴 재가중은 **한 곳**이다(`reweight.of`) — 아래 모두가 그 결과를 쓴다.
+    #  ⚠️ **재가중(⑳)은 지웠다**(§1 처분) — 확률·생존은 격자 하나에서 온다.
     # 🔴🔴 **확정 라인업 전략**(사용자 지시 2026-10-10(둘째) §1·§3) — 확정 XI 일
     #    때만 판정이 나온다. 🔴 **잠정 확률을 먼저 세고** 최종과 나란히 든다(§4).
     from app.core.stages import s2d_strategy as _s2d
@@ -280,9 +280,7 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     # 🔴 **가설은 S2 뒤에 선다**(C3) — 그래서 여기서는 **빈 묶음**으로 열을 만든다.
     #    ⚠️ `_layers` 는 시나리오를 **읽지 않는다**(확률을 S3 가 낸다) — 빈 묶음이
     #       뜻을 바꾸지 않는다.
-    from app.core.schema import HypoSet as _HS
-    hypo = _HS()
-    layers = _layers(ref, facts, variables, hypo, base_p, adj_p, feed_mk,
+    layers = _layers(ref, facts, variables, base_p, adj_p, feed_mk,
                      user_mk, state=st, outlook=look, strategy=plan)
     layers["strategy"] = plan
     layers["matchup"] = edge
@@ -317,38 +315,19 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     # ══════════════════════════════════════════════════════════════════
     #
     #  > 가설 세우기를 ⑨ 상성 판정 **직후**·⑪ 확률 **앞**으로 옮긴다.
-    #  > 입력: MatchupReport + VariableSet(hypo 자리) — **시뮬 출력 없음**.
+    #  > 입력: MatchupReport + VariableSet — **시뮬 출력 없음**.
     #
     #  🔴 C3 는 그대로다(`claims()` 는 확률을 인자로도 본문으로도 안 받는다) —
     #     이번에 바뀐 것은 **순서**다. 가설이 상성 결론에서 **뻗어 나가야** 하고,
     #     확률 뒤에 서면 *"수를 보고 말을 맞춘 것"* 과 구분이 안 된다.
-    hypo = s6_hypo.claims(ref, facts, variables, state=st, mr=mr,
-                          varset=varset)
     # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **3a 무너뜨릴 조건** — 수정 지시서 2026-10-12 [3a]
+    # ⚠️ **⑭ 가설 · ⑮ 무너뜨릴 조건은 지웠다**(지시서 2026-10-12(셋째) §1 처분)
     # ══════════════════════════════════════════════════════════════════
     #
-    #  > 위치: ⑩ 가설 세우기 **직후**, ⑪ 확률 **앞**. … C3 유지: 이 함수는
-    #  > S3 숫자를 보지 않는다.
+    #  > ⑭ 가설(LLM) — 삭제(**누설 위험**(4-3) · 검증 불가)
+    #  > ⑮ 무너뜨릴 조건 K1~K6 — §9 이변 신호(코드)로 흡수 후 삭제
     #
-    #  🔴 조건은 **코드가** 만든다(LLM 금지 · B2). ⚠️ 상태는 전부 `미확인` 이고
-    #     갈아 주는 자리는 ⑫b(`s5b_falsify`) 하나다.
-    #  🔴🔴 **⑨ 우선순위 지수는 지웠다**(지시서 2026-10-12(셋째) §1 처분) —
-    #     §7 결장의 무게(`absence_loss`)가 그 일을 한다. 그래서 K5 는 안 선다.
-    #  ⚠️ **가설에는 id 칸이 없다**(`Hypothesis(team, reasons, breaks)`) — `H1` 류
-    #     번호는 **없다**(최종 평 묶음을 §1 처분으로 지웠다). 그래서 여기서는
-    #     *그 가설이 어느 팀의 몇 번째 줄인가*로 가리킨다(실제 실행이 잡았다).
-    hypo_ids = [f"{one.team}#{i + 1}"
-                for i, one in enumerate(hypo.hypotheses or [])]
-    breaks = s6_hypo.build_break_conditions(
-        ref, mr, variables, hypo_ids=hypo_ids,
-        reads=dict(edge.get("reads") or {}))
-    edge["breaks"] = breaks
-    st.note("⑩b 무너뜨릴 조건 — "
-            + (" · ".join(f"{c.kind}×{sum(1 for x in breaks if x.kind == c.kind)}"
-                          for c in breaks[:1])
-               if breaks else "⬜ 0건")
-            + f" · 모두 {len(breaks)}건(상태 전부 `미확인`)")
+    #  🔴 그 자리를 지금 지키는 것: **§9 공변량**(코드가 만든 수)과 **§10 경고**.
     # 🔴🔴 **⑯ 에 Elo 바닥을 넘긴다**(사용자 결정 2026-10-12 (a) · C1 개정)
     #  ⚠️ `base_p.probs` 가 `None` 이면(Elo 없음) ⑯ 은 **옛 구조**로 돈다 — 지어내지
     #     않는다. 그 사실은 `prob.why` 에 적힌다.
@@ -413,7 +392,7 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
             layers.get("base").model_copy(
                 update={"probs": (adj_p.probs if adj_p.probs is not None
                                   else base_p.probs)}),
-            layers["ours"], layers.get("market"), hypo, variables,
+            layers["ours"], layers.get("market"), variables,
             measured=adj_p.measured,
             label=str(layers.get("market_label") or ""))
         layers["compare"] = said6["compare"]
@@ -458,71 +437,27 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #     인자로도 본문으로도 안 받는다(계약이 센다).
     #  🔴🔴 **그 호출은 위로 올라갔다**(F6/R8 — 상성 직후·확률 앞). 여기서는
     #     세운 가설을 **검증**에 넘긴다.
-    from app.core.stages import s6c_check as _s6c
-    got_check = _s6c.run(ref, facts, hypo, dict(edge.get("sim") or {}),
-                         variables=variables, turnover=turn, mr=mr,
-                         varset=varset, layers=layers, state=st)
-    if _s6c.rerun_needed(got_check):
-        # 🔴 §4-3 — **최대 1회**. 지금은 조건이 성립하지 않아 안 돈다(사유는 표에)
-        st.note("단계 4-3 — 재실행 1회")
     # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **⑫b 반증 딥서치** — 수정 지시서 2026-10-12 [3b]
+    # ⚠️ **⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·재가중도 지웠다**(§1 처분)
     # ══════════════════════════════════════════════════════════════════
     #
-    #  > pipeline.py에서 ⑫ 호출 직후·⑬ 앞에서 **조건 없이** 부른다(재생 포함).
+    #  > ⑱ 반증 딥서치 — 목적 변경 → **"오늘 사실 확인 질의"**(§2)로 재배치
+    #  > ⑳ 시나리오 — 삭제(생존은 이미 격자에서)
+    #  > ㉒ 반증 판정 — §11 판정 행동으로 흡수 후 삭제
     #
-    #  🔴 등급만 바꾼다(C2) — 이 단계는 **확률을 만지지 않는다**(B3).
-    #  ⚠️ 재생에서는 질의를 안 던지고 구조 사실만 판정한다(그 사실을 적는다).
-    from app.core.stages import s5b_falsify
-    edge["breaks"] = await s5b_falsify.run(
-        ref, facts, list(edge.get("breaks") or []), state=st, chain=chain,
-        net=net, edge=str(mr.edge_of() if mr is not None else ""),
-        xi_state=str(getattr(mr, "xi_state", "") or ""))
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **[3c] 되돌림 — 최대 1회**(수정 지시서 2026-10-12)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  > ⑫b에서 새로 확인된 무너짐이 **라인업·결장 사실(K1·K6)** 이면 그 사실을
-    #  > VariableSet에 넣고 **④부터 재실행**(F1 경로). 루프 상한 **1회** —
-    #  > 두 번째는 표시만.
-    #
-    #  🔴 재실행은 **이 함수를 다시 부른다** — 파이프라인의 사본을 만들지 않는다
-    #     (F1 이 그 규율이다 · 계약 `test_v8_f1_reanalyze`).
-    #  ⚠️ 깃발(`break_rerun`)이 이미 있으면 **안 돈다** — 그 사실만 적는다(B4).
-    said_again = s5b_falsify.rerun_rows(list(edge.get("breaks") or []))
-    if said_again and not break_rerun:
-        facts_more = s5b_falsify.rerun_facts(said_again)
-        st.note("🔁 [3c] 반증이 **라인업·결장 사실**을 찾았다 — ④부터 다시 센다"
-                f"({', '.join(c.id for c in said_again[:3])})")
-        return await analyze(
-            raw, pool=pool, net=net, chain=chain, state=st, board=board,
-            board_text=board_text, board_image=board_image,
-            pick_key=pick_key, xi_image=xi_image, reuse=reuse, before=before,
-            now=now, break_facts=[*(break_facts or []), *facts_more],
-            break_rerun=("반증으로 재계산 — "
-                         + ", ".join(c.id for c in said_again[:3])))
-    if said_again and break_rerun:
-        st.note("⚠️ [3c] 반증 무너짐이 또 있지만 **표시만** 한다(상한 1회 · B4) — "
-                + ", ".join(c.id for c in said_again[:3]))
-    hypo = s6_hypo.scenarios(ref, facts, variables, hypo,
-                             dict(edge.get("sim") or {}), state=st,
-                             supported=list(got_check.get("supported") or []))
-    layers["check"] = got_check
-    # 🔴 [3c] — 되돌려 다시 센 카드면 **머리에 찍는다**(⑯)
+    #  🔴 되돌림(⑲)은 **남는다** — 확정 XI·새 결장이 오면 ⑧⑪⑬⑯ 을 다시 돈다
+    #     (그 길은 `reanalyze` 다). ⚠️ 반증이 그것을 트리거하던 길은 없어졌다.
     layers["break_rerun"] = break_rerun
     layers["varset"] = varset
-    from app.core import reweight as _reweight
-    hypo = _reweight.of(hypo, layers.get("ours"), ref=ref, state=st)
     # 🔴 F5 — **생존은 시뮬 분포에서** 센다(시나리오는 표시용이다)
-    said = s7_judge.run(ref, facts, variables, hypo, state=st, board=got_board,
+    said = s7_judge.run(ref, facts, variables, state=st, board=got_board,
                         board_source=board_src, now=now,
                         dist=dict(dict(edge.get("sim") or {}).get("scores")
                                   or {}))
     # 🔴🔴 **[3d] 반증 판정을 기존 등급 위에 얹는다**(지시서 2026-10-12)
     #    ⚠️ 확률은 안 바뀐다(C2) · 시장은 들어가지 않는다(C12).
-    said = s7_judge.by_breaks(_grade_by_check(said, layers, state=st),
-                              list(edge.get("breaks") or []))
-    st.note(f"⑭ 반증 판정 — **{said.stance}**")
+    # ⚠️ **㉒ 반증 판정은 지웠다**(§1 처분) — 그 일(등급을 내리는 것)은 §11 판정
+    #    행동(이변 경고·InfoQ)이 바로 아래에서 한다.
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **§13·§14 정보 품질 InfoQ** — 지시서 2026-10-12(둘째) · 등급만 바꾼다
     # ══════════════════════════════════════════════════════════════════
@@ -552,7 +487,9 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     # 🔴🔴 **먼저 숫자를 고치고, 그 숫자에서 논평을 만든다**(2026-10-07 ②③)
     # ══════════════════════════════════════════════════════════════════
     from app.core import shape as _shape
-    got_shape = _shape.of(hypo)
+    # 🔴 §1 처분 — 양상은 **격자**에서 센다(시나리오 무게가 아니다)
+    got_shape = _shape.of(dict(dict(edge.get("sim") or {}).get("scores")
+                               or {}))
     if got_shape:
         st.note(f"s8 양상 — **{got_shape['shape']}** · {got_shape['why']}")
     # ══════════════════════════════════════════════════════════════════
@@ -569,7 +506,7 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     changed = (_diff(before, facts, variables, said)
                + _market_moved(before, layers, state=st)
                + _moved(before, layers, mr) if before is not None else [])
-    card = card_of(ref, facts, variables, hypo, said, state=st,
+    card = card_of(ref, facts, variables, said, state=st,
                    board_extra=extra, board_bad=bad, layers=layers,
                    changed=(changed or None))
     # 🔴🔴 **F7 — 글 한 편**(작성 1 + 검열 1). 카드가 다 선 **뒤**다 — 작성자
@@ -921,7 +858,7 @@ def _diff(before: Card, facts: Facts, variables: list[Variable],
 
 
 def card_of(ref: MatchRef, facts: Facts, variables: list[Variable],
-            hypo: HypoSet, said: Judgement, *, state: RunState,
+            said: Judgement, *, state: RunState,
             board_extra: list[str] | None = None,
             board_bad: list[str] | None = None,
             changed: list[str] | None = None,
@@ -965,7 +902,7 @@ def card_of(ref: MatchRef, facts: Facts, variables: list[Variable],
         # 🔴🔴 **변수 배치**(상성 엔진 V-4) — 긴 카드 `🔢 변수` 가 전부 보인다
         varset=box.get("varset"),
         match=ref, facts=facts, variables=variables,
-        drops=[*state.drops, *hypo.drops], hypo=hypo, evals=said.evals,
+        drops=list(state.drops), evals=said.evals,
         direction=said.direction, conclusion=said.conclusion,
         # 🔴 [3d] 반증 — 판정과 조건 전문을 카드가 든다(⑯)
         # ⚠️ 이 자리에서 재료 묶음의 이름은 `box["matchup"]` 이다(`edge` 가 아니다 —
@@ -983,7 +920,7 @@ def card_of(ref: MatchRef, facts: Facts, variables: list[Variable],
         breaks=list(dict(box.get("matchup") or {}).get("breaks") or []),
         triggers=said.triggers,
         funnel=Funnel(counts=state.counted(),
-                      drops=[*state.drops, *hypo.drops]),
+                      drops=list(state.drops)),
         cost=state.wallet.snapshot(), started=said.started)
 
 
@@ -1064,7 +1001,7 @@ def _comment_layers(got, shape: dict) -> dict:
             "comment_violations": list(got.violations)}
 
 
-def compare_block(base_for_compare, ours, market, hypo,
+def compare_block(base_for_compare, ours, market,
                   variables: list, *, measured: bool = False,
                   label: str = "") -> dict:
     """🔴🔴 **§6 세 열 판정 — 한 곳**. 카드 칸(`compare`·`compare_lines`·`tilt`).
@@ -1085,14 +1022,14 @@ def compare_block(base_for_compare, ours, market, hypo,
     """
     from app.core import compare
     verdict, lines = compare.verdict_of(base_for_compare, ours, market)
-    tilt = compare.tilt_reasons(ours, base_for_compare, hypo, variables,
+    tilt = compare.tilt_reasons(ours, base_for_compare, variables,
                                 measured=measured)
     return {"compare": verdict, "tilt": tilt, "_lines": lines,
             "compare_lines": [*lines, (f"시장 열 — {label}" if label else "")]}
 
 
 def _layers(ref: MatchRef, facts: Facts, variables: list[Variable],
-            hypo: HypoSet, base_p: BaseProb, adj_p: AdjProb,
+            base_p: BaseProb, adj_p: AdjProb,
             feed_mk: MarketProb, user_mk: MarketProb, *,
             state: RunState, outlook: dict | None = None,
             strategy: object = None, ours=None) -> dict:
@@ -1118,7 +1055,7 @@ def _layers(ref: MatchRef, facts: Facts, variables: list[Variable],
     base_for_compare = (base_p.model_copy(update={"probs": start})
                         if start is not None else base_p)
     market, label = s2c_market.column(feed_mk, user_mk)
-    said3 = compare_block(base_for_compare, ours, market, hypo, variables,
+    said3 = compare_block(base_for_compare, ours, market, variables,
                           measured=adj_p.measured, label=label)
     verdict, lines, tilt = said3["compare"], said3["_lines"], said3["tilt"]
     # 🔴 ④ — **우리 결론의 방향**을 넘긴다(근거 검열의 기준이다)

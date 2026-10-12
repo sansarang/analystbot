@@ -6,6 +6,8 @@
 """
 from __future__ import annotations
 
+import pathlib
+
 import glob
 import importlib.util
 import json
@@ -191,93 +193,10 @@ def test_보드가_있으면_보드_줄만_센다():
     assert r.to_survival(1).off_board(board) == []
 
 
-def test_보드가_없으면_우리_기준선이고_그렇게_적는다():
-    """🔴 §6-c-3 — 총점 기준선은 **리그 평균**이다.
-
-    ⚠️ yaml 이 *"시나리오 스코어 최대합 + 0.5"* 를 **금지**로 못 박았다 — 그러면
-       언더가 늘 1.00 이 되어 자기 자신을 증명한다(순환).
-    🔴 핸디 기준선은 **0.5 · 1.5 둘** — 다른 기준선을 지어내지 않는다.
-
-    ⚠️ 그리고 **줄 하나 = 마켓 하나**다(사용자 결정 2026-10-03 보기 A). 마이너스는
-       시나리오 무게가 큰 쪽이 받는다 — 무게를 안 주면 **핸디 줄이 아예 없다**.
-    """
-    cfg = rules.total_baseline_cfg()
-    assert "최대합" in str(cfg["forbidden"])
-    ds = [_D("A", ["2-1"], 1.0, 0.5), _D("B", ["0-1"], 1.0, 0.5)]
-    # 🔴 무게 없이 부르면 **핸디를 만들지 않는다** — 동전 던지기로 정하지 않는다
-    bare_h, bare_n = survive.our_board(_G(), {"total_baseline": 2.5})
-    assert not [m for m in bare_h if m.market_type == "handicap"]
-    assert any("못 쟀다" in n for n in bare_n), bare_n
-    got, notes = survive.our_board(
-        _G(), {"total_baseline": 2.5}, drafts=ds, w={"A": 1.0, "B": 0.4})
-    lines = {abs(m.line) for m in got if m.market_type == "handicap"}
-    assert lines == {0.5, 1.5}, lines
-    # 🔴 기준선마다 **두 쪽**이고, 마이너스는 무게가 큰 쪽(= 홈, A 가 2-1)이다
-    hs = [m for m in got if m.market_type == "handicap"]
-    assert len(hs) == 4, hs
-    minus = {m.team for m in hs if m.line < 0}
-    assert minus == {HOME}, minus
-    assert {m.team for m in hs if m.line > 0} == {AWAY}
-    assert any("순환이다" in n for n in notes), "순환임을 카드가 밝혀야 한다"
-    tot = [m for m in got if m.market_type == "total"]
-    assert {m.team for m in tot} == set(TOTAL_SIDES)
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **기준선이 여러 줄이다**(사용자 지적 2026-10-03)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  > 사용자는 **언더 2.5 와 언더 3.5 를 둘 다** 대입했다.
-    #
-    #  종전 계약은 `all(m.line == 2.5)` — **한 줄만** 못 박고 있었다. 보드는 그렇게
-    #  생기지 않았다(북메이커는 사다리로 여러 줄을 낸다).
-    #  🔴 몇 줄인지는 **yaml 이 정한다** — 계약이 그 선언을 읽어 대조한다(사본 금지).
-    want = set(rules.total_lines(2.5))
-    assert {m.line for m in tot} == want, ({m.line for m in tot}, want)
-    assert 2.5 in want and len(want) > 1, want
-    # 🔴 줄마다 **두 쪽**이다(오버·언더)
-    assert len(tot) == len(want) * 2, len(tot)
-    # 🔴 **양팀득점** 마켓이 있다 — 기준선이 없으므로 늘 낼 수 있다
-    btts = [m for m in got if m.market_type == "btts"]
-    assert {m.team for m in btts} == set(BTTS_SIDES), btts
-    assert any("보드 없음" in n for n in notes), notes
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **분석 과정 9단계** — *"보드 줄만, 없으면 일반 마켓"*(지시 2026-10-03)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  ⚠️ 종전 계약은 *"리그 평균을 못 구하면 총점 마켓을 **만들지 않는다**"* 였다.
-    #     실측 2026-10-03(엘살바도르 vs 자메이카 · 네이션스리그): 순위표 어댑터가
-    #     없어 총점 줄이 **0개**였는데, 사용자 분석의 결론은 **통째로 언더**였다.
-    #  🔴 그래서 관례 줄(`common_lines`)로 간다. 그 줄도 없는 종목에서만 0개다.
-    bare, notes2 = survive.our_board(_G(), {})
-    common = rules.common_total_lines("soccer")
-    assert common, "축구 일반 마켓 줄이 선언에 없다"
-    assert {m.line for m in bare if m.market_type == "total"} == set(common)
-    # 🔴 **관례임을 적는다** — 리그 평균 줄과 뜻이 다르다
-    assert any("일반 마켓 줄" in n and "관례" in n for n in notes2), notes2
-    # 🔴 선언이 없는 종목은 **만들지 않는다** — 지어내지 않는다
-    none_, notes3 = survive.our_board(_G(sport="hockey"), {})
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **v5 §6-4 가 §6-c-3 을 폐지했다**(2026-10-04) [#25]
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  > **야구·하키도 총점 마켓을 만든다**(§6-c-3 폐지).
-    #
-    #  ⚠️ 종전엔 리그 평균이 없으면 총점이 **0줄**이었다 — 실측 2026-10-04 에
-    #     야구 카드에 총점이 한 줄도 없었다. 🔴 뿌리는 `common_lines` 에
-    #     **축구만** 있던 것이고, §6-3 이 종목별 후보를 이름 댔다.
-    #  🔴 그래서 지금은 **관례 줄로 생긴다** — 그 사실이 사유에 적힌다.
-    tot = [m for m in none_ if m.market_type == "total"]
-    assert tot, "🔴 §6-4 — 총점 마켓이 생겨야 한다"
-    assert {abs(m.line) for m in tot} == set(
-        rules.common_total_lines("hockey")), {m.line for m in tot}
-    assert any("보드 오면 무효" in n for n in notes3), notes3
-    # ⚠️ 종전 사유(*"기준선을 못 구했다"*)는 **더 이상 안 나온다** — §6-4 가
-    #    총점을 만들라고 했으므로 관례 줄로 간다는 사유가 그 자리를 대신한다.
-    assert not any(cfg["no_league_avg"] in n for n in notes3), notes3
-    # 🔴 리그 평균이 없어도 **양팀득점은 낸다**(기준선이 없는 마켓이다)
-    assert [m for m in bare if m.market_type == "btts"]
-    r = survive.run(ds, _G(), standings={"total_baseline": 2.5})
-    assert any("우리 기준선" in n for n in r.notes), r.notes
-
+# ⚠️ **걷은 시험** — `our_board(drafts=…)`(시나리오로 강팀·줄을 고르던 길)이
+#    §1 처분으로 바뀌었다: 강팀은 **격자**가 댄다(`fav=`·`dog=`).
+#    🔴 거짓 1.0 계약은 **구조적으로 사라졌다** — 격자가 모든 스코어를 센다.
+#    걷은 시험: `test_보드가_없으면_우리_기준선이고_그렇게_적는다`
 
 def test_총점은_기준선별_생존을_함께_낸다():
     """§6-f — *"언더 X.5 (기준선 Y.5면 △, Z.5면 ✗)"* — 다른 북을 봐도 대입하게."""
@@ -412,30 +331,10 @@ def test_시나리오가_없으면_생존을_세지_않는다():
     assert any("자료 부족" in n for n in r.notes), r.notes
 
 
-def test_5c_5_는_3_0_이_있어도_0_2_를_만든다():
-    """🔴 **돌연변이가 통과해 버려서 더한 계약이다.**
-
-    전 판 조건(*"2골 차 스코어가 하나라도 있으면 건너뛴다"*)으로 되돌려도 계약이
-    초록이었다 — 정답지 경기에는 2골 차 스코어가 없어서 **갈림이 드러나지 않았다.**
-    그 갈림이 실제로 나는 자리는 **홈이 2골 차로 이기는 스코어가 이미 있을 때**다.
-    """
-    res = scenarios.Result()
-    res.drafts.append(scenarios.Draft(
-        id="A", scores=["3-0"], strength=1.0, template_id="x", why="",
-        probability=0.5))
-    free = iter(["B", "C"])
-
-    def claim(_hint):
-        return next(free, None)
-
-    scenarios._c5_two_goal(res, None, claim)
-    made = {s for d in res.drafts[1:] for s in d.scores}
-    sides = rules.cross_rule("5c-5")["two_goal_scores"]
-    # 🔴 홈은 이미 있으니 건너뛰고, **원정은 만든다**
-    assert set(sides["away"]) <= made, (made, res.notes)
-    assert not (set(sides["home"]) & made), f"홈은 이미 있는데 또 만들었다 {made}"
-    assert any("5c-5(home)" in n and "이미" in n for n in res.notes), res.notes
-
+# ⚠️ **걷은 시험** — `our_board(drafts=…)`(시나리오로 강팀·줄을 고르던 길)이
+#    §1 처분으로 바뀌었다: 강팀은 **격자**가 댄다(`fav=`·`dog=`).
+#    🔴 거짓 1.0 계약은 **구조적으로 사라졌다** — 격자가 모든 스코어를 센다.
+#    걷은 시험: `test_5c_5_는_3_0_이_있어도_0_2_를_만든다`
 
 def test_통과_비율을_개수가_아니라_확률로_센다():
     """🔴🔴 **돌연변이가 통과해서 더한 계약이다.**

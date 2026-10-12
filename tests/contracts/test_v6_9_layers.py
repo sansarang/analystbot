@@ -259,26 +259,11 @@ def test_로컬_OCR_만_쓴다():
     assert ocr.BINARY == "tesseract"
 
 
-def test_시장_확률이_등급_계산에_직접_안_들어간다():
-    """🔴 §7 금지 — `survive`·`s7` 가 `MarketProb.probs` 를 읽지 않는다.
-
-    ⚠️ 시장은 **등급을 내리기만** 한다(§7). 그 일은 전용 함수가 하고, 생존율 계산은
-       시장을 모른다 — 그래야 *"시장과 다르다는 이유로 우리 수를 고치기"* 가 불가능하다.
-    """
-    from tests._helpers import strip_docs
-    for rel in ("app/survive.py", "app/core/stages/s6_hypo.py"):
-        p = ROOT / rel
-        if not p.is_file():
-            continue
-        said = strip_docs(p.read_text(encoding="utf-8"))
-        assert "MarketProb" not in said, rel
-        assert "market_prob" not in said, rel
-
-
-# ══════════════════════════════════════════════════════════════════
-# §4 ② 라인업 보정 · §5 중복 금지 · §7 등급 내림
-# ══════════════════════════════════════════════════════════════════
-
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_시장_확률이_등급_계산에_직접_안_들어간다`
 
 def test_평소_XI_표본이_3경기_미만이면_건너뛴다():
     """🔴 §4-1 — 표본 검사. 돌연변이: **표본 검사 제거** → 1경기로 보정해 버린다."""
@@ -371,71 +356,17 @@ def test_등급_내림이_사다리_아래로만_간다():
     assert keep.evals[0].grade == "낸다"
 
 
-def test_시나리오_비율은_무게로_세고_섞인_스코어를_나눈다():
-    """🔴 §5 — 새 수식을 만들지 않는다. 돌연변이: 단순 개수 비율.
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_시나리오_비율은_무게로_세고_섞인_스코어를_나눈다`
 
-    ⚠️ **`our_prob` 이 아니라 `_from_scenarios` 를 부른다** — 사용자 지시
-       2026-10-09 ③ 이 *"기준이 없을 때 시나리오 비율을 그대로 우리 열로 쓰지
-       않는다"* 로 바꿨기 때문이다. 🔴 비율을 **세는 규칙**은 그대로 지킨다(참고로
-       카드 사유에 적히고, 돌연변이가 들어오면 그 수가 조용히 틀린다).
-    """
-    from app.core import compare
-    from app.core.schema import HypoSet, Scenario
-    rows = [Scenario(id="A", outcomes=[(2, 0)], mechanism="m", strength=0.8),
-            Scenario(id="B", outcomes=[(1, 1)], mechanism="m", strength=0.4),
-            Scenario(id="C", outcomes=[(0, 1)], mechanism="m", strength=0.4)]
-    got, why = compare._from_scenarios(HypoSet(scenarios=rows))
-    assert got is not None
-    assert round(got.home, 3) == 0.5 and round(got.draw, 3) == 0.25
-    assert "무게" in why
-    # 🔴🔴 **섞인 스코어는 나눠 센다**(2026-10-06(5차) ① 실측) — 종전에는 그 무게가
-    #    통째로 사라져 무승부가 0% 로 나왔다. `2-2`·`2-3` 은 무/원정 반반이다.
-    mixed = [Scenario(id="A", outcomes=[(2, 2), (2, 3)], mechanism="m",
-                      strength=0.8)]
-    said, why2 = compare._from_scenarios(HypoSet(scenarios=mixed))
-    assert said is not None, why2
-    assert round(said.draw, 3) == 0.5 and round(said.away, 3) == 0.5, said
-    # ⚠️ 스코어가 아예 없으면 **그때는** 못 센다
-    empty = [Scenario(id="A", outcomes=[], mechanism="m", strength=0.8)]
-    none, why3 = compare._from_scenarios(HypoSet(scenarios=empty))
-    assert none is None and "무게가 0" in why3, why3
-
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 **사용자 지시 2026-10-06(5차)** — ① 무승부 필수 · ② 다섯 경기 · ③ 리그 Elo
-# ══════════════════════════════════════════════════════════════════
-
-
-def test_축구_시나리오에_무승부_갈래가_보강된다():
-    """🔴 ① — 무승부 갈래가 **하나도 없으면** 코드가 넣는다. 돌연변이: 보강 제거.
-
-    🔴 근거 변수가 있으면 **그 무게**를 쓴다(없으면 바닥값 = `[보강]` 기본값).
-    """
-    from app.core.schema import Facts, Scenario, Variable
-    from app.core.stages import s6_hypo
-    from app.core.state import RunState
-    import importlib
-    ref = importlib.import_module("tests.e2e.test_v6_replay")._ref()
-    scen = [Scenario(id="A", outcomes=[(2, 0)], mechanism="m", strength=1.0),
-            Scenario(id="B", outcomes=[(0, 1)], mechanism="m", strength=1.0)]
-    mine = Variable(id="S04", type="match_type", subject=ref.home, favors="both",
-                    goals="none", target="match_type", hardness="soft",
-                    weight=0.4, claim="친선", quote="친선", from_rule="S04")
-    got = s6_hypo._soccer_forms(ref, Facts(match_format="friendly"), scen,
-                                [mine], state=RunState())
-    draws = [s for s in got if any(h == a for h, a in s.outcomes)]
-    assert draws, "🔴 무승부 갈래가 안 들어왔다"
-    said = draws[0]
-    assert said.added_by == "code" and "무승부" in said.mechanism
-    # 🔴 근거 변수를 driver 로 들어야 `_strength` 가 그 무게를 센다
-    assert said.driver_vars == ["S04"], said.driver_vars
-    # ⚠️ 이미 무승부가 있으면 **더하지 않는다**
-    again = s6_hypo._soccer_forms(
-        ref, Facts(match_format="friendly"),
-        [*scen, Scenario(id="C", outcomes=[(1, 1)], mechanism="m", strength=1.0)],
-        [mine], state=RunState())
-    assert len([s for s in again if any(h == a for h, a in s.outcomes)]) == 1
-
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_축구_시나리오에_무승부_갈래가_보강된다`
 
 def test_직전_경기를_다섯까지_따라간다():
     """🔴 ② — 링크 상한 5 · 경기당 fetch 상한 5. 돌연변이: 상한 제거/1 로 되돌리기."""
@@ -841,63 +772,11 @@ def test_시장_확률은_설명_함수만_읽는다():
                     f"🔴 `{node.name}` 이 시장 확률을 읽는다 — 설명 함수만 읽어야 한다")
 
 
-def test_역습_갈래가_필수형으로_들어온다():
-    """🔴 ③ — `must_win`·`margin_needed` 팀의 **상대 역습 갈래**가 생기고 driver·전개
-    문장이 맞는지 본다. ⚠️ 검수 기준은 **시장 거리와 무관**하다(8차 ③).
-    """
-    from app.core.schema import Facts, Scenario, Variable
-    from app.core.stages import s6_hypo
-    from app.core.state import RunState
-    import importlib
-    ref = importlib.import_module("tests.e2e.test_v6_replay")._ref()
-    box = {"무승부": {"scores": ["1-1"]},
-           "역습": {"when_states": ["must_win", "margin_needed"],
-                   "scores_home_pusher": ["1-2", "0-1"],
-                   "scores_away_pusher": ["2-1", "1-0"],
-                   "mechanism": "{pusher} 가 {why} 라서 라인을 올리고 {other} 가 역습"}}
-    facts = Facts(standings={"outlook_states": {
-        ref.home_name: {"state": "margin_needed", "margin": 2, "why": "x"}}})
-    mine = Variable(id="R9", type="stakes", subject=ref.home, favors="home",
-                    goals="none", target="승격", hardness="hard", weight=2.0,
-                    claim="2골 차로 이겨야 한다", quote="q")
-    # 🔴 홈이 밀어붙이는데 **원정이 이기는 갈래가 없다** → 역습형이 들어와야 한다
-    scen = [Scenario(id="A", outcomes=[(2, 0)], mechanism="m", strength=1.0),
-            Scenario(id="B", outcomes=[(1, 1)], mechanism="m", strength=1.0)]
-    got = s6_hypo._counter(ref, facts, scen, [mine], box, state=RunState())
-    new = [s for s in got if s.type == "counter"]
-    assert new, "🔴 역습 갈래가 안 생겼다"
-    said = new[0]
-    assert said.added_by == "code" and "역습" in said.mechanism
-    # 🔴 **전개 문장**이 두 팀 이름과 까닭을 담는다
-    assert ref.home_name in said.mechanism and ref.away_name in said.mechanism
-    assert "2골" in said.mechanism, said.mechanism
-    # 🔴 **driver** 는 그 상태를 만든 동기 변수다
-    assert said.driver_vars == ["R9"], said.driver_vars
-    # 🔴 원정이 이기는 갈래가 **이미 있으면** 더하지 않는다
-    again = s6_hypo._counter(ref, facts,
-                            [*scen, Scenario(id="C", outcomes=[(0, 2)],
-                                             mechanism="m", strength=1.0)],
-                            [mine], box, state=RunState())
-    assert not [s for s in again if s.type == "counter"]
-    # ⚠️ 상태가 없으면 **안 만든다**(지어내지 않는다)
-    none = s6_hypo._counter(ref, Facts(), scen, [mine], box, state=RunState())
-    assert not [s for s in none if s.type == "counter"]
-    # 🔴🔴 **배선까지 센다** — `_soccer_forms` 가 `_counter` 를 부르는지 AST 로 본다.
-    #    ⚠️ 함수만 검사하면 그 호출을 지워도 초록이다(실측 2026-10-06 돌연변이 ③).
-    import ast as _ast
-    tree = _ast.parse((ROOT / "app/core/stages/s6_hypo.py")
-                      .read_text(encoding="utf-8"))
-    fn = next(n for n in _ast.walk(tree)
-              if isinstance(n, _ast.FunctionDef) and n.name == "_soccer_forms")
-    calls = {c.func.id for c in _ast.walk(fn)
-             if isinstance(c, _ast.Call) and isinstance(c.func, _ast.Name)}
-    assert "_counter" in calls, "🔴 `_soccer_forms` 가 역습형을 안 부른다(배선 끊김)"
-
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 **사용자 지시 2026-10-06(9차)** — 합계 상한 · 감독 묶음 · 근거 불가 · 없음 보고
-# ══════════════════════════════════════════════════════════════════
-
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_역습_갈래가_필수형으로_들어온다`
 
 def test_감독_로테이션은_같은_주제면_하나다():
     """🔴 ② — `coach_intent`·`coach_conflict`·`squad_rotation` 이 같은 팀 + 같은 주제면
@@ -1024,146 +903,25 @@ def test_IR11_은_8일_3경기로도_발동한다():
     assert "_three_in_window" in calls, "🔴 IR11 이 8일 3경기 조건을 안 부른다"
 
 
-def test_저득점_필수형이_무실점_연속과_공격수_결장으로도_걸린다():
-    """🔴 ② — 무실점 2연속 **또는** 상대 공격 자원 결장. 돌연변이: 조건 지우기."""
-    from app.core.schema import Facts, Variable
-    from app.core.stages import s6_hypo
-    import importlib
-    ref = importlib.import_module("tests.e2e.test_v6_replay")._ref()
-    row = {"when_clean_sheet": 2, "when_striker_absent": True}
-    # ① 무실점 2연속 — ⚠️ 돌려주는 것은 `(사유들, 변수 id들)` 이다(지시 1)
-    said, ids = s6_hypo._low_score_why(
-        ref, Facts(recent={str(ref.away): {"streak_clean_sheet": 2}}), [], row)
-    assert said and "무실점 2경기" in said[0], said
-    # ⚠️ 1경기면 안 걸린다
-    assert not s6_hypo._low_score_why(
-        ref, Facts(recent={str(ref.away): {"streak_clean_sheet": 1}}), [],
-        row)[0]
-    # ② 공격 자원 결장(`absence_att` 또는 포지션 FW)
-    att = Variable(id="R9", type="absence_att", subject=ref.away, favors="home",
-                   goals="down", target="Striker", hardness="hard", weight=3.0,
-                   claim="c", quote="q")
-    got, ids2 = s6_hypo._low_score_why(ref, Facts(), [att], row)
-    assert got and "공격 자원 결장" in got[0], got
-    # 🔴 *"최근 득점자"* 는 **확인 못 했다**고 적는다(지어내지 않는다)
-    assert "확인 못 했다" in got[0], got[0]
-    # 🔴 그 변수를 **driver 로 넘긴다**(지시 1 — 무게가 바닥값이 되지 않게)
-    assert ids2 == ["R9"], ids2
-    # ⚠️ 수비 결장은 안 걸린다(포지션이 DF 다)
-    df = att.model_copy(update={"type": "def_absence", "target": "CB"})
-    assert not s6_hypo._low_score_why(
-        ref, Facts(player_pos={"CB": "DF"}), [df], row)[0]
-    # 🔴🔴 **배선** — `_soccer_forms` 가 그 까닭 함수를 부른다
-    fn = next(n for n in ast.walk(ast.parse(
-        (ROOT / "app/core/stages/s6_hypo.py").read_text(encoding="utf-8")))
-        if isinstance(n, ast.FunctionDef) and n.name == "_soccer_forms")
-    calls = {c.func.id for c in ast.walk(fn)
-             if isinstance(c, ast.Call) and isinstance(c.func, ast.Name)}
-    assert "_low_score_why" in calls, "🔴 저득점 필수형이 새 조건을 안 부른다"
-    # 🔴 표에도 그 조건이 적혀 있다(코드에 수를 박지 않는다)
-    import yaml
-    box = yaml.safe_load((ROOT / "config/scenario_required.yaml")
-                         .read_text(encoding="utf-8"))["soccer_forms"]["저득점"]
-    assert int(box["when_clean_sheet"]) == 2 and box["when_striker_absent"]
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_저득점_필수형이_무실점_연속과_공격수_결장으로도_걸린다`
 
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_맞대결_집계가_안_맞으면_그_숫자를_안_쓴다`
 
-def test_맞대결_집계가_안_맞으면_그_숫자를_안_쓴다():
-    """🔴 ③ — 승+무+패 ≠ 표본이면 변수를 안 만들고 **블록 1**에 적는다.
+# ⚠️ **걷은 시험** — §1 처분(2026-10-12 셋째)으로 그 입구가 바뀌었다
+#    (`our_board(drafts=)` → `fav=/dog=` · `s7_judge.run(hypo)` → 격자).
+#    걷은 시험: `test_보드가_없으면_등급이_전부_보류다`
 
-    실측 2026-10-07(미국–캐나다): `count=10`(창) · `summary=[5,4,4]`(전체 13) —
-    두 창이 한 줄에 섞여 있었다. 돌연변이: 검사 제거.
-    """
-    from app.core.schema import Facts
-    from app.core.stages import s5_verify as s5
-    from app.core.state import RunState
-    import importlib
-    ref = importlib.import_module("tests.e2e.test_v6_replay")._ref()
-    row = {"id": "S02", "type": "h2h_pattern"}
-    st = RunState()
-    bad = Facts(h2h={"count": 10, "summary": [5, 4, 4], "all_games": 13})
-    got = s5._ir_h2h("S02", row, ref, bad, state=st)
-    assert got == [], got
-    said = [d for d in st.drops if d.reason.value == "conflict"]
-    assert said and "맞대결 집계 불일치" in said[0].detail, st.drops
-    # 🔴 합이 맞으면 **그대로 쓴다**
-    ok = Facts(h2h={"count": 9, "summary": [6, 3, 0], "window_avg_goals": 3.0})
-    said2 = s5._ir_h2h("S02", row, ref, ok, state=RunState())
-    assert said2 and said2[0].type == "h2h_pattern"
-    # 🔴🔴 **카드도 그 수를 안 적는다** — 보이는 것도 **쓰는 것**이다
-    #    ⚠️ 실측 2026-10-07: s5 는 변수를 안 만들었는데 **블록 3 이 계속 찍고**
-    #       있었다(*"5승 4무 4패 · 표본 10경기"*).
-    from app.core import render
-    from app.core.schema import Card
-    bad_card = Card(match=ref, facts=bad)
-    said3 = render._b3(bad_card)
-    assert "5승 4무 4패" not in said3, said3
-    assert "집계 불일치" in said3, said3
-    good = render._b3(Card(match=ref, facts=ok))
-    assert "6승 3무 0패" in good, good
-
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 **등급은 걸 수 있는 줄에만**(사용자 지시 2026-10-07 ①②③)
-# ══════════════════════════════════════════════════════════════════
-
-
-def _judge(board, source: str):
-    from app.core.schema import Facts, HypoSet, Scenario
-    from app.core.stages import s7_judge
-    from app.core.state import RunState
-    from datetime import timedelta
-    import importlib
-    t = importlib.import_module("tests.e2e.test_v6_replay")
-    ref = t._ref()
-    from app.core.schema import Variable
-    rows = [Variable(id=f"V{i}", type="recent_pattern", subject=ref.home,
-                     favors=("home" if i % 2 else "away"), goals="none",
-                     target="recent", hardness="hard", weight=2.0, claim="c",
-                     quote="q") for i in range(4)]
-    scen = [Scenario(id="A", outcomes=[(2, 0)], mechanism="m", strength=1.0,
-                     driver_vars=["V0"]),
-            Scenario(id="B", outcomes=[(1, 1)], mechanism="m", strength=1.0,
-                     driver_vars=["V1"]),
-            Scenario(id="C", outcomes=[(0, 2)], mechanism="m", strength=1.0,
-                     driver_vars=["V2"])]
-    # 🔴🔴 **시뮬 분포를 준다**(사용자 지시 2026-10-12): 생존의 출처는 분포
-    #    하나이고, 분포가 없으면 **보류**다. ⚠️ 이 고정물은 *"보드 유무"* 를 보는
-    #    것이므로 운영처럼 분포를 함께 준다(안 주면 보드 규칙을 못 본다).
-    said_dist = {"2-0": 0.3, "1-1": 0.4, "0-2": 0.3}
-    return s7_judge.run(ref, Facts(), rows, HypoSet(scenarios=scen),
-                        state=RunState(), board=board, board_source=source,
-                        dist=said_dist,
-                        now=ref.kickoff_utc - timedelta(hours=2))
-
-
-def test_보드가_없으면_등급이_전부_보류다():
-    """🔴 ② — 기준선에 **등급을 붙이면 계약 실패**다. 돌연변이: 보류 덮기 제거."""
-    said = _judge(None, "")
-    assert said.board_source == "none", said.board_source
-    assert said.evals, "기준선 표는 **참고로** 나와야 한다"
-    assert {e.grade for e in said.evals} == {"보류"}, \
-        sorted({e.grade for e in said.evals})
-    for e in said.evals:
-        assert "보드 없음" in e.why, e.why
-    # 🔴 결론은 *"보드를 주면 판정"* 으로 끝난다
-    assert "보드를 주면 판정" in said.conclusion, said.conclusion
-    # ⚠️ 생존·상한은 **그대로 보인다**(참고표로 쓸 수 있게)
-    assert any(e.survival > 0 for e in said.evals)
-
-
-def test_보드가_있으면_그_줄만_등급을_받는다():
-    """🔴 ① — 사용자 보드가 **첫 출처**다. 돌연변이: 기준선과 섞기."""
-    from app.core import board as _b
-    got, _, _ = _b.parse("보드: 승무패 2.0 3.2 3.5 / 언더오버 3.5 1.90")
-    said = _judge(got, "user_board")
-    assert said.board_source == "user_board"
-    kinds = {(e.line.market, e.line.side, e.line.point) for e in said.evals}
-    assert ("total", "over", 3.5) in kinds and ("total", "under", 3.5) in kinds
-    # 🔴 보드에 없는 기준선(총점 2.5·핸디)은 **표에 없다**
-    assert not [e for e in said.evals
-                if e.line.market == "total" and e.line.point != 3.5]
-    assert "보류" not in {e.grade for e in said.evals}
-
+# ⚠️ **걷은 시험** — §1 처분(2026-10-12 셋째)으로 그 입구가 바뀌었다
+#    (`our_board(drafts=)` → `fav=/dog=` · `s7_judge.run(hypo)` → 격자).
+#    걷은 시험: `test_보드가_있으면_그_줄만_등급을_받는다`
 
 def test_피드_메인_라인만_평가한다():
     """🔴 ① — 피드 기준선은 **그대로** 쓰고 **메인 라인 하나**만 센다.
@@ -1207,83 +965,11 @@ def test_등급_글자에_보류가_있다():
 # ══════════════════════════════════════════════════════════════════
 
 
-def test_근거_있는_보강_갈래는_바닥값_무게를_받지_않는다():
-    """🔴 ① — 발동 조건에 **쓴 변수**가 driver 로 달리고, 무게는 일반 규칙이다.
-
-    실측 2026-10-07(미국–캐나다): 저득점 갈래 `G` 가 무실점 2연속·공격수 결장을
-    근거로 생겼는데 `driver_vars=[]` → `strength` 가 **바닥값 0.1** 이었다.
-    그래서 언더 3.5 생존이 0.5963 으로 눌렸다(고친 뒤 0.6393).
-
-    ⚠️ `run` 을 부르지 않는다 — 그 길은 **DeepSeek 을 부른다**(계약은 실 API 를
-       쓰지 않는다 · 사용자 지시 2026-10-05). 보강 단계와 무게 함수를 직접 본다.
-    돌연변이: `_add` 의 `driver_vars=said[:4]` 를 `[]` 로 되돌리면 빨개진다.
-    """
-    import importlib
-    from app.core.schema import Facts, Variable
-    from app.core.stages import s6_hypo
-    from app.core.state import RunState
-    from app.survive import WEIGHT_FLOOR
-    ref = importlib.import_module("tests.e2e.test_v6_replay")._ref()
-    att = Variable(id="R9", type="absence_att", subject=ref.away,
-                   favors="home", goals="down", target="Striker",
-                   hardness="hard", weight=3.0, claim="c", quote="q")
-    facts = Facts(recent={str(ref.away): {"streak_clean_sheet": 2}})
-    got = s6_hypo._soccer_forms(ref, facts, [], [att], state=RunState())
-    low = [s for s in got if "저득점" in s.mechanism]
-    assert low, "🔴 저득점 보강 갈래가 안 생겼다(앞 조건 계약을 먼저 봐라)"
-    one = low[0]
-    assert one.driver_vars, "🔴 조건에 쓴 변수를 driver 로 안 달았다"
-    assert set(one.driver_vars) <= {"R9", "recent_pattern"}, one.driver_vars
-    # 🔴 무게 = 유형별 최댓값 합 → 바닥값(0.1)이 아니다
-    said = s6_hypo._strength(one, [att])
-    assert said > float(WEIGHT_FLOOR), f"🔴 근거가 있는데 바닥값이다: {said}"
-    # 🔴 설명도 그 driver 로 쓴다 — *"근거 변수 없음"* 이 아니다
-    assert "근거 변수 없음" not in one.mechanism, one.mechanism
-    # ⚠️ 반대로 **근거가 하나도 없으면** 바닥값이고 그렇게 적는다
-    bare = s6_hypo._mech("저득점", [(0, 0)], "왜", [], [])
-    assert "근거 변수 없음" in bare and "바닥값" in bare, bare
-    src = (ROOT / "app/core/stages/s6_hypo.py").read_text(encoding="utf-8")
-    tree = ast.parse(src)
-    # 🔴🔴 **배선 ①** — 네 보강 갈래가 전부 `drivers=` 를 넘긴다
-    fn = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)
-              and n.name == "_soccer_forms")
-    adds = [c for c in ast.walk(fn) if isinstance(c, ast.Call)
-            and isinstance(c.func, ast.Name) and c.func.id == "_add"]
-    assert len(adds) >= 4, f"보강 갈래가 {len(adds)}개뿐이다"
-    for c in adds:
-        assert any(k.arg == "drivers" for k in c.keywords), (
-            f"🔴 `drivers=` 없이 보강한다 — 줄 {c.lineno}")
-    # 🔴🔴 **배선 ②** — 시나리오 단계가 그 무게 함수를 모든 갈래에 먹인다
-    #    ⚠️ 2026-10-10(순서 재편): 그 단계 이름이 `run` → **`scenarios`** 다
-    #       (가설은 시뮬 **전**, 시나리오는 시뮬 **뒤**로 갈렸다).
-    runner = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)
-                  and n.name == "scenarios")
-    used = {c.func.id for c in ast.walk(runner)
-            if isinstance(c, ast.Call) and isinstance(c.func, ast.Name)}
-    assert "_strength" in used, "🔴 시나리오 단계가 무게를 다시 세지 않는다"
-
-
-
-
-def _facts_two_squads(home_names, away_names):
-    """🔴 두 팀 **소집 명단**만 든 `Facts` — 명단 대조의 재료다."""
-    from app.core.schema import Facts
-    return Facts(squad={"team:000164": list(home_names),
-                        "team:000047": list(away_names)})
-
-
-def _ref_mx_cl():
-    """🔴 멕시코–칠레 — 라이브 s1 이 적은 값 그대로(실측 2026-10-07)."""
-    from datetime import datetime, timezone
-    from app.core.schema import MatchRef
-    return MatchRef(id="fotmob:6368654", sport="soccer",
-                    competition="Friendlies", competition_short="Friendlies",
-                    home="team:000164", away="team:000047",
-                    home_name="Mexico", away_name="Chile",
-                    kickoff_utc=datetime(2026, 10, 7, 2, 30,
-                                         tzinfo=timezone.utc),
-                    langs=["es", "en"])
-
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_근거_있는_보강_갈래는_바닥값_무게를_받지_않는다`
 
 def test_결장_선수의_팀을_명단으로_고친다():
     """🔴🔴 §결장-귀속-2 — 모델이 **상대 팀**을 적었으면 명단이 고친다.
@@ -1416,312 +1102,47 @@ def _doc_mora():
                published_at=datetime(2026, 10, 6, 12, tzinfo=timezone.utc))
 
 
-def test_s5_가_그_기사의_귀속을_고치고_카드에_적는다():
-    """🔴🔴 §결장-귀속-5 고정물 — mx_cl_1 의 Mora 기사 → subject=멕시코.
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_s5_가_그_기사의_귀속을_고치고_카드에_적는다`
 
-    모델이 적은 `subject` 는 **칠레**다(실측 s4 출력). s5 가 명단으로 고치고
-    `favors` 를 **칠레 쪽**(`away`)으로 다시 센다.
-    🔴 돌연변이: `_one` 의 명단 대조(`team_of_player` 호출)를 끄면 빨개진다.
-    """
-    from app.core.schema import Facts, VarCandidate
-    from app.core.state import RunState
-    from app.core.stages import s5_verify as V
-    ref, doc = _ref_mx_cl(), _doc_mora()
-    facts = Facts(squad={ref.home: ["Gilberto Mora", "Santiago Giménez"],
-                         ref.away: ["Ben Brereton", "Marcelo Morales"]})
-    cand = VarCandidate(subtask="A-home", type="def_absence",
-                        subject=ref.away,          # 🔴 **모델이 적은 그대로**(칠레)
-                        claim=MORA_LINE, target="Gilberto Mora",
-                        match_link="Chile", quote=MORA_LINE, doc_id=doc.id)
-    st = RunState(match_key=ref.id)
-    got = [v for v in V.run(ref, facts, [doc], [cand], state=st)
-           if v.target == "Gilberto Mora"]
-    assert got, f"변수가 안 섰다 — 버린 사유 {[d.reason.value for d in st.drops]}"
-    one = got[0]
-    assert one.subject == ref.home, f"🔴 귀속을 안 고쳤다: {one.subject}"
-    assert one.favors == "away", f"🔴 방향을 다시 안 셌다: {one.favors}"
-    # 🔴 **카드에 적는다** — 조용히 고치지 않는다(블록 1)
-    said = [d for d in st.drops if d.reason.value == "team_reattached"]
-    assert said, [d.reason.value for d in st.drops]
-    assert "결장 귀속 정정: Gilberto Mora Chile→Mexico" in said[0].detail
-    from app.core import render
-    from app.core.schema import Card, Funnel
-    card = Card(match=ref, facts=facts, variables=got, drops=list(st.drops),
-                funnel=Funnel())
-    assert "결장 귀속 정정: Gilberto Mora Chile→Mexico" in render.card_text(card)
-    # 🔴🔴 **배선** — `_one` 이 그 대조 함수를 부른다
-    fn = next(n for n in ast.walk(ast.parse(
-        (ROOT / "app/core/stages/s5_verify.py").read_text(encoding="utf-8")))
-        if isinstance(n, ast.FunctionDef) and n.name == "_one")
-    calls = {c.func.id for c in ast.walk(fn)
-             if isinstance(c, ast.Call) and isinstance(c.func, ast.Name)}
-    assert "team_of_player" in calls, "🔴 s5 가 명단 대조를 부르지 않는다"
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_시나리오_무게가_우리_열에_묶인다`
 
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_갈래가_없는_결과는_보강으로_덮는다`
 
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 **시나리오 재가중**(사용자 지시 2026-10-07 재가중 ①②)
-# ══════════════════════════════════════════════════════════════════
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_s6_입력을_여섯개_80자로_줄였다`
 
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_결과가_섞인_갈래는_결과별로_쪼갠다`
 
-def _hypo(rows):
-    """🔴 `(id, type, [(h,a)…], 무게)` 목록 → `HypoSet`."""
-    from app.core.schema import HypoSet, Scenario
-    return HypoSet(scenarios=[
-        Scenario(id=i, type=t, outcomes=list(sc), strength=w,
-                 driver_vars=["X1"], added_by="deepseek",
-                 mechanism="그래서 그렇게 된다")
-        for i, t, sc, w in rows])
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_쪼개기는_스코어를_바꾸지_않는다`
 
-
-def _side_sums(hypo):
-    """🔴 결과별 무게 합 — 스코어 단위로 쪼개 센다(`our_prob` 와 같은 규칙)."""
-    from app.core.reweight import side_of
-    box = {"home": 0.0, "draw": 0.0, "away": 0.0}
-    for sc in hypo.scenarios:
-        for h, a in sc.outcomes:
-            box[side_of(h, a)] += float(sc.strength) / len(sc.outcomes)
-    return box
-
-
-def test_시나리오_무게가_우리_열에_묶인다():
-    """🔴🔴 ① — 결과별 합 = OurProb. 같은 결과 안의 비율은 **그대로**.
-
-    실측 2026-10-07(멕시코–칠레): 우리 열 홈 73% 인데 시나리오 무게는 원정·개방
-    쪽에 몰려(C 2.4 · A 2.1) 양상·논평·예상 스코어가 **원정 승**을 그렸고
-    핸디 Mexico −1.5 생존이 0.1935 였다. 돌연변이: 재가중 호출 제거.
-    """
-    from app.core import reweight
-    from app.core.schema import ProbTriple
-    from app.core.state import RunState
-    ref = _ref_mx_cl()
-    hypo = _hypo([("A", "home_win", [(2, 0)], 1.0),
-                  ("B", "home_win", [(2, 1)], 3.0),
-                  ("C", "away_win", [(1, 2)], 4.0),
-                  ("D", "draw", [(1, 1)], 2.0)])
-    ours = ProbTriple(home=0.70, draw=0.20, away=0.10)
-    got = reweight.of(hypo, ours, ref=ref, state=RunState())
-    box = _side_sums(got)
-    tot = sum(box.values())
-    for key in ("home", "draw", "away"):
-        assert abs(box[key] / tot - getattr(ours, key)) < 1e-6, (key, box, tot)
-    # 🔴 **총량은 그대로**(10.0) — 생존은 비율이지만 표가 읽을 수 있어야 한다
-    assert abs(tot - 10.0) < 1e-6, tot
-    # 🔴 같은 결과 안의 비율은 **그대로** — A:B 가 1:3 이었다
-    kept = {s.id: s.strength for s in got.scenarios}
-    assert abs(kept["B"] / kept["A"] - 3.0) < 1e-6, kept
-
-
-def test_갈래가_없는_결과는_보강으로_덮는다():
-    """🔴 ① — 우리 열이 확률을 주는데 그 결과 갈래가 없으면 **필수형 스코어로** 넣는다."""
-    from app.core import reweight
-    from app.core.schema import ProbTriple
-    from app.core.state import RunState
-    ref = _ref_mx_cl()
-    # ⚠️ 무승부 갈래가 **하나도 없다**
-    hypo = _hypo([("A", "home_win", [(2, 0)], 2.0),
-                  ("B", "away_win", [(0, 1)], 2.0)])
-    ours = ProbTriple(home=0.50, draw=0.30, away=0.20)
-    got = reweight.of(hypo, ours, ref=ref, state=RunState())
-    draws = [s for s in got.scenarios if s.type == "draw"]
-    assert draws, "🔴 무승부 결과를 덮지 않았다"
-    # 🔴 스코어는 **기존 필수형 표**의 것이다(지어내지 않는다)
-    import yaml
-    box = yaml.safe_load((ROOT / "config/scenario_required.yaml")
-                         .read_text(encoding="utf-8"))["soccer_forms"]
-    want = {tuple(int(x) for x in str(s).split("-"))
-            for s in box["무승부"]["scores"]}
-    assert set(draws[0].outcomes) <= want, (draws[0].outcomes, want)
-    assert "근거" in draws[0].mechanism and draws[0].driver_vars == []
-    box2 = _side_sums(got)
-    tot = sum(box2.values())
-    assert abs(box2["draw"] / tot - 0.30) < 1e-6, box2
-    # 🔴🔴 **배선** — 파이프라인이 s7 **앞에서** 재가중한다(두 입구 다)
-    src = (ROOT / "app/core/pipeline.py").read_text(encoding="utf-8")
-    tree = ast.parse(src)
-    # 🔴🔴 **재분석은 이제 `analyze` 에 위임한다**(지시서 2026-10-11 F1) —
-    #    종전에는 파이프라인 **사본**이라 여기서 따로 셌다. 사본을 지웠으므로
-    #    차례는 `analyze` 한 곳에서만 본다. ⚠️ 위임 자체는 아래에서 센다.
-    assert "await analyze(" in src.split("async def reanalyze")[1], (
-        "🔴 재분석이 `analyze` 에 위임하지 않는다 — 사본이 돌아왔다")
-    for name in ("analyze",):
-        fn = next(n for n in ast.walk(tree)
-                  if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
-                  and n.name == name)
-        order = [n.lineno for n in ast.walk(fn) if isinstance(n, ast.Call)
-                 and isinstance(n.func, ast.Attribute)
-                 and n.func.attr in ("of", "run")
-                 and isinstance(n.func.value, ast.Name)
-                 and n.func.value.id in ("_reweight", "s7_judge")]
-        calls = [(n.lineno, n.func.value.id) for n in ast.walk(fn)
-                 if isinstance(n, ast.Call)
-                 and isinstance(n.func, ast.Attribute)
-                 and ((n.func.value.id if isinstance(n.func.value, ast.Name)
-                       else "") in ("_reweight", "s7_judge"))]
-        got_rw = [ln for ln, who in calls if who == "_reweight"]
-        got_s7 = [ln for ln, who in calls if who == "s7_judge"]
-        assert got_rw and got_s7, (name, calls)
-        assert min(got_rw) < min(got_s7), (
-            f"🔴 {name}: 재가중이 s7 **뒤**에 있다(생존이 옛 무게로 선다)")
-        assert order  # 🔴 두 호출이 같은 함수 안에 있다
-
-
-
-def test_s6_입력을_여섯개_80자로_줄였다():
-    """🔴 ④ — 상한을 올리지 않고 **입력**을 줄인다(한국–우즈벡 `llm_truncated`)."""
-    from app.core.stages import s6_hypo
-    assert s6_hypo.BASIS_CAP == 6 and s6_hypo.CLAIM_CUT == 80
-    # 🔴 맥락 변수는 **이름만** — `claim` 을 안 보낸다
-    fn = next(n for n in ast.walk(ast.parse(
-        (ROOT / "app/core/stages/s6_hypo.py").read_text(encoding="utf-8")))
-        if isinstance(n, ast.FunctionDef) and n.name == "bare")
-    # 🔴 D46 — **독스트링을 뺀 코드만** 본다(설명이 금지어를 말하는 것과 코드가
-    #    그것을 부르는 것은 다르다)
-    body = [n for n in fn.body
-            if not (isinstance(n, ast.Expr) and isinstance(n.value, ast.Constant)
-                    and isinstance(n.value.value, str))]
-    said = " ".join(ast.dump(n) for n in body)
-    assert "claim" not in said, "🔴 맥락 변수에 claim 을 싣는다"
-    # ⚠️ LLM 상한은 **그대로다**(§9: 상한을 올려 잘림을 고치지 않는다)
-    import yaml
-    box = yaml.safe_load((ROOT / "config/llm.yaml").read_text(encoding="utf-8"))
-    assert int(box["v6"]["purposes"]["hypo"]["max_tokens"]) <= 8000
-
-
-def test_결과가_섞인_갈래는_결과별로_쪼갠다():
-    """🔴🔴 ① *"각 시나리오 스코어를 결과로 나누고"* — 쪼개야 **합이 맞는다**.
-
-    ⚠️ 실측 2026-10-07: 재가중을 했는데도 결과별 합이 홈 64%(우리 열 73%)였다 —
-    `2-2 · 2-3` 처럼 한 갈래가 두 결과를 들면 **갈래 단위 무게 하나**로는 맞출 수가
-    없다(하류는 갈래 단위로 센다). 돌연변이: 쪼개기 제거 → 합이 어긋난다.
-    """
-    from app.core import reweight
-    from app.core.schema import ProbTriple
-    from app.core.state import RunState
-    ref = _ref_mx_cl()
-    hypo = _hypo([("A", "open", [(2, 2), (2, 3)], 4.0),      # 무 + 원정
-                  ("B", "home_win", [(2, 1)], 2.0),
-                  ("C", "open", [(1, 0), (1, 1)], 2.0)])     # 홈 + 무
-    ours = ProbTriple(home=0.60, draw=0.25, away=0.15)
-    got = reweight.of(hypo, ours, ref=ref, state=RunState())
-    # 🔴 쪼갠 갈래는 **결과가 하나**다
-    for sc in got.scenarios:
-        sides = {reweight.side_of(h, a) for h, a in sc.outcomes}
-        assert len(sides) == 1, (sc.id, sc.outcomes)
-    # 🔴 **갈래 단위로 세도** 결과별 합이 우리 열과 같다(하류가 그렇게 센다)
-    box = {"home": 0.0, "draw": 0.0, "away": 0.0}
-    for sc in got.scenarios:
-        box[reweight.side_of(*sc.outcomes[0])] += float(sc.strength)
-    tot = sum(box.values())
-    for key in ("home", "draw", "away"):
-        assert abs(box[key] / tot - getattr(ours, key)) < 1e-3, (key, box, tot)
-    # 🔴 무거운 쪽이 **본래 이름**을 지킨다(반증 줄이 그 이름을 가리킨다)
-    ids = {s.id for s in got.scenarios}
-    assert {"A", "B", "C"} <= ids and "A2" in ids, ids
-    # 🔴 이야기는 그대로다 — driver 와 mechanism 을 물려받는다
-    same = [s for s in got.scenarios if s.id.startswith("A")]
-    assert all(s.driver_vars == ["X1"] for s in same), same
-    assert all("그래서 그렇게 된다" in s.mechanism for s in same)
-
-
-def test_쪼개기는_스코어를_바꾸지_않는다():
-    """🔴🔴 지시 1(2026-10-07 총평 검열) — **뒤집기·좌우 반전·새 스코어 금지**.
-
-    ⚠️ 쪼개기는 스코어를 **결과로 나누기만** 한다. 보강(결과 덮기)만 새 스코어를
-       넣을 수 있고 그것은 `added_by="code"` 로 표시된다.
-    돌연변이: 쪼개면서 스코어를 뒤집으면(`(a, h)`) 빨개진다.
-    """
-    from app.core import reweight
-    from app.core.schema import ProbTriple
-    from app.core.state import RunState
-    ref = _ref_mx_cl()
-    hypo = _hypo([("A", "open", [(3, 2), (2, 2)], 1.7),
-                  ("B", "away_win", [(1, 3), (2, 3)], 2.4),
-                  ("C", "open", [(1, 0), (0, 1)], 1.4),
-                  ("D", "home_win", [(2, 0), (2, 1)], 1.4)])
-    before = {(h, a) for s in hypo.scenarios for h, a in s.outcomes}
-    ours = ProbTriple(home=0.73, draw=0.19, away=0.08)
-    got = reweight.of(hypo, ours, ref=ref, state=RunState())
-    # 🔴 보강으로 **더해진** 갈래만 새 스코어를 가질 수 있다
-    kept = {(h, a) for s in got.scenarios for h, a in s.outcomes
-            if "결과 덮기" not in s.mechanism}
-    assert kept == before, (f"🔴 스코어가 바뀌었다 — 생긴 것 {sorted(kept - before)} "
-                            f"· 사라진 것 {sorted(before - kept)}")
-
-
-def test_쪼갠_조각의_무게_합이_원래_무게다():
-    """🔴 지시 2 — 스코어 무게 = 갈래 무게 ÷ 스코어 수. 조각이 전체를 **들고 가지 않는다**.
-
-    ⚠️ 비례 조정 **전**의 합이다 — 조정은 결과별로 따로 곱한다(그 뒤 합은 달라진다).
-    """
-    from app.core import reweight
-    from app.core.schema import ProbTriple
-    from app.core.state import RunState
-    ref = _ref_mx_cl()
-    hypo = _hypo([("A", "open", [(3, 2), (2, 2)], 1.7),
-                  ("B", "home_win", [(2, 0), (2, 1)], 1.4)])
-    # 🔴 **비례 조정이 1 이 되는 우리 열**을 준다 — 그러면 조정 전 무게가 그대로다
-    #    (A 가 홈 0.85·무 0.85 · B 가 홈 1.4 → 홈 2.25 · 무 0.85 · 합 3.1)
-    ours = ProbTriple(home=2.25 / 3.1, draw=0.85 / 3.1, away=0.0)
-    got = reweight.of(hypo, ours, ref=ref, state=RunState())
-    by_src: dict[str, float] = {}
-    for sc in got.scenarios:
-        if "결과 덮기" in sc.mechanism:
-            continue
-        by_src[sc.id[0]] = by_src.get(sc.id[0], 0.0) + float(sc.strength)
-    assert abs(by_src["A"] - 1.7) < 1e-3, by_src
-    assert abs(by_src["B"] - 1.4) < 1e-3, by_src
-
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 **총평 검열**(사용자 지시 2026-10-07 §4·§5)
-# ══════════════════════════════════════════════════════════════════
-
-
-def _audit_box():
-    """🔴 검열 고정물 — 멕시코–칠레의 **실측 사실**(두 팀 보정 득점 0.667)."""
-    from app.core.schema import Facts, HypoSet, Judgement, Scenario, Variable
-    ref = _ref_mx_cl()
-    facts = Facts(recent={
-        ref.home: {"matches": 5, "last5": ["W", "L", "D", "D", "L"],
-                   "recent_scored_avg": 1.2, "recent_trimmed_avg": 0.667,
-                   "sequence": [{"goals_for": 0, "goals_against": 3},
-                                {"goals_for": 1, "goals_against": 1}]},
-        ref.away: {"matches": 5, "last5": ["L", "L", "W", "L", "L"],
-                   "recent_scored_avg": 1.2, "recent_trimmed_avg": 0.667,
-                   "sequence": [{"goals_for": 2, "goals_against": 4}]}})
-    down = Variable(id="S01-home", type="recent_pattern", subject=ref.home,
-                    favors="home", goals="down", goals_against="none",
-                    target="recent", hardness="soft", weight=0.7,
-                    claim="최근 5경기 W L D D L · 득점 평균 1.2(보정 0.667)",
-                    quote="x", from_rule="S01")
-    up = Variable(id="S02", type="h2h_pattern", subject=ref.away, favors="away",
-                  goals="up", target="h2h", hardness="hard", weight=1.0,
-                  claim="맞대결 10경기 3승 3무 4패 · 평균 3.0골", quote="y",
-                  from_rule="S02")
-    hypo = HypoSet(scenarios=[
-        Scenario(id="A", outcomes=[(3, 2)], type="home_win", strength=1.85,
-                 driver_vars=["S01-home"], mechanism="주고받는다"),
-        Scenario(id="D", outcomes=[(2, 0)], type="home_win", strength=3.05,
-                 driver_vars=["S01-home"], mechanism="닫는다"),
-        Scenario(id="C", outcomes=[(1, 0)], type="home_win", strength=1.52,
-                 driver_vars=["S01-home"], mechanism="한 골")])
-    said = Judgement(direction="방향: **Mexico** (세 열 중 2열이 앞세운다)")
-    return ref, facts, [down, up], hypo, said
-
-
-def _comment(**kw):
-    from app.core.schema import CommentLine, Commentary
-    box = {"title": "접전 — Mexico 쪽에 무게", "flow": "Mexico가 한 골 차로 지킨다",
-           "score_range": ["2-0"],
-           "reasons": [CommentLine(text="홈팀 득점이 눌려 있다",
-                                   var_ids=["S01-home"])],
-           "lean": ""}
-    box.update(kw)
-    return Commentary(**box)
-
-
-
-
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_쪼갠_조각의_무게_합이_원래_무게다`
 
 def test_폼_변수에_득점_방향이_붙는다():
     """🔴 §3 — 기준(실측)의 팀당 몫과 ±0.2 로 `goals`·`goals_against`.
@@ -1751,28 +1172,11 @@ def test_폼_변수에_득점_방향이_붙는다():
         assert int(row["n"]) > 1000 and 1.5 < float(row["goals_per_match"]) < 4
 
 
-def test_득점_방향이_반대인_driver_를_뺀다():
-    """🔴 §3 마지막 — 3골 이상 갈래의 `goals=down` driver 를 뺀다(다 빠지면 바닥값)."""
-    from app.core.schema import Scenario
-    from app.core.stages import s6_hypo
-    from app.core.state import RunState
-    from app.survive import WEIGHT_FLOOR
-    _ref, _facts, variables, _hypo, _said = _audit_box()
-    down = variables[0]                      # S01-home · goals=down
-    hot = Scenario(id="A", outcomes=[(3, 2)], type="home_win",
-                   driver_vars=["S01-home"], mechanism="주고받는다")
-    cold = Scenario(id="B", outcomes=[(1, 0)], type="home_win",
-                   driver_vars=["S01-home"], mechanism="한 골")
-    got = s6_hypo._goal_fit([hot, cold], [down], state=RunState())
-    assert got[0].driver_vars == [], "🔴 3골 갈래에서 `down` driver 를 안 뺐다"
-    assert got[1].driver_vars == ["S01-home"], "🔴 2골 갈래는 그대로여야 한다"
-    assert s6_hypo._strength(got[0], [down]) == float(WEIGHT_FLOOR)
-
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 **사용자 지시 2026-10-09** — 대전–전북에서 나온 셋
-# ══════════════════════════════════════════════════════════════════
-
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_득점_방향이_반대인_driver_를_뺀다`
 
 def test_맞대결_집계가_안_맞으면_목록에서_다시_센다():
     """🔴 ① — 돌연변이: 불일치면 버린다(종전 동작).
@@ -2042,25 +1446,11 @@ def test_확정_여부를_도달_가능_최대_승점으로_센다():
     assert st.reachable(box, team="없는팀", rounds_left=2) == 0
 
 
-def test_올시즌_맞대결이_저득점이면_필수형이_걸린다():
-    """🔴 ② — 돌연변이: 올 시즌 맞대결을 안 본다(종전 동작).
-
-    실측 2026-10-09: 올 시즌 `0-1`·`0-0` = 2경기 **총 1골**(경기당 0.5)인데
-    저득점 갈래가 **하나도 없었다**(창 10경기 평균 2.1골이 덮었다).
-    """
-    import yaml
-    import pathlib
-    box = yaml.safe_load(
-        pathlib.Path("config/scenario_required.yaml").read_text(encoding="utf-8"))
-    row = dict((box.get("soccer_forms") or {}).get("저득점") or {})
-    assert int(row["when_season_h2h_games"]) == 2, row
-    assert float(row["when_season_h2h_goals_per_game"]) == 1.0, row
-    assert "0-0" in row["scores"] and "1-0" in row["scores"], row
-    # 🔴 코드가 그 칸을 **읽나** — 안 이으면 없는 규칙이다(CLAUDE.md #2)
-    src = pathlib.Path("app/core/stages/s6_hypo.py").read_text(encoding="utf-8")
-    assert "when_season_h2h_games" in src, "s6 가 그 조건을 안 읽는다"
-    assert 'get("season_matches")' in src, "s6 가 올 시즌 맞대결을 안 본다"
-
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_올시즌_맞대결이_저득점이면_필수형이_걸린다`
 
 def test_총점_줄은_등급_보류다():
     """🔴 ② 둘째 줄 — 돌연변이: 총점에 등급을 준다.
@@ -2428,153 +1818,45 @@ def test_블록3_의_셋이_빠지면_머리표가_붙는다():
 
 
 
-def test_폼_보완_꼴이_경기_페이지와_같은_칸을_쓴다():
-    """🔴 §2 — 돌연변이: 칸 이름을 새로 짓는다 → S01 이 못 읽는다.
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_폼_보완_꼴이_경기_페이지와_같은_칸을_쓴다`
 
-    🔴 실사고 2026-10-09: `trimmed_avg` 가 `app.league` 에 있다고 **추측해 써서**
-       `AttributeError` 로 카드가 통째로 죽었다. 이 계약이 그것을 잡는다.
-    """
-    from app.core.stages.s2_facts import _recent_of
-    rows = [{"date": "2026-09-23", "side": "home", "score": "3-1",
-             "home": "Kashima Antlers", "away": "Ventforet Kofu",
-             "home_score": 3, "away_score": 1, "tournament": "Cup",
-             "result": "W"},
-            {"date": "2026-09-19", "side": "away", "score": "3-3",
-             "home": "Kawasaki", "away": "Kashima Antlers",
-             "home_score": 3, "away_score": 3, "tournament": "J. League",
-             "result": "D"}]
-    got = _recent_of(rows)
-    # 🔴 **경기 페이지와 같은 칸 이름**이어야 S01 이 분기 없이 읽는다
-    for key in ("last5", "sequence", "recent_scored_avg",
-                "recent_trimmed_avg", "recent_conceded_avg"):
-        assert key in got, (key, sorted(got))
-    assert got["last5"] == ["W", "D"]
-    assert got["recent_scored_avg"] == 3.0
-    assert got["recent_conceded_avg"] == 2.0
-    assert got["recent_trimmed_avg"] is not None
-    # 🔴🔴 **휴식일**(실측 2026-10-09 강원: 직전 09-27 · 이 경기 10-09 = **12일**)
-    #    ⚠️ 종전엔 비어 있었다 — 그러면 장기 휴식도 과부하도 못 센다.
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_1겹_예상_스코어_줄이_근거와_어긋남을_적는다`
+
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_반등_주장은_해석_규칙을_요구한다`
+
+# ⚠️ **걷은 시험** — §1 처분(2026-10-12 셋째)으로 그 입구가 바뀌었다
+#    (`our_board(drafts=)` → `fav=/dog=` · `s7_judge.run(hypo)` → 격자).
+#    걷은 시험: `test_v7_C7_변수가_로그오즈를_직접_못_민다`
+
+
+# ⚠️ **되살린 도움 함수**(걷은 블록에 묶여 사라졌다)
+def _ref_mx_cl():
+    """🔴 멕시코–칠레 — 라이브 s1 이 적은 값 그대로(실측 2026-10-07)."""
     from datetime import datetime, timezone
-    said = _recent_of(rows, kickoff=datetime(2026, 10, 9, 7, 30,
-                                             tzinfo=timezone.utc))
-    assert said["rest_days"] == 16, said["rest_days"]
-    # ⚠️ 킥오프를 모르면 **비운다**(0 으로 때우지 않는다 · #3)
-    assert _recent_of(rows)["rest_days"] is None
-    # 🔴 대회 글자를 **함께** 싣는다(리그·컵·ACL 이 섞인다)
-    assert {x["tournament"] for x in got["sequence"]} == {"Cup", "J. League"}
-    assert "팀 페이지" in str(got.get("source"))
+    from app.core.schema import MatchRef
+    return MatchRef(id="fotmob:6368654", sport="soccer",
+                    competition="Friendlies", competition_short="Friendlies",
+                    home="team:000164", away="team:000047",
+                    home_name="Mexico", away_name="Chile",
+                    kickoff_utc=datetime(2026, 10, 7, 2, 30,
+                                         tzinfo=timezone.utc),
+                    langs=["es", "en"])
 
 
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 **사용자 지시 2026-10-09(6차)** — 강원–부천 카드에서 나온 넷
-# ══════════════════════════════════════════════════════════════════
-
-
-def _scen(sid, outcomes, strength, mech="m", drivers=(), added_by="deepseek"):
-    from app.core.schema import Scenario
-    return Scenario(id=sid, outcomes=list(outcomes), mechanism=mech,
-                    strength=strength, driver_vars=list(drivers),
-                    added_by=added_by)
-
-
-# ⚠️ **걷은 시험** — `s9_audit`(최종 평 LLM **검열**)이 지시서
-#    2026-10-12(셋째) §1 처분으로 지워졌다(그 평이 코드 템플릿이 되었다).
-#    🔴 코드 계산이던 `top_scores`·`score_drivers`·`_names_in` 은 쓰는 곳
-#    (`app/core/layer1.py`)으로 **옮겼다** — 사본이 아니다.
-#    걷은 시험: `test_예상_스코어는_무게_상위_셋을_그대로_쓴다`
-
-def test_1겹_예상_스코어_줄이_근거와_어긋남을_적는다():
-    """🔴 §1 — 돌연변이: `0-0` 을 근거 없이 적는다 · 어긋남을 숨긴다."""
-    from app.core import layer1
-    from app.core.schema import (BaseProb, Card, Facts, HypoSet, MatchRef,
-                                 ProbTriple)
-    from datetime import datetime, timezone
-    ref = MatchRef(id="x", sport="soccer", competition="K-League 1",
-                   competition_short="K-League 1",
-                   kickoff_utc=datetime(2026, 10, 9, 7, 30, tzinfo=timezone.utc),
-                   home="team:000316", away="team:000582",
-                   home_name="Gangwon FC", away_name="Bucheon FC 1995")
-    hypo = HypoSet(scenarios=[
-        _scen("E", [(0, 0)], 2.0, drivers=["S01-home", "S01-away"]),
-        _scen("C", [(0, 1)], 1.0, drivers=["S02"]),
-        _scen("D", [(2, 0)], 0.5, drivers=["S03"])])
-    card = Card(match=ref, facts=Facts(), hypo=hypo,
-                base_prob=BaseProb(why="x"),
-                our_prob=ProbTriple(home=0.45, draw=0.27, away=0.28))
-    said = layer1._scores(card)
-    assert "0-0(근거 S01-home, S01-away)" in said, said
-    # 🔴 방향이 **홈**(45 vs 28 = 17%p)인데 상위 셋에 홈승이 있으니 경고는 없다
-    assert "어긋난다" not in said, said
-    # 🔴 **반대쪽만** 남으면 경고가 붙는다
-    away_only = HypoSet(scenarios=[_scen("C", [(0, 1), (1, 2)], 2.0,
-                                         drivers=["S02"])])
-    said2 = layer1._scores(card.model_copy(update={"hypo": away_only}))
-    assert "방향(home)과 어긋난다" in said2, said2
-
-
-def test_반등_주장은_해석_규칙을_요구한다():
-    """🔴🔴 §2 — 돌연변이: *"최근 폼 < 시즌 평균"* 만으로 반등 갈래를 만든다.
-
-    실사고 2026-10-09(강원–부천): `D 3-0·2-0`(무게 1.2158)의 까닭이 *"0.6 은
-    시즌 득점 수준에서 **크게 벗어난 값**이라 홈에서 **반등** 여지"* 였다.
-    ⚠️ 그 말의 반대 해석(지금 안 좋다)과 **같은 무게**다.
-    """
-    from app.core.stages.s6_hypo import (REGRESSION_RULES, REGRESSION_WORDS,
-                                         _regression_fit)
-    from app.core.schema import Variable
-    from app.core.state import RunState
-    assert set(REGRESSION_RULES) == {"IR04", "IR06", "IR10", "IR12"}
-    assert "반등" in REGRESSION_WORDS and "크게 벗어난 값" in REGRESSION_WORDS
-
-    def _v(vid, rule):
-        return Variable(id=vid, type="recent_pattern", subject="team:000316",
-                        favors="home", goals="none", target="recent",
-                        hardness="soft", weight=1.0, claim="c", quote="c",
-                        doc_ids=[], from_rule=rule)
-
-    mech = "0.6 은 시즌 수준에서 크게 벗어난 값이라 홈에서 반등 여지가 있다"
-    st = RunState(match_key="x")
-    # 🔴 규칙이 **없으면** driver 가 빠지고 바닥 출처가 된다
-    got = _regression_fit([_scen("D", [(3, 0)], 1.2, mech=mech,
-                                 drivers=["S01-home"])], [_v("S01-home", "S01")],
-                          state=st)
-    assert got[0].driver_vars == [], got[0].driver_vars
-    assert got[0].added_by == "required", got[0].added_by
-    assert any("해석 규칙" in n for n in st.notes), st.notes
-    # 🔴 규칙이 **있으면** 그대로 둔다
-    st2 = RunState(match_key="x")
-    ok = _regression_fit([_scen("D", [(3, 0)], 1.2, mech=mech,
-                                drivers=["IR12-home"])],
-                         [_v("IR12-home", "IR12-home")], state=st2)
-    assert ok[0].driver_vars == ["IR12-home"], ok[0].driver_vars
-    # ⚠️ 반등 말이 **없으면** 손대지 않는다
-    plain = _regression_fit([_scen("A", [(1, 1)], 1.0, mech="서로 주고받는다",
-                                   drivers=["S02"])], [], state=RunState(match_key="x"))
-    assert plain[0].driver_vars == ["S02"]
-
-
-
-def test_v7_C7_변수가_로그오즈를_직접_못_민다():
-    """🔴🔴 C7 — *"변수가 확률에 닿는 길은 **① 상성 축뿐**이다(로그 오즈 직접
-    이동 코드 **0**)"*.
-
-    세 가지로 센다:
-      ① `compare` 에 `our_prob`·`move_rules` 가 **없다**(지웠다)
-      ② 확률을 내는 곳은 `probmodel` 하나고, 그 입력은 `MatchupReport` 다
-      ③ 카드의 `moves`(③ 이동 목록)는 **늘 빈 목록**이다
-    """
-    import ast as _ast
-
-    from app.core import compare
-    for gone in ("our_prob", "move_rules"):
-        assert not hasattr(compare, gone), f"🔴 `compare.{gone}` 가 살아 있다"
-    src = (ROOT / "app" / "core" / "pipeline.py").read_text(encoding="utf-8")
-    assert "compare.our_prob" not in src, "🔴 파이프라인이 옛 경로를 부른다"
-    fn = [n for n in _ast.walk(_ast.parse(src))
-          if isinstance(n, _ast.FunctionDef) and n.name == "_layers"]
-    assert fn, "🔴 `_layers` 가 없다"
-    said = _ast.unparse(fn[0])
-    assert "our_prob(" not in said
-    #: 🔴 `ast.unparse` 는 따옴표를 홑으로 바꾼다 — 두 꼴을 다 받는다
-    assert ("'moves': []" in said or '"moves": []' in said), (
-        "🔴 ③ 이동 목록이 비지 않았다")
+def _facts_two_squads(home_names, away_names):
+    """🔴 두 팀 **소집 명단**만 든 `Facts` — 명단 대조의 재료다."""
+    from app.core.schema import Facts
+    return Facts(squad={"team:000164": list(home_names),
+                        "team:000047": list(away_names)})

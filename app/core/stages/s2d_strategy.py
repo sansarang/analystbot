@@ -56,28 +56,19 @@ def run(ref: MatchRef, facts: Facts, *, state: RunState,
         logger.info("[s2d] **확정 XI 전** — %s", said[:160])
         return StrategyOut(audit="확정 XI 전",
                            violations=[said], facts=box)
-    got = _ask(ref, facts, reads, box, state=state, news=news)
-    if got is None:
-        return StrategyOut(audit="안 돌았다", facts=box,
-                           violations=["🔴 전략 판정 LLM 이 실패했다"])
-    bad = check(got.lines, reads)
-    if bad:
-        # ══════════════════════════════════════════════════════════════
-        # 🔴🔴 ③ **버리고 끝내지 않는다 — 코드 판정으로 대체한다**(2026-10-11)
-        # ══════════════════════════════════════════════════════════════
-        #
-        #  > ④에 걸려 버리면 → 코드 판정(바뀐 자리 수·ΔA·ΔD·핵심 선발 여부)으로
-        #  > 대체해서 낸다. **빈칸 금지.**
-        #
-        #  ⚠️ 종전엔 `audit="버렸다"` 로 **줄이 0개**였고, 그 뒤 전술 예측·축2
-        #     조정이 전부 재료를 잃었다(실측 2026-10-11 광주–울산 · LAFC).
-        state.note(f"s2d 전략 **버렸다 → 코드 판정** — {bad}")
-        logger.info("[s2d] 버렸다 → 코드 판정 — %s", bad)
-        got = got.model_copy(update={"lines": _code_lines(reads, box)})
-        return _settle(got, ref, facts, reads, turnover, box, state=state,
-                       audit="코드 판정(LLM 버림)", violations=bad)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **LLM 호출을 지웠다**(지시서 2026-10-12(셋째) §1 처분 · 계약 X2)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > ⑩ 전략 판정(LLM) — **LLM 호출 삭제**. 코드 계산 *"평소 XI 대비 바뀐
+    #  > 자리·결장의 무게"* 만 카드에 표시.
+    #
+    #  🔴 그래서 줄은 **늘 코드 판정**이다(`_code_lines`) — 바뀐 자리 수·ΔA·ΔD·
+    #     핵심 선발 여부로 짓는다. ⚠️ 그 수가 확률을 움직이지는 않는다(표시다).
+    from app.core.schema import StrategyOut as _SO
+    got = _SO(lines=_code_lines(reads, box), audit="코드 판정", facts=box)
     return _settle(got, ref, facts, reads, turnover, box, state=state,
-                   audit="통과", violations=[])
+                   audit="코드 판정(LLM 없음)", violations=[])
 
 
 def _settle(got, ref: MatchRef, facts: Facts, reads: dict,
@@ -280,84 +271,8 @@ def _side(lines: list, side: str) -> str:
     return ""
 
 
-def check(lines: list, reads: dict, *, turnover: dict | None = None,
-          ) -> list[str]:
-    """🔴🔴 §2-2 코드 검사 — **판정이 2-1 수치와 반대면 버린다**. 위반 목록.
-
-    > 예: ΔA −15%·3백 전환인데 *"공격 위주"* → 위반. **근거 없는 판정 금지.**
-
-    🔴 세는 것 다섯:
-      ① 근거 사실 id **2개 이상**이고 그 id 가 **실제로 있다**
-      ② `공격 위주` 인데 ΔA 가 크게 음수거나 수비 수가 늘었다 → 위반
-      ③ `수비 위주` 인데 ΔA 가 크게 양수거나 수비 수가 줄었다 → 위반
-      ④ `로테이션·체력 관리` 인데 **바뀐 자리가 0** → 위반
-      ⑤ 🔴🔴 `squad_turnover` 는 **코드만 쓰는 값**이다 — 모델이 고르면 위반
-    ⚠️ 못 잰 칸(`None`)은 **안 센다** — 없는 수로 판정을 버리면 그쪽이 더 나쁘다.
-    """
-    from app.core import turnover as _turn
-    out: list[str] = []
-    # ⑤ ⚠️ 실사고 2026-10-10: 열거값에 `squad_turnover` 를 더하자 **모델이 그것을
-    #    골랐다**(FC 안양 — 전역 주기 팀이 아니다). 그 값은 깃발이 켜진 팀에만
-    #    코드가 붙인다(`_turn_lines`). 🔴 주석으로 막은 줄 알았던 것을 계약으로 막는다.
-    # 🔴🔴 **(b) 안전장치**(사용자 결정 2026-10-10): *"LLM 이 코드 전용 값을
-    #    고르면 **그 팀 줄만 버리고** 코드 깃발 값으로 덮는다. **다른 팀 판정은
-    #    살린다**"*. 🔴 그래서 이것은 **위반이 아니다** — 아래 `_turn_lines` 가
-    #    그 줄을 덮는다. ⚠️ 종전에는 위반으로 세서 **양 팀 판정이 다 버려졌다**
-    #    (실측 2026-10-10: 카드에 *"판정을 버렸다"* 만 남았다).
-    box_t = dict(turnover or {})
-    for one in (lines or []):
-        if str(getattr(one, "strategy", "")) != _turn.VERDICT:
-            continue
-        side = str(getattr(one, "side", ""))
-        if not dict(box_t.get(side) or {}).get("on"):
-            logger.info("[s2d] 모델이 `%s` 를 골랐다(%s) — 깃발이 꺼졌으니 "
-                        "**그 줄만** 덮는다(다른 팀은 살린다)",
-                        _turn.VERDICT, side)
-    for one in (lines or []):
-        side = str(getattr(one, "side", ""))
-        got = reads.get(side)
-        if got is None:
-            out.append(f"🔴 `{side}` 는 이 경기의 자리가 아니다")
-            continue
-        said = str(getattr(one, "strategy", ""))
-        refs = [str(x) for x in (getattr(one, "fact_refs", None) or [])]
-        known = set(got.ids())
-        hit = [r for r in refs if r in known]
-        if len(hit) < MIN_REFS:
-            out.append(f"🔴 `{side}` {said} — 근거 사실이 {len(hit)}개다"
-                       f"({MIN_REFS}개 이상이어야 한다 · 적은 것 {refs})")
-        if said == "공격 위주":
-            if got.da is not None and got.da <= -10.0:
-                out.append(f"🔴 `{side}` **공격 위주**인데 공격 기여가 "
-                           f"{got.da:+.0f}% 다(수치와 반대)")
-            if _grew_back(got) or _to_three(got):
-                out.append(f"🔴 `{side}` **공격 위주**인데 수비 "
-                           f"{got.back_usual}백→{got.back_now}백 이다")
-        if said == "수비 위주":
-            if got.da is not None and got.da >= 10.0:
-                out.append(f"🔴 `{side}` **수비 위주**인데 공격 기여가 "
-                           f"{got.da:+.0f}% 다(수치와 반대)")
-            # ══════════════════════════════════════════════════════════
-            # 🔴🔴 **포메이션 글자로 판정하지 않는다**(사용자 지시 2026-10-11 ④)
-            # ══════════════════════════════════════════════════════════
-            #
-            #  > 포메이션 글자(최전방 몇 명)로 공격/수비를 판정하지 않는다.
-            #  > **선수별 주 역할·시즌 공격 기여**로 센다.
-            #
-            #  ⚠️ 실사고 2026-10-11(LAFC): **손흥민·부앙가가 둘 다 선발**인데
-            #     모델이 *"4-3-3→4-2-3-1 · 최전방 3→1명"* 이라는 **글자**만 보고
-            #     `수비 위주` 라고 했다. 🔴 핵심 공격 자원이 그대로 서 있으면
-            #     그것은 수비 위주가 아니다.
-            on = _key_att_on(got)
-            if on >= KEY_ATT_MIN:
-                out.append(f"🔴 `{side}` **수비 위주**인데 핵심 공격 선수 "
-                           f"{on}명이 **선발**이다 — 포메이션 글자가 아니라 "
-                           f"**누가 뛰는지**로 센다(④)")
-        if said == "로테이션·체력 관리" and got.changed == 0:
-            out.append(f"🔴 `{side}` **로테이션**인데 바뀐 자리가 0 개다")
-    return out
-
-
+# ⚠️ **`check` 은 지웠다** — ⑩ 전략 판정의 LLM 호출과 그 검열이다
+#    (§1 처분 · 계약 X2: LLM 은 사실 추출·캡처 판독만).
 #: 🔴 핵심 공격 선수가 이만큼 선발이면 `수비 위주` 라고 부르지 않는다(지시 ④)
 KEY_ATT_MIN = 2
 
@@ -397,22 +312,8 @@ def _to_three(got) -> bool:
             and got.back_now == 3 and got.back_usual > 3)
 
 
-def _ask(ref: MatchRef, facts: Facts, reads: dict, box: dict, *,
-         state: RunState, news: list | None) -> StrategyOut | None:
-    """🔴 LLM **1회**. ⚠️ 실패하면 `None`(사유는 `state` 에 남는다)."""
-    from app.core import llm
-    got = llm.ask(provider="deepseek", purpose="strategy",
-                  messages=_prompt(ref, facts, reads, box, news=news),
-                  out=StrategyOut, state=state)
-    if isinstance(got, StrategyOut):
-        return got
-    state.note(f"s2d 전략 — LLM 실패({getattr(got, 'reason', '?')} · "
-               f"{getattr(got, 'detail', '')[:80]})")
-    logger.info("[s2d] 🔴 LLM 실패 — %s · %s", getattr(got, "reason", "?"),
-                str(getattr(got, "detail", ""))[:200])
-    return None
-
-
+# ⚠️ **`_ask` 은 지웠다** — ⑩ 전략 판정의 LLM 호출과 그 검열이다
+#    (§1 처분 · 계약 X2: LLM 은 사실 추출·캡처 판독만).
 def _prompt(ref: MatchRef, facts: Facts, reads: dict, box: dict, *,
             news: list | None) -> list:
     """🔴🔴 §2-2 — 지시서의 글을 프롬프트에 **그대로** 둔다(사본 금지).

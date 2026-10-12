@@ -61,37 +61,8 @@ def _apply(start: ProbTriple, shift: dict[str, float]) -> ProbTriple:
     return ProbTriple(home=home, draw=draw, away=round(1.0 - home - draw, 6))
 
 
-def _from_scenarios(hypo: HypoSet | None) -> tuple[ProbTriple | None, str]:
-    """🔴 ①② 가 **없는 경기**의 우리 확률 — 시나리오 무게 비율(종전 방식).
-
-    ⚠️ 스코어 단위로 센다(섞인 스코어의 무게를 버리지 않는다 · 5차 ① 실측).
-    """
-    rows = list(getattr(hypo, "scenarios", []) or [])
-    if not rows:
-        return None, "시나리오가 없다"
-    from app import rules
-    tot = {"home": 0.0, "draw": 0.0, "away": 0.0}
-    seen = 0.0
-    for sc in rows:
-        w = float(sc.strength or 0.0)
-        pairs = list(sc.outcomes or [])
-        if w <= 0 or not pairs:
-            continue
-        share = w / len(pairs)
-        for h, a in pairs:
-            said = rules.direction_of([f"{h}-{a}"])
-            if said not in tot:
-                continue
-            tot[said] += share
-            seen += share
-    if seen <= 0:
-        return None, "시나리오 무게가 0 이다"
-    home = round(tot["home"] / seen, 6)
-    draw = round(tot["draw"] / seen, 6)
-    got = ProbTriple(home=home, draw=draw, away=round(1.0 - home - draw, 6))
-    return got, f"시나리오 {len(rows)}개 · 스코어 단위 무게 비율(합 {seen:.2f})"
-
-
+# ⚠️ **`_from_scenarios` 는 지웠다** — 시나리오 무게로 우리 확률을 만들던
+#    길이다(§1 처분). 🔴 우리 확률은 ⑯ 격자 하나에서 온다.
 def weight_rules(variables: list[Variable], *, measured: bool
                  ) -> tuple[dict[str, float], list[str]]:
     """🔴🔴 §5 중복 금지 — ② 가 **센 것을 또 세지 않는다**. `(변수별 배수, 사유들)`.
@@ -184,7 +155,7 @@ def _leader(p: ProbTriple | None) -> str:
                key=lambda kv: kv[1])[0]
 
 
-def tilt_reasons(ours: ProbTriple | None, base: BaseProb, hypo: HypoSet | None,
+def tilt_reasons(ours: ProbTriple | None, base: BaseProb,
                  variables: list[Variable], *, measured: bool) -> list[str]:
     """🔴 §5 마지막 — *"우리가 기준보다 X쪽으로 치우친 이유"*.
 
@@ -202,17 +173,15 @@ def tilt_reasons(ours: ProbTriple | None, base: BaseProb, hypo: HypoSet | None,
         gap = getattr(ours, key) - getattr(base.probs, key)
         if abs(gap) < GAP_BASE:
             continue
-        rows = [sc for sc in (getattr(hypo, "scenarios", []) or [])
-                if rules.direction_of([f"{a}-{b}" for a, b in sc.outcomes]) == want]
-        rows.sort(key=lambda s: -float(s.strength or 0.0))
+        # 🔴🔴 **시나리오 driver 가 없다**(§1 처분 2026-10-12 셋째) — 그래서
+        #    *"그 쪽 변수"* 를 **방향으로** 고른다(무게 큰 것부터 셋).
+        #  ⚠️ 종전에는 그 쪽 시나리오의 `driver_vars` 를 읽었다.
+        pick = sorted((v for v in variables if v.favors == want),
+                      key=lambda v: -float(getattr(v, "weight", 0.0) or 0.0))
         said: list[str] = []
-        for sc in rows[:3]:
-            for vid in sc.driver_vars[:2]:
-                v = by_id.get(vid)
-                if v is None or vid in [x.split()[0] for x in said]:
-                    continue
-                tag = "②로 측정 가능" if v.type in ABSENCE_TYPES else "②가 못 재는 종류"
-                said.append(f"{vid}({v.type} · {tag})")
+        for v in pick[:3]:
+            tag = "②로 측정 가능" if v.type in ABSENCE_TYPES else "②가 못 재는 종류"
+            said.append(f"{v.id}({v.type} · {tag})")
         out.append(f"{name} {gap:+.0%} — 치우친 이유: "
                    + (" · ".join(said[:3]) or "driver 를 못 찾았다")
                    + ("" if measured else " · ⚠️ ② 가 없어 무게표를 그대로 썼다"))

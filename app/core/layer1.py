@@ -814,7 +814,6 @@ def _scores(card: Card) -> str:
     ⚠️ 실사고 2026-10-09(강원–부천): 무게 1위 `1-2`(away 1.3525)가 빠지고
        `3-0 · 2-0 · 0-0` 이 나갔다 — 작성자가 골랐기 때문이다. 🔴 코드가 고른다.
     """
-    from app.core import reweight
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **예상 스코어도 시뮬 분포에서**(지적 ④ — 확률은 한 곳이다)
     # ══════════════════════════════════════════════════════════════════
@@ -848,7 +847,7 @@ def _scores(card: Card) -> str:
     # 🔴 방향과 **어긋나는 것만** 남았으면 그 사실을 적는다
     if side:
         agree = [s for s, _w in rows
-                 if reweight.side_of(*(int(x) for x in s.split("-"))) == side]
+                 if _side_of(*(int(x) for x in s.split("-"))) == side]
         if not agree:
             out += (f" ⚠️ **방향({side})과 어긋난다** — 무게가 반대쪽에 있다"
                     " · 🔴 재가중 무게다(시뮬이 못 돌았다)")
@@ -891,11 +890,10 @@ def _flip(card: Card) -> str:
     side = dir_side(card)
     rows = sorted(list(getattr(card.hypo, "scenarios", None) or []),
                   key=lambda s: -float(s.strength or 0.0))
-    from app.core import reweight
     out: list[str] = []
     for s in rows:
         for h, a in (s.outcomes or []):
-            got = reweight.side_of(int(h), int(a))
+            got = _side_of(int(h), int(a))
             if side and got == side:
                 continue
             if not side and got == "draw":
@@ -1526,3 +1524,11 @@ def _names_in(said: str) -> list[str]:
     return [m.group(0).strip() for m in _LATIN_NAME.finditer(str(said or ""))]
 
 
+def _side_of(home: int, away: int) -> str:
+    """🔴 스코어 → 결과. ⚠️ 판정은 `rules.direction_of` **하나**다(사본 금지).
+
+    ⚠️ **옮겨 왔다** — 옛 `app/core/reweight.py`(⑳ 시나리오 재가중)에 있던 함수다.
+       그 모듈은 §1 처분으로 지워졌지만 이 **스코어 → 쪽** 변환은 1겹이 쓴다.
+    """
+    from app import rules
+    return str(rules.direction_of([f"{home}-{away}"]) or "")

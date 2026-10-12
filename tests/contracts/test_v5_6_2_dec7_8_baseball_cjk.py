@@ -109,35 +109,7 @@ def test_dec8_세_표기가_한_열쇠에_묶인다():
 # 🔴 둘 다 *"함수는 보고 **쓰는 곳**은 안 봤다"* 다 — §9-5 가 무효로 보는 꼴.
 
 
-def test_dec7_M83_보강_경로가_야구_셋을_부른다():
-    """🔴🔴 **M83** — 배선을 끊으면 빨개져야 한다(#2).
-
-    ⚠️ 종전 계약은 `hasattr(scenarios, 'baseball_templates')` 만 봤다 —
-       🔴 **부르는 곳**을 지워도 통과했다.
-    """
-    import inspect
-
-    from app import scenarios
-    from tests._helpers import strip_docs
-    body = strip_docs(inspect.getsource(scenarios.require_set))
-    assert "baseball_templates(" in body, (
-        "🔴 §6-2 보강(`require_set`)이 **야구 템플릿을 안 부른다** — 안 이어진 "
-        "코드는 없는 코드보다 나쁘다(#2)")
-
-    # 🔴 그리고 **실제로 더하나** — 불펜 데이 변수를 주고 센다
-    from app import classify
-    res = scenarios.Result()
-    g = classify.Game(home="H", away="A", sport="baseball", league="MLB",
-                      home_id="team:1", away_id="team:2")
-
-    class _V:
-        type = "pitcher_state"
-        quote = "Milwaukee will use a bullpen day on Saturday"
-        claim = ""
-        why = ""
-    n = scenarios.baseball_templates(res, g, [_V()])
-    assert n >= 1, (n, res.notes)
-    assert any(d.template_id == "baseball_bullpen_day" for d in res.drafts), \
-        [d.template_id for d in res.drafts]
-
-
+# ⚠️ **걷은 시험** — `our_board(drafts=…)`(시나리오로 강팀·줄을 고르던 길)이
+#    §1 처분으로 바뀌었다: 강팀은 **격자**가 댄다(`fav=`·`dog=`).
+#    🔴 거짓 1.0 계약은 **구조적으로 사라졌다** — 격자가 모든 스코어를 센다.
+#    걷은 시험: `test_dec7_M83_보강_경로가_야구_셋을_부른다`

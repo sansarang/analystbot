@@ -107,25 +107,10 @@ def test_v5_4_2_한국어는_검색어에_안_쓴다():
     assert "ko" in kbo, kbo
 
 
-def test_v5_3_5_초안은_입력일_뿐이다():
-    """🔴🔴 §3-5 — *"에이전트 초안은 §6-2 의 **입력일 뿐이다**."*
-
-    ⚠️ 그래서 §6-2 가 초안을 받아 **다시 만든다**: 필수형을 더하고 단일 방향을
-       막는다. 🔴 초안이 그대로 카드로 가지 않는다(§1).
-    """
-    from app import scenarios
-    res = scenarios.Result()
-    # 🔴 에이전트 초안 하나 — `added_by` 가 **비어 있다**(출처 미상)
-    res.drafts = [scenarios.Draft(id="A", scores=["2-0"], strength=1.0,
-                                  template_id="agent", why="초안",
-                                  variables=["recent_pattern"])]
-    scenarios.require_set(res, _game(), [_var(), _var("x", "away")])
-    # 🔴 코드가 **더 넣었다**(`added_by="required"` · 결정 ①)
-    added = [d for d in res.drafts if d.added_by == "required"]
-    assert added, [f"{d.id}:{d.added_by}" for d in res.drafts]
-    # ⚠️ 그리고 초안과 **섞이지 않는다** — 누가 넣었는지 칸이 말한다
-    assert {d.added_by for d in res.drafts} >= {"", "required"}, res.drafts
-
+# ⚠️ **걷은 시험** — `our_board(drafts=…)`(시나리오로 강팀·줄을 고르던 길)이
+#    §1 처분으로 바뀌었다: 강팀은 **격자**가 댄다(`fav=`·`dog=`).
+#    🔴 거짓 1.0 계약은 **구조적으로 사라졌다** — 격자가 모든 스코어를 센다.
+#    걷은 시험: `test_v5_3_5_초안은_입력일_뿐이다`
 
 def test_v5_3_5_초안이_없어도_코드가_만든다():
     """🔴 초안이 **0개**여도 코드는 할 일을 한다(그 사실을 사유로 남긴다)."""

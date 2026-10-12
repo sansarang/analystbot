@@ -140,37 +140,10 @@ def test_v9_꺼진_무기가_상수가_아니다():
     assert _style.off_weapons(_Read({"A": "명단 제외"}, {}), None) == []
 
 
-def test_v9_손흥민이_선발인데_수비_위주면_버린다():
-    """🔴🔴 **④ 전략 판정**(사용자 지시 2026-10-11) — 포메이션 글자로 공격/수비를
-    판정하지 않는다. **선수별 주 역할·시즌 공격 기여**로 센다.
-
-    🔴 고정물 — *"손흥민·부앙가가 선발인 LAFC 가 `수비 위주` 로 나오면 실패"*.
-    ⚠️ 돌연변이: 그 검사를 지우면 포메이션만 보고 다시 `수비 위주` 가 나온다.
-    """
-    from app.core.stages import s2d_strategy as _s2d
-
-    class _Read:
-        def __init__(self, on):
-            self.key_state = on
-            self.da = -10.0          # 🔴 ΔA 는 **통과**하는 값이다(그래서 샜다)
-            self.back_now = self.back_usual = 4
-            self.changed = 3
-
-        def ids(self):
-            return ["L1", "L2", "L5"]
-
-    class _Line:
-        side, strategy = "home", "수비 위주"
-        fact_refs = ["L1", "L2"]
-
-    on = {"Heung-Min Son": "선발", "Denis Bouanga": "선발"}
-    bad = _s2d.check([_Line()], {"home": _Read(on)})
-    assert any("핵심 공격 선수" in x for x in bad), bad
-    # 🔴 핵심 공격 선수가 **벤치/제외**면 그 말을 하지 않는다
-    off = {"Heung-Min Son": "명단 제외", "Denis Bouanga": "벤치"}
-    assert not [x for x in _s2d.check([_Line()], {"home": _Read(off)})
-                if "핵심 공격 선수" in x]
-
+# ⚠️ **걷은 시험** — `s2d_strategy.check`(LLM 전략 판정의 검열)가 §1 처분
+#    (2026-10-12 셋째)으로 지워졌다: ⑩ 은 **늘 코드 판정**이라 버릴 LLM 줄이
+#    없다(계약 X2).
+#    걷은 시험: `test_v9_손흥민이_선발인데_수비_위주면_버린다`
 
 def test_v9_구조_결장은_기사_수와_무관하게_hard다():
     """🔴🔴 **⑤**(사용자 지시 2026-10-11) — fotmob **결장 명단(구조 사실)** 에 있는

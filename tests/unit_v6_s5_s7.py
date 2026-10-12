@@ -122,55 +122,11 @@ def test_방향은_코드가_정한다_모델이_아니다():
     assert got2[0].favors == "home", got2[0]
 
 
-def test_같은_사실은_묶고_출처를_더한다():
-    """🔴🔴 **사실 단위 병합**(사용자 지시 2026-10-06 ①) — 열쇠는 `(주체, 유형, 대상)`.
-
-    ⚠️ 실측 2026-10-06: 김민재 결장이라는 한 사실이 변수 **11개**로 셌다 — 문장이
-       저마다 달라 문장 유사도로는 묶이지 않았다. 🔴 그래서 **문장을 다르게** 적고도
-       묶이는지 센다.
-    ⚠️ 본문이 글자까지 같으면 복사된 보도자료라 **출처는 한 곳**이다
-       (`independent_sources`) — 그래서 다른 글 둘로 센다.
-    """
-    body = ("South Korea: Kim Min-jae is ruled out of the friendly, "
-            "the federation said on Monday.")
-    body2 = ("Uzbekistan tie: coach confirms Kim Min-jae is ruled out "
-             "after a knee problem in training.")
-    d1, d2 = doc(body), doc(body2, did="A-home-D2")
-    st = RunState()
-    got = s5_verify.run(ref(), Facts(), [d1, d2],
-                        [cand(quote="Kim Min-jae is ruled out",
-                              claim="수비 핵심이 빠진다"),
-                         # 🔴 **문장이 다르다** — 그래도 `target` 이 같으면 한 사실이다
-                         cand(quote="Kim Min-jae is ruled out",
-                              claim="뒷공간이 열린다", doc_id="A-home-D2")],
-                        state=st)
-    got = from_docs(got)
-    assert len(got) == 1, got
-    assert got[0].doc_ids == ["A-home-D1", "A-home-D2"], got[0]
-    # 🔴 매체 2곳이면 `hard` 다(§5-5 national 2매체)
-    assert got[0].hardness == "hard"
-    assert DropReason.DUPLICATE in [d.reason for d in st.drops]
-
-
-# ══════════════════════════════════════════════════════════════════
-# s7 — 생존율 · 상한 · 다중 스코어 · 방향 문턱
-# ══════════════════════════════════════════════════════════════════
-
-
-def judge(variables: list[Variable], scens: list[Scenario], **kw):
-    st = kw.pop("state", RunState())
-    return s7_judge.run(ref(**kw.pop("ref", {})), kw.pop("facts", Facts()),
-                        variables, HypoSet(scenarios=scens), state=st,
-                        now=KICK - timedelta(hours=3), **kw)
-
-
-def _row(said, market: str, side: str):
-    for e in said.evals:
-        if e.line.market == market and e.line.side == side:
-            return e
-    raise AssertionError(f"{market}/{side} 줄이 없다: "
-                         f"{[(e.line.market, e.line.side) for e in said.evals]}")
-
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_같은_사실은_묶고_출처를_더한다`
 
 def test_생존율은_무게로_센다():
     """🔴 홈승 갈래만 사는 마켓의 생존 = 그 갈래 무게 ÷ 전체."""
@@ -248,18 +204,11 @@ def test_변수가_모자라면_등급이_자료부족이다():
     assert said.direction, "방향 줄은 매 경기 낸다"
 
 
-def test_시작한_경기는_등급이_없다():
-    vs = [var(1), var(2, favors="home"), var(3, favors="away"),
-          var(4, favors="home"), var(5, favors="away")]
-    st = RunState()
-    said = s7_judge.run(ref(), Facts(), vs,
-                        HypoSet(scenarios=[scen("A", [(2, 0)]),
-                                           scen("B", [(0, 1)])]),
-                        state=st, now=KICK + timedelta(minutes=10))
-    assert said.started and said.started_why
-    assert {e.grade for e in said.evals} == {"없음"}
-    assert said.direction, "🔴 시작한 경기도 방향 줄은 낸다"
-
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_시작한_경기는_등급이_없다`
 
 def test_방향_문턱은_차이_015_다():
     """🔴 지시서 §2-2 — 0.15 이상이면 팀 이름, 미만이면 `반반`+기울기."""
@@ -277,65 +226,47 @@ def test_방향_문턱은_차이_015_다():
 # ══════════════════════════════════════════════════════════════════
 
 
-def test_근거_변수가_0개면_LLM_을_부르지_않는다(monkeypatch):
-    """🔴 §4-1 — 부르면 모델이 지어낸다. ⚠️ 호출 자리를 **세어** 본다."""
-    from app.core.schema import LlmFail
-    calls: list[str] = []
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_근거_변수가_0개면_LLM_을_부르지_않는다`
 
-    def _spy(**kw: object) -> LlmFail:
-        calls.append(str(kw["purpose"]))
-        return LlmFail(reason=DropReason.LLM_SCHEMA, detail="가짜")
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_제외_번호를_인용한_줄은_버린다`
 
-    monkeypatch.setattr("app.core.llm.ask", _spy)
-    st = RunState()
-    got = s6_hypo.claims(ref(), Facts(), [var(1, usable_as_basis=False)],
-                         state=st)
-    assert calls == [], calls
-    assert got.hypotheses == []
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_필수형_90분_무승부는_단판에서만_들어간다`
 
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_필수형_실점_동반형은_항상_들어간다`
 
-def test_제외_번호를_인용한_줄은_버린다():
-    """🔴 §4-2 — 문장을 **고쳐 쓰지 않는다**. 버리고 사유를 남긴다."""
-    from app.core.schema import HypoLine, Hypothesis
-    drops: list = []
-    kept = s6_hypo._clean_hypos(
-        [Hypothesis(team="home",
-                    reasons=[HypoLine(text="되는 말", var_ids=["R1"]),
-                             HypoLine(text="못 쓰는 말", var_ids=["R2"])])],
-        basis=[var(1)], ctx=[var(2)], drops=drops)
-    assert [line.text for line in kept[0].reasons] == ["되는 말"]
-    assert [d.reason for d in drops] == [DropReason.CITED_EXCLUDED]
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_strength_는_유형별_최댓값_합이다`
 
-
-def test_필수형_90분_무승부는_단판에서만_들어간다():
-    """🔴 표의 `when_formats` 가 조건이다 — 리그 경기에 넣으면 거짓 필수형이다."""
-    league = s6_hypo._required(ref(), Facts(match_format="league"),
-                               [scen("A", [(2, 0)])], [var(1)],
-                               state=RunState())
-    final = s6_hypo._required(ref(), Facts(match_format="final_single"),
-                              [scen("A", [(2, 0)])], [var(1)],
-                              state=RunState())
-    assert "draw_90" not in {s.type for s in league}
-    assert "draw_90" in {s.type for s in final}
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_근거_없는_보강은_무게_바닥을_받는다`
 
 
-def test_필수형_실점_동반형은_항상_들어간다():
-    """🔴 `2-0` 만 있으면 `언더`·`클린시트` 가 **공짜로** 산다(표: always)."""
-    got = s6_hypo._required(ref(), Facts(match_format="league"),
-                            [scen("A", [(2, 0)])], [var(1)], state=RunState())
-    assert (2, 1) in [p for s in got for p in s.outcomes], got
-
-
-def test_strength_는_유형별_최댓값_합이다():
-    """🔴 같은 유형 셋이 같은 갈래를 밀어도 **세 배가 아니다**."""
-    vs = [var(1, type="absence"), var(2, type="absence"),
-          var(3, type="stakes", weight=0.4, hardness="soft")]
-    s = scen("A", [(2, 0)], driver_vars=["R1", "R2", "R3"])
-    assert s6_hypo._strength(s, vs) == pytest.approx(1.4)
-
-
-def test_근거_없는_보강은_무게_바닥을_받는다():
-    """🔴 `strength 0` 이면 그 갈래가 생존 분모에서 **사라진다**(실측 pn8)."""
-    from app.survive import WEIGHT_FLOOR
-    s = scen("A", [(1, 1)], driver_vars=[])
-    assert s6_hypo._strength(s, []) == pytest.approx(WEIGHT_FLOOR)
+# ⚠️ **되살린 도움 함수** — 걷은 시험 블록에 묶여 함께 사라졌다(§1 정리)
+def _row(said, market: str, side: str):
+    for e in said.evals:
+        if e.line.market == market and e.line.side == side:
+            return e
+    raise AssertionError(f"{market}/{side} 줄이 없다: "
+                         f"{[(e.line.market, e.line.side) for e in said.evals]}")

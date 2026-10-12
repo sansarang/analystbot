@@ -10,8 +10,8 @@
 🔁 강팀 South Korea 54% · 🔁 **Uzbekistan 승 21%** · South Korea 미승 46% · Uzbekistan +1.5 71% · Uzbekistan 더블찬스 46% · Uzbekistan DNB 28%
 
 **1. 자료 한계 고백**
-- 버린 것: `body_missing` 6건 · `conflict` 1건 · `duplicate` 5건 · `identity_mismatch` 63건 · `replay_miss` 2건 · `sport_mismatch` 5건 · `stakes_vague` 1건 · `stale` 2건 · `team_tier_mismatch` 4건 · `type_content_mismatch` 1건 · `type_off_catalog` 3건
-- 문서 8건 · 변수 11개 · 시나리오 5개
+- 버린 것: `body_missing` 6건 · `conflict` 1건 · `duplicate` 5건 · `identity_mismatch` 63건 · `sport_mismatch` 5건 · `stakes_vague` 1건 · `stale` 2건 · `team_tier_mismatch` 4건 · `type_content_mismatch` 1건 · `type_off_catalog` 3건
+- 문서 8건 · 변수 11개 · 시나리오 0개
 - 못 받은 칸 — 오늘 XI 없음(상태 none — IR02·IR03 이 안 돈다) · 감독 미확보 · 순위표 없음
 - 🔴 충돌: **채택 구조 사실**(공식 어댑터 6승 3무 0패 · 표본 9경기) / **버림 기사**(11승 4무 1패) — 공식 > 출처 수 > 등급
 
@@ -34,8 +34,6 @@
 
 | 단계 | 사유 | 제목 | 상세 |
 |---|---|---|---|
-| `s6` | `replay_miss` | ⬜ 제목 없음 | replay_miss: 카세트 없음 — tests/fixtures/cassettes/nomatch/socce |
-| `s6` | `replay_miss` | ⬜ 제목 없음 | replay_miss: 카세트 없음 — tests/fixtures/cassettes/nomatch/socce |
 | `s5` | `type_content_mismatch` | ⬜ 제목 없음 | 🔴 유형 `absence_att` 인데 그 말이 **한 글자도 없다** — 필요한 말 ['결장', '빠진', |
 | `s5` | `stakes_vague` | ⬜ 제목 없음 | 🔴 구체적 동기가 없다(진출·탈락·우승·기록·감독 거취·순위) — The match against Uzbek |
 | `s5` | `duplicate` | ⬜ 제목 없음 | 같은 사실로 묶었다(열쇠 absence*·kim min-jae) → 출처 2곳 |
@@ -74,8 +72,10 @@
 | `s3/신원` | `identity_mismatch` | Maccabi Tel Aviv FC Israeli Premier League Soccer Odds 2026 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'maccabi tel aviv fc israeli p |
 | `s3/신원` | `identity_mismatch` | 월드컵, worldcup | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '월드컵, worldcup ' |
 | `s3/신원` | `identity_mismatch` | CH! 와 텍스트 또는 음성으로 채팅하세요 - AI 채팅을 무료로 안전하게 즐기세요 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'ch! 와 텍스트 또는 음성으로 채팅하세요 - ai  |
-- ⚠️ **53줄 더 있다**(표는 40줄까지 적는다)
-- 합계 — `s3/body_missing` 6건 · `s3/sport_mismatch` 5건 · `s3/날짜/stale` 2건 · `s3/도메인/type_off_catalog` 3건 · `s3/신원/identity_mismatch` 63건 · `s4/team_tier_mismatch` 4건 · `s5/conflict` 1건 · `s5/duplicate` 5건 · `s5/stakes_vague` 1건 · `s5/type_content_mismatch` 1건 · `s6/replay_miss` 2건
+| `s3/신원` | `identity_mismatch` | 싸이룩스 코리아 네트워크 :: CYLOOKS KOREA NETWORK | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '싸이룩스 코리아 네트워크 :: cylooks kore |
+| `s3/신원` | `identity_mismatch` | 2034년 유방암 치료제 시장 규모, 점유율, 성장 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '2034년 유방암 치료제 시장 규모, 점유율, 성장  |
+- ⚠️ **51줄 더 있다**(표는 40줄까지 적는다)
+- 합계 — `s3/body_missing` 6건 · `s3/sport_mismatch` 5건 · `s3/날짜/stale` 2건 · `s3/도메인/type_off_catalog` 3건 · `s3/신원/identity_mismatch` 63건 · `s4/team_tier_mismatch` 4건 · `s5/conflict` 1건 · `s5/duplicate` 5건 · `s5/stakes_vague` 1건 · `s5/type_content_mismatch` 1건
 
 **🧠 라인업 전략 (자세히)** — 판정 `확정 XI 전`
 - 🔴 home: 🔴 **확정 XI 전 — 전략 분석 없음**(§1) · 지금 XI 는 `없음` · away: 🔴 **확정 XI 전 — 전략 분석 없음**(§1) · 지금 XI 는 `없음`
@@ -133,15 +133,14 @@
 
 **🔎 VerificationTable** — ⬜ 검증 출처가 없다
 
-**🧪 반증 표** — ⬜ 조건 0건
+
 
 **🧮 적합 정보**
 - 상성 계수 — 표본 0 · 🔴 **임시값** · 적합 못 했다 — 백필(K리그1·J1 두 시즌)이 아직 없다
     축 비중 {'axis0': 0.3, 'axis1': 0.3, 'axis2': 0.2, 'axis3': 0.2} · λ 모형 {'beta': 0.25, 'home_mul_default': 1.0, 'cap_pct': 35}
-- 검증 임계 — 표본 0 · 🔴 **임시값** · 적합 못 했다 — 백필로 '검증 반대가 있던 경기의 보정 오차'를 재야 한다
 - 적합 도구 — `tools/fit_matchup_model.py`(`tools/fit_matchup_model.py`)
 
-**🧪 가설 검증표 (자세히)** — ⬜ 검증을 안 돌렸다
+
 
 **3. 폼**
 - **South Korea** — 최근5 **L L W L D** · 득점 평균 0.8 · 보정 평균 **0.25** · 휴식 4일 · 무패 1 · 무승 2
@@ -184,18 +183,10 @@
 - `S02` [h2h_pattern] 맞대결 9경기 South Korea 6승 3무 0패(상대 0승) · 평균 3.0골 — 승패 **home** · 득점 - · soft · 출처 구조 사실 · 대상 `h2h` · [규칙 S02]
 
 **5. 팀별 가설 + 무너지는 조건**
-- **South Korea**
-  - 이긴다면: South Korea 는 **먼저 득점하면** 그 리드를 지키려 내려선다 — 간절한 팀의 선제골은 경기를 닫는 쪽으로 쓴다(R5) (R5)
-  - 무너지는 조건: South Korea 는 **빠진 자리가 메워지지 않으면 침묵한다** — 그 경로가 막히면 한 골도 못 넣는 쪽으로 간다(R1) (R1)
-  - 무너지는 조건: South Korea 는 **먼저 실점하면** 무너진다 — 간절함이 급함으로 바뀌어 뒤를 열고 나간다(R5) (R5)
-  - 무너지는 조건: South Korea 는 **후반으로 갈수록 식는다** — 일정 부담이 60분 뒤에 나타난다(IR11-home) (IR11-home)
+
 
 **6. 시나리오**
-- **A** (1-0) blowout · 무게 0.252 [보강] — 🔴 필수형(핸디 ±0.5 대응) — 그 줄의 반대는 상대가 **1점 차**로 이기는 것이다. 없으면 `+0.5` 가 죽을 자리가 없어 1.0 을 받는다 ← 근거 없음
-- **B** (2-0) blowout · 무게 0.252 [보강] — 🔴 필수형(핸디 ±1.5 대응) — 그 줄의 반대는 상대가 **2점 차**로 이기는 것이다. 없으면 `+1.5` 가 죽을 자리가 없어 1.0 을 받는다 ← 근거 없음
-- **C** (1-1 · 0-0) lock · 무게 0.348 [보강] — 🔴 축구 필수형(무승부) — 무승부 갈래가 **하나도 없었다** · 근거 S02, S04, IR11-home ← S04, IR11-home
-- **D** (2-1) conceding · 무게 0.252 [보강] — 🔴 필수형(우세팀 실점 동반) — 우세팀이 이기면서 한 점을 준다. ⚠️ 이 갈래가 없으면 `언더`·`클린시트` 가 **공짜로** 1.0 을 받는다(표: 우세팀_실점_동반형) ← 근거 없음
-- **E** (0-2) away_win · 무게 0.296 [보강] — 🔴 결과 덮기(away) — 우리 열이 그 결과에 **21%** 를 주는데 그 결과를 그린 갈래가 **하나도 없었다**. ⚠️ 근거 변수가 없어 **바닥값**이고, 모양은 필수형 표의 스코어다 ← 근거 없음
+
 
 **7b. 확률 세 열**
 - 시장 = 사용자 보드 · 업체 몫 8.6%
@@ -220,20 +211,20 @@
 **7. 보드 대입**
 출처: **사용자 보드**
 
-| 마켓 | A | B | C | D | E | 생존 | 상한 | 등급 |
-|---|---|---|---|---|---|---|---|---|
-| win home | ○ | ○ | ✗ | ○ | ✗ | 0.0 | 0.8 | 보류 |
-| draw  | ✗ | ✗ | ○ | ✗ | ✗ | 0.0 | 0.8 | 보류 |
-| win away | ✗ | ✗ | ✗ | ✗ | ○ | 0.0 | 0.8 | 보류 |
-| total over 2.5 | ✗ | ✗ | ✗ | ○ | ✗ | 0.0 | 0.8 | 보류 |
-| total under 2.5 | ○ | ○ | ○ | ✗ | ○ | 0.0 | 0.8 | 보류 |
-| handicap home -0.5 | ○ | ○ | ✗ | ○ | ✗ | 0.0 | 0.8 | 보류 |
-| handicap away 0.5 | ✗ | ✗ | ○ | ✗ | ○ | 0.0 | 0.8 | 보류 |
+| 마켓 |  | 생존 | 상한 | 등급 |
+|---|---|---|---|
+| win home |  | 0.5401 | 0.8 | 없음 |
+| draw  |  | 0.2488 | 0.8 | 없음 |
+| win away |  | 0.2112 | 0.8 | 없음 |
+| total over 2.5 |  | 0.465 | 0.8 | 없음 |
+| total under 2.5 |  | 0.535 | 0.8 | 없음 |
+| handicap home -0.5 |  | 0.5401 | 0.8 | 없음 |
+| handicap away 0.5 |  | 0.4599 | 0.8 | 없음 |
 
 **8. 결론**
-🔴 **등급 없음 — 자료 얇음**(시나리오 5개가 **전부 코드 보강**이다 — 분석이 그린 갈래가 0개다(가설 단계가 돌지 않았다))
+등급 없음 — 문턱을 넘은 줄이 없다(가장 높은 줄 생존 0.5401)
 
-🧭 **종합 논평 — 없다**(양상 저득점 · 저득점 비중 82% ≥ 문턱 55%)
+🧭 **종합 논평 — 없다**(양상 접전 · 문턱을 넘은 양상이 없다(저득점 54%<55% · 난타전 25%<40% · 한쪽 우세 36%<45%))
 
 **9. 방향 판정**
 방향: **South Korea** (세 열 중 3열이 0.15 이상 앞세운다) — 기준 홈 54%/원정 17% · 우리 홈 54%/원정 21% · 시장 홈 55%/원정 20%

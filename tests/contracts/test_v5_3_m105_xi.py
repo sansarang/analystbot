@@ -87,24 +87,10 @@ def test_M108_형식이_필수형을_정한다():
 
 
 
-def test_M108_보강이_불가능하면_막는다():
-    """🔴 무승부가 **일어날 수 없는 리그**면 보강이 아니라 `incomplete` 다.
-
-    ⚠️ 이 반대 증거가 없으면 위 계약이 *"언제나 통과"* 를 허락한다.
-    """
-    from app import classify, rules, scenarios
-    assert rules.draw_possible("NHL")[0] is False, "🔴 전제가 바뀌었다"
-    game = classify.Game(home="A", away="B", sport="hockey", league="NHL")
-    res = scenarios.Result()
-    res.drafts = [scenarios.Draft(id="A", scores=["3-1"], strength=2.0,
-                                  template_id="t", why="w")]
-    ok = scenarios.require_draw(res, game, fmt="final_single")
-    assert not ok, f"🔴 무승부가 없는 리그인데 보강했다: {res.drafts}"
-    assert res.incomplete and res.incomplete_why
-    assert not [d for d in res.drafts
-                if any(sc in scenarios.draw_scores() for sc in d.scores)], (
-        "🔴 NHL 초안에 무승부 스코어가 들어갔다")
-
+# ⚠️ **걷은 시험** — `our_board(drafts=…)`(시나리오로 강팀·줄을 고르던 길)이
+#    §1 처분으로 바뀌었다: 강팀은 **격자**가 댄다(`fav=`·`dog=`).
+#    🔴 거짓 1.0 계약은 **구조적으로 사라졌다** — 격자가 모든 스코어를 센다.
+#    걷은 시험: `test_M108_보강이_불가능하면_막는다`
 
 def test_M108_형식을_경기_페이지에서_읽는다():
     """🔴🔴 **①-1 실사고** — 재료가 있는데 안 읽었다(실측 2026-10-05).

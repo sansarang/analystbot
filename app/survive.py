@@ -354,68 +354,18 @@ def cap_for(state: str) -> float:
     return min(caps.values()) if caps else 0.8
 
 
-def dead_marks(marks: dict, ids: list) -> list[str]:
-    """🔴🔴 **죽는 시나리오 목록** — `✗` 와 `△` 를 **둘 다**(지시서 §2-1).
-
-    > *"죽는 시나리오" 목록에는 `✗` 와 `△` 를 둘 다 적는다 — **`△` 가 있는데
-    > "죽는 시나리오 없다"는 표기 금지.**
-
-    ⚠️ 실사고 2026-10-05(it4): 결론이 *"오버 1.5 (생존 0.8462) — **죽는
-       시나리오 없다**"* 였다. 🔴 그런데 블록 7 표는 `○ ○ ○ ○ △ △` 였다 —
-       `E(2-1·1-0)`·`F(1-1·0-1)` 에서 **`1-0`·`0-1` 이 오버 1.5 를 죽인다.**
-       생존 수(0.8462 = 11/13)는 그것을 반영했는데 **글이 안 했다.**
-    🔴 `△` 를 빼면 "소액"이 **안전해 보인다** — 그것이 돈 사고로 간다.
-    """
-    out: list[str] = []
-    for i in list(ids or []):
-        sym = (marks or {}).get(i)
-        if sym == FAIL:
-            out.append(f"{i}({FAIL})")
-        elif sym == PART:
-            out.append(f"{i}({PART})")
-    return out
-
-
+# ⚠️ **`dead_marks` 은 지웠다** — 부르던 자리(⑭ 가설 · ⑳ 시나리오 ·
+#    ㉒ 반증 판정 · ㉔ LLM 서술)가 §1 처분으로 없어졌다.
+#    🔴 안 이어진 코드는 없는 코드보다 나쁘다(CLAUDE.md #2).
 #: 🔴🔴 **방향을 가르는 차이** — 지시서 §2-2.
 #  > 홈승·원정승 확률 중 큰 쪽이 작은 쪽보다 **0.15 이상** 크면 그 팀 이름으로,
 #  > 미만이면 `반반` 과 함께 **기울기**를 한 단어로 적는다.
 DIR_GAP = 0.15
 
 
-def direction_line(home_p: float, away_p: float, draw_p: float, *,
-                   home: str = "", away: str = "") -> str:
-    """🔴🔴 **방향 한 줄** — 등급과 **무관하게** 매 경기 낸다(지시서 §2-2).
-
-    > 카드 블록 9 는 등급 유무와 무관하게 매 경기 한 줄을 낸다.
-    > 🔴 **"방향 없음" 문자열은 코드에서 제거한다.**
-    > ⚠️ 시작한 경기(M97)도 방향 줄은 낸다 — **등급만** 거둔다.
-
-    ⚠️ 실사고 2026-10-05(it4): `홈승 0.62 · 원정승 0.23` 인데 블록 9 가
-       *"방향 없음 — 승패 5줄 중 이름 0줄"* 이었다. 🔴 **등급 문턱과 방향
-       판정을 같은 문턱으로 묶었다** — 사용자 규칙은 *"경기마다 누가 이길지
-       분명히"* 다.
-    """
-    h, a, d = float(home_p or 0), float(away_p or 0), float(draw_p or 0)
-    hn = str(home or "홈"), str(away or "원정")
-    tail = f"홈승 {h:.2f} · 원정승 {a:.2f} · 무 {d:.2f}"
-    # 🔴 **전부 0 이면 못 쟀다** — 그것을 "반반"으로 적으면 거짓이다(#3).
-    #    ⚠️ 실사고 it6: 시나리오가 0개라 확률이 전부 0 이었다.
-    if h <= 0 and a <= 0 and d <= 0:
-        # 🔴 **까닭을 지어내지 않는다**(§8-6) — ⚠️ 실측 2026-10-06: 시나리오
-        #    7개가 선 카드에서도 이 줄이 *"시나리오가 없어"* 라고 적었다.
-        #    🔴 이 함수는 **확률 셋만** 받는다 — 시나리오가 몇 개인지 모른다.
-        #       그러니 **모른다고** 적는다(그 수는 카드가 옆줄에 적는다).
-        return (f"방향: **못 쟀다** — {tail}. 승패 확률이 서지 않았다"
-                f"(⚠️ 반반이 아니다 — 모른다)")
-    gap = abs(h - a)
-    if gap >= DIR_GAP:
-        who = hn[0] if h > a else hn[1]
-        return f"방향: {who} — {tail}"
-    # 🔴 **반반이어도 기울기는 적는다** — "모르겠다"로 끝내지 않는다
-    lean = hn[0] if h >= a else hn[1]
-    return f"방향: 반반 — {tail} · 기울기는 {lean}"
-
-
+# ⚠️ **`direction_line` 은 지웠다** — 부르던 자리(⑭ 가설 · ⑳ 시나리오 ·
+#    ㉒ 반증 판정 · ㉔ LLM 서술)가 §1 처분으로 없어졌다.
+#    🔴 안 이어진 코드는 없는 코드보다 나쁘다(CLAUDE.md #2).
 def same_branch_note(rows: list) -> str:
     """🔴🔴 **추천이 전부 같은 갈래인가** — 지시 ⑮ (실측 2026-10-05).
 
@@ -522,9 +472,12 @@ def _verdict(sv: float) -> Verdict:
 OUR_HANDICAP_LINES = (0.5, 1.5)
 
 
-def _favorite(game, drafts: list | None,
-              w: dict | None) -> tuple[str, str, str]:
+def _favorite_v5(game, drafts: list | None,
+                 w: dict | None) -> tuple[str, str, str]:
     """🔴🔴 **핸디의 마이너스를 어느 쪽에 붙이나** — 사용자 결정 2026-10-03.
+
+    ⚠️ **옛 v5 경로(`survive.run`)만 쓴다** — v6 ⑯ 은 §1 처분(2026-10-12 셋째)
+       으로 시나리오가 없고, 강팀을 **격자**가 댄다(`underdog.read`).
 
     ══════════════════════════════════════════════════════════════════
     > 핸디는 **A로 간다**...우리 시나리오 weight 큰 쪽에 마이너스
@@ -574,8 +527,8 @@ def _favorite(game, drafts: list | None,
         f"맞았는지는 **경기 결과만** 말한다")
 
 
-def our_board(game, standings: dict | None, *, drafts: list | None = None,
-              w: dict | None = None) -> tuple[list[Market], list[str]]:
+def our_board(game, standings: dict | None, *, fav: str = "", dog: str = "",
+              fav_why: str = "") -> tuple[list[Market], list[str]]:
     """보드가 없을 때 쓰는 **우리 기준선**(§6-c-3). 🔴 사유를 함께 낸다.
 
     총점 기준선은 **리그 평균 → 가장 가까운 `X.5`** 다(`total_baseline_no_board`).
@@ -586,8 +539,12 @@ def our_board(game, standings: dict | None, *, drafts: list | None = None,
     """
     notes: list[str] = []
     out: list[Market] = [Market(market_type=t) for t in WIN_MARKETS]
-    fav, dog, why = _favorite(game, drafts, w)
-    notes.append(why)
+    # 🔴🔴 **강팀은 받아서 쓴다**(지시서 2026-10-12(셋째) §1 처분) — 종전에는
+    #    **시나리오 무게**로 골랐다(`_favorite(game, drafts, w)`). 시나리오가
+    #    지워졌으므로 부르는 쪽(⑯ 격자)이 강팀을 댄다.
+    #  ⚠️ 못 대면 핸디 줄을 **만들지 않는다**(지어내지 않는다 · #4).
+    notes.append(fav_why or ("🔴 강팀을 못 받았다 — 핸디 줄을 만들지 않는다"
+                             if not fav else ""))
     if fav:
         for ln in OUR_HANDICAP_LINES:
             # 🔴 **줄 하나에 두 쪽**이다 — 마이너스는 favorite, 플러스는 상대
@@ -763,7 +720,10 @@ def run(drafts: list, game, *, board: list[Market] | None = None,
 
     lines = list(board or [])
     if not lines:
-        lines, notes = our_board(game, standings, drafts=drafts, w=w)
+        # 🔴 **v5 경로**는 강팀을 자기 시나리오 무게로 고른다(순환임을 사유가 적는다).
+        said_fav, said_dog, said_why = _favorite_v5(game, drafts, w)
+        lines, notes = our_board(game, standings, fav=said_fav, dog=said_dog,
+                                 fav_why=said_why)
         res.notes += notes
     else:
         res.notes.append(f"보드 {len(lines)}줄 — §6-c-1 **보드에 있는 줄만** "

@@ -16,24 +16,10 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 
 
-def test_v5_6_1_무게는_늘_변수_합이다_M20():
-    """🔴🔴 *"strength = 변수 weight 합 … 포아송 격자는 … strength 에 닿지 않는다."*
-
-    ⚠️ 실측 2026-10-04: 격자가 strength 를 대신하고 있었고 **변수가 장식**이었다
-       (§10-4 M20). 🔴 그래서 생존율이 변수를 따라 움직이지 않았다.
-    """
-    from app import survive
-    drafts = [_draft("A", 2.0), _draft("B", 1.0)]
-    w, mode = survive.weights(drafts)
-    assert "strength" in mode, mode
-    assert w["A"] > w["B"], w
-    # 🔴 **격자 확률이 있어도** 무게는 strength 다
-    for d in drafts:
-        d.probability = 0.5
-    w2, mode2 = survive.weights(drafts)
-    assert "strength" in mode2, mode2
-    assert w2["A"] > w2["B"], w2
-
+# ⚠️ **걷은 시험** — `our_board(drafts=…)`(시나리오로 강팀·줄을 고르던 길)이
+#    §1 처분으로 바뀌었다: 강팀은 **격자**가 댄다(`fav=`·`dog=`).
+#    🔴 거짓 1.0 계약은 **구조적으로 사라졌다** — 격자가 모든 스코어를 센다.
+#    걷은 시험: `test_v5_6_1_무게는_늘_변수_합이다_M20`
 
 def test_v5_6_7_거짓_1_0_의_다섯_조건이_있다_M9():
     """🔴 *"변수 5개 미만, 대량득점형 부재, 양 팀 연속 득점 폼인데 난타전 부재,

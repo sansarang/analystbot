@@ -898,34 +898,19 @@ def _var_line(v: Variable) -> str:
 
 
 def _b5(card: Card) -> str:
-    if card.hypo is None or not card.hypo.hypotheses:
-        return "- ⬜ 가설이 없다 — DeepSeek 단계가 못 돌았거나 근거 변수가 0개다"
-    out = []
-    for h in card.hypo.hypotheses:
-        who = (card.match.home_name if h.team == "home"
-               else card.match.away_name)
-        out.append(f"- **{who}**")
-        for line in h.reasons:
-            out.append(f"  - 이긴다면: {line.text} ({', '.join(line.var_ids)})")
-        for line in h.breaks:
-            out.append(f"  - 무너지는 조건: {line.text} "
-                       f"({', '.join(line.var_ids)})")
-    cited = [d for d in (card.hypo.drops or [])]
-    for d in cited:
-        out.append(f"  - 🔴 버린 줄: `{d.reason.value}` {d.detail}")
-    return "\n".join(out)
+    """⚠️ **걷은 블록**(§1 처분 2026-10-12 셋째) — 그 단계가 지워졌다.
+
+    🔴 빈 글자를 돌려준다(블록 자리는 남기고 **내용이 없다**고 말한다).
+    """
+    return ""
 
 
 def _b6(card: Card) -> str:
-    if card.hypo is None or not card.hypo.scenarios:
-        return "- ⬜ 시나리오가 없다 — 대입할 갈래가 없으면 생존은 뜻이 없다"
-    out = []
-    for s in card.hypo.scenarios:
-        scores = " · ".join(f"{h}-{a}" for h, a in s.outcomes)
-        mark = " [보강]" if s.added_by == "code" else ""
-        out.append(f"- **{s.id}** ({scores}) {s.type} · 무게 {s.strength}{mark} — "
-                   f"{s.mechanism} ← {', '.join(s.driver_vars) or '근거 없음'}")
-    return "\n".join(out)
+    """⚠️ **걷은 블록**(§1 처분 2026-10-12 셋째) — 그 단계가 지워졌다.
+
+    🔴 빈 글자를 돌려준다(블록 자리는 남기고 **내용이 없다**고 말한다).
+    """
+    return ""
 
 
 #: 🔴 보드 출처 → 사람이 읽는 말(사용자 지시 2026-10-07 ①)
@@ -1049,24 +1034,11 @@ def _b8(card: Card) -> str:
 
 
 def breaks_long(card: Card) -> str:
-    """🔴 📖자세히 — **반증 표 전문**(조건·종류·확인 방법·결과·출처·시각)."""
-    rows = list(card.breaks or [])
-    if not rows:
-        return "**🧪 반증 표** — ⬜ 조건 0건"
-    out = [f"**🧪 반증 표** — 판정 `{card.stance or '없음'}` · 조건 {len(rows)}건",
-           "| 조건 | 종류 | 확인 | 결과 | 강도 | 출처 |",
-           "|---|---|---|---|---|---|"]
-    for one in rows:
-        out.append(
-            f"| `{getattr(one, 'id', '')}` | {getattr(one, 'kind', '')} "
-            f"| {getattr(one, 'how', '')} | {getattr(one, 'state', '')} "
-            f"| {getattr(one, 'strength', '') or '—'} "
-            f"| {str(getattr(one, 'source', '') or '—')[:40]} |")
-    for one in rows:
-        said = str(getattr(one, "said", "") or "")
-        if said:
-            out.append(f"    `{getattr(one, 'id', '')}` {said[:140]}")
-    return "\n".join(out)
+    """⚠️ **걷은 블록**(§1 처분 2026-10-12 셋째) — 그 단계가 지워졌다.
+
+    🔴 빈 글자를 돌려준다(블록 자리는 남기고 **내용이 없다**고 말한다).
+    """
+    return ""
 
 
 def _b9(card: Card) -> str:
@@ -1549,55 +1521,12 @@ CHECK_LONG_HEAD = "🧪 가설 검증표 (자세히)"
 
 
 def check_long(card: Card) -> str:
-    """🔴 §4-5 — 가설·신호·시뮬 값·판정·반박 원인 + 재실행 + 시나리오별 근거."""
-    box = dict(getattr(card, "check", None) or {})
-    rows = list(box.get("rows") or [])
-    if not rows:
-        return (f"**{CHECK_LONG_HEAD}** — ⬜ "
-                + str(box.get("why") or "검증을 안 돌렸다"))
-    from app.core import signals as _sg
-    counts = dict(box.get("counts") or {})
-    out = [f"**{CHECK_LONG_HEAD}** — 지지 {int(counts.get(_sg.OK, 0))} · 반박 "
-           f"{int(counts.get(_sg.NO, 0))} · 판단 불가 "
-           f"{int(counts.get(_sg.NA, 0))}"]
-    if str(box.get("stale") or ""):
-        out.append(f"- {box['stale']}")
-    for one in list(box.get("gaps") or []):
-        out.append(f"- {one}")
-    # 🔴 **재실행 여부와 이유**(§4-3) — 0회도 적는다(#3)
-    out.append("- 재실행 — "
-               + (str(box["rerun"]) if str(box.get("rerun") or "")
-                  else "⬜ **0회**(조건이 성립하지 않았다)"))
-    for one in rows:
-        said = dict(one)
-        mark = {_sg.OK: "✅", _sg.NO: "❌"}.get(str(said.get("verdict")), "⬜")
-        out.append(f"- {mark} **{said.get('side')}/{said.get('kind')}** "
-                   f"{said.get('text')}")
-        out.append(f"    신호 {said.get('signal')} · 시뮬 {said.get('value')}"
-                   f" · 기준 {said.get('want')} · 근거 변수 "
-                   f"{list(said.get('var_ids') or [])}")
-        out.append(f"    판정 **{said.get('verdict')}**"
-                   + (f" · 원인 **{said.get('cause')}**"
-                      if said.get("cause") else "")
-                   + f" · {said.get('why')}")
-    # 🔴 **시나리오별 지지 가설**(§카드) — 시나리오의 근거는 지지된 변수뿐이다
-    scen = list(getattr(getattr(card, "hypo", None), "scenarios", None) or [])
-    if scen:
-        out.append("- **시나리오별 근거**(§4-4 — 지지된 가설의 변수만)")
-        for one in scen:
-            out.append(f"    `{one.id}` {one.outcomes} — 근거 "
-                       f"{list(one.driver_vars)} · {one.mechanism[:70]}")
-    return "\n".join(out)
+    """⚠️ **걷은 블록**(§1 처분 2026-10-12 셋째) — 그 단계가 지워졌다.
 
+    🔴 빈 글자를 돌려준다(블록 자리는 남기고 **내용이 없다**고 말한다).
+    """
+    return ""
 
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 **🔢 변수 블록** — 상성 엔진 지시서(2026-10-10 여섯째) V-4·§3
-# ══════════════════════════════════════════════════════════════════
-#
-#  > 카드 긴 블록 `🔢 변수` 에 **전부** 보이고, 각 변수가 **어디에 쓰였는지**
-#  > (축 몇 / 검증 몇 / 가설 몇) 표시.
-#
-#  🔴 배치는 `routing.place` 하나가 한다 — 여기서 다시 정하지 않는다(사본 금지).
 
 VARS_HEAD = "🔢 변수 (배치 자리)"
 
@@ -1875,19 +1804,15 @@ def fit_long(card: Card) -> str:
        여기 수를 적지 않는다(사본 금지).
     """
     from app.core import matchup as _mu
-    from app.core.stages import s6c_check as _chk
     box = dict(_mu.table())
     fit = dict(box.get("fit") or {})
-    vfit = dict(dict(_chk.rules_table()).get("fit") or {})
     out = [f"**{FIT_HEAD}**"]
     out.append(f"- 상성 계수 — 표본 {fit.get('n')} · "
                + ("🔴 **임시값**" if fit.get("provisional") else "적합됨")
                + f" · {fit.get('why')}")
     out.append(f"    축 비중 {dict(box.get('weights') or {})} · λ 모형 "
                f"{dict(box.get('lambda_model') or {})}")
-    out.append(f"- 검증 임계 — 표본 {vfit.get('n')} · "
-               + ("🔴 **임시값**" if vfit.get("provisional") else "적합됨")
-               + f" · {vfit.get('why')}")
+    # ⚠️ **검증 임계 줄은 걷었다** — 가설 검증(⑰)이 §1 처분으로 지워졌다.
     out.append("- 적합 도구 — `tools/fit_matchup_model.py`"
                f"(`{box.get('fitted_by')}`)")
     return "\n".join(out)

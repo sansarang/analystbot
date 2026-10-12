@@ -99,10 +99,9 @@ def card(replaying) -> Card:
     from app import net as _net_mod
     from app import search as _search
     from app.core import board as _board
-    from app.core import reweight as _reweight
     from app.core import shape as _shape
     from app.core.stages import (s2_facts, s2b_base, s2c_market, s3_docs,
-                                 s2d_strategy, s4_extract, s5_verify, s6_hypo,
+                                 s2d_strategy, s4_extract, s5_verify,
                                  s7_judge)
     BOARD, _extra, _bad = _board.parse(BOARD_TEXT)
     # ══════════════════════════════════════════════════════════════════
@@ -141,8 +140,8 @@ def card(replaying) -> Card:
         #    내고, 시나리오는 단계 4 가 시뮬 분포에서 만든다. ⚠️ 이 고정물은 상성·
         #    시뮬을 돌리지 않으므로(`matchup` 이 없다) 시나리오는 **필수형 보강**
         #    만이고, 그 사실이 재생과 운영의 차이로 남는다.
-        hypo = s6_hypo.claims(ref, facts, variables, state=state)
-        hypo = s6_hypo.scenarios(ref, facts, variables, hypo, {}, state=state)
+        # ⚠️ **⑭ 가설·⑳ 시나리오는 지웠다**(§1 처분 2026-10-12 셋째) — 재생도
+        #    그 단계를 돌지 않는다.
         # 🔴🔴 **파이프라인과 같은 순서**(2026-10-07 재가중 ①) — 우리 열 → 재가중 →
         #    생존. ⚠️ 순서가 다르면 재생이 운영을 흉내낸 것이 아니다.
         # ══════════════════════════════════════════════════════════════
@@ -161,8 +160,8 @@ def card(replaying) -> Card:
         mr = _mu.report(ref, facts, edge, varset, strategy=plan)
         prob = _pm.run(ref, facts, mr, varset, edge=edge,
                        state=state)
-        layers = pipeline._layers(ref, facts, variables, hypo, base_p, adj_p,
-                                 feed_mk, user_mk, state=state, strategy=plan)
+        layers = pipeline._layers(ref, facts, variables, base_p, adj_p,
+                                  feed_mk, user_mk, state=state, strategy=plan)
         layers["strategy"] = plan
         layers["varset"] = varset
         edge["report"] = mr
@@ -179,20 +178,20 @@ def card(replaying) -> Card:
                                             draw=said_base["draw"],
                                             away=said_base["away"])
         layers["matchup"] = edge
-        hypo = _reweight.of(hypo, layers.get("ours"), ref=ref, state=state)
-        said = s7_judge.run(ref, facts, variables, hypo, state=state, now=NOW,
-                            board=BOARD, board_source="user_board")
-        said = pipeline._direction(
-            pipeline._grade_by_check(said, layers, state=state),
-            layers, ref)
+        said = s7_judge.run(ref, facts, variables, state=state, now=NOW,
+                            board=BOARD, board_source="user_board",
+                            dist=dict(dict(edge.get("sim") or {})
+                                      .get("scores") or {}))
+        said = pipeline._direction(said, layers, ref)
         # 🔴🔴 **양상·논평도 재생이 센다**(사용자 지시 2026-10-07 ②③) — ⚠️ 논평
         #    호출은 녹화본에 없다(미스 → `None`) → **코드 템플릿**으로 간다. 그
         #    템플릿은 수를 이어 붙이는 것뿐이라 **결정적**이다(스냅샷이 그것을 센다).
-        got_shape = _shape.of(hypo)
+        got_shape = _shape.of(dict(dict(edge.get("sim") or {})
+                                   .get("scores") or {}))
         # 🔴🔴 **F7(2026-10-11)** — 글은 **한 편**이다(작성 1 + 검열 1). 옛 논평
         layers["shape"] = got_shape
         layers["board_source"] = "user_board"
-        got_card = pipeline.card_of(ref, facts, variables, hypo, said,
+        got_card = pipeline.card_of(ref, facts, variables, said,
                                     state=state, layers=layers)
         # 🔴🔴 **F7(2026-10-11)** — 이유 문단·전술 예측·논평이 **최종 평 한 편**
         #    안으로 들어왔다. 라이브 입구와 같은 순서로 그 하나만 부른다.
@@ -283,32 +282,17 @@ def test_불변식4_자팀_결장은_자팀_쪽이_아니다(card: Card):
         assert v.favors != side, v
 
 
-def test_불변식5_인용된_변수는_전부_근거로_쓸_수_있다(card: Card):
-    """5. 가설·시나리오가 인용한 `var_id` 가 전부 `usable_as_basis=True`."""
-    ok = {v.id for v in card.variables if v.usable_as_basis}
-    assert card.hypo is not None
-    for h in card.hypo.hypotheses:
-        for line in [*h.reasons, *h.breaks]:
-            assert set(line.var_ids) <= ok, (h.team, line)
-    for s in card.hypo.scenarios:
-        assert set(s.driver_vars) <= ok, s.id
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_불변식5_인용된_변수는_전부_근거로_쓸_수_있다`
 
-
-def test_불변식6_조건_걸린_필수형이_전부_있다(card: Card):
-    """6. 조건이 맞는 필수형 시나리오가 전부 존재한다(표가 조건을 든다)."""
-    from app.core.stages.s6_hypo import _required_names
-    assert card.hypo is not None
-    want = _required_names(card.facts)
-    kinds = {s.type for s in card.hypo.scenarios}
-    if "우세팀_실점_동반형" in want and any(
-            h != a for s in card.hypo.scenarios for h, a in s.outcomes):
-        # 🔴 이긴 쪽이 한 점을 주는 꼴이 **있어야** 한다
-        assert any(min(h, a) >= 1 and h != a
-                   for s in card.hypo.scenarios for h, a in s.outcomes), kinds
-    if "90분_무승부형" in want:
-        assert "draw_90" in kinds or any(
-            h == a for s in card.hypo.scenarios for h, a in s.outcomes), kinds
-
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_불변식6_조건_걸린_필수형이_전부_있다`
 
 def test_불변식7_죽는_갈래가_있으면_생존이_1이_아니다(card: Card):
     """7. `✗`·`△` 가 있는 마켓의 `survival < 1.0`, XI 상한 적용, 시작했으면 등급 없음."""
@@ -324,19 +308,11 @@ def test_불변식7_죽는_갈래가_있으면_생존이_1이_아니다(card: Ca
         assert all(e.cap < 1.0 for e in card.evals), [e.cap for e in card.evals]
 
 
-def test_불변식8_반증이_시나리오를_지우지_않았다(card: Card):
-    """8. 반증 후 시나리오가 줄지 않았고, 어떤 마켓도 생존이 **오르지 않았다**.
-
-    🔴 v6 의 반증은 **줄만 더한다**(`RedTeamOut.lines`) — 시나리오 집합에 닿지
-       않으므로 생존은 **구조적으로** 오를 수 없다. 그 사실을 센다: 반증이 만든
-       시나리오가 0개이고, 생존을 다시 세도 같은 수다.
-    """
-    assert card.hypo is not None
-    assert [s for s in card.hypo.scenarios if s.added_by == "redteam"] == []
-    before = {s.id for s in card.hypo.scenarios}
-    for e in card.evals:
-        assert set(e.marks) <= before, e
-
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_불변식8_반증이_시나리오를_지우지_않았다`
 
 def test_불변식9_발행일_없는_문서를_근거로_한_변수가_없다(card: Card, docs_by_id: dict):
     """9. `Doc` 마다 발행일 또는 `date_source="none"` 사유가 있고, `none` 은 근거가 아니다."""
@@ -492,56 +468,11 @@ def test_불변식15_재분석_카드에_바뀐_것_블록이_있다(card: Card)
     assert not {x for x in said if "s3_docs" in x or "s4_extract" in x}, said
 
 
-def test_불변식16_사실이_그대로면_등급도_그대로다(card: Card):
-    """🔴🔴 **사용자 지시 2026-10-06(3차) ④** — 재분석이 수를 흔들지 않는다.
-
-    > 재분석: 변수 목록이 바뀌지 않았으면 DeepSeek 를 다시 부르지 않고 이전 시나리오를
-    > 그대로 쓴다 … *"사실 그대로 → 등급 그대로"* 를 **E2E 불변식으로.**
-
-    🔴 재생본으로 **재분석을 한 번 더** 돌려 센다: 같은 사실(같은 녹화본)이면 시나리오·
-       등급이 **글자까지 같아야** 한다. ⚠️ s6 를 다시 부르면 모델이 흔들려 다르다 —
-       그래서 이 불변식이 그 호출을 막는 증거가 된다.
-    """
-    import asyncio
-
-    from app.core import pipeline
-    from app.core.state import RunState
-
-    # 🔴 이 고정물의 카드를 **마지막 실행**으로 심고 재분석을 돌린다
-    pipeline._LAST[card.match.id] = {
-        "at": NOW, "ref": card.match, "docs": [], "cands": [],
-        "card": card, "board_text": ""}
-    st = RunState(match_key=card.match.id)
-    got = asyncio.run(pipeline.reanalyze(
-        f"{card.match.home_name} vs {card.match.away_name}",
-        pool=None, net=None, chain=None, state=st, now=NOW))
-    # ⚠️ 이 고정물은 DB 없이 돈다 — 그래서 s1(입구)이 못 돈다. 🔴 재분석의 **알맹이**
-    #    (변수가 같으면 s6 를 다시 안 부르고 등급이 그대로인가)는 입구와 무관하므로
-    #    **그 부분만** 센다: `_same_vars` 와 `_diff` 를 직접 본다.
-    if isinstance(got, Ambiguous):
-        assert pipeline._same_vars(card.variables, card.variables)
-        said = pipeline._diff(card, card.facts, card.variables,
-                              Judgement(evals=card.evals,
-                                        direction=card.direction,
-                                        conclusion=card.conclusion))
-        assert said == ["바뀐 것 **없다**(XI 상태·변수·등급 모두 같다)"], said
-        return
-    assert got.hypo is not None and card.hypo is not None
-    assert [s.id for s in got.hypo.scenarios] == \
-           [s.id for s in card.hypo.scenarios]
-    assert [(e.line.market, e.line.side, e.grade) for e in got.evals] == \
-           [(e.line.market, e.line.side, e.grade) for e in card.evals], \
-        "🔴 사실이 그대로인데 등급이 바뀌었다(④)"
-
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 **변수 관련성 — 새 불변식 17~19**(사용자 지시 2026-10-06(4차) ④)
-# ══════════════════════════════════════════════════════════════════
-#
-# > ④ E2E 불변식 추가: 기사 출처 변수는 전부 `match_link` 근거가 문단에 있다 /
-# >   XI 상태가 `none` 이면 IR02 변수가 0개 / 홈 이점 숫자의 출처 대회 유형이
-# >   경기의 대회 유형과 같다.
-
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_불변식16_사실이_그대로면_등급도_그대로다`
 
 def test_불변식17_기사_변수는_전부_이_경기와_이어지는_근거를_가진다(
         card: Card, docs_by_id: dict):
@@ -669,25 +600,11 @@ def test_불변식25_기준이나_시장이_없으면_사유와_함께_열이_�
         assert card.adj_prob.why and card.adj_prob.why[:12] in said, card.adj_prob.why
 
 
-def test_불변식26_축구_카드의_우리_열_무승부가_0이_아니다(card: Card):
-    """26. **축구 시나리오에는 무승부 갈래가 있다** → 우리 열 무승부 > 0.
-
-    🔴 사용자 지시 2026-10-06(5차) ①: *"축구 시나리오 세트에 무승부(0-0 또는 1-1)
-       갈래가 하나도 없으면 코드가 보강한다(v4 `soccer_lock` 과 같은 역할).
-       E2E 불변식: 축구 카드의 우리 열 무승부 > 0."*
-    ⚠️ 실측 2026-10-06 온두라스–자메이카: 무승부가 **0%** 였고 `무`·`더블찬스` 가
-       그 0 을 그대로 받았다. 원인이 둘이었다 — 갈래가 없을 수 있다는 것과, 섞인
-       스코어의 무게가 통째로 사라진다는 것. 🔴 둘 다 고쳤다.
-    """
-    if card.match.sport != "soccer":
-        return
-    scen = list(card.hypo.scenarios) if card.hypo is not None else []
-    assert any(h == a for s in scen for h, a in s.outcomes), \
-        "🔴 무승부 스코어가 **하나도 없다**(필수형 보강이 안 돌았다)"
-    assert card.our_prob is not None, "우리 확률이 없다"
-    assert card.our_prob.draw > 0.0, \
-        f"🔴 우리 열 무승부가 0 이다 — 시나리오 {len(scen)}개"
-
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_불변식26_축구_카드의_우리_열_무승부가_0이_아니다`
 
 def test_불변식27_라인업_보정의_pp_와_신뢰도가_카드에_있다(card: Card):
     """27. ② 가 확률을 움직였으면 카드에 **%p 와 환산 R²·표본**이 적혀 있다.

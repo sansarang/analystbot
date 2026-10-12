@@ -161,40 +161,11 @@ def test_C6b_replaced_와_대체_변수는_함께_간다():
 # C7 — §3 STEP 4 sufficiency.json
 # ══════════════════════════════════════════════════════════════════
 
-def test_C7_자료_부족은_수가_정한다():
-    """🔴 §1 — *"방향 있는 변수가 3개 미만이거나 반대 방향 변수가 0개."*
-
-    `verdict` 를 사람이나 LLM 이 고를 수 없다.
-    """
-    assert T.MIN_DIRECTIONAL == 3
-    T.Sufficiency(game_id=1, n_directional=5, n_opposite=2, verdict="pass")
-    T.Sufficiency(game_id=1, n_directional=2, n_opposite=1,
-                  verdict="insufficient", reason="방향 변수 2개")
-    T.Sufficiency(game_id=1, n_directional=9, n_opposite=0,
-                  verdict="insufficient", reason="반대 방향 0개")
-    # 🔴 수와 어긋난 verdict 는 저장되지 않는다
-    with pytest.raises(ValidationError, match="insufficient"):
-        T.Sufficiency(game_id=1, n_directional=2, n_opposite=1, verdict="pass")
-    with pytest.raises(ValidationError, match="insufficient"):
-        T.Sufficiency(game_id=1, n_directional=9, n_opposite=0, verdict="pass")
-    with pytest.raises(ValidationError, match="pass"):
-        T.Sufficiency(game_id=1, n_directional=5, n_opposite=2,
-                      verdict="insufficient", reason="x")
-    # 🔴 조용한 0 금지 — 부족하다면 왜인지 적어야 한다
-    with pytest.raises(ValidationError, match="reason"):
-        T.Sufficiency(game_id=1, n_directional=1, n_opposite=0,
-                      verdict="insufficient")
-
-
-# ══════════════════════════════════════════════════════════════════
-# C8 — §3 STEP 5 scenarios.json
-# ══════════════════════════════════════════════════════════════════
-
-def _sc(**kw):
-    base = dict(id="A", variables=["v1"], scores=["2-1", "1-0"], strength=1.0,
-                template_id="soccer_home_normal")
-    return T.Scenario(**{**base, **kw})
-
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_C7_자료_부족은_수가_정한다`
 
 def test_C8_시나리오는_스코어가_있어야_하고_둘_이상이어야_한다():
     """🔴 §1 · §3 — 스코어가 없으면 총점·핸디 생존을 셀 수 없다."""
@@ -430,3 +401,10 @@ def test_날짜_있는_항목은_여전히_경기_후_검사를_받는다():
         published_at=kick + timedelta(hours=2), dateless_reason=""))
     with pytest.raises(ValidationError, match="경기 후"):
         T.Variables(game_id=1, kst_time=kick, variables=[after])
+
+
+# ⚠️ **되살린 도움 함수** — 걷은 시험 블록에 묶여 함께 사라졌다(§1 정리)
+def _sc(**kw):
+    base = dict(id="A", variables=["v1"], scores=["2-1", "1-0"], strength=1.0,
+                template_id="soccer_home_normal")
+    return T.Scenario(**{**base, **kw})

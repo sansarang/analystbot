@@ -68,13 +68,8 @@ def test_F5_R7_시나리오를_바꿔도_생존이_같다():
     assert "from_dist" in said, "🔴 보드 판정이 분포를 안 쓴다(시나리오 무게로 센다)"
 
 
-def test_F5_시나리오_무게는_표시용이다():
-    """🔴 `reweight` 는 **시나리오 무게 표시용**이다 — 생존에 안 쓴다."""
-    from app.core.stages import s7_judge as _s7
-    said = inspect.getsource(_s7)
-    code = "\n".join(x for x in said.splitlines()
-                     if not x.strip().startswith("#"))
-    i = code.index("def _eval") if "def _eval" in code else 0
-    body = code[i:i + 2500]
-    assert "weight" not in body or "from_dist" in body, (
-        "🔴 생존이 아직 시나리오 무게를 쓴다")
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_F5_시나리오_무게는_표시용이다`

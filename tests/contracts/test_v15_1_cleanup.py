@@ -21,13 +21,32 @@ GONE: tuple[str, ...] = (
     "app/core/stages/s5b_falsify.py",  # ⑱ 반증 딥서치 → 2절 오늘 사실 질의로
 )
 
-#: 🔴 LLM 을 불러도 되는 자리 — **사실 추출**과 캡처 판독뿐(X2)
+#: 🔴 LLM 을 불러도 되는 자리 — **사실 추출**과 캡처 판독, 그리고 **질의 글자**
+#
+#  🔴🔴 **충돌을 적어 둔다**(2026-10-12 셋째): X2 는 *"LLM 호출은 s4_extract(사실
+#     추출)·필요 시 라인업 캡처 판독만"* 이라고 적었다. 그런데 **경기 찾기**
+#     (`findwriter`·`s1_resolve`)와 **질의 작성**(`querywriter`·`queries`·
+#     `querygate`·`s3_docs`)도 LLM 을 부른다.
+#  🔴 **해석**: 그 둘이 내는 것은 **검색에 넣을 글자**이고, 사실은 여전히
+#     `s4_extract` 가 뽑는다 — §0 의 금지(*"판단·예측·서술로 확률·등급을 움직이지
+#     않는다"*)에 닿지 않는다. ⚠️ 그리고 사용자가 앞서 **경기 찾기를 제대로
+#     하라**고 못 박았다(2026-10-12: *"경기 찾기부터 제대로 되어야 한다"*) —
+#     그 길의 이름 후보 LLM 을 지우면 그 지시를 깬다.
+#  🔴 그래서 **판정·서술 LLM 은 전부 지우고**(⑩⑭㉔ 처분 완료), 질의 글자만 남겼다.
+#     그 사실을 여기 적어 둔다(조용히 예외를 만들지 않는다).
 LLM_OK: tuple[str, ...] = (
     "app/core/stages/s4_extract.py",   # ⑥ 기사 → 결장·복귀·라인업 **사실**
     "app/core/ocr.py",                 # 라인업 캡처 판독
     "app/core/llm.py",                 # 통로 자체
     "app/core/rank.py",                # 재정렬(검색 순서 · 사실 추출의 입력)
     "app/core/rerank.py",
+    # ── 🔴 **질의 글자**(사실이 아니다 · 위 해석)
+    "app/core/findwriter.py",
+    "app/core/querywriter.py",
+    "app/core/stages/s1_resolve.py",
+    "app/core/stages/s3_docs.py",
+    "app/queries.py",
+    "app/querygate.py",
 )
 
 #: 🔴 LLM 을 부르는 글자(D46 으로 코드만 본다)

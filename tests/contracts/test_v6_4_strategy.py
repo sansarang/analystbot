@@ -50,45 +50,10 @@ def test_v6_예상_XI_로는_전략을_판정하지_않는다():
     assert not out.lines, "🔴 예상 XI 로 판정을 냈다"
 
 
-def test_v6_수치와_반대인_판정은_버린다():
-    """🔴🔴 §2-2 — *"판정이 2-1 수치와 반대면 버린다"*(ΔA −15%·3백인데 공격 위주).
-
-    ⚠️ 돌연변이: `check` 의 ΔA·수비 수 검사를 지우면 — 모델이 명단과 **반대되는**
-       이야기를 써도 그대로 확률을 움직인다.
-    """
-    from app.core.schema import StrategyLine
-    from app.core.stages.s2d_strategy import check
-
-    class _R:
-        def __init__(self, da=None, back=(None, None), changed=1):
-            self.da = da
-            self.back_usual, self.back_now = back
-            self.changed = changed
-
-        def ids(self):
-            return ["L1", "L2", "L3"]
-
-    reads = {"home": _R(da=-15.0, back=(4, 3)), "away": _R(da=0.0)}
-    bad = check([StrategyLine(side="home", strategy="공격 위주",
-                              fact_refs=["L1", "L2"])], reads)
-    assert bad and any("공격 위주" in x for x in bad), bad
-    # 🔴 수치와 **맞는** 판정은 통과한다
-    assert not check([StrategyLine(side="home", strategy="수비 위주",
-                                   fact_refs=["L1", "L2"])], reads)
-    # 🔴 **근거 2개 미만**도 버린다(§2-2 "근거 없는 판정 금지")
-    bad2 = check([StrategyLine(side="home", strategy="수비 위주",
-                               fact_refs=["L1"])], reads)
-    assert bad2 and "근거" in bad2[0], bad2
-    # 🔴 **없는 id** 는 근거로 세지 않는다
-    bad3 = check([StrategyLine(side="home", strategy="수비 위주",
-                               fact_refs=["Z9", "Z8"])], reads)
-    assert bad3, bad3
-    # 🔴 로테이션인데 바뀐 자리 0 → 버린다
-    bad4 = check([StrategyLine(side="away", strategy="로테이션·체력 관리",
-                               fact_refs=["L1", "L2"])],
-                 {"away": _R(changed=0)})
-    assert bad4 and "로테이션" in bad4[0], bad4
-
+# ⚠️ **걷은 시험** — `s2d_strategy.check`(LLM 전략 판정의 검열)가 §1 처분
+#    (2026-10-12 셋째)으로 지워졌다: ⑩ 은 **늘 코드 판정**이라 버릴 LLM 줄이
+#    없다(계약 X2).
+#    걷은 시험: `test_v6_수치와_반대인_판정은_버린다`
 
 def test_v6_교체전문_벤치는_약화가_아니다():
     """🔴🔴 §2-1·§2-4 — 시즌 선발 비율 **30% 미만** 선수의 벤치는 *평소 운용*.

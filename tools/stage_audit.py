@@ -41,17 +41,19 @@ STAGES: tuple[tuple[str, str, str], ...] = (
     ("⑤", "문서", "app/core/stages/s3_docs.py"),
     ("⑥", "추출(LLM)", "app/core/stages/s4_extract.py"),
     ("⑦", "변수 배치", "app/core/stages/s5_verify.py"),
-    ("⑱", "반증 딥서치", "app/core/stages/s5b_falsify.py"),
-    ("⑭⑮", "가설·무너뜨릴 조건(LLM)", "app/core/stages/s6_hypo.py"),
+    # ⚠️ **지운 단계는 목록에서 뺀다**(§1 처분 2026-10-12 셋째):
+    #    ⑨ 우선순위 지수 · ⑭⑮ 가설·무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 ·
+    #    ⑳ 시나리오·재가중 · ㉒ 반증 판정 · ㉔ 최종 평·논평.
+    #    🔴 없는 파일을 세면 표가 거짓이 된다.
     ("㉑", "보드 판정", "app/core/stages/s7_judge.py"),
-    ("㉔", "최종 평·논평(LLM)", "app/core/stages/s9_say.py"),
-    ("⑨", "우선순위 지수", "app/core/priority.py"),
-    ("⑳", "시나리오 재가중", "app/core/reweight.py"),
     ("⑯", "확률", "app/core/probmodel.py"),
     ("⑯b", "λ 식", "app/core/probfloor.py"),
     ("⑳b", "이변 경고", "app/core/upset.py"),
     ("㉑b", "정보 품질", "app/core/infoquality.py"),
     ("㉓", "카드", "app/core/render.py"),
+    ("⑪b", "선수 ±", "app/core/ratings/player_pm.py"),
+    ("⑪c", "결장의 무게·벤치", "app/core/ratings/lineup_strength.py"),
+    ("③d", "경기 직전 상태", "app/core/context.py"),
 )
 
 #: 🔴 LLM 을 부르는 글자 — ⚠️ 독스트링을 뺀 **코드**에서만 센다(D46)
@@ -95,7 +97,7 @@ def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--log", default="", help="🔴 라이브 실행 로그(비용·시간)")
     args = ap.parse_args(argv[1:])
-    print("# 🔴🔴 §1 단계 감사표 — **처분 전**(정적 측정)")
+    print("# 🔴🔴 §1 단계 감사표(정적 측정)")
     print()
     print("| 단계 | 모듈 | 줄 | 부르는 파일 | **LLM 호출** | 확률 닿음 | "
           "등급 닿음 |")

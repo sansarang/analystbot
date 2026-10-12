@@ -274,99 +274,23 @@ def _mr(edge: str = "home", strength: str = "중"):
                                       "score": 0.15, "why": "시험"})
 
 
-def test_v7_검증_출처가_일곱_자리에서_온다():
-    """🔴 S5-1 — V1 Elo · V2 동기 · V3 일정 · V4 감독·기타 · V5 맞대결 ·
-    V6 시장(표시만) · V7 가설 신호."""
-    from datetime import datetime, timedelta, timezone
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_v7_검증_출처가_일곱_자리에서_온다`
 
-    from app.core import odds as _odds
-    from app.core import routing
-    from app.core.schema import (BaseProb, Facts, HypoSet, MarketProb,
-                                 MatchRef, ProbTriple)
-    from app.core.stages import s6c_check as _chk
-    from app.core.state import RunState
-    ref = MatchRef(id="x:1", sport="soccer", competition="K-League 1",
-                   competition_short="K리그1", home="team:000318",
-                   away="team:000320", home_name="H", away_name="A",
-                   kickoff_utc=datetime.now(timezone.utc) + timedelta(hours=2))
-    rows = [_var("R9", "stakes"), _var("IR11", "fatigue"),
-            _var("S02", "h2h_pattern"), _var("R3", "coach_quote")]
-    vs = routing.place(rows)
-    layers = {"base": BaseProb(probs=ProbTriple(home=0.6, draw=0.2, away=0.2)),
-              "market": MarketProb(probs={_odds.key_of("win", "home"): 0.3,
-                                          _odds.key_of("win", "draw"): 0.3,
-                                          _odds.key_of("win", "away"): 0.4})}
-    got = _chk.run(ref, Facts(), HypoSet(), {}, variables=rows, mr=_mr(),
-                   varset=vs, layers=layers, state=RunState(match_key="x"))
-    srcs = {dict(r)["src"] for r in got["sources"]}
-    assert {"V1", "V2", "V3", "V4", "V5", "V6"} <= srcs, srcs
-    # 🔴 C12 — 시장은 **표시만**이고 등급에 영향이 없다
-    mk = [dict(r) for r in got["sources"] if dict(r)["src"] == "V6"][0]
-    assert mk["cause"] == "" and "등급 영향 없음" in mk["why"]
-    assert any("V6" in x and "등급 영향 없다" in x
-               for x in got["grade"]["why"]), got["grade"]
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_v7_S5_3_등급은_상성_사각만_내린다`
 
-
-def test_v7_S5_3_등급은_상성_사각만_내린다():
-    """🔴🔴 S5-3 — (c) 상성 사각만 등급을 내린다. (a)(b)·V6 은 **영향 없음**."""
-    from app.core.stages import s6c_check as _chk
-    blind_hard = {"src": "V2", "name": "동기", "dir": "반대", "size": "강",
-                  "trust": "hard", "refs": ["R9"], "cause": _chk.CAUSE_BLIND,
-                  "why": "강등권"}
-    got = _chk.grade_move([blind_hard], {})
-    assert got["steps"] == 1 and not got["none"], got
-    # 🔴 (c) 둘이면 **등급 없음**
-    two = _chk.grade_move([blind_hard, {**blind_hard, "src": "V5",
-                                        "refs": ["S02"]}], {})
-    assert two["none"], two
-    # 🔴 (a) 낡음 · (b) 이미 반영은 **안 내린다**
-    for cause in (_chk.MISS_STALE, _chk.CAUSE_IN):
-        said = _chk.grade_move([{**blind_hard, "cause": cause}], {})
-        assert said["steps"] == 0 and not said["none"], (cause, said)
-    # 🔴 V7 주 가설 지지 0개면 한 단계
-    none_sup = _chk.grade_move([], {"rows": [{"x": 1}],
-                                    "counts": {"지지": 0}})
-    assert none_sup["steps"] == 1, none_sup
-    # 🔴 배선 — 내리는 길은 `_lower` 하나다
-    src = (ROOT / "app" / "core" / "pipeline.py").read_text(encoding="utf-8")
-    assert 'dict(layers.get("check") or {}).get("grade")' in src
-
-
-# ⚠️ **걷은 시험** — `s9_say`(㉔ 최종 평 LLM)가 지시서 2026-10-12(셋째)
-#    §1 처분으로 **지워졌다**. 없는 단계를 시험하면 계약이 거짓을 지킨다.
-#    걷은 시험: `test_v7_S7_첫줄과_상성사각_문장을_요구한다`
-
-def test_v7_카드가_검증_블록을_낸다():
-    """🔴 §3 카드 — `🔎 검증 — 같은 방향 n · 반대 n — 반대: {출처 — 원인}`."""
-    from datetime import datetime, timedelta, timezone
-
-    from app.core import layer1
-    from app.core.schema import Card, Facts, MatchRef, ProbTriple
-    from app.core.stages import s6c_check as _chk
-    ref = MatchRef(id="x:1", sport="soccer", competition="K-League 1",
-                   competition_short="K리그1", home="team:000318",
-                   away="team:000320", home_name="H", away_name="A",
-                   kickoff_utc=datetime.now(timezone.utc) + timedelta(hours=2))
-    chk = {"sources": [{"src": "V1", "name": "Elo 기준 확률", "dir": "같음",
-                        "size": "강", "trust": "그대로", "refs": [],
-                        "cause": "", "why": "① 기준 홈 60%"},
-                       {"src": "V2", "name": "동기", "dir": "반대",
-                        "size": "강", "trust": "hard", "refs": ["R9"],
-                        "cause": _chk.CAUSE_BLIND, "why": "강등권"}],
-           "grade": {"steps": 1, "none": False,
-                     "why": ["🔴 (c) 상성 사각 hard·강 1건 → 한 단계 내림"]},
-           "rows": [], "counts": {}}
-    card = Card(match=ref, facts=Facts(), check=chk,
-                our_prob=ProbTriple(home=0.5, draw=0.3, away=0.2))
-    said = layer1.verify_block(card)
-    assert "같은 방향 1 · 반대 1" in said, said
-    assert "V2" in said and _chk.CAUSE_BLIND in said
-    assert "등급 영향" in said
-
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 C11 **백필 누설 금지** — 상성 엔진 지시서 3-5
-# ══════════════════════════════════════════════════════════════════
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_v7_카드가_검증_블록을_낸다`
 
 def test_v7_C11_백필이_자기_경기를_특징에_안_넣는다():
     """🔴🔴 C11 — *"경기 m 특징에 **m 자신·이후 자료**가 들어가면 실패"*.
@@ -690,29 +614,11 @@ def test_v7_홈_배율이_리그_평균과_같은_열쇠를_본다():
     assert "_kind(ref, facts)" in inspect.getsource(_pm.home_mul)
 
 
-def test_v7_리그_평균은_한_곳이다():
-    """🔴🔴 **실사고 2026-10-10**(제노아) — 한 카드가 **같은 수를 알면서 모른다**고 했다.
-
-        [S3] 대회 유형 `league:SA` 실측 평균 2.5185(표본 810)
-        블록 4 — 기준 팀당 1.2592골(대회 league:SA)
-        가설 4줄 — 🔴 리그 평균을 **모른다** — 이 경기 총골 기준이 없다
-
-    🔴 `signals.league_of` 는 **순위표**만 봤고 순위표가 없었다. S3 가 쓰는 수는
-       `probmodel.league_mean` 이다. ⚠️ 돌연변이: 그 되물음을 지우면 가설 넷이
-       다시 `판단 불가` 로 떨어진다.
-    """
-    import inspect
-
-    from app.core import signals as _sg
-    from app.core.stages import s6c_check as _s6c
-
-    said = inspect.getsource(_sg.league_of)
-    assert "league_mean" in said, "🔴 S3 가 쓰는 수를 되묻지 않는다"
-    assert "ref" in inspect.signature(_sg.league_of).parameters
-    # 🔴 부르는 쪽이 `ref` 를 **넘겨야** 대회 열쇠가 산다(안 넘기면 또 빈 글자다)
-    assert "league_of(facts, ref=ref)" in inspect.getsource(_s6c), (
-        "🔴 `s6c` 가 `ref` 를 안 넘긴다 — 대회 유형을 모르면 평균도 못 찾는다")
-
+# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
+#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
+#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
+#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
+#    걷은 시험: `test_v7_리그_평균은_한_곳이다`
 
 def test_v7_등록_안_된_리그_클럽도_한글로_풀린다(tmp_path, monkeypatch):
     """🔴🔴 **실사고 2026-10-11** — 사용자가 `올랜도`·`크루`(MLS)로 물었다.

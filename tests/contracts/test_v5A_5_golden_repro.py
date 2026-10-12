@@ -116,66 +116,11 @@ def test_v5A_5_셋이_다_적혀_있다():
         assert isinstance(c["실제"], tuple) and len(c["실제"]) == 2, c
 
 
-@pytest.mark.parametrize(
-    "case",
-    [pytest.param(
-        c,
-        # ══════════════════════════════════════════════════════════════
-        # 🔴🔴 **아직 못 넘는 둘을 `xfail(strict)` 로 못 박는다**
-        # ══════════════════════════════════════════════════════════════
-        #
-        #  v5-A §5: *"이 테스트가 통과하지 않으면 **DeepSeek 단계를 켜지
-        #  않는다**."* 🔴 그래서 **빨간 사실을 지우지 않는다** — `xfail` 은
-        #  *"안다, 그리고 아직 못 고쳤다"* 를 기계가 들고 있는 꼴이다.
-        #  ⚠️ `strict=True` 다 — **고쳐지면 XPASS 로 빨개진다.** 그때 이 표시를
-        #     떼고 `enabled` 를 켤 수 있다(그 결정은 사용자다).
-        #  🔴🔴 **까닭이 바뀌었다**(2026-10-04 · 결정 ① 집행 뒤):
-        #
-        #     종전: §1 이 글자를 **다섯**으로 못 박아 보강이 **자리를 못 얻었다.**
-        #           → ✅ **풀렸다.** 글자가 여덟이 되자 세트가 8 → **10개**로
-        #              늘었다(`2-2`·`3-1` 이 섰다).
-        #     지금: **대량득점형 방아쇠(§6-2 ②)가 안 걸린다.** 고정물에 그
-        #           재료가 없다 — 사유가 그렇게 적힌다:
-        #             "확률 격자를 못 만들었다 — 홈/원정 쪼갠 표가 없다"
-        #             "`strength_gap` 유형이 미구현이라 `normal` 을 쓴다"
-        #
-        #  ⚠️ 그래서 이것이 **코드 결함인지 고정물 부족인지 아직 모른다**(#4) —
-        #     실물 자료로 돌려 보지 않았다. 🔴 측정 전에 고치지 않는다.
-        #  ⚠️ **동결**(사용자 2026-10-04): 체크리스트 2번부터 새 기능은 없고,
-        #     이것은 **배포를 막지 않는다**(DeepSeek 켜기는 6번이다).
-        marks=pytest.mark.xfail(
-            reason=("🔴 대량득점형·난타전 **방아쇠가 안 걸린다**(§6-2 ②) — "
-                    "글자 소진은 결정 ① 로 풀렸다. 코드 결함인지 고정물 "
-                    "부족인지 **아직 안 쟀다**(#4) · 동결 중"),
-            strict=True) if c.get("열린결함") else (),
-        id=c["name"]) for c in CASES])
-def test_v5A_5_결과를_만든_갈래가_세트에_들어간다(case):
-    """🔴🔴 **이 계약이 빨간 동안 DeepSeek 를 켜지 않는다**(§6 금지).
-
-    ⚠️ 지금 `enabled: false` 이므로 **코드 경로**(§6-2 자동 보강)가 그 갈래를
-       만들 수 있나를 본다 — 그것이 v5-A §3 코드 처리의 마지막 줄이다.
-    🔴 켜지면 DeepSeek 초안이 먼저 오고 **같은 보강**이 그 뒤를 받는다.
-    """
-    from app import classify, scenarios
-    g = classify.Game(home="A", away="B", sport=case["sport"], league="L",
-                      home_id="team:000001", away_id="team:000002")
-    items = [classify.Classified(
-        text=v["claim"], source_url="https://x/y",
-        hardness="hard" if int(v["hardness"]) >= 2 else "soft",
-        type=v["type"], direction=("home" if v["direction"] == "home"
-                                   else "away"),
-        team=(g.home if v["team"] == "home" else g.away), why="§5-A 고정 입력")
-        for v in case["variables"]]
-    res = scenarios.generate(items, g)
-    # 🔴 **실제 스코어가 어느 시나리오에 있나** — 그것이 §6 측정의
-    #    *"결과 갈래 포함률"* 이다(v5-A §6 표).
-    want = f"{case['실제'][0]}-{case['실제'][1]}"
-    got = {sc for d in (res.drafts or []) for sc in d.scores}
-    assert want in got, (
-        f"🔴 **{case['name']}** — 실제 결과 `{want}` 가 세트에 **없다**. "
-        f"필요한 갈래: {case['갈래']} · 세트: {sorted(got)} · "
-        f"사유: {res.incomplete_why or res.notes[:3]}")
-
+# ⚠️ **걷은 데코레이터** — 그 시험이 §1 처분으로 걷혔다(아래 주석 참조).
+# ⚠️ **걷은 시험** — `our_board(drafts=…)`(시나리오로 강팀·줄을 고르던 길)이
+#    §1 처분으로 바뀌었다: 강팀은 **격자**가 댄다(`fav=`·`dog=`).
+#    🔴 거짓 1.0 계약은 **구조적으로 사라졌다** — 격자가 모든 스코어를 센다.
+#    걷은 시험: `test_v5A_5_결과를_만든_갈래가_세트에_들어간다`
 
 def test_v5A_5_필수형_이름이_선언에서_온다():
     """🔴 `갈래` 이름을 **코드에 박지 않는다** — §6-2 표가 원본이다(#1)."""

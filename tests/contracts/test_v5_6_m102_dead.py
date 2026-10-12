@@ -43,53 +43,12 @@ def test_M102_다중_스코어가_전부_대입된다():
     assert sym3 == survive.FAIL, sym3
 
 
-def test_M103_죽는_목록에_부분도_들어간다():
-    """🔴 *"`✗` 와 `△` 를 둘 다 적는다 — △ 가 있는데 '없다'는 금지"*."""
-    from app import survive
-    assert hasattr(survive, "dead_marks"), (
-        "🔴 `survive.dead_marks(기호들)` 이 없다 — 죽는 목록을 세는 자리가 "
-        "호출부마다 흩어진다(#1)")
-    marks = {"A": survive.PASS, "B": survive.PASS, "C": survive.PASS,
-             "D": survive.PASS, "E": survive.PART, "F": survive.PART}
-    got = survive.dead_marks(marks, ["A", "B", "C", "D", "E", "F"])
-    assert got == ["E(△)", "F(△)"], (
-        f"🔴 `△` 를 죽는 목록에서 빼면 *'죽는 시나리오 없다'* 가 된다: {got}")
-    marks2 = dict(marks, F=survive.FAIL)
-    got2 = survive.dead_marks(marks2, ["A", "B", "C", "D", "E", "F"])
-    assert got2 == ["E(△)", "F(✗)"], got2
-    # 🔴 전부 통과면 **빈 목록**(그때만 "없다"다)
-    allok = dict.fromkeys("ABCDEF", survive.PASS)
-    assert survive.dead_marks(allok, list("ABCDEF")) == []
+# ⚠️ **걷은 시험** — `survive.direction_line`·`dead_marks` 가 §1 처분
+#    (2026-10-12 셋째)으로 지워졌다: 방향은 `pipeline._direction` 이 확률로
+#    적고, *죽는 목록*(시나리오 기호)은 격자에 없는 개념이다.
+#    걷은 시험: `test_M103_죽는_목록에_부분도_들어간다`
 
-
-
-
-def test_M104_방향은_항상_한_줄이다():
-    """🔴 등급과 **분리** — `"방향 없음"` 문자열은 코드에서 제거."""
-    from app import survive
-    assert hasattr(survive, "direction_line"), (
-        "🔴 `survive.direction_line(홈승, 원정승, 무)` 이 없다")
-    assert hasattr(survive, "DIR_GAP") and survive.DIR_GAP == 0.15, (
-        "🔴 `survive.DIR_GAP = 0.15` 가 이름으로 없다(지시서 §2-2)")
-    said = survive.direction_line(0.62, 0.23, 0.15, home="Indonesia",
-                                  away="Thailand")
-    assert "인도네시아" in said or "Indonesia" in said, said
-    assert "0.62" in said and "0.23" in said, said
-    # 🔴 **차이가 크면 "반반"이 아니다** — M104 가 그 길로 빠져나갔다:
-    #    `gap >= DIR_GAP` 을 죽여도 반반 경로가 팀 이름을 내서 초록이었다.
-    assert "반반" not in said, (
-        f"🔴 홈승 0.62 vs 원정승 0.23(차이 0.39)인데 **반반**이라고 한다 — "
-        f"문턱 {survive.DIR_GAP} 이 안 걸린다: {said}")
-    # 🔴 차이가 0.15 미만이면 **반반** + 기울기
-    near = survive.direction_line(0.40, 0.33, 0.27, home="Indonesia",
-                                  away="Thailand")
-    assert "반반" in near, near
-    assert "Indonesia" in near or "인도네시아" in near, (
-        f"🔴 반반인데 **기울기**를 안 적었다: {near}")
-
-
-
-
-
-
-
+# ⚠️ **걷은 시험** — `survive.direction_line`·`dead_marks` 가 §1 처분
+#    (2026-10-12 셋째)으로 지워졌다: 방향은 `pipeline._direction` 이 확률로
+#    적고, *죽는 목록*(시나리오 기호)은 격자에 없는 개념이다.
+#    걷은 시험: `test_M104_방향은_항상_한_줄이다`

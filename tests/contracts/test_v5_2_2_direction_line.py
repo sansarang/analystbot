@@ -14,19 +14,7 @@ import inspect
 from app import survive
 
 
-def test_방향_줄이_모르는_까닭을_적지_않는다():
-    said = survive.direction_line(0.0, 0.0, 0.0, home="A", away="B")
-    assert "못 쟀다" in said, said
-    assert "반반이 아니다" in said, said
-    # 🔴 **시나리오 수를 모르면서** 그것을 까닭으로 적지 않는다
-    assert "시나리오" not in said, (
-        "🔴 `direction_line` 이 *'시나리오가 없어'* 라고 적는다 — 이 함수는 "
-        f"시나리오 수를 **받지 않는다**(§8-6 거짓 사유): {said}")
-    # 🔴 **인자가 셋뿐인지** 확인한다 — 받지도 않는 것을 말하지 못하게
-    sig = inspect.signature(survive.direction_line)
-    pos = [n for n, pr in sig.parameters.items()
-           if pr.kind is not pr.KEYWORD_ONLY]
-    assert len(pos) == 3, (
-        f"🔴 인자가 늘었다 — 시나리오 수를 받게 됐다면 까닭을 적어도 된다: {pos}")
-
-
+# ⚠️ **걷은 시험** — `survive.direction_line`·`dead_marks` 가 §1 처분
+#    (2026-10-12 셋째)으로 지워졌다: 방향은 `pipeline._direction` 이 확률로
+#    적고, *죽는 목록*(시나리오 기호)은 격자에 없는 개념이다.
+#    걷은 시험: `test_방향_줄이_모르는_까닭을_적지_않는다`

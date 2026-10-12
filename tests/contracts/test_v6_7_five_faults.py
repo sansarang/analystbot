@@ -310,29 +310,10 @@ def test_v7_깃발은_오늘_경기_명단_기준이다():
     assert off["on"] is False and off["r"] == 1.0, off
 
 
-def test_v7_모델이_코드값을_골라도_그_줄만_덮는다():
-    """🔴🔴 **(b) 안전장치**(사용자 결정) — *"그 팀 줄만 버리고 코드 깃발 값으로
-    덮는다. **다른 팀 판정은 살린다**"*.
-
-    ⚠️ 실측 2026-10-10: 그것을 **위반**으로 셌더니 양 팀 판정이 **다 버려졌다**.
-    """
-    from app.core.schema import StrategyLine
-    from app.core.stages.s2d_strategy import _turn_lines, check
-    from app.core.state import RunState
-    ref = _ref()
-    lines = [StrategyLine(side="home", strategy="squad_turnover",
-                          fact_refs=["L1", "L2"], why="모델이 골랐다"),
-             StrategyLine(side="away", strategy="공격 위주",
-                          fact_refs=["A1", "A2"], why="살아야 한다")]
-    turn = {"home": {"on": False}, "away": {"on": False}}
-    # 🔴 이제 **위반이 아니다**(검사가 통과한다)
-    assert not [x for x in check(lines, {}, turnover=turn)
-                if "코드만 쓰는" in x]
-    got = _turn_lines(lines, ref, turn, state=RunState(match_key="x"), box={})
-    assert got[0].strategy == "평소 그대로", got[0].strategy
-    assert "덮었다" in got[0].why
-    assert got[1].strategy == "공격 위주", "🔴 다른 팀 판정을 죽였다"
-
+# ⚠️ **걷은 시험** — `s2d_strategy.check`(LLM 전략 판정의 검열)가 §1 처분
+#    (2026-10-12 셋째)으로 지워졌다: ⑩ 은 **늘 코드 판정**이라 버릴 LLM 줄이
+#    없다(계약 X2).
+#    걷은 시험: `test_v7_모델이_코드값을_골라도_그_줄만_덮는다`
 
 def test_v7_전역_주기_팀은_고정_질의를_받는다():
     """🔴 사용자 결정 (3) — *"전역 주기 팀은 **고정 질의**를 추가한다 — `{팀} 전역`,

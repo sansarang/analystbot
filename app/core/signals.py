@@ -55,22 +55,9 @@ REFS = ("상대", "리그평균")
 LEAGUE_OK = tuple(k for k, v in METRICS.items() if v["unit"] == "goals")
 
 
-def menu() -> str:
-    """🔴 프롬프트에 넣는 **지표 목록 글**. ⚠️ 표에서 자라게 한다(사본 금지)."""
-    rows = [f"- `{k}`{' (팀 지정)' if v['side'] else ''}"
-            + (f" · 인자: {v['arg']}" if v["arg"] else "")
-            + f" — {v['why']}"
-            for k, v in METRICS.items()]
-    return ("\n".join(rows)
-            + f"\n- 기준(`ref`)은 **수**(`0.35`) 또는 {', '.join(REFS)} 이고, "
-              "`리그평균*0.7` 처럼 곱해 쓸 수 있다.\n"
-              f"- 🔴🔴 `리그평균` 은 **{' · '.join(LEAGUE_OK)}** 에만 쓴다"
-              "(그 수는 **경기당 한 팀 기대 득점**이다). **확률 지표**"
-              "(무득점확률·승무패·오버·스코어·선제골후승리)에는 쓰지 마라 — "
-              "단위가 달라 버려진다. 확률에는 **수**(`0.35`)나 `상대` 를 쓴다.\n"
-              f"- 방향(`direction`)은 {' · '.join(DIRS)} 중 하나다.")
-
-
+# ⚠️ **`menu` 은 지웠다** — 부르던 자리(⑭ 가설 · ⑳ 시나리오 ·
+#    ㉒ 반증 판정 · ㉔ LLM 서술)가 §1 처분으로 없어졌다.
+#    🔴 안 이어진 코드는 없는 코드보다 나쁘다(CLAUDE.md #2).
 def known(metric: object) -> bool:
     """🔴 §계약 — **허용 목록 안**인가."""
     return str(metric or "") in METRICS
@@ -272,41 +259,9 @@ def _say(sig) -> str:
             + f" {sig.direction} {sig.ref}")
 
 
-def league_of(facts, *, ref=None) -> dict:
-    """🔴 리그 평균 재료 — **이 경기 총골 기준의 절반**(한 팀 몫).
-
-    🔴 1순위는 `facts.standings["match_total_baseline"]`(그 경기 리그의 표)다.
-    🔴🔴 **없으면 S3 가 쓰는 그 수를 쓴다** — ⚠️ 실사고 2026-10-10(제노아):
-       순위표가 없어 이 표가 비었고, 가설 넷이 *"🔴 리그 평균을 **모른다** — 이
-       경기 총골 기준이 없다"* 로 `판단 불가` 가 됐다. **그런데 같은 카드가**
-       `[S3] 대회 유형 league:SA 실측 평균 2.5185(표본 810)` 을 적고 블록 4 도
-       `기준 팀당 1.2592골(대회 league:SA)` 을 적었다 — 한 카드가 **같은 수를
-       알면서 모른다고** 했다.
-    🔴 그 수를 여기서 다시 세지 않는다 — `probmodel.league_mean` 을 부른다(사본 금지).
-    ⚠️ 둘 다 없으면 **빈 표**이고 `리그평균` 기준은 `판단 불가` 다(지어내지 않는다).
-    """
-    got = dict(getattr(facts, "standings", None) or {}).get(
-        "match_total_baseline")
-    # 🔴🔴 **L2**(지시 2026-10-12 2번) — 순위표 총골은 **지금 누계**다. 재현에서
-    #    그것을 쓰면 λ 기준이 미래를 본다 → 안 쓰고 아래 리그 평균으로 간다.
-    from app import cassette as _cas
-    from app.core import asof as _asof
-    ok_now, why_now = _asof.may_use("standings.match_total_baseline",
-                                    replay=_cas.mode() == _cas.REPLAY)
-    if got is not None and not ok_now:
-        got = None
-    if got is not None:
-        return _sides_of({"per_team": float(got) / 2.0, "total": float(got),
-                          "why": "순위표의 그 리그 총골 기준"},
-                         facts, ref=ref)
-    from app.core import probmodel as _pm
-    per, why = _pm.league_mean(facts, ref=ref)
-    if per is None:
-        return {}
-    return _sides_of({"per_team": float(per), "total": float(per) * 2.0,
-                      "why": f"S3 와 같은 수 — {why}"}, facts, ref=ref)
-
-
+# ⚠️ **`league_of` 은 지웠다** — 부르던 자리(⑭ 가설 · ⑳ 시나리오 ·
+#    ㉒ 반증 판정 · ㉔ LLM 서술)가 §1 처분으로 없어졌다.
+#    🔴 안 이어진 코드는 없는 코드보다 나쁘다(CLAUDE.md #2).
 def _sides_of(box: dict, facts, *, ref=None) -> dict:
     """🔴🔴 **측별 리그 기준** — 홈은 홈 이점을 머금는다(사용자 지시 2026-10-11).
 

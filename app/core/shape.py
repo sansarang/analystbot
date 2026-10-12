@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import logging
 
-from app.core.schema import HypoSet
 
 logger = logging.getLogger(__name__)
 
@@ -25,15 +24,19 @@ def rules() -> dict:
     return dict((_r._load("config/interpret_rules.yaml").get("shape") or {}))
 
 
-def of(hypo: HypoSet | None) -> dict:
-    """🔴🔴 ② — 양상·비중·가장 무거운 스코어 셋. ⚠️ 시나리오가 없으면 빈 표.
+def of(grid: dict | None) -> dict:
+    """🔴🔴 ② — 양상·비중·가장 무거운 스코어 셋. ⚠️ **격자가 없으면 빈 표**.
+
+    🔴🔴 **바뀐 입력 2026-10-12(셋째 §1 처분)**: 종전에는 **시나리오 무게**를 받아
+       스코어로 쪼갰다. 시나리오가 지워졌으므로 이제 **스코어 격자**(`{(홈, 원정):
+       확률}`)를 그대로 받는다 — ⑯ 이 만든 그 격자다(사본 금지 · 한 출처).
 
     돌려주는 꼴:
     `{"shape": 양상, "low": 비중, "high": 비중, "one_sided": 비중,
       "close": 비중, "top_scores": [("2-1", 무게), …], "why": 사유, "total": 무게 합}`
     """
-    rows = list(getattr(hypo, "scenarios", []) or [])
-    if not rows:
+    spots_in = dict(grid or {})
+    if not spots_in:
         return {}
     box = rules()
     lo_at = float(box.get("low_total_at") or 0.55)
@@ -42,18 +45,19 @@ def of(hypo: HypoSet | None) -> dict:
     lo_max = int(box.get("low_total_max") or 2)
     hi_min = int(box.get("high_total_min") or 4)
     margin = int(box.get("one_sided_margin") or 2)
-    # 🔴 **스코어 단위**로 나눈다 — `compare.our_prob` 과 같은 규칙(무게 ÷ 스코어 수)
+    # 🔴 격자를 그대로 쓴다 — 쪼갤 것이 없다(확률이 이미 스코어마다 있다)
     spots: dict[tuple[int, int], float] = {}
     total = 0.0
-    for sc in rows:
-        w = float(sc.strength or 0.0)
-        pairs = list(sc.outcomes or [])
-        if w <= 0 or not pairs:
+    for key, val in spots_in.items():
+        if isinstance(key, str) and "-" in key:
+            h, a = (int(x) for x in key.split("-", 1))
+        else:
+            h, a = (int(key[0]), int(key[1]))
+        got = float(val or 0.0)
+        if got <= 0:
             continue
-        share = w / len(pairs)
-        for h, a in pairs:
-            spots[(int(h), int(a))] = spots.get((int(h), int(a)), 0.0) + share
-            total += share
+        spots[(h, a)] = spots.get((h, a), 0.0) + got
+        total += got
     if total <= 0:
         return {}
     low = sum(v for (h, a), v in spots.items() if h + a <= lo_max) / total

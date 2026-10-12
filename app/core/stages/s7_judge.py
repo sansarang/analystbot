@@ -1,4 +1,4 @@
-"""🔴🔴 **v6 s7 — 판정.** `Variable·HypoSet → Judgement`(§5). **LLM 을 안 부른다.**
+"""🔴🔴 **v6 s7 — 판정.** `Variable + 격자 → Judgement`(§5). **LLM 을 안 부른다.**
 
 지시서 §5 s7:
 
@@ -18,8 +18,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from app.core.schema import (Board, BoardLine, Facts, Grade, HypoSet,
-                             Judgement, MarketEval, MatchRef, Scenario,
+from app.core.schema import (Board, BoardLine, Facts, Grade,
+                             Judgement, MarketEval, MatchRef,
                              Variable)
 from app.core.state import RunState
 
@@ -37,19 +37,10 @@ _MAP: dict[str, tuple[str, str]] = {
     "away_dc": ("unbeaten", "away")}
 
 
-@dataclass(frozen=True)
-class _Draft:
-    """🔴 `survive` 의 무게·favorite 계산이 기대하는 **최소 꼴**(§6 부품).
-
-    ⚠️ dict 가 아니다 — `id` 와 `scores` 두 칸만 보는 함수들이다.
-    """
-
-    id: str
-    scores: list[str]
-
-
+# ⚠️ **`_Draft` 는 지웠다** — 시나리오를 `survive` 의 무게 계산에 넘기던
+#    최소 꼴이다. §1 처분으로 시나리오가 없다.
 def run(ref: MatchRef, facts: Facts, variables: list[Variable],
-        hypo: HypoSet, *, state: RunState, board: Board | None = None,
+        *, state: RunState, board: Board | None = None,
         board_source: str = "", dist: dict | None = None,
         now: Any = None) -> Judgement:
     """🔴 마켓마다 대입하고 등급을 매긴다. ⚠️ 등급이 없어도 **카드는 나온다**.
@@ -67,11 +58,10 @@ def run(ref: MatchRef, facts: Facts, variables: list[Variable],
     from app import survive
     notes: list[str] = []
     started, started_why = survive.started(ref.kickoff_utc, now)
-    scen = list(hypo.scenarios)
-    w = {s.id: float(s.strength) for s in scen}
-    lines, src = _lines(ref, facts, scen, w, board=board, notes=notes,
-                        source=board_source)
-    enough, thin_why = _enough(variables, scen)
+    lines, src = _lines(ref, facts, board=board, notes=notes,
+                        source=board_source, dist=dist, ref_names=(
+                            ref.home_name, ref.away_name))
+    enough, thin_why = _enough(variables)
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **대회를 못 알아보면 등급을 전부 보류**(사용자 지시 2026-10-09(4차) §2)
     # ══════════════════════════════════════════════════════════════════
@@ -97,7 +87,7 @@ def run(ref: MatchRef, facts: Facts, variables: list[Variable],
     notes.append(cap_why)
     evals: list[MarketEval] = []
     for old, line in lines:
-        got = _one(old, line, ref, scen, w, cap=cap, enough=enough,
+        got = _one(old, line, ref, cap=cap, enough=enough,
                    started=started, state=state, dist=dist)
         if got is not None:
             evals.append(got)
@@ -112,8 +102,9 @@ def run(ref: MatchRef, facts: Facts, variables: list[Variable],
         notes.append("🔴 등급 **전부 보류** — 사용자 보드도 피드 메인 라인도 없다")
     state.set("markets_graded", sum(1 for e in evals
                                     if e.grade not in ("자료부족", "보류")))
-    direction = _direction(ref, scen, w)
-    return Judgement(evals=evals, direction=direction,
+    # ⚠️ **방향은 여기서 안 센다** — 종전엔 시나리오 무게로 셌고(§1 처분으로
+    #    시나리오가 없다), 지금은 `pipeline._direction` 이 **확률**로 센다.
+    return Judgement(evals=evals, direction="",
                      board_source=src,
                      conclusion=_conclusion(evals, started=started,
                                             enough=enough, thin_why=thin_why,
@@ -127,9 +118,10 @@ def run(ref: MatchRef, facts: Facts, variables: list[Variable],
 # ══════════════════════════════════════════════════════════════════
 
 
-def _lines(ref: MatchRef, facts: Facts, scen: list[Scenario],
-           w: dict[str, float], *, board: Board | None, notes: list[str],
-           source: str = "") -> tuple[list[tuple[Any, BoardLine]], str]:
+def _lines(ref: MatchRef, facts: Facts, *, board: Board | None,
+           notes: list[str], source: str = "", dist: dict | None = None,
+           ref_names: tuple[str, str] = ("", "")
+           ) -> tuple[list[tuple[Any, BoardLine]], str]:
     """🔴 `(옛 Market, v6 BoardLine)` 짝 목록과 **출처**. ⚠️ 변환을 한 곳에 둔다.
 
     ══════════════════════════════════════════════════════════════════
@@ -160,10 +152,21 @@ def _lines(ref: MatchRef, facts: Facts, scen: list[Scenario],
     # 🔴 보드가 **없다** — 기준선 목록은 **참고용**으로만 만든다(등급을 붙이지 않는다)
     notes.append("🔴 **보드가 없다** — 기준선 대입표는 **참고**이고 등급은 "
                  "전부 `보류` 다(사용자 지시 2026-10-07 ②)")
-    drafts = [_Draft(id=s.id, scores=[f"{h}-{a}" for h, a in s.outcomes])
-              for s in scen]
+    # 🔴🔴 **강팀은 격자가 댄다**(§1 처분 — 시나리오 무게가 없다) — §11 과 **같은
+    #    함수**를 쓴다(`underdog.read`). ⚠️ 격자가 없으면 강팀도 없다(핸디 줄 없음).
+    fav = dog = ""
+    fav_why = "🔴 **격자가 없다** — 강팀을 못 고른다(핸디 줄을 만들지 않는다)"
+    if dist:
+        from app.core import underdog as _ud
+        said_read = _ud.read(dict(dist), home_name=ref_names[0],
+                             away_name=ref_names[1])
+        if said_read.fav:
+            fav, dog = said_read.fav_name, said_read.dog_name
+            fav_why = f"강팀은 **격자**가 골랐다 — {said_read.why}"
+        else:
+            fav_why = said_read.why
     got, said = survive.our_board(game_of(ref), dict(facts.standings) or None,
-                                  drafts=drafts, w=w)
+                                  fav=fav, dog=dog, fav_why=fav_why)
     notes += [str(x) for x in said]
     out: list[tuple[Any, BoardLine]] = []
     for m in got:
@@ -228,65 +231,31 @@ def _old_of(line: BoardLine, ref: MatchRef | None = None) -> Any:
 # ══════════════════════════════════════════════════════════════════
 
 
-def _one(old: Any, line: BoardLine, ref: MatchRef, scen: list[Scenario],
-         w: dict[str, float], *, cap: float, enough: bool, started: bool,
-         state: RunState, dist: dict | None = None) -> MarketEval | None:
-    """🔴 마켓 한 줄 — **스코어 전부 대입**하고 생존을 센다(§6-a).
+def _one(old: Any, line: BoardLine, ref: MatchRef, *, cap: float,
+         enough: bool, started: bool, state: RunState,
+         dist: dict | None = None) -> MarketEval | None:
+    """🔴 마켓 한 줄 — **생존은 시뮬 분포 하나에서** 온다(F5/R7).
 
-    🔴 F5 — 생존은 `dist`(시뮬 분포)에서 센다. 시나리오 기호(`marks`)는 **표시용**
-       으로 그대로 만든다 — 카드의 대입 표가 그것을 보인다.
+    🔴🔴 §1 처분(2026-10-12 셋째): **시나리오가 없다**. 종전에는 시나리오마다
+       기호(`marks`)를 찍고 그 무게로 생존을 셌다 — 그 길은 *"확률이 없을 때 도는
+       다른 모형"* 이었고 지금은 **격자 하나**가 그 일을 한다.
+    ⚠️ 분포가 없으면 **보류**다(확률 없이 등급을 붙이지 않는다).
     """
     from app import survive
-    marks: dict[str, str] = {}
-    hit, mass = 0.0, 0.0
-    unread: list[str] = []
-    for s in scen:
-        sym, ratio, bad = survive.apply(
-            old, [f"{h}-{a}" for h, a in s.outcomes],
-            home=ref.home_name, away=ref.away_name, sport=ref.sport)
-        if sym == "?":
-            # 🔴 **못 읽은 것은 분모에서 뺀다** — `False` 로 세면 생존이 거짓으로
-            #    내려간다(조용한 0 금지). ⚠️ 그 사실을 이름으로 남긴다.
-            unread.append(f"{s.id}({bad}개)")
-            continue
-        marks[s.id] = sym
-        weight = float(w.get(s.id, 0.0))
-        mass += weight
-        hit += weight * float(ratio)
-    if not marks:
-        state.note(f"s7 `{survive.name_of(old)}` — 대입할 시나리오가 없다"
-                   + (f"(못 읽음 {unread})" if unread else ""))
-        return None
-    # 🔴🔴 **F5/R7 — 생존은 시뮬 분포에서**(시나리오 갈래를 바꿔도 안 변한다)
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **생존의 출처는 시뮬 분포 하나다**(사용자 지시 2026-10-12)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  > 퇴로는 끊는다: 시뮬 분포가 없으면 시나리오 무게로 생존을 세지 않는다 →
-    #  > 생존·등급 **"보류 — 확률 없음(사유)"**.
-    #
-    #  🔴 왜 — 시나리오 무게는 **재가중(⑳)** 을 지난 수다. 그것이 생존에 닿으면
-    #     *"확률이 없을 때만 도는 다른 모형"* 이 조용히 생긴다(F5 가 막은 그것).
     if not dist:
         state.note(f"s7 `{survive.name_of(old)}` — 🔴 **시뮬 분포가 없다** → "
-                   f"생존·등급 **보류**(시나리오 무게로 세지 않는다)")
-        return MarketEval(line=line, marks=marks, survival=0.0, cap=cap,
-                          grade="보류",
-                          why="🔴 보류 — 확률 없음(시뮬 분포가 없다)",
-                          dead=survive.dead_marks(marks,
-                                                  [s.id for s in scen]))
+                   f"생존·등급 **보류**")
+        return MarketEval(line=line, survival=0.0, cap=cap, grade="보류",
+                          why="🔴 보류 — 확률 없음(시뮬 분포가 없다)")
     survival = round(survive.from_dist(
         old, dist, home=ref.home_name, away=ref.away_name,
         sport=ref.sport), 4)
-    grade = _grade(survival, cap=cap, enough=enough, started=started,
-                   n_scen=len(marks))
-    return MarketEval(line=line, marks=marks, survival=survival, cap=cap,
-                      grade=grade,
-                      dead=survive.dead_marks(marks, [s.id for s in scen]))
+    grade = _grade(survival, cap=cap, enough=enough, started=started)
+    return MarketEval(line=line, survival=survival, cap=cap, grade=grade)
 
 
-def _grade(survival: float, *, cap: float, enough: bool, started: bool,
-           n_scen: int) -> Grade:
+def _grade(survival: float, *, cap: float, enough: bool,
+           started: bool) -> Grade:
     """🔴 사다리는 `survive.verdict_word` **하나**다(#1) — 여기서 경계를 안 적는다.
 
     🔴 **상한을 씌운 수로** 등급을 매긴다 — 상한이 내린 등급을 되올리지 않는다
@@ -319,59 +288,10 @@ def _grade(survival: float, *, cap: float, enough: bool, started: bool,
 BREAK_LADDER: tuple[str, ...] = ("낸다", "소액", "소액하단", "없음")
 
 
-def by_breaks(said, rows: list):
-    """🔴🔴 [3d] — 반증 결과로 **판정 칸과 등급**을 정한다. 확률은 안 본다(C2).
-
-    🔴 B1 — `간다` 는 **조건 전부에 확인 결과가 있을 때만**이다. 조건이 0건이면
-       *"전부 확인"* 이 아니라 **`조건 없음`** 이다(없는 것을 통과로 바꾸지 않는다).
-    ⚠️ 이 함수는 등급을 **내리기만** 한다 — 올리는 길이 없다.
-    """
-    from app.core.stages.s5b_falsify import BROKEN, INTACT, UNKNOWN
-    got = [one for one in (rows or [])]
-    if not got:
-        return said.model_copy(update={"stance": "조건 없음"})
-    hard = [c for c in got
-            if str(c.state) == BROKEN and str(c.strength) == "hard"]
-    soft = [c for c in got
-            if str(c.state) == BROKEN and str(c.strength) != "hard"]
-    unknown = [c for c in got if str(c.state) == UNKNOWN]
-    intact = [c for c in got if str(c.state) == INTACT]
-    if hard:
-        step, stance = len(BREAK_LADDER), "접는다"
-        why = ("🔴 반증 **hard 무너짐** "
-               + ", ".join(f"`{c.id}`" for c in hard[:3]))
-    elif unknown:
-        step, stance = 0, "조건부"
-        why = ("⚠️ 반증 **미확인** "
-               + ", ".join(f"`{c.id}`" for c in unknown[:3])
-               + " — 방아쇠로 등록했다")
-    elif soft:
-        step, stance = 1, "한 단계↓"
-        why = ("⚠️ 반증 soft 무너짐 "
-               + ", ".join(f"`{c.id}`" for c in soft[:3]))
-    else:
-        step, stance = 0, "간다"
-        why = f"반증 {len(intact)}조건 전부 **무너짐 없음**"
-    evals = list(said.evals)
-    if step > 0:
-        out = []
-        for ev in evals:
-            grade = ev.grade
-            if grade in BREAK_LADDER:
-                i = min(len(BREAK_LADDER) - 1,
-                        BREAK_LADDER.index(grade) + step)
-                grade = BREAK_LADDER[i]
-            out.append(ev.model_copy(update={
-                "grade": grade, "why": f"{ev.why} · {why}".strip(" ·")}))
-        evals = out
-    # 🔴 미확인 조건은 **방아쇠**로 자동 등록한다(지시서 [3d])
-    triggers = list(said.triggers) + [
-        f"{c.id} — {c.said} (확인되면 다시 센다)" for c in unknown[:4]]
-    return said.model_copy(update={
-        "stance": stance, "evals": evals, "triggers": triggers,
-        "notes": list(said.notes) + [f"반증 판정 — {stance} · {why}"]})
-
-
+# ⚠️ **`by_breaks` 는 지웠다** — ㉒ 반증 판정이 §1 처분으로 **§14 판정
+#    행동**(이변 경고·InfoQ)으로 흡수됐다(지시서 2026-10-12 셋째).
+#    🔴 등급 사다리 `BREAK_LADDER` 는 **남는다** — `infoquality`·`upset`
+#    이 그 한 목록을 쓴다(사본 금지).
 def _tell_operator(ref) -> None:
     """🔴 §2 마지막 줄 — **운영자 알림에 받은 표기를 보낸다**(다음에 표에 넣게).
 
@@ -385,40 +305,22 @@ def _tell_operator(ref) -> None:
         pass
 
 
-def _enough(variables: list[Variable], scen: list[Scenario]) -> tuple[bool, str]:
+def _enough(variables: list[Variable]) -> tuple[bool, str]:
     """🔴 §7 R5 — *"변수 3개 미만·반대 방향 0개면 자료 부족."* **등급만** 거둔다.
 
     🔴 수는 `scenarios.MIN_VARIABLES`·`MIN_DIRECTIONS` 가 든다(#1 사본 금지).
-    ⚠️ 그리고 §6-7 거짓 1.0: 변수가 `thin_set_vars` 미만이면 생존 1.0 은 *"죽을
-       자리가 없다"* 는 뜻이다 — 그 경기는 등급을 내지 않는다.
+    ⚠️ **시나리오 칸은 걷었다**(§1 처분 2026-10-12 셋째) — 종전에는 *"변수가 적고
+       시나리오도 적으면 생존 1.0 이 공짜"* 를 그 수로 셌다. 🔴 지금 생존은 **격자**
+       에서 오므로 *"죽을 자리"* 라는 개념 자체가 없다(격자가 모든 스코어를 센다).
     """
-    from app import scenarios, thresholds
-    # 🔴 **승패 방향으로만 센다**(사용자 지시 2026-10-06 ④) — `goals`(득점 방향)는
-    #    여기 들어오지 않는다. ⚠️ 종전엔 `goals_up` 이 승패 칸에 섞여 있어 수비 결장
-    #    변수가 어느 팀 쪽인지 말하지 못했고, 그래서 *"방향 1종"* 으로 등급이 거둬졌다.
+    from app import scenarios
+    # 🔴 **승패 방향으로만 센다**(사용자 지시 2026-10-06 ④)
     sides = {v.favors for v in variables if v.favors in ("home", "away")}
     if len(variables) < scenarios.MIN_VARIABLES or \
             len(sides) < scenarios.MIN_DIRECTIONS:
         return False, (f"방향 있는 변수 {len(variables)}개(최소 "
                        f"{scenarios.MIN_VARIABLES}) · 방향 {len(sides)}종"
                        f"(최소 {scenarios.MIN_DIRECTIONS})")
-    thin = int(thresholds.value("thin_set_vars"))
-    if len(variables) < thin and len(scen) < int(scenarios.MIN_SCENARIOS):
-        return False, (f"변수 {len(variables)}개 < {thin} 이고 시나리오 "
-                       f"{len(scen)}개 < {scenarios.MIN_SCENARIOS} — 죽을 자리가 "
-                       f"모자라 생존이 **공짜로** 높아진다(§6-7 거짓 1.0)")
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **분석이 만든 갈래가 하나도 없으면 등급을 내지 않는다** — 실측 2026-10-06
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  ⚠️ 가설 단계가 빗나간 실행에서 시나리오가 **코드 보강 셋**(핸디 대응·실점
-    #     동반)만 남았다. 그 셋은 **서로 안 죽이게** 생겨서 `홈 승` 이 생존 **1.0**
-    #     을 받았고 카드가 *"죽는 시나리오 없음"* 이라 적었다.
-    #  🔴 코드 보강은 *"이 갈래가 빠지면 공짜 1.0 이 된다"* 를 막는 **보험**이고,
-    #     그것만으로 **판정의 근거가 되지는 않는다**(우리 분석이 그린 갈래가 없다).
-    if scen and all(s.added_by == "code" for s in scen):
-        return False, (f"시나리오 {len(scen)}개가 **전부 코드 보강**이다 — 분석이 "
-                       f"그린 갈래가 0개다(가설 단계가 돌지 않았다)")
     return True, ""
 
 
@@ -480,27 +382,9 @@ def _same_direction_cap(evals: list[MarketEval], *, notes: list[str]
 # ══════════════════════════════════════════════════════════════════
 
 
-def _direction(ref: MatchRef, scen: list[Scenario], w: dict[str, float]) -> str:
-    """🔴🔴 **블록 9 는 매 경기 한 줄**(지시서 §2-2) — 등급과 무관하다.
-
-    🔴 문턱(`DIR_GAP`)과 문장 꼴은 `survive.direction_line` 하나가 든다(#1).
-    """
-    from app import survive
-    mass = sum(float(w.get(s.id, 0.0)) for s in scen) or 0.0
-    got = {"home": 0.0, "away": 0.0, "draw": 0.0}
-    for s in scen:
-        weight = float(w.get(s.id, 0.0))
-        if not s.outcomes:
-            continue
-        for h, a in s.outcomes:
-            key = "home" if h > a else "away" if a > h else "draw"
-            got[key] += weight / len(s.outcomes)
-    if mass:
-        got = {k: round(v / mass, 4) for k, v in got.items()}
-    return survive.direction_line(got["home"], got["away"], got["draw"],
-                                  home=ref.home_name, away=ref.away_name)
-
-
+# ⚠️ **`_direction` 은 지웠다** — 방향을 **시나리오 무게**로 세던 함수다.
+#    §1 처분으로 시나리오가 없고, 방향은 `pipeline._direction` 이 **확률**로
+#    센다(문장 꼴은 `survive.direction_line` 하나다 · 사본 금지).
 def _conclusion(evals: list[MarketEval], *, started: bool, enough: bool,
                 thin_why: str, source: str = "") -> str:
     """🔴 결론 — **죽는 시나리오를 함께** 적는다(`✗` 와 `△` 둘 다 · §2-1).
