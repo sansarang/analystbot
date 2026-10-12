@@ -222,10 +222,32 @@ def axis0(ref, facts, varset, *, r: dict | None = None,
         got.why = ("🔴 선수 가치나 오늘 XI 가 없다 — 축0 을 **안 센다**"
                    f"(가치 {len(val)}명 · XI {{{', '.join(f'{k} {len(v)}' for k, v in rows.items())}}})")
         return got
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **가치 없는 선수를 0 으로 더하지 않는다**(사용자 지시 2026-10-12 1번)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 대체값 = 같은 리그·같은 포지션 **선발 선수 가치 중앙값**, 카드에
+    #  > "대체값 — 누구" 🔴.
+    #
+    #  🔴 실측(ⓓ 감사 2026-10-12): 가와사키 `Pedro Romano` 가 가치 없음이라
+    #     그 팀 합이 조용히 깎였다. 영입 직후·하위 리그 출신은 **늘** 그렇게 된다.
+    #  ⚠️ 중앙값 표본은 **그 경기 양 팀 선발**이다(같은 리그 · as-of 정합 · L2).
+    from app.core import playervalue as _pv
+    pos_box = dict(getattr(facts, "player_pos", None) or {})
+    said_rows = {side: [{"name": nm, "pos": str(pos_box.get(nm) or ""),
+                         "value": val.get(nm)} for nm in names]
+                 for side, names in rows.items()}
+    pool = [*said_rows["home"], *said_rows["away"]]
     sums = {}
+    fill_why: list[str] = []
     for side, names in rows.items():
-        hit = [float(val[nm]) for nm in names if nm in val]
-        sums[side] = (math.log1p(sum(hit)) if hit else None)
+        said_fill, why_fill = _pv.fill(said_rows[side], pool=pool)
+        got_sum, n_got = _pv.log_sum(said_fill)
+        sums[side] = got_sum
+        if why_fill:
+            fill_why.append(f"{side} {why_fill}")
+        if n_got and n_got < len(names):
+            fill_why.append(f"{side} ⚠️ 가치 {n_got}/{len(names)}명")
     if sums.get("home") is None or sums.get("away") is None:
         got.why = "🔴 한쪽 XI 의 가치를 하나도 못 찾았다 — 축0 을 안 센다"
         return got
@@ -242,7 +264,9 @@ def axis0(ref, facts, varset, *, r: dict | None = None,
     got.away = round(float(sums["away"]) + w_fit * float(fit["away"])
                      + miss_move(miss["away"]), 4)
     got.refs = [one.id for one in varset.of(routing.AXES[0])] if varset else []
-    got.why = (f"선수 가치 로그합 홈 {sums['home']:.3f} · 원정 "
+    # 🔴 1번 — **대체값을 쓴 사실을 카드가 적는다**(누구인지까지)
+    got.why = ((" · ".join(fill_why) + " · " if fill_why else "")
+               + f"선수 가치 로그합 홈 {sums['home']:.3f} · 원정 "
                f"{sums['away']:.3f} · 호흡(함께 선발 경기 평균) 홈 "
                f"{fit['home']:.2f} · 원정 {fit['away']:.2f}"
                f"(무게 {w_fit:g} · {PROVISIONAL})"

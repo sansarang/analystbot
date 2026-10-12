@@ -89,8 +89,13 @@ def features(j: dict, *, prior: dict, league_mean: float | None,
     for side, which in (("home", "homeTeam"), ("away", "awayTeam")):
         team = dict(lu.get(which) or {})
         rows = fm.players_of(team)
-        got = [float(r["value"]) for r in rows if r.get("value")]
-        vals[side] = (math.log1p(sum(got)) if got else None)
+        # 🔴🔴 **가치 0 합산 금지**(사용자 지시 2026-10-12 1번) — 운영(`axis0`)과
+        #    **같은 문**을 지난다(사본 금지). ⚠️ 백필이 다른 재료를 보면 적합이
+        #    운영과 다른 모형을 맞춘다.
+        from app.core import playervalue as _pv
+        said_fill, _why = _pv.fill(rows)
+        got_sum, _n = _pv.log_sum(said_fill)
+        vals[side] = got_sum
         names = {r["name"] for r in rows}
         past = prior.get(side) or []
         hit = [len(names & {str(x) for x in (one.get("starters") or [])})
