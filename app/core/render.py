@@ -1664,8 +1664,13 @@ def prob_long(card: Card) -> str:
     pull = (lambda k: (sim.get(k) if sim.get(k) is not None
                        else getattr(got, k, None)))
     if pull("home") is None:
-        return ("**🎯 상성 확률 (S3)** — ⬜ "
-                + str(pull("why") or "안 돌렸다(사유 없음)"))
+        # 🔴 확률을 못 셌어도 **두 판 줄은 적는다**(#3) — ⚠️ 실측 2026-10-12
+        #    (아스널–릴 · 챔스): 홈 이점 실측이 없어 여기서 돌아섰고, 그래서
+        #    xG 판이 **카드에서 통째로 사라졌다**(돌았는지조차 안 보였다).
+        return "\n".join(
+            ["**🎯 상성 확률 (S3)** — ⬜ "
+             + str(pull("why") or "안 돌렸다(사유 없음)")]
+            + _xg_board(box, now={"home": None, "draw": None, "away": None}))
     lam = dict(pull("lam") or {})
     out = ["**🎯 상성 확률 (S3)** — "
            + " · ".join(f"{nm} {float(v):.0%}" for nm, v in
@@ -1697,7 +1702,66 @@ def prob_long(card: Card) -> str:
     if xg:
         out.append("- 기대 득점(분포 평균) — "
                    + " · ".join(f"{k} {float(v):.3f}" for k, v in xg.items()))
+    out += _xg_board(box, now={"home": pull("home"), "draw": pull("draw"),
+                               "away": pull("away")})
     return "\n".join(out)
+
+
+def _xg_board(box: dict, *, now: dict) -> list[str]:
+    """🔴🔴 **두 판 나란히**(사용자 결정 2026-10-12 — 3번 b).
+
+    > 4번 검수: 같은 경기 **득실판 vs xG판 확률 비교** … (b) 두 판을 카드에
+    > 나란히 적어 둔다.
+
+    🔴 **기본값은 득실판**이다 — 등급·보드·최종 평은 그 수로 간다. xG 판은
+       *"백필 브라이어가 더 좋을 때 켠다"* 는 조건이 아직 안 섰다(백필 0건).
+    ⚠️ 못 센 까닭은 **이름으로** 적는다(#3).
+    """
+    said = dict(box.get("xg_pass") or {})
+    if not said:
+        return []
+    sim = dict(said.get("sim") or {})
+    if not sim:
+        return [f"- 🔬 **xG 판** — ⬜ {said.get('why') or '안 돌렸다'}"]
+    def _pct(one: dict) -> str:
+        return " | ".join(
+            (f"{float(one.get(k)):.0%}" if one.get(k) is not None else "—")
+            for k in ("home", "draw", "away"))
+
+    def _tot(gaps: dict) -> str:
+        return (f"{sum(float(v) for v in gaps.values()):+.3f}"
+                if gaps else "—")
+
+    def _forms(forms: dict) -> str:
+        return " / ".join(
+            (f"{float(forms.get(s)):+.3f}" if forms.get(s) is not None
+             else "—") for s in ("home", "away"))
+
+    mr = box.get("report")
+    body = [
+        f"| 득실판(기본) | {_pct(now)} | "
+        + _tot(dict(mr.gaps()) if mr is not None else {}) + " | "
+        + _forms({s: (f.index() if f else None)
+                  for s, f in dict(box.get("form") or {}).items()}) + " |",
+        f"| xG 판 | {_pct(sim)} | " + _tot(dict(said.get("gaps") or {}))
+        + " | " + _forms(dict(said.get("form") or {})) + " |",
+    ]
+    out = ["- 🔬 **두 판 나란히**(지시 2026-10-12 4번 b) — 🔴 **기본값은 득실판**"
+           "이다(xG 판은 백필 브라이어 비교 전이다)",
+           "    | 판 | 홈 | 무 | 원정 | 축 종합 | 축1 폼(홈/원정) |",
+           "    |---|---|---|---|---|---|"]
+    out += [f"    {x}" for x in body]
+    # 🔴 두 판이 **다른 쪽을 앞세우면** 그 사실을 적는다(검수 재료)
+    def _lead(one: dict) -> str:
+        if one.get("home") is None or one.get("away") is None:
+            return ""
+        return "home" if float(one["home"]) >= float(one["away"]) else "away"
+    a, b = _lead(now), _lead(sim)
+    if a and b:
+        out.append("    → 두 판 방향 "
+                   + ("**같다**" if a == b else f"🔴 **갈린다**({a} vs {b})")
+                   + f" · xG 판 계수는 `matchup_model.yaml` 의 `xg:` 블록이다")
+    return out
 
 
 def matchup_report_long(card: Card) -> str:

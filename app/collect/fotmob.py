@@ -2673,6 +2673,54 @@ SHOT_GROUP: dict[str, str] = {
     "RegularPlay": "open", "IndividualPlay": "open"}
 
 
+#: 🔴 선수 고급 지표 — 경기 페이지가 쓰는 **`key` 글자**(실측 2026-10-12)
+PLAYER_ADV: dict[str, str] = {"xg": "expected_goals",
+                              "xa": "expected_assists"}
+
+
+def player_adv(j: dict) -> dict[str, dict]:
+    """🔴🔴 그 경기의 **선수별 xG·xA** — `{선수 id: {name, team_id, xg, xa}}`.
+
+    > 선수 기여표: xG+xA(없으면 득점+도움) — 사용자 지시 2026-10-12 ②
+
+    🔴 자리는 `content.playerStats[선수 id].stats[].stats[제목].key` 다 —
+       제목은 언어에 따라 바뀌므로 **`key` 글자로** 찾는다(`expected_goals`).
+    ⚠️ 선수단 페이지에는 **선수 xG 가 없다**(실측 2026-10-12: 거기서 본
+       `expected_goals` 는 **번역 사전 열쇠**였다). 그래서 창 안 경기들을 **더해서**
+       센다 — 그 경기 페이지들은 폼·상성 재료로 **이미 받는다**(새 통신 0).
+    ⚠️ 못 읽은 선수는 **싣지 않는다**(0 으로 메우지 않는다 · #3).
+    """
+    box = ((_page(j or {}).get("content") or {}).get("playerStats") or {})
+    out: dict[str, dict] = {}
+    for pid, one in dict(box).items():
+        said = dict(one)
+        got: dict = {}
+
+        def walk(o: object) -> None:
+            if isinstance(o, dict):
+                key = str(o.get("key") or "")
+                for name, want in PLAYER_ADV.items():
+                    if key == want:
+                        val = ((o.get("stat") or {}) if isinstance(
+                            o.get("stat"), dict) else {}).get("value")
+                        if isinstance(val, (int, float)):
+                            got[name] = float(val)
+                for v in o.values():
+                    walk(v)
+            elif isinstance(o, list):
+                for v in o:
+                    walk(v)
+
+        walk(said.get("stats") or [])
+        if not got:
+            continue
+        out[str(pid)] = {"name": str(said.get("name") or ""),
+                         "team_id": str(said.get("teamId") or ""),
+                         "xg": round(got.get("xg", 0.0), 3),
+                         "xa": round(got.get("xa", 0.0), 3)}
+    return out
+
+
 def side_ids(j: dict) -> tuple[str, str]:
     """🔴 그 경기의 **(홈 팀 번호, 원정 팀 번호)**. 못 읽으면 빈 글자.
 

@@ -180,7 +180,7 @@ def pos_fault(names: list[str], pos: dict) -> str:
             + f" · 칸별 수 {box}")
 
 
-def read(ref, facts, *, side: str) -> TeamRead:
+def read(ref, facts, *, side: str, adv: dict | None = None) -> TeamRead:
     """🔴🔴 §2-1 — 그 팀의 **오늘 명단 vs 평소 XI** 사실을 코드로 센다.
 
     🔴 **확정 XI 가 아니면 사실을 만들지 않는다**(§1) — `confirmed=False` 로
@@ -248,7 +248,9 @@ def read(ref, facts, *, side: str) -> TeamRead:
                       f"넘었다 — **계산 오류 의심으로 안 쓴다**")
         got.dd = None
     got.key_state = _key_state(facts, key, xi)
-    got.att_table = _att_table(facts, key=key)
+    # 🔴🔴 **선수 기여표는 xG+xA 가 먼저다**(사용자 지시 2026-10-12 ②) —
+    #    `adv` 가 오면 그것을 쓰고, 없으면 득점+도움 표로 간다(퇴로).
+    got.att_table = _att_table(facts, key=key, adv=adv)
     got.bench_regulars = _bench_regulars(facts, key, xi)
     got.returning = _returning(facts, key, xi)
     got.facts = _facts_of(got, name=name, how=how)
@@ -425,8 +427,14 @@ def _keyed(table: dict) -> dict:
     return out
 
 
-def _att_table(facts, *, key: str = "") -> dict:
-    """🔴 선수 → **공격 기여**(시즌 득점+도움). 없으면 빈 표.
+def _att_table(facts, *, key: str = "", adv: dict | None = None) -> dict:
+    """🔴 선수 → **공격 기여**. 없으면 빈 표.
+
+    🔴🔴 **xG+xA 가 먼저다**(사용자 지시 2026-10-12 ②: *"선수 기여표: xG+xA
+       (없으면 득점+도움)"*). `adv` 는 `s2e_matchup.adv_players` 가 창 안 경기를
+       더해 만든 `{이름: {xg, xa, n}}` 다.
+    ⚠️ **섞지 않는다** — xG+xA 표가 있으면 그 표만 쓴다(두 단위를 더하면 비중이
+       거짓이 된다). 비면 아래 득점+도움으로 간다.
 
     🔴🔴 **출처가 둘이고 넓은 쪽이 먼저다**(사용자 지적 2026-10-10):
       ① `facts.player_stats` — 팀 **선수단 페이지**(전원의 시즌 득점·도움)
@@ -438,6 +446,14 @@ def _att_table(facts, *, key: str = "") -> dict:
        수축**하고 `기록 없음 n명` 을 적는다(0 으로 메우지 않는다).
     """
     out: dict[str, float] = {}
+    said_adv = dict(adv or {})
+    if said_adv:
+        for nm, one in said_adv.items():
+            box = dict(one)
+            out[str(nm)] = round(float(box.get("xg") or 0.0)
+                                 + float(box.get("xa") or 0.0), 3)
+        if out:
+            return out
     # 🔴🔴 ③ — **그 팀의 표**가 있으면 그것을 쓴다(비중의 분모가 두 팀 합이 되면
     #    안 된다 · 실사고 2026-10-11: 뮐러 17.6% 가 10.2% 로 읽혔다).
     #  ⚠️ 팀별 표가 없으면 합친 표를 쓴다 — 있는 수를 버리지 않는다(#3).

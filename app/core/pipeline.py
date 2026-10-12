@@ -311,6 +311,43 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
                           varset=varset)
     prob = _pm.run(ref, facts, mr, varset, edge=edge, state=st)
     edge["report"] = mr
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **xG 판을 한 번 더 센다**(사용자 결정 2026-10-12 — 3번 b)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 4번: 같은 경기 득실판 vs xG판 확률 비교 … (b) **두 판을 카드에 나란히**
+    #  > 적어 둔다 — 백필 브라이어 비교가 될 때까지 **기본값은 득실판**이다.
+    #
+    #  🔴 같은 재료·같은 함수로 센다 — 다른 것은 **축1 지수(100% xG · 운 할인 끔)**
+    #     와 **계수 블록**(`xg:`)뿐이다. ⚠️ 등급·보드·최종 평은 **안 건드린다**.
+    #  ⚠️ `with` 안에서 도는 둘은 **동기 함수**다(계약이 센다) — 그 사이에 다른
+    #     경기 계산이 끼어들 수 없다.
+    if edge.get("form_xg"):
+        edge_xg = {**edge, "form": edge["form_xg"]}
+        with _mu.xg_coeffs():
+            mr_xg = _mu.report(ref, facts, edge_xg, varset, strategy=plan,
+                               turnover=turn)
+            prob_xg = _pm.run(ref, facts, mr_xg, varset, edge=edge_xg,
+                              state=st)
+        # 🔴 **수는 평범한 사전으로 싣는다** — ⚠️ 카드가 저장을 지나면
+        #    데이터클래스가 안 살아 있다(실측 2026-10-11: `prob` 칸이 비었다).
+        edge["xg_pass"] = {
+            "sim": (prob_xg.as_sim() if prob_xg.ok() else {}),
+            "gaps": {k: v for k, v in (mr_xg.gaps() or {}).items()},
+            "verdict": str((mr_xg.verdict or {}).get("edge") or ""),
+            "strength": str((mr_xg.verdict or {}).get("strength") or ""),
+            "form": {s: (one.index() if one else None)
+                     for s, one in dict(edge["form_xg"]).items()},
+            "why": ("" if prob_xg.ok() else str(prob_xg.gap))}
+        st.note("S3 **xG 판**(나란히) — "
+                + (f"홈 {prob_xg.home:.0%} · 무 {prob_xg.draw:.0%} · 원정 "
+                   f"{prob_xg.away:.0%}" if prob_xg.ok()
+                   else f"🔴 못 셌다 — {prob_xg.gap}"))
+    else:
+        edge["xg_pass"] = {"sim": {}, "gaps": {}, "total": None,
+                           "verdict": "", "form": {},
+                           "why": str(edge.get("xg_why") or
+                                      "🔴 xG 판 없음 — 재료가 없다")}
     if prob.ok():
         from app.core.schema import ProbTriple as _PT
         edge["sim"] = prob.as_sim()

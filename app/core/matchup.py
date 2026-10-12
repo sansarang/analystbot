@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 import math
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
@@ -25,10 +26,47 @@ STRONG, MID, WEAK, NONE = "강", "중", "약", "없음"
 PROVISIONAL = "🔴 임시"
 
 
-def table() -> dict:
-    """🔴 축 비중·임시 계수 — `config/matchup_model.yaml` 하나가 든다."""
+#: 🔴🔴 **xG 판 패스 중인가** — 사용자 지시 2026-10-12 ③(계수를 섞지 않는다)
+#
+#  ⚠️ 전역 상태다. 🔴 그래서 **쓰는 범위를 못 박는다**: `xg_coeffs()` 안에서
+#     도는 것은 `matchup.report`·`probmodel.run` **둘뿐이고 둘 다 동기 함수**다
+#     (await 가 없다 → 다른 경기의 계산이 그 사이에 끼어들 수 없다).
+#     계약 `test_v10_13_two_boards` 가 그 둘에 `await` 가 없음을 센다.
+#  🔴 왜 인자로 안 넘기나: `table()` 을 부르는 자리가 **열 곳**이고(축0·축1·축2·
+#     강도·비중·λ) 전부에 깃발을 끼우면 사본이 열 개가 된다(#1).
+_XG_PASS = False
+
+
+@contextmanager
+def xg_coeffs():
+    """🔴 이 블록 안에서 `table()` 은 **xG 판 계수**를 돌려준다."""
+    global _XG_PASS
+    said = _XG_PASS
+    _XG_PASS = True
+    try:
+        yield
+    finally:
+        _XG_PASS = said
+
+
+def table(*, xg: bool | None = None) -> dict:
+    """🔴 축 비중·임시 계수 — `config/matchup_model.yaml` 하나가 든다.
+
+    🔴🔴 **두 판의 계수는 섞지 않는다**(사용자 지시 2026-10-12 ③): `xg=True` 면
+       `xg:` 블록의 `weights`·`lambda_model`·`fit` 이 **위 칸을 덮는다**.
+    ⚠️ 덮지 않은 칸(축별 `scale`·강도 문턱 등)은 **공용**이다 — 그 칸은 단위
+       변환이라 판에 따라 달라질 이유가 없다. 달라져야 할 칸이 생기면 `xg:` 에
+       **그 칸을 적는 것**으로 갈린다(코드를 바꾸지 않는다).
+    """
     from app import rules
-    return dict(rules._load(CONF) or {})
+    got = dict(rules._load(CONF) or {})
+    if not (_XG_PASS if xg is None else xg):
+        return got
+    said = dict(got.get("xg") or {})
+    for key in ("weights", "lambda_model", "fit"):
+        if said.get(key) is not None:
+            got[key] = said[key]
+    return got
 
 
 @dataclass

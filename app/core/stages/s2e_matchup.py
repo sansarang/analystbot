@@ -127,7 +127,10 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
     styles = {side: _style.profile_of(
         str(getattr(ref, f"{side}_name", "")), rows[side])
         for side in ("home", "away")}
-    reads = {side: _strat.read(ref, facts, side=side)
+    # 🔴🔴 **선수 기여표에 xG+xA 를 먹인다**(지시서 2026-10-12 ②) — 창 안
+    #    경기를 더한 표다(`adv_players`). ⚠️ 비면 득점+도움으로 간다(퇴로).
+    advs = {side: adv_players(rows[side]) for side in ("home", "away")}
+    reads = {side: _strat.read(ref, facts, side=side, adv=advs[side])
              for side in ("home", "away")}
     # 🔴 F2 — **전략으로 6축을 조정한 뒤** 규칙을 발동한다(재료가 먼저 굳으면
     #    전략은 뒤늦은 장식이 된다)
@@ -234,6 +237,27 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
     pool = [f.index() for f in form.values() if f.index() is not None]
     for side, one in form.items():
         one.pct_att = _form.percentile(one.index(), pool)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **xG 판 폼도 함께 센다**(사용자 결정 2026-10-12 — 3번 b)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 4번 검수: 같은 경기 득실판 vs xG판 확률 비교 … (b) 두 판을 카드에
+    #  > 나란히 적어 둔다 — 백필이 쌓일 때까지 **기본값은 득실판**이다.
+    #
+    #  🔴 두 판은 **같은 경기 목록**을 본다(`games[side]`) — 다른 것은 지수뿐이다
+    #     (100% xG · 운 할인 끔). ⚠️ 계수도 따로다(`matchup.table(xg=True)`).
+    form_xg = {side: _form.form_of(
+        str(getattr(ref, f"{side}_name", "")),
+        _as_form(rows[side], str(getattr(ref, f"{side}_name", ""))),
+        elo=elo, games=games[side], side_at=side, xg_only=True)
+        for side in ("home", "away")}
+    ok_xg = all(one.xg_only and one.index() is not None
+                for one in form_xg.values())
+    out["form_xg"] = form_xg if ok_xg else {}
+    out["xg_why"] = ("" if ok_xg else
+                     "🔴 xG 판 없음 — "
+                     + " · ".join(f"{s} {one.why[-60:]}"
+                                  for s, one in form_xg.items()))
     # 🔴🔴 §5 — 긴 카드가 적는 **골 목록 표**(분·유형·상태·xG). 같은 함수들로
     #    세므로 표와 비중이 어긋나지 않는다(`goals.table_of`).
     out["table"] = {side: _goals.table_of(rows[side])
@@ -318,7 +342,9 @@ async def _history(net: Any, name: str, *, state: RunState,
                         #    xG(분·상황)와 편을 가릴 팀 번호. ⚠️ 팀 xG 자체는
                         #    `stats` 에 이미 있다(`expected_goals`) — 두 번 받지 않는다.
                         "shots": fm.shots_of(j),
-                        "side_ids": fm.side_ids(j)})
+                        "side_ids": fm.side_ids(j),
+                        # 🔴 선수 기여표(xG+xA) 재료 — 같은 페이지다(새 통신 0)
+                        "player_adv": fm.player_adv(j)})
         return out or None
     except Exception as exc:                                # noqa: BLE001
         state.note(f"s2e 과거 경기 — 🔴 터졌다({name}): {exc!r}")
@@ -437,6 +463,37 @@ def _adv_of(box: dict, *, mine_home: bool) -> dict:
                                  if in_box_t is not None else None),
         "why": " · ".join(why),
     }
+
+
+def adv_players(rows: list[dict], *, mine_home_key: str = "mine_home"
+                ) -> dict[str, dict]:
+    """🔴🔴 창 안 경기를 **더해** 우리 팀 선수의 `{이름: {xg, xa, n}}`.
+
+    > 선수 기여표: xG+xA(없으면 득점+도움) — 사용자 지시 2026-10-12 ②
+
+    🔴 우리 팀 선수만 센다 — 편은 `side_ids` + `mine_home` 으로 가린다(이름 비교
+       금지 · 신원 계약). ⚠️ 한 경기도 못 읽으면 **빈 표**다(0 이 아니다 · #3).
+    """
+    out: dict[str, dict] = {}
+    for row in (rows or []):
+        box = dict(row)
+        if box.get(mine_home_key) is None:
+            continue
+        ids = tuple(box.get("side_ids") or ("", ""))
+        mine_id = (ids[0] if box[mine_home_key] else ids[1]) \
+            if len(ids) == 2 else ""
+        for one in dict(box.get("player_adv") or {}).values():
+            said = dict(one)
+            if mine_id and str(said.get("team_id") or "") != mine_id:
+                continue
+            name = str(said.get("name") or "")
+            if not name:
+                continue
+            got = out.setdefault(name, {"xg": 0.0, "xa": 0.0, "n": 0})
+            got["xg"] = round(got["xg"] + float(said.get("xg") or 0.0), 3)
+            got["xa"] = round(got["xa"] + float(said.get("xa") or 0.0), 3)
+            got["n"] += 1
+    return out
 
 
 def games_of(rows: list[dict]) -> list[dict]:
