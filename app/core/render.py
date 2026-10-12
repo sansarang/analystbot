@@ -234,21 +234,22 @@ def _underdog_line(card: Card) -> str:
     🔴 수는 ⑯ 이 만든 **스코어 격자 하나**에서 온다. 격자가 없으면(확률 미산출)
        그 사실을 적는다 — 조용히 빼지 않는다(#3).
     """
-    from app.core import probfloor as _pf
     from app.core import underdog as _ud
     box = dict(getattr(card, "matchup", None) or {})
     sim = dict(box.get("sim") or {})
-    lam = dict((box.get("prob") and getattr(box["prob"], "lam", None))
-               or sim.get("lam") or {})
-    if not lam:
-        said = dict(box.get("sim") or {})
-        lam = {"home": said.get("lam_home"), "away": said.get("lam_away")}
-    if not lam.get("home") or not lam.get("away"):
-        return ("🔁 **역배·보호 줄 없음** — ⑯ 이 λ 를 못 만들었다"
+    # 🔴🔴 **보정 후 격자를 그대로 쓴다**(사용자 결정 2026-10-12): 생존·역배·보호
+    #    줄은 **M1 + ρ 보정** 격자 합이다. ⚠️ 종전에는 λ 로 격자를 **다시 만들어**
+    #    ρ 보정이 빠졌다 — 그러면 카드의 두 줄이 다른 격자를 말한다.
+    grid: dict = {}
+    for key, val in dict(sim.get("scores") or {}).items():
+        if isinstance(key, str) and "-" in key:
+            h, a = key.split("-", 1)
+            grid[(int(h), int(a))] = float(val)
+        elif isinstance(key, (list, tuple)) and len(key) >= 2:
+            grid[(int(key[0]), int(key[1]))] = float(val)
+    if not grid:
+        return ("🔁 **역배·보호 줄 없음** — ⑯ 이 격자를 못 만들었다"
                 "(확률이 없으면 그 줄도 없다)")
-    rho = float(dict(box.get("coef") or {}).get("rho") or 0.0)
-    grid = _pf.score_grid(lam_home=float(lam["home"]),
-                          lam_away=float(lam["away"]), rho=rho)
     got = _ud.read(grid, home_name=card.match.home_name,
                    away_name=card.match.away_name)
     return "🔁 " + _ud.line(got)
@@ -277,6 +278,14 @@ def _head(card: Card) -> str:
     #  ⚠️ 확률은 **안 바뀐다** — 바뀐 것은 강팀 줄의 등급뿐이다(U3).
     if card.upset:
         head += f"\n⚠️ {card.upset}"
+    # 🔴🔴 **확신 구간 표시**(사용자 결정 2026-10-12 · 문턱은 보류) — 등급 불변
+    from app.core import bands as _bd
+    said_top = None
+    got_ours = getattr(card, "our_prob", None)
+    if got_ours is not None:
+        said_top = max(float(got_ours.home), float(got_ours.draw),
+                       float(got_ours.away))
+    head += "\n" + _bd.said_of(said_top)
     # 🔴🔴 **§7 경기 직전 상태** — 머리 줄에 적는다(지시서 2026-10-12(둘째) §7).
     #  ⚠️ 확률에는 아직 **안 들어간다**(§9 전진 선택 전) — 그 사실을 줄이 말한다.
     if card.schedule:
@@ -1646,8 +1655,15 @@ def prob_long(card: Card) -> str:
                    + " — 🔴 판정에는 **안 쓴다**(짝지은 채점용으로 쌓는다)")
     share = dict(box.get("share") or pull("share") or {})
     refs = dict(box.get("share_refs") or {})
+    said_fix = dict(box.get("draw_fix") or pull("draw_fix") or {})
+    if said_fix:
+        out.append(f"- 🎯 **무승부 보정** ρ {float(said_fix.get('rho') or 0.0):+.2f}"
+                   f" — 보정 전 홈 "
+                   f"{float(said_fix.get('before_home') or 0.0):.1%} → 지금 "
+                   f"{float(pull('home') or 0.0):.1%}"
+                   f"({said_fix.get('why') or ''})")
     if share:
-        out.append("- 기여(리그 평균 대비) — "
+        out.append("- 기여(리그 평균 대비 · ⚠️ **보정 전** 수를 설명한다) — "
                    + " · ".join(f"{k} {float(v):+.1f}%p"
                                 for k, v in share.items()))
         said = [f"{k.replace('axis', '축')} {','.join(list(v)[:3])}"

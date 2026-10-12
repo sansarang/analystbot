@@ -380,6 +380,8 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
         #    확률과 최종 확률을 둘 다 기록"*). ⚠️ 카드가 저장을 지나면 데이터클래스가
         #    안 살아 있다(실측 2026-10-11) — 그래서 `floor`·`shadow` 를 사전으로 둔다.
         edge["floor"] = dict(prob.floor or {})
+        # 🔴 §5 무승부 보정의 **보정 전 수와 판**(카드가 그 줄을 적는다)
+        edge["draw_fix"] = dict(prob.draw_fix or {})
         edge["shadow"] = dict(prob.shadow or {})
         edge["prob"] = prob
         # 🔴🔴 **S3 가 낸 수가 카드의 확률이다**(C2) — 뒤 단계는 안 바꾼다
