@@ -212,6 +212,19 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
     from app.core import matchup as _mu
     # 🔴 3a(2026-10-12) — **핵심 선수 상태**를 쓰는 곳이 둘이 됐다(꺼진 무기 ·
     #    무너뜨릴 조건 K1). 그 읽은 것을 재료로 내보낸다(두 번 읽지 않는다).
+    # 🔴🔴 [2b] — **상태 배율을 TeamRead 에 싣는다**(지시서 2026-10-12).
+    #    ⚠️ 확률은 ⑪ 에서만 쓴다 — 축3 합산에 **또 더하지 않는다**(S1).
+    #       여기 싣는 까닭은 카드·축3 **근거 줄**(관찰)과 반증 K 조건이다.
+    said_state = dict(getattr(facts, "state_rates", None) or {})
+    for side in ("home", "away"):
+        got_one = dict(said_state.get(side) or {})
+        if got_one and reads.get(side) is not None:
+            reads[side].state_mult = got_one
+    if said_state:
+        from app.core import staterates as _sr
+        out["state_said"] = _sr.said_of(
+            said_state, dict(getattr(facts, "state_rates_why", None) or {}))
+        state.note("s2e [2b] 상태 배율 — " + out["state_said"])
     out["reads"] = reads
     out["r"] = _mu.r_of(varset, ref, turnover=turnover)
     out["turnover"] = dict(turnover or {})

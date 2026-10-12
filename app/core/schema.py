@@ -414,6 +414,11 @@ class Facts(Frozen):
     sources: list[str] = Field(default_factory=list)
     #: 🔴 **못 받은 칸을 이름으로**(§2) — 블록 1 이 칸별로 적는다(#3 조용한 0 금지)
     gaps: list[str] = Field(default_factory=list)
+    #: 🔴🔴 **상태별 득점률 배율**(수정 지시서 2026-10-12 [2a]) —
+    #   `{"home": {상태: {for, against}}, "away": …}` · 사유는 `state_rates_why`.
+    #   ⚠️ 비면 **상태를 안 쓴다**(0 이 아니라 없음이다 · #3).
+    state_rates: dict = Field(default_factory=dict)
+    state_rates_why: dict = Field(default_factory=dict)
 
 
 class Doc(Frozen):

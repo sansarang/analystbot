@@ -288,9 +288,22 @@ def run(ref, facts, mr, varset, *, edge: dict | None = None,
     # 🔴 F3/R4 — **규칙 λ 를 더하지 않는다**(축 안에서 이미 한 번 셌다).
     #    시간대·상태 배율만 시뮬 안으로 보낸다(`sim_extras` 는 λ 를 안 준다).
     args = _g.sim_extras(dict(edge or {}))
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **[2c] 상태별 득점률 표를 시뮬로 넘긴다**(지시서 2026-10-12)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > ⑪ 분 단위 시뮬 루프 안. 매 분 현재 스코어로 각 팀 상태를 정하고
+    #  > λ분당 × 그 상태 배율. 기존 축3 시간대 배율과 **한 표로 합친다**.
+    #
+    #  🔴 표가 있으면 시뮬이 **T11 임시 배율을 끈다**(`sim.run` 의 S1 규율) —
+    #     같은 효과를 두 번 곱하지 않는다.
+    #  ⚠️ 표는 ③ 이 `facts.state_rates` 에 실어 온다. 비면 **없는 것**이고
+    #     T11 이 그대로 돈다(퇴로).
+    said_state = dict(getattr(facts, "state_rates", None) or {})
     out = _sim.run(lam_h, lam_a,
                    late_home=args["late_home"], late_away=args["late_away"],
-                   lead_mul=args["lead_mul"])
+                   lead_mul=args["lead_mul"],
+                   state_mult=(said_state or None))
     _fill(got, out)
     why_rules = str(args.get("why") or "")
     # 🔴 3-4 — **리그 평균 대비** 축별 기여(합 = 전체 변화)
@@ -303,11 +316,20 @@ def run(ref, facts, mr, varset, *, edge: dict | None = None,
                + (f"(상한 ±{cap:.0%})"
                   if max(abs(move['home']), abs(move['away'])) >= cap else "")
                + (f" · 규칙(축 안에서 셌다) {why_rules}" if why_rules else "")
+               + (" · 📜 **상태 배율**(실측 표 · T11 끔) "
+                  + _state_said(facts) if said_state else "")
                + (f" · {_m.PROVISIONAL}" if got.provisional else ""))
     _note(state, f"S3 확률(상성) — 홈 {got.home:.1%} · 무 {got.draw:.1%} · "
                  f"원정 {got.away:.1%} · {got.why}")
     logger.info("[S3] %s", got.why)
     return got
+
+
+def _state_said(facts) -> str:
+    """🔴 [2c] — 카드가 적을 **상태 배율 한 줄**(표의 사유까지)."""
+    from app.core import staterates as _sr
+    return _sr.said_of(dict(getattr(facts, "state_rates", None) or {}),
+                       dict(getattr(facts, "state_rates_why", None) or {}))
 
 
 def _fill(got: ProbOut, out) -> None:

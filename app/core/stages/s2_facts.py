@@ -258,7 +258,19 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
                  rungs=list(said_lad.get("rungs") or []))
     if gaps:
         state.note("s2 못 받은 칸 — " + " · ".join(gaps))
-    return adapt.facts_of(box, xi=xi, match_format=fmt,
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **[2a] 상태별 득점률 표를 싣는다**(수정 지시서 2026-10-12)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 위치: ③ 구조 사실 수집. 팀별 상태 배율을 facts에 싣는다
+    #  > (없으면 **리그값·🔴**).
+    #
+    #  🔴 수를 여기서 만들지 않는다 — `tools/fit_state_rates.py` 가 만든
+    #     `data/state_rates/<리그>.yaml` 을 **읽기만** 한다(#1 사본 금지).
+    #  ⚠️ 대회 유형 열쇠(`league:PD`)를 만드는 함수는 **완성된 facts** 를 본다 —
+    #     그래서 묶음을 **먼저 만들고** 그 위에 얹는다(실측 2026-10-12: `ref` 에
+    #     `competition_key` 칸이 없어 표가 통째로 안 실렸다).
+    got_facts = adapt.facts_of(box, xi=xi, match_format=fmt,
                           sources=sorted(set(sources)), missing=missing,
                           coach=coach, player_pos=pos, gaps=gaps, squad=squad,
                           player_value=values, past_xi=past,
@@ -267,6 +279,23 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
                           # 🔴 ③ — 팀별 공격 기여 표(비중의 분모)
                           player_stats_team=dict(
                               box.get("player_stats_team") or {}))
+    from app.core import staterates as _sr
+    from app.core.stages.s5_verify import comp_kind as _ck
+    said_lg = ""
+    try:
+        said_lg = str(_ck(ref, got_facts) or "")
+    except Exception as exc:                                # noqa: BLE001
+        state.note(f"s2 [2a] 대회 유형 열쇠를 못 만들었다({exc!r:.40})")
+    state_tab, state_why = _sr.pair(
+        league=said_lg, home=str(getattr(ref, "home", "") or ""),
+        away=str(getattr(ref, "away", "") or ""))
+    state.note(f"s2 [2a] 상태 배율(`{said_lg}`) — "
+               + (_sr.said_of(state_tab, state_why) if state_tab
+                  else f"⬜ 없다({state_why.get('home') or ''})"))
+    logger.info("[s2] [2a] 상태 배율 — %s · %s", said_lg,
+                _sr.said_of(state_tab, state_why) if state_tab else "⬜ 없다")
+    return got_facts.model_copy(update={
+        "state_rates": state_tab, "state_rates_why": state_why})
 
 
 def _kind_of(ref, box: dict) -> str:

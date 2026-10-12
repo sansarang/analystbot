@@ -76,6 +76,10 @@ class TeamRead:
     #  비중을 센다(사용자 지시 2026-10-11 ③). ⚠️ 비면 **0 비중**이고 그러면
     #  꺼진 무기가 **없다**(없는 약화를 지어내지 않는다).
     att_table: dict = field(default_factory=dict)
+    #: 🔴🔴 **상태별 배율**(수정 지시서 2026-10-12 [2b]) —
+    #   `{lead: {for, against}, level: {…}, trail: {…}}`. ⚠️ 비면 **없음**이다.
+    #   🔴 확률은 ⑪ 에서만 쓴다 — 축3 합산에 또 더하지 않는다(S1).
+    state_mult: dict = field(default_factory=dict)
     #: 🔴 교체 주력(선발 비율 30% 미만)의 벤치 — **약화로 읽지 않는다**
     bench_regulars: list = field(default_factory=list)
     #: 🔴 복귀 선수가 선발인가 — `{이름: True/False}`
