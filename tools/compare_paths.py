@@ -60,6 +60,39 @@ def _probs(rows: list[dict], *, coef: dict, adopted: set) -> list[list[float]]:
     return _p(rows, coef=coef, adopted=adopted)
 
 
+def m0_of(floor, mean, mul_h, mul_a):
+    """🔴 바닥을 λ 로 번역한 이동(없으면 `None`). ⚠️ 같은 입력이면 같은 답 —
+    `solve_move` 는 이분법 40번이라 **기억해 둔다**."""
+    from app.core import probfloor as _pf
+    key = (round(float(floor.home), 4), round(float(mean), 4),
+           round(float(mul_h), 4), round(float(mul_a), 4))
+    if key not in _MEMO:
+        got, _why = _pf.solve_move([floor.home, floor.draw, floor.away],
+                                   mean=mean, mul_home=mul_h, mul_away=mul_a)
+        _MEMO[key] = got
+    return _MEMO[key]
+
+
+_MEMO: dict = {}
+
+
+def m4_probs(row, *, floor, mean, mul_h, mul_a, conf, beta, cap):
+    """🔴🔴 **M4** — 바닥 + **네 축**(축2·축3 연속값) λ 잔차."""
+    import math as _m
+
+    from app.core import sim as _sim
+    m0 = m0_of(floor, mean, mul_h, mul_a)
+    if m0 is None:
+        return None
+    res = sum(float(conf.get(k) or 0.0)
+              * float(dict(row.get("gaps") or {}).get(k) or 0.0)
+              for k in ("axis0", "axis1", "axis2", "axis3"))
+    rmove = max(-cap, min(cap, beta * res))
+    out = _sim.run(mean * mul_h * _m.exp(m0 + rmove),
+                   mean * mul_a * _m.exp(-(m0 + rmove)))
+    return [out.home, out.draw, out.away]
+
+
 def _legacy_probs(row: dict, *, mean: float, mul_home: float, mul_away: float,
                   weights: dict, beta: float, cap: float,
                   axes: tuple[str, ...]) -> list[float] | None:
@@ -198,7 +231,16 @@ def main(argv: list[str]) -> int:
             got["M1"].append(m1)
             got["M2"].append(list(said_m2 or m2))
             got["M3"].append(list(pp3))
-            got["M4"].append(list(pp3))      # ⚠️ 축2·축3 대리 없음 — 아래에 적는다
+            # 🔴🔴 **M4 를 실제로 센다**(사용자 지시 3번) — 축2·축3 **연속값**을
+            #    같은 λ 식에 넣는다(교차 적합 바닥 위 · `why_m3` 와 같은 길).
+            m4 = _legacy_probs(one, mean=mean, mul_home=mul_h, mul_away=mul_a,
+                               weights=conf, beta=beta, cap=cap,
+                               axes=("axis0", "axis1", "axis2", "axis3"))
+            said_m4 = None
+            if m0_of(floor, mean, mul_h, mul_a) is not None:
+                said_m4 = m4_probs(one, floor=floor, mean=mean, mul_h=mul_h,
+                                   mul_a=mul_a, conf=conf, beta=beta, cap=cap)
+            got["M4"].append(list(said_m4 or m4 or pp3))
             got["M5"].append(list(pp5))
             keep.append(one)
     n = len(keep)
@@ -210,9 +252,8 @@ def main(argv: list[str]) -> int:
     for k, v in skipped.items():
         print(f"| {k} | {v} |")
     print()
-    print("⚠️ **M4 는 M3 와 같은 수다** — 이 재생에는 축2·축3 을 λ 항으로 넣을 "
-          "**연속값 입구가 없다**(재생이 스타일·시간대 재료를 안 담았다). 🔴 그래서 "
-          "M3 vs M4 는 **이 표본으로 못 센다**(없는 비교를 숫자로 적지 않는다).")
+    print("🔴 **M4 를 이제 실제로 센다** — 축2·축3 **연속값**을 같은 λ 식에 넣었다"
+          "(앞 실행에서 *못 쟀다* 고 적은 까닭은 그 항을 식에 안 넣었기 때문이다).")
     print()
     if n < 50:
         print("🔴 표본이 모자라 판정하지 않는다(50 미만)")
@@ -224,7 +265,7 @@ def main(argv: list[str]) -> int:
     print("|---|---|---|---|---|---|")
     ll: dict[str, list[float]] = {}
     rate: dict[str, float] = {}
-    for name in ("M0", "M1", "M2", "M3", "M5"):
+    for name in ("M0", "M1", "M2", "M3", "M4", "M5"):
         box = got[name]
         ll[name] = [_me.logloss(p, r["hit"]) for p, r in zip(box, keep,
                                                              strict=True)]
@@ -241,8 +282,8 @@ def main(argv: list[str]) -> int:
     print()
     print("| 쌍 | 평균 차 | 95% 구간 | b | c | p |")
     print("|---|---|---|---|---|---|")
-    pairs = (("M1", "M3"), ("M1", "M2"), ("M3", "M5"), ("M1", "M5"),
-             ("M3", "M0"))
+    pairs = (("M1", "M3"), ("M1", "M2"), ("M3", "M4"), ("M1", "M5"),
+             ("M3", "M0"), ("M1", "M4"))
     stats: dict[tuple[str, str], dict] = {}
     for a, b in pairs:
         diff = _me.paired(ll[a], ll[b])
@@ -261,15 +302,17 @@ def main(argv: list[str]) -> int:
     # ── 선택 적중률
     print("## §4 선택 적중률(같은 경기 수)")
     print()
-    said_rows = [{**{k: got[k][i] for k in ("M0", "M1", "M2", "M3", "M5")},
+    said_rows = [{**{k: got[k][i] for k in ("M0", "M1", "M2", "M3", "M4",
+                                           "M5")},
                   "hit": keep[i]["hit"]} for i in range(n)]
-    bands = _me.bands(said_rows, keys=("M0", "M1", "M2", "M3", "M5"))
-    print("| 구간 | 경기 | " + " | ".join(("M0", "M1", "M2", "M3", "M5")) + " |")
-    print("|---|---|" + "---|" * 5)
-    band_rate: dict[str, dict] = {k: {} for k in ("M0", "M1", "M2", "M3", "M5")}
+    KEYS = ("M0", "M1", "M2", "M3", "M4", "M5")
+    bands = _me.bands(said_rows, keys=KEYS)
+    print("| 구간 | 경기 | " + " | ".join(KEYS) + " |")
+    print("|---|---|" + "---|" * len(KEYS))
+    band_rate: dict[str, dict] = {k: {} for k in KEYS}
     for frac, box in bands.items():
         cells = []
-        for k in ("M0", "M1", "M2", "M3", "M5"):
+        for k in KEYS:
             cells.append(f"**{box[k]['rate']:.1%}**({box[k]['hit']}/"
                          f"{box[k]['n']})")
             band_rate[k][frac] = box[k]["rate"]
@@ -280,21 +323,24 @@ def main(argv: list[str]) -> int:
     print("## §7 판정(규칙 고정 · 실행 전 커밋 · J1)")
     print()
     rows_pick: list[dict] = []
-    for name in ("M1", "M5"):
+    # 🔴🔴 **규칙 v2**(사용자 결정): (a) = 점추정이 낮고 **구간 하한 < 0**
+    for name in ("M1", "M4", "M5"):
         ok, box, why = _jm.passes(
             diff=stats[(name, "M3")]["diff"] if (name, "M3") in stats
             else _me.paired(ll[name], ll["M3"]),
             dir_rate=rate[name], base_dir=rate["M3"],
             p_value=(stats[(name, "M3")]["p"] if (name, "M3") in stats
                      else _jm.binom_two_sided(0, 0)),
-            bands=band_rate[name], base_bands=band_rate["M3"])
+            bands=band_rate[name], base_bands=band_rate["M3"],
+            rule="v2")
         print(f"- **{name}** → {'✅ 통과' if ok else '🔴 못 통과'} · {why}")
         if ok:
             d = _me.paired(ll[name], ll["M3"])
             rows_pick.append({"name": name, "ll": sum(ll[name]) / n,
                               "lo": d["lo"], "hi": d["hi"],
-                              "n_terms": (4 if name == "M1" else 9)})
-    print("- **M4** → ⬜ **못 쟀다**(축2·축3 연속값 입구가 재생에 없다)")
+                              "n_terms": {"M1": 4, "M4": 4,
+                                          "M5": 9}.get(name, 9)})
+    print("  ⚠️ 판정 규칙은 **v2** 다(점추정 < 0 · **구간 하한 < 0**) — 사용자 결정")
     print()
     winner, why_pick = _jm.pick(rows_pick)
     print(f"# 🔴🔴 판정: **{winner or 'M3 유지'}** — {why_pick}")
@@ -334,7 +380,7 @@ def main(argv: list[str]) -> int:
     real = sum(1 for r in keep if r["hit"] == 1) / n
     print("| 모형 | 무승부 예측 평균 | 실제 무승부율 |")
     print("|---|---|---|")
-    for k in ("M0", "M1", "M2", "M3", "M5"):
+    for k in KEYS:
         pred = sum(p[1] for p in got[k]) / n
         print(f"| {k} | {pred:.1%} | {real:.1%} |")
     return 0
