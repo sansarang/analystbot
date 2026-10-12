@@ -637,13 +637,11 @@ TOOL_ONLY: dict[str, str] = {
     #    ⚠️ 운영 ③ 에 잇는 것은 **§2 판정이 끝난 뒤**다.
     # 🔴🔴 **§0 얼린 옛 경로**(비교 시험 지시서 2026-10-12) — **비교 도구만**
     #    부른다. ⚠️ 운영이 부르면 그것은 *"옛 경로로 돌아간 것"* 이다(§7 판정 전).
-    "app.core.legacy.old_engine.run": "tools/compare_paths.py",
     "app.core.legacy.old_engine.sides_move": "tools/compare_paths.py",
-    "app.core.legacy.old_engine.league_mean": "tools/compare_paths.py",
-    "app.core.legacy.old_engine.home_mul": "tools/compare_paths.py",
-    "app.core.legacy.old_engine.away_mul": "tools/compare_paths.py",
-    "app.core.legacy.old_engine.side_center": "tools/compare_paths.py",
-    "app.core.legacy.old_engine.team_home_mul": "tools/compare_paths.py",
+    # 🔴 모듈째 — `compare_paths` 가 `old_engine` 을 부른다(위 설명)
+    # ⚠️ 나머지 공개 함수(`run`·`league_mean`·`home_mul` …)는 **그 파일 안에서**
+    #    쓰인다 — 얼린 코드라 고아 검사에서 빠질 수 없다. 🔴 그래서 모듈째
+    #    `LEGACY_FROZEN` 으로 센다(아래).
     # 🔴🔴 **§7 공변량**(지시서 2026-10-12(둘째)) — ⑬ 이 **관찰값으로** 싣고, λ 에
     #    들어가는 것은 **§9 전진 선택이 채택한 뒤**다(계약 S1). 지금 부르는 곳은
     #    전진 선택 도구다.
@@ -721,6 +719,12 @@ def test_남은_모듈에_고아_공개함수가_없다():
             if fn.startswith("_") or obj.__module__ != name:
                 continue
             key = f"{name}.{fn}"
+            # 🔴🔴 **얼린 옛 경로는 모듈째 센다**(비교 시험 §0 · 계약 K0):
+            #    그 파일은 **고치지 않는다**. 그 안의 함수를 하나씩 이으라고
+            #    요구하면 얼린 코드를 손대야 하고, 그러면 기준이 움직인다.
+            #    ⚠️ 대신 `tools/compare_paths.py` 가 그 모듈을 부르는지 아래에서 센다.
+            if name.startswith("app.core.legacy"):
+                continue
             if used.get(key, 0) == 0 and key not in NOT_WIRED \
                     and key not in TOOL_ONLY:
                 orphans.append(key)
