@@ -63,8 +63,12 @@ def main(argv: list[str]) -> int:
     said = argv[1] if len(argv) > 1 else "var/judge/replay_444.json"
     rows = json.loads(Path(said).read_text(encoding="utf-8"))
     rows = [r for r in rows if r.get("ours") and r.get("dr") is not None]
+    # 🔴🔴 시즌은 **fotmob 이 말한 그 시즌**이다(달력 연도로 가르지 않는다 —
+    #    J1 의 `2026/2027` 과 `2026` 이 둘 다 2026 이 된다). ⚠️ 꼬리표가 없는
+    #    옛 덤프는 달력 연도로 떨어진다 — 그 사실을 보고가 적는다.
+    tagged = sum(1 for r in rows if r.get("season"))
     for r in rows:
-        r["season"] = str(r.get("day") or "")[:4]
+        r["season"] = str(r.get("season") or "") or str(r.get("day") or "")[:4]
     from app.core import base as _base
     from app.core import matchup as _mu
     from app.core import probfloor as _pf
@@ -89,7 +93,9 @@ def main(argv: list[str]) -> int:
         print(f"- `{kind}` 바닥 계수 — 적합 표본 **{said_n}경기** · 적합일 "
               f"{m.get('fitted_at')} · 출처 {m.get('source')}")
     years = sorted({r["season"] for r in rows})
-    print(f"- 평가 표본의 시즌 — {years}")
+    print(f"- 평가 표본의 시즌 — {years}"
+          + (f" · 🔴 꼬리표 있는 줄 {tagged}/{len(rows)}" if tagged
+             else " · ⚠️ **꼬리표 없다** — 달력 연도로 갈랐다"))
     print("- 🔴 **운영 계수는 시즌을 안 가렸다** — 바닥 계수는 그 리그의 **전 시즌**"
           "(J1 960경기 · KL1 636경기)으로 적합했고, 평가 표본이 그 안에 있다 →"
           " **같은 시즌을 보고 적합한 계수다**(누설).")

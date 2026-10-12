@@ -87,6 +87,12 @@ async def main() -> None:
         page0 = await net.get(fm.league_matches_url(lid, "x"))
         said_seasons = fm.league_seasons(
             fm.payload(getattr(page0, "text", "") or "") or {})
+        # 🔴🔴 **시즌 꼬리표를 줄에 단다**(판정 시험 1번 · 시즌 교차).
+        #  ⚠️ 실사고 2026-10-12: 달력 연도로 시즌을 가르니 J1 의 `2026/2027` 과
+        #     `2026` 이 **둘 다 2026** 이 되어 교차 표본이 12경기로 쪼그라들었다.
+        #  🔴 fotmob 이 말하는 **그 시즌 문자열**을 그대로 쓴다(짐작 금지).
+        for r in rows:
+            r["season"] = str(said_seasons[0] if said_seasons else "")
         for season in said_seasons[1:max(1, int(args.seasons))]:
             more = await net.get(fm.league_matches_url(lid, "x")
                                  + f"?season={season}")
@@ -94,7 +100,8 @@ async def main() -> None:
             pp = ((j_more.get("props") or {}).get("pageProps") or {})
             for m in (((pp.get("fixtures") or {}).get("allMatches")) or []):
                 st = m.get("status") or {}
-                rows.append({"id": str(m.get("id") or ""),
+                rows.append({"season": str(season),
+                             "id": str(m.get("id") or ""),
                              "home": str((m.get("home") or {}).get("name") or ""),
                              "away": str((m.get("away") or {}).get("name") or ""),
                              "utc": str(st.get("utcTime") or ""),
@@ -148,7 +155,8 @@ async def main() -> None:
             from app.core import probfloor as _pf
             floor, _wf = _pf.floor_of(kind=name, dr=dr)
             fresh, _wb = _pf.blend(floor, gaps=gaps, weights=conf, beta=beta)
-            rows_all.append({"floor": floor, "fresh": fresh,
+            rows_all.append({"season": str(one.get("season") or ""),
+                             "floor": floor, "fresh": fresh,
                              "league": name, "day": str(one.get("utc"))[:10],
                              "hit": hit, "ours": ours, "dr": dr,
                              "gaps": dict(gaps), "why": why,
