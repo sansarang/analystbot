@@ -470,9 +470,33 @@ async def _by_llm_names(net, *, asked: str, day: date, league: str,
                    aliases=_d.aliases_of(str(asked)))
     got.tried += [f"3번 {x}" for x in said_state.notes[-4:]]
     if plan is None:
+        # 🔴 #3 — **조용히 돌아서지 않는다**(실사고 2026-10-12 푸마스: `tried` 에
+        #    3번 줄이 **한 개도** 없어 LLM 이 돌았는지조차 알 수 없었다)
+        got.tried.append(f"3번 LLM 이름 후보 — 🔴 **못 받았다**(`{asked}` · "
+                         f"지금 사다리로만 간다)")
         return None
     teams, bad_t = _fw.keep_teams(list(plan.teams))
     slugs, bad_s = _fw.keep_slugs(list(plan.slugs))
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **상대 이름도 번역한다**(사용자 지시 2026-10-12)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 한글을 현지어로 번역해서 보내든가 찾을 수 있게 하면 되잖아
+    #
+    #  ⚠️ 실사고 2026-10-12(푸마스 vs 크루스 아술): 색인이 한글에 **0건**이라
+    #     ②③ 이 전부 빗나갔고, 3번은 **묻는 팀 하나만** 번역해 상대는 끝까지
+    #     한글이었다 — 그래서 경기 페이지 검사가 *"우리 팀이 이 경기에 없다"* 로
+    #     전부 떨어졌다. 🔴 두 이름을 **같이** 번역해 색인에서 확인한다.
+    they: list[str] = []
+    if str(opponent or "").strip():
+        plan2 = _fw.ask(str(opponent), state=said_state, day=str(day),
+                        aliases=_d.aliases_of(str(opponent)))
+        if plan2 is not None:
+            t2, _ = _fw.keep_teams(list(plan2.teams))
+            s2, _ = _fw.keep_slugs(list(plan2.slugs))
+            they = [*t2, *[str(x).replace("-", " ") for x in s2]]
+            got.tried.append(f"3번 상대 이름 후보 — `{opponent}` → "
+                             + (", ".join(they[:4]) if they else "🔴 0개"))
     try:
         idx = await _fm.team_index(net)
     except Exception as exc:                                # noqa: BLE001
@@ -483,11 +507,20 @@ async def _by_llm_names(net, *, asked: str, day: date, league: str,
                            bad=[*bad_t, *bad_s])
     got.tried.append(f"3번 LLM 이름 후보 — {said_all} · {said}")
     logger.info("[findgame] 3번 LLM 이름 후보 — %s", said_all)
+    # 🔴 상대도 **번역된 글자**로 넘긴다 — 없으면 물은 글자 그대로(퇴로)
+    said_other = they[0] if they else opponent
     for _tid, slug in ok:
         # 🔴 확인된 **슬러그 글자**로 사다리를 다시 돈다(그 함수가 일정까지 본다)
         row = await _by_index(net, team=str(slug).replace("-", " "),
-                              opponent=opponent, day=day, league=league,
+                              opponent=said_other, day=day, league=league,
                               got=got, board_text=board_text, spell=spell)
+        if row is not None:
+            return row
+    # ⚠️ 상대 쪽 이름으로도 한 번 돈다 — 한쪽만 색인에 있을 수 있다(§2 ②)
+    for nm in they[:2]:
+        row = await _by_index(net, team=str(nm), opponent=asked, day=day,
+                              league=league, got=got,
+                              board_text=board_text, spell=spell)
         if row is not None:
             return row
     return None
