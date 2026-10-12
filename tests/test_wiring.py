@@ -635,6 +635,15 @@ TOOL_ONLY: dict[str, str] = {
     #    이다(§0: *"운영 확률은 현 새 구조 그대로 두고, 백필 판정을 통과한 판만
     #    운영으로 승격"*). 🔴 적합·비교는 도구가 부른다.
     #    ⚠️ 운영 ③ 에 잇는 것은 **§2 판정이 끝난 뒤**다.
+    # 🔴🔴 **§0 얼린 옛 경로**(비교 시험 지시서 2026-10-12) — **비교 도구만**
+    #    부른다. ⚠️ 운영이 부르면 그것은 *"옛 경로로 돌아간 것"* 이다(§7 판정 전).
+    "app.core.legacy.old_engine.run": "tools/compare_paths.py",
+    "app.core.legacy.old_engine.sides_move": "tools/compare_paths.py",
+    "app.core.legacy.old_engine.league_mean": "tools/compare_paths.py",
+    "app.core.legacy.old_engine.home_mul": "tools/compare_paths.py",
+    "app.core.legacy.old_engine.away_mul": "tools/compare_paths.py",
+    "app.core.legacy.old_engine.side_center": "tools/compare_paths.py",
+    "app.core.legacy.old_engine.team_home_mul": "tools/compare_paths.py",
     # 🔴🔴 **§7 공변량**(지시서 2026-10-12(둘째)) — ⑬ 이 **관찰값으로** 싣고, λ 에
     #    들어가는 것은 **§9 전진 선택이 채택한 뒤**다(계약 S1). 지금 부르는 곳은
     #    전진 선택 도구다.

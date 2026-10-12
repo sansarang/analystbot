@@ -225,3 +225,77 @@ def main(argv: list[str]) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main(sys.argv))
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **§7 판정 규칙(고정)** — 비교 시험 지시서 2026-10-12 §7
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 기준 = **M3**(새 경로). 도전 = M1, M4, M5.
+#  > 도전 모형 채택 조건(**셋 다**):
+#  >   (a) 로그 손실 짝지은 차이 **점추정이 기준보다 낮고**, 구간 상한이
+#  >       **+0.005 미만**
+#  >   (b) **방향 적중률이 기준보다 높고** 맥니마 **p < 0.05**
+#  >   (c) **상위 30/20/10% 선택 적중률 세 값의 평균**이 기준보다 높음
+#  > 여럿 통과 → **로그 손실 최저**. 차이 구간이 서로 겹치면 **항 수가 적은 쪽**.
+#  > 아무도 통과 못 함 → **M3 유지**.
+#
+#  🔴🔴 **이 규칙은 결과를 보기 전에 커밋했다**(계약 J1). 실행 뒤 고치지 않는다.
+#  ⚠️ (a) 의 *"구간 상한 +0.005 미만"* 은 **느슨한 상한**이다 — 지시가 그렇게
+#     적었다(완전히 0 밖일 것을 요구하지 않는다).
+
+#: 🔴 (a) 가 허용하는 구간 상한(로그 손실 단위) — 지시서 §7 의 그 수
+HI_CAP = 0.005
+
+#: 🔴 (b) 의 유의 문턱 — 맥니마 p < 0.05
+P_CAP = 0.05
+
+#: 🔴 (c) 가 보는 구간 — 상위 30/20/10%
+BANDS = (0.30, 0.20, 0.10)
+
+
+def passes(*, diff: dict, dir_rate: float, base_dir: float, p_value: float,
+           bands: dict, base_bands: dict) -> tuple[bool, dict, str]:
+    """🔴🔴 §7 — 도전 모형이 **(a)(b)(c) 셋 다** 통과하나. `(통과, 칸, 사유)`.
+
+    `diff` 는 `metrics.paired(도전 로그손실, 기준 로그손실)` 다(음수면 도전이 낫다).
+    `bands`·`base_bands` 는 `{비율: 적중률}`.
+    """
+    a = bool(float(diff.get("mean", 1.0)) < 0.0
+             and float(diff.get("hi", 1.0)) < HI_CAP)
+    b = bool(float(dir_rate) > float(base_dir) and float(p_value) < P_CAP)
+    mine = [float(bands.get(x, float("nan"))) for x in BANDS]
+    theirs = [float(base_bands.get(x, float("nan"))) for x in BANDS]
+    c = bool(sum(mine) / len(mine) > sum(theirs) / len(theirs))
+    said = (f"(a) 점추정 {float(diff.get('mean', 0.0)):+.4f} · 상한 "
+            f"{float(diff.get('hi', 0.0)):+.4f} < {HI_CAP:+.3f} → "
+            f"{'✅' if a else '🔴'} · "
+            f"(b) 방향 {float(dir_rate):.1%} vs {float(base_dir):.1%} · p "
+            f"{float(p_value):.4f} < {P_CAP} → {'✅' if b else '🔴'} · "
+            f"(c) 구간 평균 {sum(mine) / len(mine):.1%} vs "
+            f"{sum(theirs) / len(theirs):.1%} → {'✅' if c else '🔴'}")
+    return (a and b and c), {"a": a, "b": b, "c": c}, said
+
+
+def pick(rows: list[dict]) -> tuple[str, str]:
+    """🔴 §7 — 통과한 도전들 중 **로그 손실 최저**. 구간이 겹치면 **항 수가 적은 쪽**.
+
+    `rows` 한 줄: `{name, ll, lo, hi, n_terms}`.
+    """
+    said = [r for r in (rows or [])]
+    if not said:
+        return "", "통과한 도전 모형이 없다 → **M3 유지**"
+    said.sort(key=lambda r: float(r["ll"]))
+    best = said[0]
+    close = [r for r in said[1:]
+             if not (float(r["lo"]) > float(best["hi"])
+                     or float(r["hi"]) < float(best["lo"]))]
+    if close:
+        pool = [best, *close]
+        pool.sort(key=lambda r: (int(r.get("n_terms") or 0), float(r["ll"])))
+        got = pool[0]
+        return str(got["name"]), (
+            f"로그 손실 최저 `{best['name']}` 와 구간이 겹치는 것 "
+            f"{[r['name'] for r in close]} → **항 수가 적은 쪽** "
+            f"`{got['name']}`({got.get('n_terms')}항)")
+    return str(best["name"]), f"로그 손실 최저 `{best['name']}`({best['ll']:.4f})"
+
