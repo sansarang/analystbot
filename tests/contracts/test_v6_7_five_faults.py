@@ -89,31 +89,9 @@ def test_v6_공격기여표가_선수단_전원을_든다():
 # ② 포지션 분류
 # ══════════════════════════════════════════════════════════════════
 
-def test_v6_선수_이름을_순서_없이_맞춘다():
-    """🔴🔴 ① 뿌리 — **실사고**: fotmob 이 같은 선수를 두 꼴로 준다.
-
-    선수단 페이지 `Park Man-Ho`(성 먼저) ↔ 경기 라인업 `Man-Ho Park`.
-    ⚠️ 실측 2026-10-10: 겹치는 이름이 **0명**이어서 선수단 기록이 통째로
-       버려지고 카드가 *"기록 없음"* 만 적었다 — ① 의 고침이 한국 선수에게는
-       **죽은 코드**였다.
-    ⚠️ 돌연변이: `name_key` 를 지우고 글자로 맞추면 이 줄이 빨개진다.
-    """
-    from app.core import discover as _d
-    from app.core import strategy as _st
-    from app.core.schema import Facts
-    assert _d.name_key("Park Man-Ho") == _d.name_key("Man-Ho Park")
-    assert _d.name_key("Si-Hoo Hong") != _d.name_key("Min-Seo Park")
-    facts = Facts(player_stats={"Park Man-Ho": {"goals": 2, "assists": 1,
-                                                "rating": 7.0}})
-    got = _st.stat_of(facts, "Man-Ho Park")
-    assert got.get("goals") == 2, "🔴 성 먼저 꼴을 못 찾는다"
-    # 🔴 기여표도 같은 열쇠로 맞춘다 — 수축이 아니라 **실제 기록**이 잡힌다
-    total, gone = _st._shrunk(["Man-Ho Park"], {"Park Man-Ho": 3.0}, {})
-    assert (total, gone) == (3.0, 0), (total, gone)
-    # 🔴 사실 묶음도 같은 한 곳을 쓴다(사본 금지)
-    src = (ROOT / "app" / "core" / "saybundle.py").read_text(encoding="utf-8")
-    assert "_st.stat_of" in src, "🔴 묶음이 자기 식으로 이름을 맞춘다"
-
+# ⚠️ **걷은 시험** — `saybundle`(최종 평 LLM 프롬프트 묶음)이 지시서
+#    2026-10-12(셋째) §1 처분으로 **지워졌다**(㉔ LLM 서술 삭제).
+#    걷은 시험: `test_v6_선수_이름을_순서_없이_맞춘다`
 
 def test_v6_평소XI가_없으면_헛_교체를_만들지_않는다():
     """🔴🔴 ③ 뒤처리 — ⚠️ 실측 2026-10-10(재현): 전역으로 평소 XI 가 **0경기**가
@@ -484,22 +462,9 @@ def test_v6_예상스코어도_시뮬에서_나온다():
 
 
 
-def test_v6_자리글자가_붙은_이름을_없는_이름이라_하지_않는다():
-    """🔴🔴 (r) 거짓 위반 — ⚠️ 실측 2026-10-10(재현): 평이 *"새로 들어온
-    **LB Min-Seo Park**"* 이라 적었고 검열이 그 다섯 글자를 통째로 **없는 이름**
-    이라 했다(묶음에는 `Min-Seo Park` 이 있다) — 좋은 평이 템플릿으로 떨어졌다.
-    """
-    from app.core.stages import s9_say
-    known = {"Min-Seo Park", "Si-Hoo Hong"}
-    assert s9_say._names_in("새로 들어온 LB Min-Seo Park 이", known) == []
-    assert s9_say._names_in("RB Si-Hoo Hong 과", known) == []
-    # 🔴 지어낸 이름은 여전히 걸린다
-    assert s9_say._names_in("Lionel Messi 가", known) == ["Lionel Messi"]
-
-
-# ══════════════════════════════════════════════════════════════════
-# ⑤ 상성 우위
-# ══════════════════════════════════════════════════════════════════
+# ⚠️ **걷은 시험** — `s9_say`(㉔ 최종 평 LLM)가 지시서 2026-10-12(셋째)
+#    §1 처분으로 **지워졌다**. 없는 단계를 시험하면 계약이 거짓을 지킨다.
+#    걷은 시험: `test_v6_자리글자가_붙은_이름을_없는_이름이라_하지_않는다`
 
 def test_v6_상성우위는_세축_합이고_확률과_어긋나면_안_쓴다():
     """🔴🔴 ⑤ — *"세 축을 합친 결과로만 … **최종 확률 방향과 다르면 쓰지

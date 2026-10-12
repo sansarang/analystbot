@@ -282,71 +282,13 @@ def test_v6_기준_낡음을_선수단교체와_결장으로_센다():
 # 🔴🔴 계약 ④ — 최종 평의 근거 ⊂ 지지된 가설·변수
 # ══════════════════════════════════════════════════════════════════
 
-def test_v6_최종평은_반박된_가설을_근거로_못_쓴다():
-    """🔴 §5 — *"지지된 가설과 그 근거만 쓴다. 반박된 가설은 '🔄 뒤집히는 조건'
-    후보로만."*"""
-    from app.core import saybundle
-    from app.core.schema import Card, Facts, KeyPoint, ProbTriple, SayOut
-    from app.core.stages import s9_say
-    chk = {"rows": [
-        {"side": "home", "kind": "reasons", "text": "지지된 것",
-         "var_ids": ["V1"], "signal": "s", "value": 1.0, "want": 0.5,
-         "verdict": "지지", "cause": "", "why": "w"},
-        {"side": "away", "kind": "reasons", "text": "반박된 것",
-         "var_ids": ["V2"], "signal": "s", "value": 0.1, "want": 0.5,
-         "verdict": "반박", "cause": "가설 오류", "why": "w"}],
-        "supported": [], "counts": {"지지": 1, "반박": 1, "판단 불가": 0},
-        "stale": "", "rerun": "", "why": "x"}
-    card = Card(match=_ref(), facts=Facts(), check=chk,
-                our_prob=ProbTriple(home=0.5, draw=0.3, away=0.2))
-    box = saybundle.build(card)
-    assert box.items.get("H1") is not None, "🔴 지지된 가설이 묶음에 없다"
-    assert box.items.get("R1") is not None, "🔴 반박된 가설이 묶음에 없다"
-    # 🔴 판단 불가는 **묶음에 없다**
-    assert not [k for k in box.items if str(k).startswith("U")]
-    base = {"verdict": "Gangwon FC", "one_line": "강원이 가져간다",
-            "flow_first": "a", "flow_second": "b", "decisive_moment": "c",
-            "flip_condition": "d"}
-    bad = SayOut(**base, key_points=[
-        KeyPoint(claim="주장", mechanism="메커니즘", refs=["R1", "H1"])] * 3)
-    said = s9_say.check(bad, card=card, box=box)
-    assert any("반박된 가설을 근거로 썼다" in x for x in said), said
-    ok = SayOut(**base, key_points=[
-        KeyPoint(claim="주장", mechanism="메커니즘", refs=["H1", "P1"])] * 3)
-    said2 = s9_say.check(ok, card=card, box=box)
-    assert not any("반박된" in x for x in said2), said2
+# ⚠️ **걷은 시험** — `s9_say`(㉔ 최종 평 LLM)가 지시서 2026-10-12(셋째)
+#    §1 처분으로 **지워졌다**. 없는 단계를 시험하면 계약이 거짓을 지킨다.
+#    걷은 시험: `test_v6_최종평은_반박된_가설을_근거로_못_쓴다`
 
-
-def test_v6_기준_낡음은_평_첫줄에_적는다():
-    """🔴 §5 — *"기준 낡음 의심이 있으면 평 **첫 줄에** 그 사실을 적는다."*"""
-    from app.core import saybundle
-    from app.core.schema import Card, Facts, KeyPoint, ProbTriple, SayOut
-    from app.core.stages import s9_say
-    chk = {"rows": [{"side": "home", "kind": "reasons", "text": "t",
-                     "var_ids": ["V1"], "signal": "s", "value": 1.0,
-                     "want": 0.5, "verdict": "지지", "cause": "", "why": "w"}],
-           "counts": {"지지": 1, "반박": 0, "판단 불가": 0},
-           "stale": "🔴 **기준 낡음 의심** — 강원 선수단 교체", "rerun": "",
-           "why": "x"}
-    card = Card(match=_ref(), facts=Facts(), check=chk,
-                our_prob=ProbTriple(home=0.5, draw=0.3, away=0.2))
-    box = saybundle.build(card)
-    assert box.items.get("H0") is not None, "🔴 기준 낡음을 묶음에 안 넣었다"
-    base = {"verdict": "Gangwon FC", "flow_first": "a", "flow_second": "b",
-            "decisive_moment": "c", "flip_condition": "d",
-            "key_points": [KeyPoint(claim="주장", mechanism="메커니즘",
-                                    refs=["H1", "P1"])] * 3}
-    bad = SayOut(**base, one_line="강원이 가져간다")
-    said = s9_say.check(bad, card=card, box=box)
-    assert any("기준 낡음" in x for x in said), said
-    ok = SayOut(**base, one_line="기준 낡음 의심 — 강원이 가져간다")
-    assert not any("기준 낡음 의심인데" in x
-                   for x in s9_say.check(ok, card=card, box=box))
-
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 계약 ⑤ — LLM 이 확률을 안 바꾼다 · 시나리오는 분포에서
-# ══════════════════════════════════════════════════════════════════
+# ⚠️ **걷은 시험** — `s9_say`(㉔ 최종 평 LLM)가 지시서 2026-10-12(셋째)
+#    §1 처분으로 **지워졌다**. 없는 단계를 시험하면 계약이 거짓을 지킨다.
+#    걷은 시험: `test_v6_기준_낡음은_평_첫줄에_적는다`
 
 def test_v6_검증단계가_LLM을_안_부르고_확률을_안_바꾼다():
     """🔴 §3·§4 — 검증은 **코드만**이고 확률을 만들지 않는다."""
@@ -406,7 +348,9 @@ def test_v6_카드_순서가_지시서대로다():
     said = layer1.text(card)
     # 🔴🔴 **여섯째 지시서 §3 이 순서를 다시 정했다** — ⚔️ 상성이 📊 확률 **앞**이다
     #    (확률의 출처가 상성이기 때문이다 · P1). 보드 판정은 **맨 끝**이다.
-    spots = [said.find(x) for x in ("⚔️", "📊", "🧪", "🧑‍🏫", "🎯 보드 판정")]
+    # ⚠️ **🧑‍🏫 최종 평 칸은 빠졌다** — ㉔ LLM 서술이 §1 처분으로 지워졌다
+    #    (지시서 2026-10-12(셋째)). 🔴 남은 순서는 그대로 지킨다.
+    spots = [said.find(x) for x in ("⚔️", "📊", "🧪", "🎯 보드 판정")]
     assert all(x >= 0 for x in spots), spots
     assert spots == sorted(spots), f"🔴 카드 순서가 어긋났다 — {spots}"
     # 🔴 긴 카드에 **표 전체**와 재실행 여부가 있다

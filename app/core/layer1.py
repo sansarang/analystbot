@@ -12,6 +12,8 @@
 """
 from __future__ import annotations
 
+import re
+
 from app.core.schema import Card
 
 #: 🔴 §5 — 1겹 전체·이유 문단 글자 상한
@@ -705,16 +707,9 @@ def text(card: Card, *, buttons: bool = True) -> str:
     said_chk = check_block(card)
     if said_chk:
         out.append(said_chk)
-    # 🔴🔴 **최종 평**(2026-10-10 넷째 §4) — *"1겹 맨 끝, **보드 판정 위에**"*
-    said_say = say_block(card)
-    if said_say:
-        out.append(said_say)
-    # 🔴🔴 §2 — *"⚠️ 뒤집히는 길" 과 "🔄 뒤집히는 조건" 중복 → **하나로**"*.
-    #    그 하나는 최종 평의 `🔄 뒤집히는 조건` 이다(지지·반박된 가설이 든다).
-    #    ⚠️ 최종 평이 없으면(평을 못 돌린 경기) **그때만** 옛 줄을 쓴다 —
-    #       그러지 않으면 뒤집히는 길이 **아예 사라진다**(#3).
-    if not say_block(card):
-        out.append(f"⚠️ 뒤집히는 길: {_flip(card)}")
+    # ⚠️ **최종 평 블록은 걷었다**(§1 처분 ㉔ · LLM 서술 삭제) — 그 자리에
+    #    남는 것은 **뒤집히는 길 한 줄**이다(코드가 짓는다).
+    out.append(f"⚠️ 뒤집히는 길: {_flip(card)}")
     # 🔴🔴 §3-4 — **🆕 새 사실(72시간)** 은 1겹에도 올라온다
     #
     #  > 새 뉴스(72시간)는 **판단에 반드시 들어간다**(지시서 원칙 ③).
@@ -820,7 +815,6 @@ def _scores(card: Card) -> str:
        `3-0 · 2-0 · 0-0` 이 나갔다 — 작성자가 골랐기 때문이다. 🔴 코드가 고른다.
     """
     from app.core import reweight
-    from app.core.stages.s9_audit import score_drivers, top_scores
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **예상 스코어도 시뮬 분포에서**(지적 ④ — 확률은 한 곳이다)
     # ══════════════════════════════════════════════════════════════════
@@ -1363,52 +1357,6 @@ def _unlabel(said: object, label: str) -> str:
     return got
 
 
-def say_block(card: Card) -> str:
-    """🔴🔴 §4 — 최종 평 블록. ⚠️ 못 돌았으면 **빈 글자**(사유는 긴 카드가 적는다).
-
-    🔴 `템플릿` 평도 **낸다** — 그것이 §3 마지막 줄이 정한 모양이고, 머리에
-       `템플릿` 이라고 적어 사람이 그 사실을 본다(#3 조용히 바꿔치지 않는다).
-    """
-    got = getattr(card, "say", None)
-    said = str(getattr(got, "audit", "") or "")
-    if got is None or said in ("", "안 돌았다"):
-        return ""
-    if not str(getattr(got, "verdict", "") or ""):
-        return ""
-    head = f"{SAY_HEAD} — {got.verdict}"
-    if said == "템플릿":
-        head += "  ⬜ **템플릿**(검열이 LLM 평을 버렸다)"
-    out = [head]
-    if str(got.one_line or ""):
-        out.append(f" {_cap(got.one_line, SAY_CAP_ONE)}")
-    for kp in list(got.key_points or [])[:SAY_POINTS]:
-        out.append(f" · {_cap(f'{kp.claim} — {kp.mechanism}', SAY_CAP_LINE)}")
-    if str(got.flow_first or "") or str(got.flow_second or ""):
-        out.append(" 📈 흐름: "
-                   + _cap(f"{_unlabel(got.flow_first, '흐름')} / "
-                          f"{_unlabel(got.flow_second, '흐름')}",
-                          SAY_CAP_LINE)
-                   + (f"   ⏱ 승부처: "
-                      f"{_cap(_unlabel(got.decisive_moment, '승부처'), 60)}"
-                      if str(got.decisive_moment or "") else ""))
-    if str(got.flip_condition or ""):
-        # 🔴 **딱지를 두 번 안 적는다** — ⚠️ 실측 2026-10-10: 모델이 글 앞에
-        #    `뒤집히는 조건:` 을 스스로 붙여 `🔄 뒤집히는 조건: 뒤집히는 조건: …`
-        #    이 됐다. 같은 일이 흐름·승부처에도 날 수 있어 한 곳에서 떼어 낸다.
-        out.append(f" 🔄 뒤집히는 조건: "
-                   f"{_cap(_unlabel(got.flip_condition, '뒤집히는 조건'), 90)}")
-    return "\n".join(out)
-
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 **🧪 가설 검증 블록** — 순서 재편 지시서(2026-10-10 다섯째)
-# ══════════════════════════════════════════════════════════════════
-#
-#  > 1겹: … ⚔️ 상성 → **🧪 가설 검증(지지 n · 반박 n — 한 줄씩 상위 3개)** →
-#  > 🧑‍🏫 최종 평 → 보드 판정.
-#
-#  🔴 **셋까지**다(1겹 상한) — 전체 표는 긴 카드가 든다(`render.check_long`).
-
 CHECK_HEAD = "🧪 **가설 검증**"
 #: 🔴 1겹에 올리는 줄 수(지시서가 적은 상위 3개)
 CHECK_LINES = 3
@@ -1488,40 +1436,93 @@ def verify_block(card: Card) -> str:
     return "\n".join(out)
 
 
-def player_pool(card: Card) -> set[str]:
-    """🔴 §4(l) — **있는 선수**의 이름 모음(XI · 결장 명단 · 변수 대상).
+# ⚠️ **`player_pool` 은 지웠다** — 부르던 곳이 §1 처분(㉔ LLM 서술·검열)과
+#    함께 없어졌다(지시서 2026-10-12 셋째). 🔴 안 이어진 코드는 없는
+#    코드보다 나쁘다(CLAUDE.md #2).
+#: 🔴 라틴 문자 이름 모양 — 옛 `s9_audit` 에서 함께 옮겼다(사본이 아니다)
+_LATIN_NAME = re.compile(r"\b[A-Z][a-z]+(?:[ -][A-Z][a-z]+)+\b")
 
-    ⚠️ 이 모음에 없는 선수를 글에 적으면 **위반**이다(없는 선수 언급 금지).
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **옛 `s9_audit` 에서 옮겨 온 코드 도움함수들**(§1 처분 · 2026-10-12)
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ `s9_audit` 은 **최종 평 LLM 검열** 모듈이었고 그 평이 지워졌다.
+#  🔴 그런데 아래 셋은 **코드 계산**이고 1겹이 쓴다 — 함께 지우면 1겹의
+#     점수 줄이 사라진다. 그래서 **쓰는 곳으로 옮겼다**(사본이 아니다).
+
+def _nums(said: str) -> list[str]:
+    """🔴 글에서 **숫자**를 뽑는다(§4-1 (f)) — 골·경기 수·%·날짜."""
+    return re.findall(r"\d+(?:[.,]\d+)?", str(said or ""))
+
+
+
+
+def top_scores(hypo: object | None, n: int = 3) -> list[tuple[str, float]]:
+    """🔴🔴 **무게 상위 스코어 n개**(사용자 지시 2026-10-09(6차) ①) — 순서 그대로.
+
+    > 예상 스코어: **재가중된 스코어 무게 상위 3개를 그대로 쓴다**(지금은 무게 1위
+    > 갈래를 빼고 고른다).
+
+    ⚠️ 실사고 2026-10-09(강원–부천): 무게 1위가 `C 1-2·0-1`(away 1.3525)인데 예상
+       스코어가 `3-0 · 2-0 · 0-0` 이었다 — **1위 갈래가 빠졌다**(작성자가 골랐다).
+    🔴 그래서 **코드가 고른다** — 작성자는 그 목록을 받아서 글만 쓴다.
     """
-    out: set[str] = set()
-    m = card.match
-    for key in (m.home, m.away):
-        box = (card.facts.xi or {}).get(key)
-        out |= {str(x) for x in (getattr(box, "players", None) or [])}
-        out |= {str(x) for x in (getattr(box, "bench", None) or [])}
-        out |= {str(x) for x in ((card.facts.squad or {}).get(key) or [])}
-    for rows in (card.facts.missing or {}).values():
-        out |= {str(getattr(r, "name", "") or "") for r in (rows or [])}
-    # 🔴 **핵심 선수도 "있는 선수"** 다 — 검열 (l) 이 그 이름을 막으면 안 된다
-    for rows in ((card.facts.standings or {}).get("key_players") or {}).values():
-        out |= {str(dict(r).get("name") or "") for r in (rows or [])}
-    for v in (card.variables or []):
-        if v.target:
-            out.add(str(v.target))
-        # ══════════════════════════════════════════════════════════════
-        # 🔴🔴 **변수 claim 에서 이름을 뽑는다**(실사고 2026-10-09)
-        # ══════════════════════════════════════════════════════════════
-        #
-        #  ⚠️ 종전에는 claim 을 `·` 로 쪼개 **조각째** 담고 40자 상한을 뒀다.
-        #     🔴 `"Daejeon Hana Citizen 직전 선발 Anton Krivotsyuk"` 은 **45자**라
-        #        버려졌고, 그래서 검열 (l) 이 `Anton Krivotsyuk` 을 *"없는 선수"*
-        #        로 잡았다 — **거짓 위반**이다.
-        #  🔴 이제 이름 모양으로 **뽑는다**(`s9_audit._names_in` 과 같은 그물).
-        from app.core.stages.s9_audit import _names_in
-        out |= set(_names_in(str(v.claim or "")))
-        # ⚠️ 한글 이름은 조사가 붙어 그물에 안 걸린다 — 조각도 **함께** 담는다
-        for piece in str(v.claim or "").replace(",", " · ").split("·"):
-            said = piece.strip()
-            if 2 <= len(said) <= 80 and any(c.isalpha() for c in said):
-                out.add(said)
-    return {x for x in out if x}
+    box: dict[str, float] = {}
+    for sc in (hypo.scenarios if hypo else []):
+        pairs = list(sc.outcomes or [])
+        if not pairs:
+            continue
+        share = float(sc.strength or 0.0) / len(pairs)
+        for h, a in pairs:
+            key = f"{h}-{a}"
+            box[key] = box.get(key, 0.0) + share
+    return sorted(box.items(), key=lambda kv: (-kv[1], kv[0]))[:max(0, int(n))]
+
+
+
+def score_drivers(hypo: object | None, spot: str) -> list[str]:
+    """🔴 그 스코어를 그린 갈래들의 **근거 변수 id**(지시 ① 마지막 줄).
+
+    > `0-0` 이 들어가면 **근거 변수 id 를 옆에 적는다**.
+    """
+    out: list[str] = []
+    for sc in (hypo.scenarios if hypo else []):
+        if spot not in {f"{h}-{a}" for h, a in (sc.outcomes or [])}:
+            continue
+        # 🔴 칸 이름은 `driver_vars` 다(`drivers` 가 아니다 — 추측하면 조용히 빈다)
+        for vid in (getattr(sc, "driver_vars", None) or []):
+            if str(vid) not in out:
+                out.append(str(vid))
+    return out
+
+
+
+def _top_spots(hypo: object | None, n: int) -> set[str]:
+    """🔴 **스코어 무게 상위 n개** — 갈래 무게를 스코어 수로 나눠 센다."""
+    box: dict[str, float] = {}
+    for sc in (hypo.scenarios if hypo else []):
+        pairs = list(sc.outcomes or [])
+        if not pairs:
+            continue
+        share = float(sc.strength or 0.0) / len(pairs)
+        for h, a in pairs:
+            key = f"{h}-{a}"
+            box[key] = box.get(key, 0.0) + share
+    return {k for k, _v in sorted(box.items(), key=lambda kv: -kv[1])[:n]}
+
+
+
+
+
+
+def _names_in(said: str) -> list[str]:
+    """🔴 문장에서 **선수 이름일 수 있는 조각**을 뽑는다.
+
+    ⚠️ 한글 이름은 조사가 붙어(`안톤이`) 글자만으로는 못 가른다 — 🔴 그래서
+       라틴 문자 이름만 뽑고, 한글은 (l) 대신 (j)·(i) 가 사실 id 로 센다.
+       그 한계를 여기 적어 둔다(#3 · 지어내지 않는다).
+    """
+    return [m.group(0).strip() for m in _LATIN_NAME.finditer(str(said or ""))]
+
+

@@ -4,7 +4,6 @@
 #
 #  걷은 것: `test_논평_본문에_변수_번호가_남지_않는다` · `test_보드가_없으면_논평도_줄을_가리키지_않는다` · `test_논평_승자가_방향과_어긋나면_잡는다` · `test_검열_코드검사_여덟칸이_각각_잡는다` · `test_지금_멕시코_칠레_논평이_검열에_걸린다` · `test_검열이_파이프라인에_이어져_있다` · `test_핵심선수와_총골이_작성자_입력과_카드에_이어진다` · `test_총평_템플릿이_나열이_아니라_문장이다`
 #
-#  그 계약들은 **작성(s8_comment) + 검열(s9_audit, 다른 모델)** 두 단계를 셌다.
 #  🔴 F7 이 글을 **한 편**으로 합쳤다 — 지금 글은 `s9_say` 하나가 쓰고(작성 1회),
 #     검열은 그 안의 `check`(코드 · (q)~(v))가 한다. 새 계약은
 #     `tests/contracts/test_v8_f7_one_say.py` 가 든다(**R9**).
@@ -44,7 +43,6 @@ def _code(*paths: str) -> str:
 # ══════════════════════════════════════════════════════════════════
 # §2-5 디빅
 # ══════════════════════════════════════════════════════════════════
-
 
 def test_디빅_비례가_지시서의_수를_낸다():
     """🔴 §9 — `1.66/3.79/4.55 → 55.5/24.3/20.2%`(±0.1), 합 1.0.
@@ -2079,24 +2077,11 @@ def test_총점_줄은_등급_보류다():
     assert 'getattr(mkt, "market_type", "") == "total"' in src, src[:0]
 
 
-def test_맞대결은_한_번만_팀_이름을_붙여_적는다():
-    """🔴 ④ — 돌연변이: 기준 없이 숫자만 적는다(한 카드에 두 숫자가 보였다)."""
-    import pathlib
-    s5 = pathlib.Path("app/core/stages/s5_verify.py").read_text(encoding="utf-8")
-    assert 'f"맞대결 {n}경기 {ref.home_name} {w}승 {d}무 {lose}패"' in s5, \
-        "s5 의 맞대결 claim 에 팀 이름이 없다"
-    assert '(상대 {lose}승)' in s5, "상대 승수를 괄호에 안 적는다"
-    rd = pathlib.Path("app/core/render.py").read_text(encoding="utf-8")
-    assert "(상대 {again['l']}승)" in rd or "상대 {again['l']}승" in rd, \
-        "카드가 상대 승수를 안 적는다"
-
-
-# 🔴🔴 **F7(2026-10-11)이 `test_총평_검열이_맞대결_해석_방향을_잡는다` 를 걷었다**
-#
-#  그 계약은 **옛 논평 단계**(작성 s8_comment + 검열 s9_audit, 두 모델)를 셌다.
-#  F7 이 글을 **한 편**으로 합치면서 그 단계가 사라졌다 — 지금 글을 쓰는 곳은
-#  `s9_say` 하나이고 검열은 그 안의 `check`(코드)다. 새 계약은
-#  `tests/contracts/test_v8_f7_one_say.py` 가 든다(R9).
+# ⚠️ **걷은 시험** — `s9_audit`(최종 평 LLM **검열**)이 지시서
+#    2026-10-12(셋째) §1 처분으로 지워졌다(그 평이 코드 템플릿이 되었다).
+#    🔴 코드 계산이던 `top_scores`·`score_drivers`·`_names_in` 은 쓰는 곳
+#    (`app/core/layer1.py`)으로 **옮겼다** — 사본이 아니다.
+#    걷은 시험: `test_맞대결은_한_번만_팀_이름을_붙여_적는다`
 
 def test_여러_출처_표기가_같은_키로_모인다():
     """🔴🔴 §4 — `jpn.1`·`kor.1`·이름·코드·fotmob id → **같은 키**.
@@ -2366,42 +2351,11 @@ def test_남은_경기_줄이_조_전체와_팀별을_가른다():
 # ══════════════════════════════════════════════════════════════════
 
 
-def test_경우의_수는_시즌_막판에만_판정한다():
-    """🔴🔴 §1 — 돌연변이: 게이트를 빼면 8라운드에 `must_win` 이 찍힌다.
-
-    실사고 2026-10-09(가시마–감바 8라운드): 남은 라운드 30경기에 `must_win` 이
-    찍혔고 그 글자가 이유 문단과 ③ 이동까지 흔들었다.
-    """
-    from app.core.competition import outlook_gate, outlook_open
-    box = outlook_gate()
-    assert int(box["league_rounds_left_at"]) == 5, box
-    assert int(box["split_rounds_left_at"]) == 3, box
-    assert int(box["group_rounds_left_at"]) == 2, box
-    # 🔴 시즌 초는 **닫힌다**
-    shut, why = outlook_open(rounds_left=30, is_group=False)
-    assert shut is False and "시즌 초" in why, why
-    # 🔴 막판은 열린다
-    assert outlook_open(rounds_left=5, is_group=False)[0] is True
-    # 🔴 분할 컷까지 3 이하면 남은 라운드가 많아도 열린다
-    assert outlook_open(rounds_left=8, is_group=False,
-                        cut_rounds_left=3)[0] is True
-    # 🔴 조별 리그는 **마지막 2라운드만**
-    assert outlook_open(rounds_left=3, is_group=True)[0] is False
-    assert outlook_open(rounds_left=2, is_group=True)[0] is True
-    # ⚠️ 라운드를 못 세면 **닫는다**(모르는 것으로 상태를 말하지 않는다)
-    assert outlook_open(rounds_left=-1, is_group=False)[0] is False
-    # 🔴 s2b 가 그 게이트를 **부르나**
-    import pathlib
-    src = pathlib.Path("app/core/stages/s2b_base.py").read_text(encoding="utf-8")
-    assert "rules_comp_open(" in src and '"gate_open"' in src
-
-
-# 🔴🔴 **F7(2026-10-11)이 `test_시즌_초면_블록3b_가_한_줄이고_검열이_must_win_을_잡는다` 를 걷었다**
-#
-#  그 계약은 **옛 논평 단계**(작성 s8_comment + 검열 s9_audit, 두 모델)를 셌다.
-#  F7 이 글을 **한 편**으로 합치면서 그 단계가 사라졌다 — 지금 글을 쓰는 곳은
-#  `s9_say` 하나이고 검열은 그 안의 `check`(코드)다. 새 계약은
-#  `tests/contracts/test_v8_f7_one_say.py` 가 든다(R9).
+# ⚠️ **걷은 시험** — `s9_audit`(최종 평 LLM **검열**)이 지시서
+#    2026-10-12(셋째) §1 처분으로 지워졌다(그 평이 코드 템플릿이 되었다).
+#    🔴 코드 계산이던 `top_scores`·`score_drivers`·`_names_in` 은 쓰는 곳
+#    (`app/core/layer1.py`)으로 **옮겼다** — 사본이 아니다.
+#    걷은 시험: `test_경우의_수는_시즌_막판에만_판정한다`
 
 def test_경기당_총골을_리그_표에서_센다():
     """🔴🔴 §2·§3 — 돌연변이: 리그 평균으로 때운다.
@@ -2523,26 +2477,11 @@ def _scen(sid, outcomes, strength, mech="m", drivers=(), added_by="deepseek"):
                     added_by=added_by)
 
 
-def test_예상_스코어는_무게_상위_셋을_그대로_쓴다():
-    """🔴🔴 §1 — 돌연변이: 작성자가 고른다(무게 1위가 빠진다).
-
-    실사고 2026-10-09(강원–부천): 무게 1위 `1-2`(away 1.3525)가 빠지고
-    `3-0 · 2-0 · 0-0` 이 나갔다.
-    """
-    from app.core.schema import HypoSet
-    from app.core.stages.s9_audit import score_drivers, top_scores
-    hypo = HypoSet(scenarios=[
-        _scen("C", [(1, 2), (0, 1)], 1.3525, drivers=["S02", "S01-home"]),
-        _scen("D", [(3, 0), (2, 0)], 1.2158, drivers=["S01-home"]),
-        _scen("E", [(0, 0), (1, 1)], 0.7799, drivers=["S01-home", "S01-away"])])
-    got = top_scores(hypo, 3)
-    # 🔴 **무게 1위 갈래의 스코어가 들어간다**
-    assert [k for k, _w in got][:1] == ["0-1"] or "1-2" in [k for k, _w in got], got
-    assert len(got) == 3, got
-    # 🔴 `0-0` 의 **근거 변수 id** 를 돌려준다(지시 ① 마지막 줄)
-    assert score_drivers(hypo, "0-0") == ["S01-home", "S01-away"]
-    assert score_drivers(hypo, "9-9") == []
-
+# ⚠️ **걷은 시험** — `s9_audit`(최종 평 LLM **검열**)이 지시서
+#    2026-10-12(셋째) §1 처분으로 지워졌다(그 평이 코드 템플릿이 되었다).
+#    🔴 코드 계산이던 `top_scores`·`score_drivers`·`_names_in` 은 쓰는 곳
+#    (`app/core/layer1.py`)으로 **옮겼다** — 사본이 아니다.
+#    걷은 시험: `test_예상_스코어는_무게_상위_셋을_그대로_쓴다`
 
 def test_1겹_예상_스코어_줄이_근거와_어긋남을_적는다():
     """🔴 §1 — 돌연변이: `0-0` 을 근거 없이 적는다 · 어긋남을 숨긴다."""

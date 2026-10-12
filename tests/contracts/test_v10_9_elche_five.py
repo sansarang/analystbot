@@ -26,12 +26,11 @@ def test_1_근거_검열을_S3_뒤에_다시_센다() -> None:
     assert 'ours=layers["ours"]' in head, "🔴 S3 가 낸 우리 열을 안 넘긴다"
 
 
-def test_2_맞대결_검열은_맞대결_문장만_본다() -> None:
-    from app.core.stages import s9_audit as au
-    assert "맞대결" in au.H2H_TOPIC_WORDS
-    got = _src("app/core/stages/s9_audit.py")
-    assert "H2H_TOPIC_WORDS" in got.split("H2H_EVEN_WORDS if x in said_line")[0]
-
+# ⚠️ **걷은 시험** — `s9_audit`(최종 평 LLM **검열**)이 지시서
+#    2026-10-12(셋째) §1 처분으로 지워졌다(그 평이 코드 템플릿이 되었다).
+#    🔴 코드 계산이던 `top_scores`·`score_drivers`·`_names_in` 은 쓰는 곳
+#    (`app/core/layer1.py`)으로 **옮겼다** — 사본이 아니다.
+#    걷은 시험: `test_2_맞대결_검열은_맞대결_문장만_본다`
 
 def test_3_복귀는_결장이_아니다() -> None:
     from app.core.stages.s5_verify import _retype

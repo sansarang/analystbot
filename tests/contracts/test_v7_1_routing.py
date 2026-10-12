@@ -332,48 +332,9 @@ def test_v7_S5_3_등급은_상성_사각만_내린다():
     assert 'dict(layers.get("check") or {}).get("grade")' in src
 
 
-def test_v7_S7_첫줄과_상성사각_문장을_요구한다():
-    """🔴 S7 — 첫 줄에 상성 판정 + 검증 요약 · **상성 사각이 있으면 한 문장**."""
-    from datetime import datetime, timedelta, timezone
-
-    from app.core import saybundle
-    from app.core.schema import (Card, Facts, KeyPoint, MatchRef, ProbTriple,
-                                 SayOut)
-    from app.core.stages import s6c_check as _chk
-    from app.core.stages import s9_say
-    ref = MatchRef(id="x:1", sport="soccer", competition="K-League 1",
-                   competition_short="K리그1", home="team:000318",
-                   away="team:000320", home_name="H", away_name="A",
-                   kickoff_utc=datetime.now(timezone.utc) + timedelta(hours=2))
-    chk = {"rows": [], "counts": {"지지": 0, "반박": 0, "판단 불가": 0},
-           "stale": "", "rerun": "", "why": "x",
-           "sources": [{"src": "V2", "name": "동기", "dir": "반대",
-                        "size": "강", "trust": "hard", "refs": ["R9"],
-                        "cause": _chk.CAUSE_BLIND, "why": "강등권 탈출"}],
-           "grade": {"steps": 1, "none": False, "why": ["내림"]}}
-    card = Card(match=ref, facts=Facts(), check=chk,
-                matchup={"report": _mr()},
-                our_prob=ProbTriple(home=0.5, draw=0.3, away=0.2))
-    box = saybundle.build(card)
-    assert box.items.get("M0") is not None, "🔴 상성 판정이 묶음에 없다"
-    assert box.items.get("M00") is not None, "🔴 검증 요약이 묶음에 없다"
-    assert box.items.get("B1") is not None, "🔴 상성 사각이 묶음에 없다"
-    base = {"verdict": "H", "flow_first": "a", "flow_second": "b",
-            "decisive_moment": "c", "flip_condition": "d",
-            "key_points": [KeyPoint(claim="주장", mechanism="메커니즘",
-                                    refs=["M0", "P1"])] * 3}
-    bad = SayOut(**base, one_line="H 가 가져간다")
-    said = s9_say.check(bad, card=card, box=box)
-    assert any("상성 사각" in x for x in said), said
-    assert any("첫 줄에 상성 판정" in x for x in said), said
-    ok = SayOut(**{**base,
-                   "key_points": [KeyPoint(claim="상성 사각 — 동기가 반대다",
-                                           mechanism="B1", refs=["B1", "M0"])]
-                                  * 3},
-                one_line="상성은 H 중 · 검증 같은 방향 0 · 반대 1")
-    said2 = s9_say.check(ok, card=card, box=box)
-    assert not any("상성 사각" in x or "첫 줄에 상성" in x for x in said2), said2
-
+# ⚠️ **걷은 시험** — `s9_say`(㉔ 최종 평 LLM)가 지시서 2026-10-12(셋째)
+#    §1 처분으로 **지워졌다**. 없는 단계를 시험하면 계약이 거짓을 지킨다.
+#    걷은 시험: `test_v7_S7_첫줄과_상성사각_문장을_요구한다`
 
 def test_v7_카드가_검증_블록을_낸다():
     """🔴 §3 카드 — `🔎 검증 — 같은 방향 n · 반대 n — 반대: {출처 — 원인}`."""

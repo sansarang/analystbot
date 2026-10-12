@@ -142,35 +142,11 @@ def test_v6_전략은_표의_계수로만_확률을_움직인다():
     assert "잘렸다" in why, why
 
 
-def test_v6_전략_문장이_최종_확률과_같은_방향이다():
-    """🔴🔴 §4 — 이유 문단에 **전략 문장 최소 1개** · **최종 확률과 같은 방향**.
-
-    ⚠️ 돌연변이: `(p)` 검열을 지우면 전략이 **이야기로만** 남는다(§금지 첫 줄:
-       *"전략을 이야기로만 쓰고 확률 미반영"*).
-    """
-    from app.core.schema import ReasonLine, StrategyLine, StrategyOut
-    from app.core.stages.s9_audit import strategy_check
-
-    class _Card:
-        match = _ref()
-        strategy = StrategyOut(
-            audit="통과",
-            lines=[StrategyLine(side="home", strategy="공격 위주",
-                                fact_refs=["L1", "L2"])])
-        our_prob = None
-        variables: list = []
-
-    got = _Card()
-    # 🔴 전략을 **안 쓰면** 위반
-    bad = strategy_check([ReasonLine(text="날씨가 좋다", fact_refs=[])], card=got)
-    assert bad and "(p)" in bad[0], bad
-    # 🔴 쓰면 통과(방향을 못 재면 방향 검사는 건너뛴다)
-    assert not strategy_check(
-        [ReasonLine(text="강원은 공격 위주 명단이다", fact_refs=[])], card=got)
-    # 🔴 판정이 **버려졌으면** 아무것도 세지 않는다
-    got.strategy = StrategyOut(audit="버렸다")
-    assert not strategy_check([ReasonLine(text="x", fact_refs=[])], card=got)
-
+# ⚠️ **걷은 시험** — `s9_audit`(최종 평 LLM **검열**)이 지시서
+#    2026-10-12(셋째) §1 처분으로 지워졌다(그 평이 코드 템플릿이 되었다).
+#    🔴 코드 계산이던 `top_scores`·`score_drivers`·`_names_in` 은 쓰는 곳
+#    (`app/core/layer1.py`)으로 **옮겼다** — 사본이 아니다.
+#    걷은 시험: `test_v6_전략_문장이_최종_확률과_같은_방향이다`
 
 def test_v6_카드가_전략과_확률변화를_확정XI에만_낸다():
     """🔴 §4 — 두 블록은 **확정 XI 일 때만** 나간다.

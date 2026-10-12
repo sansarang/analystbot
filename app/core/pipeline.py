@@ -336,7 +336,7 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #  🔴🔴 **⑨ 우선순위 지수는 지웠다**(지시서 2026-10-12(셋째) §1 처분) —
     #     §7 결장의 무게(`absence_loss`)가 그 일을 한다. 그래서 K5 는 안 선다.
     #  ⚠️ **가설에는 id 칸이 없다**(`Hypothesis(team, reasons, breaks)`) — `H1` 류
-    #     번호는 최종 평 묶음(`saybundle`)이 **뒤에** 붙인다. 🔴 그래서 여기서는
+    #     번호는 **없다**(최종 평 묶음을 §1 처분으로 지웠다). 그래서 여기서는
     #     *그 가설이 어느 팀의 몇 번째 줄인가*로 가리킨다(실제 실행이 잡았다).
     hypo_ids = [f"{one.team}#{i + 1}"
                 for i, one in enumerate(hypo.hypotheses or [])]
@@ -1223,72 +1223,22 @@ def _market_moved(before: Card, layers: dict, *, state: RunState) -> list[str]:
 
 
 def with_say(card: Card, *, state: RunState) -> Card:
-    """🔴🔴 **최종 평을 카드에 더한다**(2026-10-10 넷째). ⚠️ 확률은 **안 건드린다**.
+    """🔴🔴 **㉔ 결론 문단 — 코드 템플릿 하나**(지시서 2026-10-12(셋째) §1 처분).
 
-    🔴 확정 XI 가 아니어도 **돈다** — 이 평은 *"카드의 마지막 단계"* 이고 사실
-       묶음에는 골 내용·폼·확률처럼 XI 와 무관한 칸이 많다. ⚠️ 라인업 칸이 비면
-       묶음이 그것을 `없음` 으로 적고, 프롬프트가 *"그 칸은 말하지 마라"* 로 준다.
+    > ㉔ 최종 평·논평(LLM) → **코드 템플릿으로 교체**(FactBundle → 정해진 문장).
+    > LLM 호출 삭제.
+
+    🔴 글을 짓는 곳은 `layer1.template_lines` **하나다**(사본 금지) — 숫자에서
+       문장을 만든다. ⚠️ 종전에는 LLM 이 한 편을 쓰고 그 문단을 쪼개 담았고,
+       3문장이 안 될 때만 템플릿으로 떨어졌다. 🔴 이제 **늘 템플릿**이다.
+    🔴 왜 지웠나 — 광주 재현에서 LLM 문장이 **근거에 없는 4-3** 을 적었다(그 수가
+       실제 결과와 같았다). 검증할 수 없는 서술은 확률도 등급도 못 움직이면서
+       **누설 위험**만 남긴다(지시서 §0).
     """
-    from app.core.schema import TacticOut
-    from app.core.stages import s9_say
-    got = s9_say.run(card, state=state)
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **F7 — 한 편이 네 칸을 먹인다**(지시서 2026-10-11)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  카드의 `reason`(1겹 이유 문단)·`tactic`(전술 예측)이 이제 **그 한 편에서**
-    #  나온다. ⚠️ 비면 **사유를 적는다**(빈 칸은 "안 돌았다"와 구분이 안 된다 · #3).
-    #  ⚠️ `commentary`(종합 논평)는 **구조 타입**(`Commentary`)이라 글 한 줄로
-    #     덮지 않는다 — 그 블록은 코드 템플릿이 만들고, 최종 평이 그 위에 선다.
-    from app.core import saybundle as _sb
-    from app.core.schema import TacticLine
-    # 🔴🔴 ④ — **전술 줄에 근거를 붙인다**(모델이 `tactic_refs` 로 준다)
-    said_refs = dict(getattr(got, "tactic_refs", None) or {})
-    said_lines = [TacticLine(slot=k, text=v,
-                             refs=[str(x) for x in (said_refs.get(k) or [])])
-                  for k, v in (
-                      ("운영:home", got.ops_home), ("운영:away", got.ops_away),
-                      ("흐름:전반", got.flow_first),
-                      ("흐름:후반", got.flow_second),
-                      ("승부처", got.decisive_moment)) if v]
-    # 🔴 ④ 계약 — 상성이 있는데 근거가 **하나도 없으면** 그 사실을 판정에 적는다
-    has_mu = bool(getattr(card, "matchup", None))
-    flat = [x for one in said_lines for x in (one.refs or [])]
-    bad_refs = _sb.refs_bad(refs=flat, has_matchup=has_mu)
-    said_audit = str(got.audit or "안 돌았다")
-    if bad_refs:
-        said_audit += " · 🔴 **근거 0**(상성 id 가 있는데 전술 줄이 안 썼다)"
-        state.note("s9say 전술 예측 — 🔴 **근거 0** · 상성 재료가 있는데 "
-                   "전술 줄이 id 를 안 썼다(④ 계약)")
-    said_tactic = TacticOut(
-        lines=said_lines, audit=said_audit,
-        # 🔴 #3 — 실패 사유를 **그 블록이 들고 간다**(`템플릿` 한 글자로 끝내지 않는다)
-        violations=[*(got.violations or []),
-                    *(["🔴 상성 id 가 있는데 전술 줄의 근거가 **0개**다(④)"]
-                      if bad_refs else [])])
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴 카드의 `reason` 은 **문장 묶음**이다(`ReasonPara`)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  평의 한 문단을 문장으로 쪼개 담는다. ⚠️ **3문장이 안 되면**(LLM 이 못 썼거나
-    #  템플릿으로 갔으면) **코드 템플릿 문단**으로 간다 — 글은 `layer1.template_lines`
-    #  **하나**가 짓는다(사본 금지). 🔴 빈 칸을 남기지 않는다(#3).
     from app.core import layer1 as _l1
     from app.core.schema import ReasonLine, ReasonPara
-    bits = [x.strip() for x in str(got.reason or "").replace("\n", " ")
-            .split(". ") if x.strip()]
-    if len(bits) >= 3:
-        said_reason = ReasonPara(sentences=[
-            ReasonLine(text=x, fact_refs=[]) for x in bits[:5]])
-    else:
-        rows, refs = _l1.template_lines(card)
-        said_reason = ReasonPara(sentences=[
-            ReasonLine(text=t, fact_refs=r) for t, r in zip(rows, refs)])
-        state.note("s9say 이유 문단 — 🔴 평이 3문장을 못 냈다 → **코드 템플릿**")
-    return card.model_copy(update={
-        "say": got,
-        "reason": said_reason,
-        "reason_audit": (got.audit if len(bits) >= 3 else "템플릿"),
-        "tactic": said_tactic})
-
-
+    rows, refs = _l1.template_lines(card)
+    said = ReasonPara(sentences=[ReasonLine(text=t, fact_refs=r)
+                                 for t, r in zip(rows, refs, strict=False)])
+    state.note(f"㉔ 결론 문단 — **코드 템플릿** {len(rows)}문장(LLM 없음)")
+    return card.model_copy(update={"reason": said, "reason_audit": "템플릿"})

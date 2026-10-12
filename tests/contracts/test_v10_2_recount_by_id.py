@@ -74,37 +74,11 @@ def test_catalog_has_dropped_players() -> None:
     assert "DROP:" in src, "빠진 선수를 카탈로그에 안 넣는다"
 
 
-def test_dropped_player_is_not_a_violation() -> None:
-    """🔴 ⑤ — 그 이름을 글에 쓰면 **(l) 위반이 아니다**."""
-    from app.core import layer1
-    from app.core.schema import (Card, Facts, MatchRef, Player, ProbTriple, XI)
-    ref = MatchRef(id="m", sport="soccer", competition="J. League 2",
-                   competition_short="J2", home="team:000001",
-                   away="team:000002", home_name="Shonan Bellmare",
-                   away_name="Albirex Niigata",
-                   kickoff_utc="2026-10-11T09:00:00Z")
-    facts = Facts(
-        xi={"team:000001": XI(team="team:000001", state="confirmed",
-                              lineup=[Player(name="Kota Sanada", pos="GK")],
-                              players=["Kota Sanada"])},
-        last_xi={"team:000001": XI(team="team:000001", state="confirmed",
-                                   lineup=[Player(name="Naoki Kase",
-                                                  pos="RW")],
-                                   players=["Naoki Kase"])})
-    card = Card(match=ref, facts=facts,
-                our_prob=ProbTriple(home=0.4, draw=0.3, away=0.3))
-    box = layer1.facts_catalog(card)
-    assert any(str(k).startswith("DROP:") for k in box), sorted(box)[:8]
-    #: 🔴 검열 (l) 이 보는 **이름 목록**에도 들어간다
-    from app.core.stages import s9_audit
-    rows = s9_audit._known_players(card) if hasattr(
-        s9_audit, "_known_players") else set()
-    assert any("Kase" in str(x) for x in rows), rows
-
-
-# ══════════════════════════════════════════════════════════════════
-# ⑥ 과거 라인업 — 10경기
-# ══════════════════════════════════════════════════════════════════
+# ⚠️ **걷은 시험** — `s9_audit`(최종 평 LLM **검열**)이 지시서
+#    2026-10-12(셋째) §1 처분으로 지워졌다(그 평이 코드 템플릿이 되었다).
+#    🔴 코드 계산이던 `top_scores`·`score_drivers`·`_names_in` 은 쓰는 곳
+#    (`app/core/layer1.py`)으로 **옮겼다** — 사본이 아니다.
+#    걷은 시험: `test_dropped_player_is_not_a_violation`
 
 def test_roster_gap_uses_ten_match_starters() -> None:
     """🔴🔴 ⑥ — 명단 대조가 **경기 목록의 선발**(10경기)을 쓴다.

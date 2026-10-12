@@ -65,8 +65,9 @@ def card_text(card: Card, *, debug: bool = False) -> str:
             out.append("\n" + loss_table(card))
             # 🔴🔴 §4 — **전략 블록**은 기준 XI·결장 바로 뒤다(같은 명단 얘기다)
             out.append("\n" + strategy_long(card))
-            # 🔴🔴 §6 — 전술 예측은 전략 블록 바로 뒤다(같은 명단 얘기다)
-            out.append("\n" + tactic_long(card))
+            # ⚠️ **전술 예측 블록은 걷었다**(§1 처분) — 그 글을 쓰던 LLM 호출이
+            #    없어졌다(X2: LLM 은 사실 추출만). 🔴 이미 저장된 옛 카드의 예측은
+            #    `tools/score_cards.py` 가 사후 채점한다(§15).
             # 🔴🔴 §5(셋째) — **상성 자세히**는 그 예측의 재료다(바로 뒤)
             out.append("\n" + matchup_long(card))
             # 🔴🔴 **🔢 변수**(상성 엔진 V-4) — 축·검증·가설의 재료가 전부 여기다
@@ -82,8 +83,8 @@ def card_text(card: Card, *, debug: bool = False) -> str:
             out.append("\n" + fit_long(card))
             # 🔴🔴 **가설 검증표**(순서 재편 §4-5) — 최종 평의 재료다(바로 앞)
             out.append("\n" + check_long(card))
-            # 🔴🔴 §4(넷째) — **최종 평 자세히**(근거 id · 원 사실 · 검열 결과)
-            out.append("\n" + say_long(card))
+            # ⚠️ **최종 평 자세히 블록도 걷었다**(§1 처분 ㉔) — 결론 줄은 코드
+            #    템플릿이 짓는다(`layer1.template_lines`).
         # 🔴 **결론 바로 아래**가 논평 자리다(지시 ④)
         if num == "8":
             out.append(_comment(card, debug=debug))
@@ -1409,44 +1410,7 @@ def strategy_long(card: Card) -> str:
     return "\n".join(out)
 
 
-TACTIC_HEAD = "🎓 전술 전문가 예측"
-
-
-def tactic_long(card: Card) -> str:
-    """🔴🔴 §6 — 긴 카드의 전술 예측. **글뿐이다**(확률을 안 움직인다).
-
-    ⚠️ 못 돌았거나 버린 경우 **그 사유를 적는다**(#3 조용한 0 금지).
-    """
-    got = getattr(card, "tactic", None)
-    said = str(getattr(got, "audit", "") or "")
-    if got is None or said in ("", "안 돌았다"):
-        return f"**{TACTIC_HEAD}** — ⬜ 안 돌렸다"
-    out = [f"**{TACTIC_HEAD}** — 판정 `{said}`"]
-    # 🔴🔴 ④ — **어떤 판정이든 사유를 적는다**(사용자 지시 2026-10-11 ④:
-    #    *"실패하면 '템플릿' 대신 사유(llm_truncated / 검열 코드 / 근거 0)를"*)
-    #  ⚠️ 종전엔 두 판정(`확정 XI 전`·`버렸다`)에서만 적었다 — 그래서 `템플릿`
-    #     판정의 카드에는 **까닭이 한 글자도 없었다**(실측 2026-10-11).
-    rows = [f"- 🔴 {x}" for x in
-            (getattr(got, "violations", None) or [])[:4]]
-    out += rows
-    if said in ("확정 XI 전", "버렸다"):
-        return "\n".join(out)
-    for one in (getattr(got, "lines", None) or []):
-        out.append(f"- **{one.slot}** — {one.text} · 근거 {list(one.refs)}")
-    return "\n".join(out)
-
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 §5(셋째 지시서) — **긴 카드의 상성 자세히**
-# ══════════════════════════════════════════════════════════════════
-#
-#  > 긴 카드: **골 목록 표(분·유형·상태·xG), 시간대 분포, 리드 유지력·추격력,
-#  > 발동 규칙과 적합 효과.**
-#
-#  🔴 네 덩이를 **그 순서로** 적는다. 수는 `s2e_matchup` 이 센 것뿐이고 여기서
-#     다시 세지 않는다(사본 금지).
-#  ⚠️ 못 모은 축은 **사유를 적는다**(#3 조용한 0 금지).
-
+# ⚠️ `TACTIC_HEAD`·`SAY_LONG_HEAD` 는 지웠다 — 그 두 블록이 §1 처분으로 걷혔다.
 EDGE_LONG_HEAD = "⚔️ 상성 세 축 (자세히)"
 #: 🔴 유형 어휘를 사람 말로 — ⚠️ `미상` 은 `미상` 으로 남긴다(open 으로 밀지 않는다)
 KIND_KO = {"open": "필드골", "counter": "역습", "setpiece": "세트피스",
@@ -1580,53 +1544,6 @@ def goals_watch() -> str:
 # ══════════════════════════════════════════════════════════════════
 #
 #  > 긴 카드(/디버그): **key_point마다 근거 id와 원 사실, 검열 결과.**
-
-SAY_LONG_HEAD = "🧑‍🏫 최종 평 (자세히)"
-
-
-def say_long(card: Card) -> str:
-    """🔴 §4 — 주장마다 **근거 id + 원 사실**, 그리고 **검열 결과**."""
-    got = getattr(card, "say", None)
-    said = str(getattr(got, "audit", "") or "")
-    if got is None or said in ("", "안 돌았다"):
-        return (f"**{SAY_LONG_HEAD}** — ⬜ 안 돌렸다"
-                + (f" · {list(getattr(got, 'violations', None) or [])[:2]}"
-                   if got is not None and getattr(got, "violations", None)
-                   else ""))
-    out = [f"**{SAY_LONG_HEAD}** — 판정 `{said}` · 결론 **{got.verdict}**"]
-    if str(got.one_line or ""):
-        out.append(f"- 한 줄 — {got.one_line}")
-    used = dict(getattr(got, "used", None) or {})
-    for i, kp in enumerate(got.key_points or [], 1):
-        out.append(f"- **주장 {i}** {kp.claim}")
-        out.append(f"    메커니즘 — {kp.mechanism}")
-        out.append(f"    근거 {list(kp.refs or [])}")
-        for r in (kp.refs or []):
-            one = used.get(str(r))
-            if one:
-                out.append(f"      `{r}` {one}")
-            else:
-                # 🔴 #3 — 원 사실을 못 되찾은 id 도 **이름으로** 남긴다
-                out.append(f"      `{r}` ⬜ 원 사실을 못 되찾았다")
-    out.append(f"- 흐름 전반 — {got.flow_first}")
-    out.append(f"- 흐름 후반 — {got.flow_second}")
-    out.append(f"- 승부처 — {got.decisive_moment}")
-    out.append(f"- 뒤집히는 조건 — {got.flip_condition}")
-    rows = list(getattr(got, "violations", None) or [])
-    out.append("- 검열 결과 — "
-               + ("⬜ **위반 0건**" if not rows
-                  else " / ".join(str(x) for x in rows[:6])))
-    # 🔴 **버린 평도 보인다** — 템플릿으로 내려간 이유를 사람이 추적하게(#3)
-    for one in list(getattr(got, "dropped", None) or [])[:6]:
-        out.append(f"    🗑 버린 평 — {one}")
-    return "\n".join(out)
-
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 **긴 카드의 가설 검증표** — 순서 재편 지시서 §4-5·카드
-# ══════════════════════════════════════════════════════════════════
-#
-#  > 긴 카드: **가설 검증표 전체**, **재실행 여부와 이유**, **시나리오별 지지 가설**.
 
 CHECK_LONG_HEAD = "🧪 가설 검증표 (자세히)"
 

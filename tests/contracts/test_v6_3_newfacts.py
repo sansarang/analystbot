@@ -87,41 +87,8 @@ def test_v6_카드가_새사실_블록을_낸다():
             f"🔴 `{path.name}` 이 `{want}` 를 안 부른다 — 블록이 **안 이어졌다**")
 
 
-def test_v6_새사실이_있으면_이유_문단이_쓴다():
-    """🔴🔴 §3-5 — *"최소 한 문장은 새 사실을 쓴다(검열 항목 추가)"*.
-
-    ⚠️ 돌연변이 ①: `(o)` 검열을 지우면 새 사실이 카드에 **적히기만** 하고 판단에
-       안 들어간다(지시서 원칙 ③ 위반).
-    ⚠️ 돌연변이 ②: `fact_refs` 만 보면 모델이 번호를 빼먹은 **멀쩡한 문장**을
-       위반으로 센다 — 그래서 **글자도** 본다. 둘 다 센다.
-    """
-    from app.core.stages.s9_audit import new_fact_check
-    from app.core.schema import ReasonLine
-
-    class _V:
-        def __init__(self, vid, claim, target, subtask="F-home"):
-            self.id, self.claim, self.target = vid, claim, target
-            self.subject, self.subtask, self.from_rule = "", subtask, ""
-            self.doc_ids = ["D1"]
-
-    class _Card:
-        variables = [_V("R3", "황문기가 병역을 마치고 복귀했다", "absence:황문기")]
-
-    got = _Card()
-    # 🔴 번호로 쓴 문장 → 통과
-    assert not new_fact_check([ReasonLine(text="아무 말", fact_refs=["R3"])],
-                              card=got)
-    # 🔴 글자로 쓴 문장 → 통과(번호를 안 적어도)
-    assert not new_fact_check([ReasonLine(text="황문기가 돌아왔다",
-                                          fact_refs=[])], card=got)
-    # 🔴 하나도 안 쓰면 → 위반
-    bad = new_fact_check([ReasonLine(text="날씨가 좋다", fact_refs=[])],
-                         card=got)
-    assert bad and "(o)" in bad[0], bad
-    # 🔴 새 사실이 **0건이면** 아무것도 세지 않는다
-
-    class _Empty:
-        variables = []
-
-    assert not new_fact_check([ReasonLine(text="x", fact_refs=[])],
-                              card=_Empty())
+# ⚠️ **걷은 시험** — `s9_audit`(최종 평 LLM **검열**)이 지시서
+#    2026-10-12(셋째) §1 처분으로 지워졌다(그 평이 코드 템플릿이 되었다).
+#    🔴 코드 계산이던 `top_scores`·`score_drivers`·`_names_in` 은 쓰는 곳
+#    (`app/core/layer1.py`)으로 **옮겼다** — 사본이 아니다.
+#    걷은 시험: `test_v6_새사실이_있으면_이유_문단이_쓴다`

@@ -397,23 +397,9 @@ def _shrunk(names: list[str], table: dict, pos: dict) -> tuple[float, int]:
     return total, len(gone)
 
 
-def stat_of(facts, name: object) -> dict:
-    """🔴🔴 그 선수의 **시즌 기록** — `facts.player_stats` 가 원본. 없으면 빈 표.
-
-    🔴 이름은 `discover.name_key` 로 맞춘다(성 먼저·이름 먼저가 섞인다).
-       ⚠️ 이 함수가 **그 조회의 한 곳**이다 — 카드·사실 묶음·ΔA 가 다 여기로 온다.
-    """
-    from app.core import discover as _d
-    box = dict(getattr(facts, "player_stats", None) or {})
-    said = _d.name_key(name)
-    if not said:
-        return {}
-    for nm, one in box.items():
-        if _d.name_key(nm) == said:
-            return dict(one)
-    return {}
-
-
+# ⚠️ **`stat_of` 은 지웠다** — 부르던 곳이 §1 처분(㉔ LLM 서술·검열)과
+#    함께 없어졌다(지시서 2026-10-12 셋째). 🔴 안 이어진 코드는 없는
+#    코드보다 나쁘다(CLAUDE.md #2).
 def _keyed(table: dict) -> dict:
     """🔴 이름 표를 **열쇠 표**로(순서 없는 이름 열쇠). ⚠️ 겹치면 큰 값을 둔다."""
     from app.core import discover as _d
