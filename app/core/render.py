@@ -44,6 +44,13 @@ def card_text(card: Card, *, debug: bool = False) -> str:
     🔴 축구 완성 지시서 §5 가 블록 **2b(결장)**·**3b(경우의 수)** 를 더했다.
     """
     out: list[str] = [_head(card)]
+    # 🔴🔴 **§11 역배·보호 줄**(지시서 2026-10-12(둘째) · 즉시 적용) — **1겹 맨 위**.
+    #  🔴 왜 여기인가: 실사고 둘에서 시장도 봇도 **강팀만** 봤다. 같은 격자에서
+    #     나온 약팀 쪽 줄을 **머리 바로 아래** 두면 그 확률이 확신으로 안 읽힌다.
+    #  ⚠️ 확률·등급을 **안 바꾼다**(계약 U1 이 수의 출처를 센다).
+    said_dog = _underdog_line(card)
+    if said_dog:
+        out.append("\n" + said_dog)
     bodies = (_b1(card), _b2(card), _b2b(card), _b3(card), _b3c(card),
               _b3b(card), _b4(card), _b5(card), _b6(card), _b7b(card),
               _b7(card), _b8(card), _b9(card), _b10(card))
@@ -218,6 +225,32 @@ def _host_of(said: object) -> str:
         return one
     got = one.split("/")
     return got[2] if len(got) > 2 else one
+
+
+def _underdog_line(card: Card) -> str:
+    """🔴🔴 **U2** — 강팀이 있으면 **모든 카드**가 그 줄을 낸다(§11).
+
+    🔴 수는 ⑯ 이 만든 **스코어 격자 하나**에서 온다. 격자가 없으면(확률 미산출)
+       그 사실을 적는다 — 조용히 빼지 않는다(#3).
+    """
+    from app.core import probfloor as _pf
+    from app.core import underdog as _ud
+    box = dict(getattr(card, "matchup", None) or {})
+    sim = dict(box.get("sim") or {})
+    lam = dict((box.get("prob") and getattr(box["prob"], "lam", None))
+               or sim.get("lam") or {})
+    if not lam:
+        said = dict(box.get("sim") or {})
+        lam = {"home": said.get("lam_home"), "away": said.get("lam_away")}
+    if not lam.get("home") or not lam.get("away"):
+        return ("🔁 **역배·보호 줄 없음** — ⑯ 이 λ 를 못 만들었다"
+                "(확률이 없으면 그 줄도 없다)")
+    rho = float(dict(box.get("coef") or {}).get("rho") or 0.0)
+    grid = _pf.score_grid(lam_home=float(lam["home"]),
+                          lam_away=float(lam["away"]), rho=rho)
+    got = _ud.read(grid, home_name=card.match.home_name,
+                   away_name=card.match.away_name)
+    return "🔁 " + _ud.line(got)
 
 
 def _head(card: Card) -> str:

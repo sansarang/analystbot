@@ -180,7 +180,10 @@ def markets_of(grid: dict) -> dict:
                  "over": {}, "ah": {}}
     tot_lines = (0.5, 1.5, 2.5, 3.5, 4.5)
     over = dict.fromkeys(tot_lines, 0.0)
-    ah = {f"home{l:+.1f}": 0.0 for l in (-2.5, -1.5, -0.5, 0.5, 1.5, 2.5)}
+    # 🔴 **양쪽 줄을 다 센다** — 약팀이 홈일 수도 원정일 수도 있다(§11).
+    #  ⚠️ 실사고 2026-10-12: 홈 줄만 만들어 `away+0.5` 에서 터졌다(e2e 가 잡았다).
+    lines = (-2.5, -1.5, -0.5, 0.5, 1.5, 2.5)
+    ah = {f"{side}{l:+.1f}": 0.0 for side in ("home", "away") for l in lines}
     for (h, a), p in dict(grid).items():
         if h > a:
             out["home"] += p
@@ -196,8 +199,10 @@ def markets_of(grid: dict) -> dict:
             if h + a > line:
                 over[line] += p
         for key in ah:
-            line = float(key.replace("home", ""))
-            if (h - a) + line > 0:
+            side = "home" if key.startswith("home") else "away"
+            line = float(key[4:])
+            margin = (h - a) if side == "home" else (a - h)
+            if margin + line > 0:
                 ah[key] += p
     out["over"] = {k: round(v, 6) for k, v in over.items()}
     out["ah"] = {k: round(v, 6) for k, v in ah.items()}

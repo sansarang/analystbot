@@ -6,6 +6,8 @@
 📋 라인업 없음 · 출처 www.fotmob.com
 ⏳ **확정 XI 전** — 10-06 19:00 KST 이후 `/재분석`(지금 XI 는 none)
 
+🔁 강팀 South Korea 54% · 🔁 **Uzbekistan 승 21%** · South Korea 미승 46% · Uzbekistan +1.5 71% · Uzbekistan 더블찬스 46% · Uzbekistan DNB 28%
+
 **1. 자료 한계 고백**
 - 버린 것: `body_missing` 6건 · `conflict` 1건 · `duplicate` 5건 · `identity_mismatch` 63건 · `replay_miss` 2건 · `sport_mismatch` 5건 · `stakes_vague` 1건 · `stale` 2건 · `team_tier_mismatch` 4건 · `type_content_mismatch` 1건 · `type_off_catalog` 3건
 - 문서 8건 · 변수 11개 · 시나리오 5개

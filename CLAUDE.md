@@ -3,7 +3,8 @@
 | 무엇 | 어디 | 언제부터 |
 |---|---|---|
 | **v6 재구축 지시서 (지금의 정본)** | [docs/fable/inbox/2026-10-06_v6_rebuild.md](docs/fable/inbox/2026-10-06_v6_rebuild.md) | 2026-10-06 — *"이 문서는 이전 지시서 **전부**를 대체한다"* |
-| **예측 엔진 교체 + 경기 직전 상태**(가장 최신 · 확률 8단계만) | [docs/fable/inbox/2026-10-12_engine_swap.md](docs/fable/inbox/2026-10-12_engine_swap.md) | 2026-10-12 — 바닥 점수 후보(Elo·ELOg·pi) · probfloor 개편 · 선수 ± · 휴식/일정 · 정보 품질 |
+| **엔진 교체 + 경기 직전 상태 + 이변 신호**(🔴 지금의 정본) | [docs/fable/inbox/2026-10-12_engine_swap_upset.md](docs/fable/inbox/2026-10-12_engine_swap_upset.md) | 2026-10-12(둘째) — 같은 날 앞 지시서를 **덮는다**(절 번호 재배치 · §9 이변 신호 · §10 경고 · §11 역배 줄) |
+| ~~예측 엔진 교체 + 경기 직전 상태~~(위 문서가 덮었다) | [docs/fable/inbox/2026-10-12_engine_swap.md](docs/fable/inbox/2026-10-12_engine_swap.md) | 2026-10-12 — 바닥 점수 후보(Elo·ELOg·pi) · probfloor 개편 · 선수 ± · 휴식/일정 · 정보 품질 |
 | **적중률 — 확률에 닿는 단계만** | [docs/fable/inbox/2026-10-12_accuracy_rebuild.md](docs/fable/inbox/2026-10-12_accuracy_rebuild.md) | 2026-10-12 — ③④⑦⑧⑪⑬⑯ 만 고친다 · 나머지 **개발 동결** |
 | **네 층 확률 + 시장 비교**(위 둘에 **얹는다**) | [docs/fable/inbox/2026-10-06_v6_soccer_4layer.md](docs/fable/inbox/2026-10-06_v6_soccer_4layer.md) | 2026-10-06 — *"충돌하면 이 문서가 이긴다"* · 범위 **축구만** |
 | 축구 완성 지시서 | [docs/fable/inbox/2026-10-06_v6_soccer_final.md](docs/fable/inbox/2026-10-06_v6_soccer_final.md) | 2026-10-06 |
