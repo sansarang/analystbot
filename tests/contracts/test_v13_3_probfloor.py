@@ -113,3 +113,64 @@ def test_fit_tool_exists_and_splits() -> None:
     said = (ROOT / "tools/fit_probfloor.py").read_text(encoding="utf-8")
     for want in ("rho", "h_league", "as_of", "versions_write", "b1"):
         assert want in said, want
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **§4 P4 · §9 S1** — 채택되지 않은 항은 λ 에 **닿지 않는다**
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 식(후보 항은 **채택된 것만** 남는다 — 미채택 항은 식에 없음)
+#  > 계약 P4: `adopted=False` 항이 λ에 닿으면 실패.
+#  > 계약 S1: 채택 판정 없이 항이 λ에 들어가면 실패.
+
+FULL = {**COEF, "c1": 0.02, "c2": -0.01, "c5": -0.03, "c3": 0.3,
+        "c4": 0.05, "c6": 0.1}
+COV = {"diff": 0.6, "pdiff": 0.1, "rest_d": 7.0, "load_d": -3,
+       "cup_d": -1, "pb_home": 1, "abs_d": -0.2, "form3_d": 0.33}
+
+
+def test_terms_are_named_and_ordered() -> None:
+    """🔴 후보 항 이름표가 있다 — 전진 선택이 **이 목록만** 흔든다."""
+    from app.core import probfloor as pf
+    assert tuple(pf.TERMS) == ("rest_d", "load_d", "cup_d", "pb_home",
+                               "abs_d", "form3_d")
+
+
+def test_p4_unadopted_terms_do_nothing() -> None:
+    """🔴🔴 **P4·S1** — 채택 목록이 비면 λ 는 **바닥 식 그대로**다."""
+    from app.core import probfloor as pf
+    bare, _w1 = pf.lambdas(diff=0.6, player_diff=0.1, coef=FULL)
+    got, why = pf.compute(COV, coef=FULL, adopted=set())
+    assert abs(got["home"] - bare["home"]) < 1e-12, (got, bare, why)
+    assert abs(got["away"] - bare["away"]) < 1e-12
+    assert "채택 0" in why or "채택된 항 없음" in why
+
+
+def test_adopted_term_moves_lambda_both_ways() -> None:
+    from app.core import probfloor as pf
+    base, _w = pf.compute(COV, coef=FULL, adopted=set())
+    got, why = pf.compute(COV, coef=FULL, adopted={"rest_d"})
+    # 🔴 홈이 더 쉬었으면(restΔ>0) 홈 λ 가 오르고 **원정 λ 가 내려간다**
+    assert got["home"] > base["home"] and got["away"] < base["away"], why
+    assert "rest_d" in why
+
+
+def test_pb_home_scales_the_rating_gap() -> None:
+    """🔴 §9 F1 — `pb_home` 은 **diff 의 설명력을 깎는다**(c3 상호작용)."""
+    from app.core import probfloor as pf
+    off = dict(COV, pb_home=0)
+    on = dict(COV, pb_home=1)
+    a, _w1 = pf.compute(off, coef=FULL, adopted={"pb_home"})
+    b, why = pf.compute(on, coef=FULL, adopted={"pb_home"})
+    # 🔴 diff>0 이므로 깎이면 홈 λ 가 **내려간다**
+    assert b["home"] < a["home"], (a, b, why)
+
+
+def test_contributions_are_reported_per_term() -> None:
+    """🔴 §4 — `ProbOut` 이 적을 **항별 기여**(log λ 단위)를 함께 돌려준다."""
+    from app.core import probfloor as pf
+    got, why, parts = pf.compute(COV, coef=FULL, adopted={"rest_d", "load_d"},
+                                 detail=True)
+    assert set(parts) >= {"바닥", "홈 이점", "rest_d", "load_d"}
+    assert abs(sum(v for k, v in parts.items()) - __import__("math").log(
+        got["home"])) < 1e-9, parts

@@ -296,8 +296,42 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
                   else f"⬜ 없다({state_why.get('home') or ''})"))
     logger.info("[s2] [2a] 상태 배율 — %s · %s", said_lg,
                 _sr.said_of(state_tab, state_why) if state_tab else "⬜ 없다")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **§7 경기 직전 상태**(지시서 2026-10-12(둘째)) — ③ 가 싣는다
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 왜 — 실사고 둘에서 봇은 *"3주 휴식 후 홈"*·*"직전 컵 일정"* 을 **몰랐다**.
+    #     그 둘은 과거 성적표에 적혀 있지 않다.
+    #  🔴 목록은 **폼·축1 과 같은 것**이다(`_history` + `games_of`) — 사본 금지.
+    #  ⚠️ 확률에는 아직 **안 들어간다**(§9 전진 선택이 채택해야 들어간다 · S1).
+    said_ctx = await _context_of(net, ref, state=state)
     return got_facts.model_copy(update={
-        "state_rates": state_tab, "state_rates_why": state_why})
+        "state_rates": state_tab, "state_rates_why": state_why,
+        "context": said_ctx})
+
+
+async def _context_of(net, ref, *, state) -> dict:
+    """🔴 §7 — 두 팀의 `ContextRow`. ⚠️ 못 받으면 **빈 묶음**이고 사유를 적는다."""
+    from app.core import context as _ctx
+    from app.core.stages.s2e_matchup import _history as _hist
+    from app.core.stages.s2e_matchup import games_of as _games_of
+    out: dict = {}
+    for side in ("home", "away"):
+        name = str(getattr(ref, f"{side}_name", "") or "")
+        try:
+            rows = await _hist(net, name, state=state,
+                               as_of=ref.kickoff_utc, ref=ref)
+        except Exception as exc:                            # noqa: BLE001
+            state.note(f"s2 [§7] `{name}` 경기 목록을 못 받았다({exc!r:.40})")
+            continue
+        said = _games_of(rows or [])
+        if not said:
+            state.note(f"s2 [§7] `{name}` — ⬜ 경기 목록이 비었다(휴식·부하 없음)")
+            continue
+        got = _ctx.row_of(name, said, as_of=ref.kickoff_utc)
+        out[side] = got
+        state.note(f"[③] 일정 `{name}` — {got.why}")
+    return out
 
 
 def _kind_of(ref, box: dict) -> str:

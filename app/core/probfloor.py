@@ -142,6 +142,72 @@ def lambdas(*, diff: float, player_diff: float, coef: dict,
     return out, said
 
 
+#: 🔴🔴 **λ 후보 항**(지시 §4·§9) — 전진 선택이 **이 목록만** 흔든다.
+#  ⚠️ `pb_home` 은 더하는 항이 아니라 **diff 를 깎는 상호작용**이다(§9 F1).
+#  🔴 `bench_d` 는 여기 **없다** — λ 식이 아니라 시뮬 60분 이후 배율이다(§8 · C8-2).
+TERMS: tuple[str, ...] = ("rest_d", "load_d", "cup_d", "pb_home",
+                          "abs_d", "form3_d")
+
+#: 🔴 항 → 계수 이름(지시 §4 의 그 글자) · `pb_home` 은 c3 상호작용이다
+TERM_COEF: dict[str, str] = {"rest_d": "c1", "load_d": "c2", "cup_d": "c5",
+                             "abs_d": "c4", "form3_d": "c6",
+                             "pb_home": "c3"}
+
+
+def compute(cov: dict, *, coef: dict, adopted=None, detail: bool = False):
+    """🔴🔴 §4 ⑯ — **λ 두 개**를 공변량 묶음에서 만든다. 🔴 식은 **여기 하나**다(P1).
+
+    `(λ, 사유)` — `detail=True` 면 `(λ, 사유, 항별 기여)`.
+
+    🔴🔴 **P4·S1** — `adopted` 에 **없는 항은 식에 없다**. `adopted=None` 이면
+       *"아직 아무 항도 채택되지 않았다"* 로 보고 **바닥 식만** 쓴다 — 채택 판정
+       없이 λ 가 움직이는 길을 **만들지 않는다**.
+    ⚠️ `pb_home` 은 `b1·diff·(1 − c3·pb_home)` 로 들어간다(더하기가 아니다).
+    """
+    said = set(adopted or ())
+    box = dict(cov or {})
+    c = dict(coef or {})
+    b0 = float(c.get("b0") or 0.0)
+    b1 = float(c.get("b1") or 0.0)
+    b2 = float(c.get("b2") or 0.0)
+    h = float(c.get("h_league") or 0.0)
+    diff = float(box.get("diff") or 0.0)
+    scale = 1.0
+    if "pb_home" in said:
+        scale = 1.0 - float(c.get("c3") or 0.0) * float(box.get("pb_home") or 0)
+    parts: dict = {"바닥": b0 + b1 * diff * scale
+                   + b2 * float(box.get("pdiff") or 0.0),
+                   "홈 이점": h}
+    extra_home = 0.0
+    names: list[str] = []
+    for term in TERMS:
+        if term == "pb_home" or term not in said:
+            continue
+        w = float(c.get(TERM_COEF[term]) or 0.0)
+        v = float(box.get(term) or 0.0)
+        got = w * v
+        if got:
+            parts[term] = got
+            extra_home += got
+            names.append(f"{term} {v:+.3f}×{w:+.3f}")
+    log_h = parts["바닥"] + h + extra_home
+    log_a = -(b1 * diff * scale) + b0 - b2 * float(box.get("pdiff") or 0.0) \
+        - extra_home
+    out = {"home": math.exp(log_h), "away": math.exp(log_a)}
+    why = (f"λ {out['home']:.3f}/{out['away']:.3f} ← 바닥 {parts['바닥']:+.3f}"
+           f"(diff {diff:+.3f}×b1 {b1:.3f}"
+           + (f" × 휴식기 {scale:.2f}" if "pb_home" in said else "")
+           + f" · 선수 차 {float(box.get('pdiff') or 0.0):+.3f}×b2 {b2:.3f})"
+           f" · 홈 {h:+.3f}"
+           + (" · " + " · ".join(names) if names
+              else f" · **채택 0개**(후보 {len(TERMS)}개는 식에 없다)"))
+    if box.get("missing"):
+        why += " · ⬜ 못 잰 칸 " + " · ".join(box["missing"])
+    if detail:
+        return out, why, parts
+    return out, why
+
+
 def score_grid(*, lam_home: float, lam_away: float, rho: float = 0.0,
                nmax: int = GRID_MAX) -> dict:
     """🔴🔴 **스코어 격자 하나** — `{(홈골, 원정골): 확률}`(합 1.0).

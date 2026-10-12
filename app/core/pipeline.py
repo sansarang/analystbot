@@ -703,6 +703,26 @@ async def _priority_of(ref: MatchRef, facts: Facts, *, net: Any,
     return out, why
 
 
+def _schedule_line(facts) -> str:
+    """🔴 §7 — 카드 머리의 **일정 한 줄**. ⚠️ 없으면 그 사실을 적는다(#3)."""
+    box = dict(getattr(facts, "context", None) or {})
+    if not box:
+        return "일정 — ⬜ **못 쟀다**(경기 목록을 못 받았다)"
+    def _one(side: str) -> str:
+        got = box.get(side)
+        if got is None:
+            return "⬜ 없음"
+        return (f"휴식 {got.rest_days}일" +
+                ("(휴식기 후 첫 리그)"
+                 if (got.break_days is not None
+                     and got.break_days >= 14
+                     and got.league_n_since_break == 0) else "") +
+                f" · 14일 내 {got.load_14d}" +
+                (" · **4일 내 컵**" if got.cup_4d else ""))
+    return (f"일정: 홈 {_one('home')} / 원정 {_one('away')}"
+            f" — ⚠️ **확률에는 아직 안 들어간다**(§9 전진 선택 전)")
+
+
 def _infoq_of(ref: MatchRef, facts, layers: dict, edge: dict):
     """🔴🔴 §13 — 다섯 칸을 **이 실행이 이미 아는 것**에서 센다(새로 받지 않는다).
 
@@ -917,6 +937,8 @@ def card_of(ref: MatchRef, facts: Facts, variables: list[Variable],
         # ⚠️ 이 자리에서 재료 묶음의 이름은 `box["matchup"]` 이다(`edge` 가 아니다 —
         #    그것은 파이프라인 본체의 지역 이름이다 · 계약이 잡았다 2026-10-12).
         stance=said.stance,
+        # 🔴 §7 — 일정 한 줄(표시 전용 · 확률은 §9 가 채택할 때 들어간다)
+        schedule=_schedule_line(facts),
         # 🔴 §13 — 머리 줄이 적는다(확률에는 안 닿는다 · C13-1)
         infoq=str(getattr(box.get("infoq"), "why", "") or ""),
         infoq_score=(int(getattr(box.get("infoq"), "score", 0))

@@ -180,6 +180,9 @@ async def main() -> None:
             fresh, _wb = legacy_blend(floor, gaps=gaps, weights=conf,
                                       beta=beta)
             rows_all.append({"season": str(one.get("season") or ""),
+                             # 🔴 §7·§9 가 **팀별 지난 경기**를 쌓으려면 이름과
+                             #    실제 스코어가 필요하다(승무패만으론 못 쌓는다).
+                             "home": home, "away": away, "hg": h, "ag": a,
                              "floor": floor, "fresh": fresh,
                              "league": name, "day": str(one.get("utc"))[:10],
                              "hit": hit, "ours": ours, "dr": dr,

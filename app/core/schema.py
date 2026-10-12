@@ -419,6 +419,10 @@ class Facts(Frozen):
     #   ⚠️ 비면 **상태를 안 쓴다**(0 이 아니라 없음이다 · #3).
     state_rates: dict = Field(default_factory=dict)
     state_rates_why: dict = Field(default_factory=dict)
+    #: 🔴🔴 **경기 직전 상태**(지시서 2026-10-12(둘째) §7) — `{"home": ContextRow,
+    #   "away": ContextRow}`. ⚠️ 비면 **없는 것**이고 λ 항은 0 이다(§9 전진 선택이
+    #   채택할 때까지 λ 에 **안 들어간다** · 계약 S1).
+    context: dict = Field(default_factory=dict)
 
 
 class Doc(Frozen):
@@ -1213,6 +1217,8 @@ class Card(Frozen):
     conclusion: str = ""
     #: 🔴🔴 **반증 판정**(지시서 2026-10-12 ⑯) — 결론 줄이 한 줄로 적는다
     stance: str = ""
+    #: 🔴🔴 **경기 직전 상태 한 줄**(§7) — 휴식·부하·컵·휴식기. ⚠️ 표시 전용이다.
+    schedule: str = ""
     #: 🔴🔴 **정보 품질 InfoQ**(지시서 2026-10-12(둘째) §13) — 머리 줄이 적는다.
     #   ⚠️ 확률에는 닿지 않는다(계약 C13-1) — 등급만 내린다(§14).
     infoq: str = ""

@@ -635,9 +635,16 @@ TOOL_ONLY: dict[str, str] = {
     #    이다(§0: *"운영 확률은 현 새 구조 그대로 두고, 백필 판정을 통과한 판만
     #    운영으로 승격"*). 🔴 적합·비교는 도구가 부른다.
     #    ⚠️ 운영 ③ 에 잇는 것은 **§2 판정이 끝난 뒤**다.
+    # 🔴🔴 **§7 공변량**(지시서 2026-10-12(둘째)) — ⑬ 이 **관찰값으로** 싣고, λ 에
+    #    들어가는 것은 **§9 전진 선택이 채택한 뒤**다(계약 S1). 지금 부르는 곳은
+    #    전진 선택 도구다.
+    "app.core.context.covariates": "tools/forward_terms.py",
     # 🔴🔴 **§3 새 λ 식**(지시서 2026-10-12 §3) — 적합 도구가 부른다. ⚠️ 운영 ⑯ 에
     #    잇는 것은 **§3 판정이 끝난 뒤**다(§0 승격 절차 · §10).
     "app.core.probfloor.lambdas": "tools/fit_probfloor.py",
+    # 🔴 §4 `compute` — **전진 선택 도구**가 채택 목록을 바꿔 가며 부른다.
+    #    ⚠️ 운영 ⑯ 에 잇는 것은 §9 가 채택을 끝낸 뒤다(§15 승격 순서).
+    "app.core.probfloor.compute": "tools/forward_terms.py",
     "app.core.probfloor.load_coef": "tools/fit_probfloor.py",
     "app.core.probfloor.score_grid": "tools/compare_engines.py",
     "app.core.probfloor.markets_of": "tools/compare_engines.py",

@@ -623,6 +623,8 @@ def games_of(rows: list[dict]) -> list[dict]:
         #        보는 `xgf/xga` 는 **팀 xG**(`expected_goals`)로 갈아 끼운다.
         adv = _adv_of(box, mine_home=mine_home)
         out.append({
+            # 🔴 §7 ContextRow 가 **시각**을 본다(날짜만으로는 창을 못 자른다)
+            "utc": str(box.get("utc") or ""),
             "date": str(box.get("utc") or "")[:10],
             "league": str(box.get("league") or ""),
             "side": ("home" if mine_home else "away"),
