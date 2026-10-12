@@ -181,6 +181,45 @@ def main(argv: list[str]) -> int:
         print()
         if verdict == "채택":
             adopted |= set(group)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **§12 하위 그룹 보정표** — 어디가 치우쳤나(직접 보정은 **안 한다**)
+    # ══════════════════════════════════════════════════════════════════
+    from app.core import groups as _gr
+    said_rows = []
+    for one in rows:
+        tags = _gr.group_of({
+            "pb_home": one["cov"].get("pb_home"),
+            "load_14d": max(0, int(one["cov"].get("load_d") or 0)),
+            "streak_len": None, "streak_kind": "",
+        })
+        if not tags:
+            continue
+        # 🔴 그 경기의 **마지막 채택 식**으로 만든 확률로 센다
+        said_rows.append({"p": None, "hit": one["hit"], "tags": tags,
+                          "row": one})
+    if said_rows:
+        for s in seasons:
+            ev = [x for x in said_rows if x["row"]["season"] == s]
+            fi = [r for r in rows if r["season"] != s]
+            if not ev or len(fi) < 80:
+                continue
+            c, _n = fit(fi, adopted=adopted)
+            p = probs_of([x["row"] for x in ev], coef=c, adopted=adopted)
+            for x, pp in zip(ev, p, strict=True):
+                x["p"] = pp
+        got_bias = _gr.bias([x for x in said_rows if x["p"]])
+        print("## §12 하위 그룹 보정표 — 홈 승 칸(평균 예측 − 실제)")
+        print()
+        print("| 그룹 | n | 편향 | 95% 구간 | 조치 |")
+        print("|---|---|---|---|---|")
+        for name, box in sorted(got_bias.items()):
+            print(f"| {name}({_gr.GROUPS[name]}) | {box['n']} | "
+                  f"{box['bias']:+.4f} | {box['lo']:+.4f}~{box['hi']:+.4f} | "
+                  f"**{_gr.verdict_of(box)}** |")
+        print()
+    else:
+        print("## §12 하위 그룹 보정표 — ⬜ **그룹에 든 경기가 없다**")
+        print()
     print("## 🔴🔴 채택된 항")
     print()
     print(("`" + "` · `".join(sorted(adopted)) + "`") if adopted

@@ -639,6 +639,10 @@ TOOL_ONLY: dict[str, str] = {
     #    들어가는 것은 **§9 전진 선택이 채택한 뒤**다(계약 S1). 지금 부르는 곳은
     #    전진 선택 도구다.
     "app.core.context.covariates": "tools/forward_terms.py",
+    # 🔴 §12 그룹 보정표 — **검증 전용**이라 운영이 안 부른다(직접 보정 금지).
+    "app.core.groups.group_of": "tools/forward_terms.py",
+    "app.core.groups.bias": "tools/forward_terms.py",
+    "app.core.groups.verdict_of": "tools/forward_terms.py",
     # 🔴🔴 **§8 결장의 무게·벤치**(지시서 2026-10-12(둘째)) — 후보 판이다.
     #    ⚠️ ⑪ 에 잇는 것은 §5(선수 점수 판)·§9 채택 뒤다(§15 승격 순서).
     "app.core.ratings.lineup_strength.usual_xi": "tools/fit_player_pm.py",
