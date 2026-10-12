@@ -1,5 +1,6 @@
 🏟 **South Korea vs Uzbekistan** · Friendlies · 10-06 20:00 KST
 🌐 **오픈월드** — 리그: Friendlies · 팀 열쇠 임시 발급
+🔴 재현 모드 — `player_stats`, `standings`, `standings.match_total_baseline`, `standings.key_players`, `squad_names` 는 현재 값 — 재현 불가 → **확률 경로에서 뺐다**
 🔴 **자료 부족 카드 — 판단에 쓰지 말 것**(블록 3 에 경기당 총골·핵심 선수 가 없다)
 💵 $0.0000 · 호출 0회 · 출력 0 (추론 0)
 📋 라인업 없음 · 출처 www.fotmob.com

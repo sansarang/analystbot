@@ -103,6 +103,13 @@ def warn_lines(card: Card) -> list[str]:
         out.append(f"{_comp_mod().UNKNOWN_HEAD} — 받은 표기 "
                    f"`{card.match.competition or '없음'}` · 기준·경우의 수·리그 "
                    f"평균이 **비었다** · 등급은 전부 **보류**")
+    # 🔴🔴 **L2 표시**(지시 2026-10-12 2번) — 재현에서 **확률 경로에서 뺀 값**을
+    #    머리에 적는다. ⚠️ 표시 없이 빼면 사람이 *"왜 수가 다르지"* 를 못 찾는다.
+    from app import cassette as _cas
+    from app.core import asof as _asof
+    said_l2 = _asof.said_of(replay=_cas.mode() == _cas.REPLAY)
+    if said_l2:
+        out.append(said_l2)
     # 🔴🔴 **[3c] 되돌려 다시 센 카드**(지시서 2026-10-12) — 머리에 찍는다
     if str(getattr(card, "break_rerun", "") or ""):
         out.append(f"🔁 **반증으로 재계산** — {card.break_rerun} · 바뀐 것: "

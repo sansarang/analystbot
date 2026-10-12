@@ -59,12 +59,19 @@ def test_v9_fotmob_리그_결과_파서가_선다():
     from app.collect import fotmob as _fm
     j = {"props": {"pageProps": {"fixtures": {"allMatches": [
         {"home": {"name": "A"}, "away": {"name": "B"},
-         "status": {"finished": True, "scoreStr": "2 - 0", "utcTime": "x"}},
+         "status": {"finished": True, "scoreStr": "2 - 0", "utcTime": "2026-09-01T12:00:00Z"}},
         {"home": {"name": "C"}, "away": {"name": "D"},
-         "status": {"finished": False, "scoreStr": "", "utcTime": "y"}},
+         "status": {"finished": False, "scoreStr": "", "utcTime": "2026-09-08T12:00:00Z"}},
         {"home": {"name": "E"}, "away": {"name": "F"},
-         "status": {"finished": True, "scoreStr": "", "utcTime": "z"}}]}}}}
-    got = _fm.league_results(j)
+         "status": {"finished": True, "scoreStr": "", "utcTime": "2026-09-15T12:00:00Z"}}]}}}}
+    # 🔴 `as_of` 필수(사용자 지시 2026-10-12 ⓐ · 누설 금지 L1) — 기준선 측정이
+    #    **그날 끝난 경기**까지 먹으면 그 수로 그날 카드를 매긴다.
+    #    ⚠️ 이 계약은 파서 모양만 보므로 **먼 미래**를 준다(전부 통과).
+    #    🔴 고정물의 `utcTime` 도 **실물 꼴**로 고쳤다 — 시각을 못 읽는 줄은
+    #       `before_as_of` 가 떨어뜨린다(언제인지 모르는 경기를 기준선에 넣지 않는다).
+    from datetime import UTC as _UTC
+    from datetime import datetime as _dt
+    got = _fm.league_results(j, as_of=_dt(2030, 1, 1, tzinfo=_UTC))
     assert len(got) == 1, got          # 🔴 안 끝난 줄·점수 못 읽은 줄은 **버린다**
     assert got[0]["gh"] == 2 and got[0]["ga"] == 0
 

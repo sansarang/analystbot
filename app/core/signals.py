@@ -287,6 +287,14 @@ def league_of(facts, *, ref=None) -> dict:
     """
     got = dict(getattr(facts, "standings", None) or {}).get(
         "match_total_baseline")
+    # 🔴🔴 **L2**(지시 2026-10-12 2번) — 순위표 총골은 **지금 누계**다. 재현에서
+    #    그것을 쓰면 λ 기준이 미래를 본다 → 안 쓰고 아래 리그 평균으로 간다.
+    from app import cassette as _cas
+    from app.core import asof as _asof
+    ok_now, why_now = _asof.may_use("standings.match_total_baseline",
+                                    replay=_cas.mode() == _cas.REPLAY)
+    if got is not None and not ok_now:
+        got = None
     if got is not None:
         return _sides_of({"per_team": float(got) / 2.0, "total": float(got),
                           "why": "순위표의 그 리그 총골 기준"},

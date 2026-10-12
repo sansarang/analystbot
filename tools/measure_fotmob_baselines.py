@@ -27,14 +27,19 @@ OUT = ROOT / "config/goal_baselines.yaml"
 MIN_N = 30
 
 
-async def measure(lid: str, slug: str) -> dict:
+async def measure(lid: str, slug: str, *, as_of=None) -> dict:
+    """🔴 `as_of` — 이 시각 **이전** 경기만 센다(누설 금지 · L1).
+    ⚠️ 비우면 **지금**이다(운영 갱신 때 그렇게 부른다)."""
     """🔴 `(리그 id, 슬러그)` → `{goals_per_match, home_share, n, seasons…}`."""
     from app.collect import fotmob as fm
     from app.net import Net
     net = Net(cache=True)
     page = await net.get(fm.league_matches_url(lid, slug))
     j = fm.payload(getattr(page, "text", "") or "") or {}
-    rows = fm.league_results(j)
+    from datetime import datetime as _dt
+    from datetime import timezone as _tz
+    as_of = as_of or _dt.now(_tz.utc)
+    rows = fm.league_results(j, as_of=as_of)
     seasons = fm.league_seasons(j)
     used = [seasons[0]] if seasons else ["이번"]
     # 🔴 이번 시즌이 얇으면 **직전 시즌까지** 받는다(지시 ①)
@@ -42,7 +47,8 @@ async def measure(lid: str, slug: str) -> dict:
     while len(rows) < MIN_N and i < len(seasons):
         more = await net.get(fm.league_matches_url(lid, slug)
                              + f"?season={seasons[i]}")
-        got = fm.league_results(fm.payload(getattr(more, "text", "") or "") or {})
+        got = fm.league_results(
+            fm.payload(getattr(more, "text", "") or "") or {}, as_of=as_of)
         if not got:
             break
         rows += got

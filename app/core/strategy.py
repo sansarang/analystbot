@@ -450,6 +450,18 @@ def _att_table(facts, *, key: str = "", adv: dict | None = None) -> dict:
        수축**하고 `기록 없음 n명` 을 적는다(0 으로 메우지 않는다).
     """
     out: dict[str, float] = {}
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **L2 — 재현에서는 "현재 누계" 대체 경로를 막는다**(지시 2026-10-12 2번)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 `adv`(경기별 xG+xA)는 **그 경기 페이지들**에서 오므로 as-of 정합이다.
+    #     ⚠️ 그런데 아래 대체 경로(`facts.player_stats` · `standings.key_players`)는
+    #        **지금 시즌 누계**다 — 재현에서 그것을 쓰면 미래를 본 비중이 된다.
+    #  🔴 그래서 재생(카세트)·as-of 재현에서는 **대체 경로를 쓰지 않고 비워 둔다**
+    #     (조용한 0 이 아니라 **빈 표 + 사유**다 · 카드가 그 사유를 적는다).
+    from app import cassette as _cas
+    from app.core import asof as _asof
+    said_replay = _cas.mode() == _cas.REPLAY
     said_adv = dict(adv or {})
     if said_adv:
         for nm, one in said_adv.items():
@@ -458,6 +470,12 @@ def _att_table(facts, *, key: str = "", adv: dict | None = None) -> dict:
                                  + float(box.get("xa") or 0.0), 3)
         if out:
             return out
+    ok_now, why_now = _asof.may_use("standings.key_players",
+                                    replay=said_replay)
+    if not ok_now:
+        logger.info("[strategy] L2 — 공격 기여표 대체 경로를 **막았다**: %s",
+                    why_now)
+        return out
     # 🔴🔴 ③ — **그 팀의 표**가 있으면 그것을 쓴다(비중의 분모가 두 팀 합이 되면
     #    안 된다 · 실사고 2026-10-11: 뮐러 17.6% 가 10.2% 로 읽혔다).
     #  ⚠️ 팀별 표가 없으면 합친 표를 쓴다 — 있는 수를 버리지 않는다(#3).
@@ -725,6 +743,13 @@ def total_shift(plan: object, facts: object) -> tuple[float | None, str]:
     """
     box = dict(getattr(facts, "standings", None) or {})
     base = box.get("match_total_baseline")
+    # 🔴🔴 **L2** — 재현에서는 *지금 누계* 로 λ 를 움직이지 않는다(위와 같은 문)
+    from app import cassette as _cas2
+    from app.core import asof as _asof2
+    ok_now2, why_now2 = _asof2.may_use("standings.match_total_baseline",
+                                       replay=_cas2.mode() == _cas2.REPLAY)
+    if base is not None and not ok_now2:
+        return None, f"🔴 L2 — {why_now2}"
     if base is None:
         return None, "🔴 이 경기 총골 기준이 없다 — λ 를 안 움직인다"
     if str(getattr(plan, "audit", "") or "") != "통과":

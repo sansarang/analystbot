@@ -2057,7 +2057,7 @@ def league_matches_url(lid: object, slug: str = "x") -> str:
     return f"{BASE}/leagues/{lid}/matches/{slug}"
 
 
-def league_results(j: dict) -> list[dict]:
+def league_results(j: dict, *, as_of) -> list[dict]:
     """🔴🔴 그 리그의 **끝난 경기**들 — `{home, away, gh, ga, utc, neutral}`.
 
     > 리그 홈 이점은 **그 리그 경기 결과로 실측**한다(자동 등록 리그 포함, fotmob
@@ -2084,6 +2084,9 @@ def league_results(j: dict) -> list[dict]:
                     # ⚠️ fotmob 이 중립 표시를 **안 준다** — 홈 몫을 셀 때 그 한계를
                     #    호출부가 적는다(지어내지 않는다 · #4)
                     "neutral": None})
+    # 🔴🔴 **누설 금지**(사용자 지시 2026-10-12 ⓐ · 계약 L1) — 기준선(홈 이점·총골)
+    #    측정이 **그날 끝난 경기**까지 먹으면 그 수로 그날 카드를 매긴다.
+    out = before_as_of(out, as_of=as_of)
     return out
 
 
