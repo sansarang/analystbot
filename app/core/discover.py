@@ -253,6 +253,69 @@ def _slug_hit(index: dict[str, str], name: str) -> list[tuple[str, str]]:
     return [(i, s) for i, s in out if asked or not tier_of(s)]
 
 
+#: 🔴 등급을 가리려고 **일정을 열어 보는** 후보 수 상한(요청을 늘리지 않는다)
+PICK_TRY = 3
+
+
+def has_match(rows: list[dict], ref: object) -> bool:
+    """🔴🔴 그 일정 목록에 **이 경기가 있나** — 등급을 가르는 유일한 확증.
+
+    ⚠️ 실사고 2026-10-11(팰리스·스트라스부르): 색인이 **같은 슬러그를 두 번**
+       준다(`crystal-palace` → 여자팀 614828 · 남자팀 9826 · `strasbourg` 도 같다).
+       🔴 그래서 슬러그 낱말 필터(`TIER_WORDS`)가 **못 가르고** 첫 줄이 여자팀이
+       됐다 — 폼·골 목록·상성 재료가 통째로 **WSL·여자 Premiere Ligue** 경기였고,
+       그것이 축1 을 만들어 확률을 밀었다.
+    🔴 가리는 재료는 **지어내지 않는다** — 분석 중인 경기의 킥오프와 상대 이름이
+       그 팀 일정에 **함께** 있으면 그 팀이다(둘 다 요구한다).
+    """
+    want = str(getattr(ref, "kickoff_utc", "") or "").replace("T", " ")[:16]
+    names = [str(getattr(ref, "home_name", "") or ""),
+             str(getattr(ref, "away_name", "") or "")]
+    if not want or not any(names):
+        return False
+    for one in rows or []:
+        said = str(one.get("utc") or "").replace("T", " ")[:16]
+        if said != want:
+            continue
+        if any(same_any(str(one.get(k) or ""), names, loose=True)
+               for k in ("home", "away")):
+            return True
+    return False
+
+
+async def pick_team(net, name: str, *, ref: object, state: object = None,
+                    page_of=None) -> tuple[str, str] | None:
+    """🔴🔴 색인 후보 중 **이 경기를 가진 팀**을 고른다. `(id, 슬러그)` 또는 `None`.
+
+    🔴 왜 — 위 `has_match` 의 실사고. 후보가 하나면 그대로 쓴다(요청 0).
+    ⚠️ 어느 후보도 이 경기를 안 가지면 **첫 줄을 쓰고 그 사실을 적는다**(#3) —
+       일정 페이지를 못 받는 경우(캐시 미스·차단)와 구분해야 한다.
+    """
+    from app.collect import fotmob as fm
+    if page_of is None:
+        from app.core.stages.s2_facts import _day_page as page_of
+    idx = await fm.team_index(net)
+    hits = _slug_hit(idx, name)
+    if not hits:
+        return None
+    if len(hits) == 1:
+        return hits[0]
+    for tid, slug in hits[:PICK_TRY]:
+        page = await page_of(net, fm.team_fixtures_url(tid, slug),
+                             state=state, team=f"{name} 일정")
+        rows = team_fixtures(getattr(page, "text", "") or "", tid)
+        if has_match(rows, ref):
+            if state is not None and (tid, slug) != hits[0]:
+                state.note(f"색인 등급 가리기 — `{name}` 후보 {len(hits)}개 중 "
+                           f"**이 경기를 가진** `{tid}` 를 골랐다"
+                           f"(첫 줄 `{hits[0][0]}` 은 다른 등급이다)")
+            return tid, slug
+    if state is not None:
+        state.note(f"🔴 색인 등급 가리기 — `{name}` 후보 {len(hits)}개 어디에도 "
+                   f"이 경기가 없다 → 첫 줄 `{hits[0][0]}` 을 쓴다(가리지 못했다)")
+    return hits[0]
+
+
 def aliases_of(name: str, *, spell: dict | None = None) -> list[str]:
     """🔴🔴 §1-1 ② — *"팀 이름 한국어·영어·현지어 아무거나"*. **이름표가 안다.**
 

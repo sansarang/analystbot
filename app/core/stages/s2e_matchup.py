@@ -57,7 +57,7 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
     rows = {}
     for side in ("home", "away"):
         name = str(getattr(ref, f"{side}_name", "") or "")
-        got = await _history(net, name, state=state)
+        got = await _history(net, name, state=state, ref=ref)
         if got is None:
             out[f"{side}_why"] = f"🔴 `{name}` 의 과거 경기를 못 받았다"
             continue
@@ -252,8 +252,8 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
     return out
 
 
-async def _history(net: Any, name: str, *, state: RunState
-                   ) -> list[dict] | None:
+async def _history(net: Any, name: str, *, state: RunState,
+                   ref: Any = None) -> list[dict] | None:
     """🔴 그 팀 **최근 끝난 경기 + 골 목록**. 못 받으면 `None`.
 
     🔴 주소는 **팀 일정 HTML → 경기 페이지 HTML** 이다(robots 허용 경로).
@@ -263,11 +263,12 @@ async def _history(net: Any, name: str, *, state: RunState
     from app.core import discover as _d
     from app.core.stages.s2_facts import _day_page
     try:
-        idx = await fm.team_index(net)
-        hits = _d._slug_hit(idx, name)
-        if not hits:
+        # 🔴🔴 **등급을 가린다** — 색인이 같은 슬러그를 두 번 준다(여자팀·2군).
+        #    고르는 규율은 `discover.pick_team` 하나다(#1 사본 금지).
+        got = await _d.pick_team(net, name, ref=ref, state=state)
+        if not got:
             return None
-        tid, slug = hits[0]
+        tid, slug = got
         page = await _day_page(net, fm.team_fixtures_url(tid, slug),
                                state=state, team=f"{name} 일정")
         if page is None:

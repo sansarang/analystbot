@@ -579,6 +579,20 @@ def test_v7_한_팀만_물어도_찾는다(monkeypatch):
     """
     from app import window as _w
     from app.core import discover as _d
+    # 🔴🔴 **시계를 고정한다**(실사고 2026-10-12 00:04 UTC): `지금-20분` 이 **전날**로
+    #    떨어지면 그 경기는 창(오늘~+2일) **밖**이 되고, 탈락 사유가 `킥오프가
+    #    지났다` 가 아니라 `창 안 경기가 0건` 으로 바뀐다 — 즉 이 계약은 UTC 자정
+    #    직후 20분 동안만 빨개졌다. ⚠️ 검사하려는 것은 **킥오프 지난 경기의 사유**이지
+    #    자정 경계가 아니다.
+    import datetime as _dt
+    _w.set_clock(_dt.datetime(2026, 10, 11, 12, 0, tzinfo=_dt.UTC))
+    try:
+        _run_one_team_case(monkeypatch, _w, _d)
+    finally:
+        _w.set_clock(None)
+
+
+def _run_one_team_case(monkeypatch, _w, _d) -> None:
     soon = (_w.now_utc() + __import__("datetime").timedelta(hours=5))
     rows = [{"id": "1", "home": "Genoa", "away": "Fiorentina",
              "utc": soon.strftime("%Y-%m-%dT%H:%M:%S.000Z"), "finished": False,

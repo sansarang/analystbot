@@ -548,6 +548,14 @@ class Registry:
             if len(cand) == 1:
                 keep, drop = sorted((cand[0], got[0]))
                 self.merge(keep, drop)
+                # 🔴🔴 **합치게 만든 그 철자를 이름으로 남긴다**(실사고 2026-10-12).
+                #  ⚠️ 그 철자는 **이름 없는 열쇠의 색인 줄**로만 존재했다
+                #     (`name:ulsanhdfc → team:000620`). 합치면 그 줄은 남는 번호를
+                #     가리키지만, 저장소는 **팀의 이름들**만 싣는다 — 다음 적재에서
+                #     색인을 이름으로 다시 세우므로 그 철자가 **사라진다**.
+                #     실측: 합친 뒤 `Ulsan HD FC` → *"이름표에 없다"*(계약 2개 빨개짐).
+                self.add(keep, text, "en", "합쳐진 철자",
+                         league=league, sport=sport)
                 got = [keep]
                 why_bare = (f" (🔴 이름 없는 임시 열쇠 `{drop}` 를 `{keep}` 로 "
                             f"합쳤다 — 조직 표시를 걷어 맞췄다)")
@@ -561,7 +569,16 @@ class Registry:
             #  ⚠️ 걷은 뒤 **둘 이상**이면 안 쓴다 — 걷기가 서로 다른 팀을 하나로
             #     만들면 그것이 남의 경기를 분석하는 길이다(모호하면 안 고른다).
             bk = bare(text)
-            cand = list(self.bare_index.get(bk) or [])
+            # 🔴🔴 **걷은 꼴로 정확 색인도 본다**(실사고 2026-10-12).
+            #  ⚠️ `bare_index` 에는 **조직 표시가 없는 이름이 안 들어간다**
+            #     (`add` 의 `bk != k` 조건) — `Ulsan HD` 는 걷어도 그대로이므로
+            #     그 색인에 없다. 그래서 `Ulsan HD FC` 를 물으면 걷어서
+            #     `ulsanhd` 가 돼도 **0건**이었다(종전엔 이름 없는 임시 열쇠가
+            #     있어 합치기 분기가 대신 풀었고, 그 열쇠가 합쳐 없어진 뒤
+            #     *"이름표에 없다"* 로 돌아섰다 · 계약 2개가 잡았다).
+            #  🔴 합치기 분기가 쓰는 그 수법과 **같은 것**이다(사본 금지: 두 줄).
+            cand = list(dict.fromkeys([*(self.bare_index.get(bk) or []),
+                                       *(self.index.get(bk) or [])]))
             if len(cand) == 1:
                 got, why_bare = cand, " (조직 표시를 걷고 맞췄다)"
             elif len(cand) > 1:

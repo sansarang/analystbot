@@ -790,11 +790,13 @@ async def _fill_squad(ref: MatchRef, box: dict, *, state: RunState, net: Any,
     mine: dict[str, dict] = {}
     for name, key in ((str(ref.home_name or ""), str(ref.home or "")),
                       (str(ref.away_name or ""), str(ref.away or ""))):
-        hits = _d._slug_hit(idx, name)
-        if not hits:
+        # 🔴🔴 **등급을 가린다**(여자팀·2군) — 규율은 `discover.pick_team` 하나다
+        got_pick = await _d.pick_team(net, name, ref=ref, state=state,
+                                      page_of=_day_page)
+        if not got_pick:
             state.note(f"s2 선수단 기록 — `{name}` 을 팀 색인에서 못 찾았다")
             continue
-        tid, slug = hits[0]
+        tid, slug = got_pick
         page = await _day_page(net, fm.squad_url(tid, slug), state=state,
                                team=f"{name} 선수단")
         got = (fm.squad_stats(getattr(page, "text", "") or "")
