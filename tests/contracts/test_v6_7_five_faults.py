@@ -623,7 +623,13 @@ def test_v7_기여_합이_리그_평균_대비_변화와_같다():
     ref, facts, vs, _box, mr = _probset()
     got = _pm.run(ref, facts, mr, vs, state=RunState(match_key="x"))
     base = _pm.league_base(ref, facts, vs)
-    total = (float(got.home) - float(base["home"])) * 100.0
+    # ⚠️ **보정 전 수로 센다**(2026-10-12 5번): 무승부 보정(ρ)이 걸리면 최종 확률이
+    #    그만큼 움직이는데, 축 기여 분해는 **축이 만든 변화**를 설명한다.
+    #    🔴 그래서 보정이 걸렸으면 `draw_fix["before_home"]` 와 견준다(그 칸이
+    #    없으면 보정이 없었다는 뜻이고 최종 확률과 같다).
+    said_home = float(dict(got.draw_fix or {}).get("before_home")
+                      or got.home)
+    total = (said_home - float(base["home"])) * 100.0
     assert abs(sum(got.share.values()) - total) < 0.05, (got.share, total)
     assert set(got.share) == {"axis0", "axis1", "axis2", "axis3"}
     # 🔴 축마다 **그 기여를 만든 변수 id**(상위 3개)

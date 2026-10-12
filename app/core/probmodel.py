@@ -40,6 +40,8 @@ class ProbOut:
     shadow: dict = field(default_factory=dict)
     #: 🔴 바닥(Elo)이 낸 승무패 — 카드가 그 줄을 적는다
     floor: dict = field(default_factory=dict)
+    #: 🔴🔴 **무승부 보정**(5번) — 걸었으면 그 판과 값, 안 걸었으면 비어 있다
+    draw_fix: dict = field(default_factory=dict)
     #: 🔴🔴 **C4 재정의**(사용자 결정 2026-10-12) — 상성이 λ 를 **민 방향**이다.
     #   `{"home": +x, "away": -x}` · 홈 이점(상수)은 **여기 안 들어간다**.
     move: dict = field(default_factory=dict)
@@ -453,6 +455,40 @@ def run(ref, facts, mr, varset, *, edge: dict | None = None,
     if said_m1 is not None and said_m1.ok():
         got.home, got.draw, got.away = (said_m1.home, said_m1.draw,
                                         said_m1.away)
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **5번 무승부 보정** — 얼린 격자 **뒤**에 건다(K0 를 안 건드린다)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  🔴 실측(460경기 교차): ρ+0.2 로 로그손실 1.0527 → **1.0474**
+        #     (−0.0054 · 95% −0.0127~+0.0015) · 방향 **49.5% 그대로** ·
+        #     무승부 예측 26.8% → **22.7%**(실제 22.1%).
+        #  ⚠️ 판이 없으면 **보정하지 않는다**(손값 금지) — 사유를 적는다.
+        from app.core import drawfix as _dfx
+        said_fix, why_fix = _dfx.load(
+            league=_kind(ref, facts),
+            as_of=getattr(ref, "kickoff_utc", None))
+        if said_fix and said_m1.scores:
+            said_grid = {}
+            for key, val in dict(said_m1.scores or {}).items():
+                if isinstance(key, str) and "-" in key:
+                    h, a = key.split("-", 1)
+                    said_grid[(int(h), int(a))] = float(val)
+                else:
+                    said_grid[(int(key[0]), int(key[1]))] = float(val)
+            bent = _dfx.bend(said_grid, rho=float(said_fix.get("rho") or 0.0),
+                             draw=float(said_fix.get("draw") or 0.0))
+            said_three = _dfx.triple(bent)
+            # 🔴 **보정 전 수를 남긴다** — 축 기여 분해(`share`)는 **보정 전**
+            #    확률을 설명한다. ⚠️ 그 사실을 칸으로 두지 않으면 카드의 분해 합이
+            #    최종 확률과 안 맞는 이유를 아무도 모른다(계약이 그것을 잡았다).
+            got.draw_fix = {"before_home": round(float(got.home), 6),
+                            "before_draw": round(float(got.draw), 6),
+                            "before_away": round(float(got.away), 6)}
+            got.home, got.draw, got.away = said_three
+            got.scores = dict(sorted(bent.items(), key=lambda kv: -kv[1])[:40])
+            got.draw_fix.update({"why": why_fix,
+                                 **{k: float(v) for k, v in said_fix.items()
+                                    if isinstance(v, (int, float))}})
         # ⚠️ **꼴을 맞춘다(경계에서)** — 얼린 경로는 스코어 열쇠를 `"1-0"` 글자로
         #    담고, 카드·생존은 `(1, 0)` 쌍을 본다. 🔴 얼린 파일을 고치지 않는다
         #    (K0) — **여기서** 옮긴다(실측 2026-10-12: e2e 가 그 차이를 잡았다).
@@ -470,6 +506,10 @@ def run(ref, facts, mr, varset, *, edge: dict | None = None,
             got.share = dict(said_m1.share)
         got.why = (f"🔴🔴 **운영 = M1 얼린 옛 경로**(legacy-4axis · 네 축) — "
                    f"{said_m1.why}"
+                   + (f" · 🎯 **무승부 보정** ρ "
+                      f"{float(got.draw_fix.get('rho') or 0.0):+.2f}"
+                      f"({got.draw_fix.get('why')})"
+                      if got.draw_fix else " · ⬜ 무승부 보정 없음(판 없음)")
                    + (f" · 🕯 그림자 M3 홈 {float(said_m3['home']):.1%}"
                       if said_m3.get("home") is not None
                       else f" · 🕯 {said_m3.get('why', '그림자 없음')}"))
