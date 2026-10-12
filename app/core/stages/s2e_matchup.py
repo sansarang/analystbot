@@ -86,6 +86,32 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
     #     (5경기)을, 축1 은 **경기 페이지 목록**(10경기)을 읽었다 — 그래서
     #     *"최근5 실점 10, 최근10 실점 9"* 라는 **불가능한 수**가 나란히 찍혔다.
     games = {side: games_of(rows[side]) for side in ("home", "away")}
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **ⓒ 대회 수준 — 폼 창은 리그 경기만**(사용자 지시 2026-10-12)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 컵은 상대가 **같은 리그면 센다**(리그 Elo 표에 있나로 가린다) —
+    #     하위 리그 상대 컵 경기는 **뺀다**. 뺀 경기는 사유에 **이름으로** 남는다.
+    #  ⚠️ 실측 2026-10-12(가와사키): 창 9경기 중 **3경기가 컵**이고 상대가 하위
+    #     리그였다 — 그 득점이 축1 을 +1.085(강)로 끌어올렸다.
+    from app.core import level as _level
+    said_lg = ""
+    for one in (rows["home"] + rows["away"]):
+        said_lg = str(dict(one).get("league") or "")
+        if said_lg:
+            break
+    elo_tab = _elo_of(ref, rows)
+    level_why: dict = {}
+    for side in ("home", "away"):
+        kept, why_lv = _level.keep(games[side], league=said_lg, elo=elo_tab)
+        level_why[side] = why_lv
+        if kept and len(kept) != len(games[side]):
+            games[side] = kept
+    out["level_why"] = level_why
+    if any(level_why.values()):
+        state.note("s2e ⓒ 대회 수준 — "
+                   + " / ".join(f"{s} {level_why[s]}"
+                                for s in ("home", "away") if level_why[s]))
     # 🔴🔴 ④ — **평소 XI·오늘 빠짐을 id 로** 센다(사용자 지시 2026-10-11 ④).
     #    ⚠️ 실사고 2026-10-11(가와사키): 캡처가 한글(`이즈미`)이고 결장 명단이
     #       로마자(`Ryuji Izumi`)라 글자로는 **다른 사람**이었다 — 그래서 선발이
