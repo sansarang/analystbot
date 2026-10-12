@@ -282,12 +282,23 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
     # ── 축1 보정 폼(운 요소 할인은 축3 의 T12 가 준다)
     elo = _elo_of(ref, rows)
     cut = {side: _luck_cut(fired, side) for side in ("home", "away")}
+    # 🔴🔴 **홈 이점 중심화 Δ**(사용자 지시 2026-10-12 2-a) — 쪽 폼에서 뺀다.
+    #    ⚠️ Δ 는 실측(`goal_baselines`)에서 온다 — 없으면 0.0(안 한다).
+    from app.core import probmodel as _pm0
+    from app import rules as _rules0
+    said_kind = _pm0._kind(ref, facts)
+    said_base = _rules0.goal_baseline(said_kind)
+    side_mid, why_mid = _pm0.side_center(
+        home_share=said_base.get("home_share"),
+        per_team=_rules0.goal_share(said_kind))
+    if side_mid:
+        state.note(f"s2e 2-a 홈 이점 중심화 — {why_mid}")
     form = {side: _form.form_of(
         str(getattr(ref, f"{side}_name", "")),
         _as_form(rows[side], str(getattr(ref, f"{side}_name", ""))),
         elo=elo, luck_goals=cut[side], games=games[side],
         # 🔴 C — 홈팀은 **홈 경기 폼**, 원정팀은 **원정 경기 폼**으로 본다
-        side_at=side)
+        side_at=side, side_center=side_mid)
         for side in ("home", "away")}
     pool = [f.index() for f in form.values() if f.index() is not None]
     for side, one in form.items():
@@ -304,7 +315,8 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
     form_xg = {side: _form.form_of(
         str(getattr(ref, f"{side}_name", "")),
         _as_form(rows[side], str(getattr(ref, f"{side}_name", ""))),
-        elo=elo, games=games[side], side_at=side, xg_only=True)
+        elo=elo, games=games[side], side_at=side, xg_only=True,
+        side_center=side_mid)
         for side in ("home", "away")}
     ok_xg = all(one.xg_only and one.index() is not None
                 for one in form_xg.values())

@@ -148,6 +148,44 @@ def team_home_mul(games: list[dict], *, league: float) -> tuple[float, str]:
                            f"리그 ×{float(league):.3f} → **×{got:.3f}**")
 
 
+def away_mul(*, home_share: float | None, per_team: float | None
+             ) -> tuple[float, str]:
+    """🔴🔴 2(b) — **원정 배율**. `(배율, 사유)`. 실측이 없으면 `1.0`.
+
+    > λ 기준: … **원정 λ 에 원정 배율**(원정 평균 ÷ 한 팀 몫)이 들어가는가.
+
+    🔴 감사 2026-10-12: 종전 식은 `lam_a = mean`(= 한 팀 평균)이었다 — 원정 팀이
+       평균보다 **덜 넣는다**는 실측을 버린 것이다. 라리가 per_team 1.3444 ·
+       home_share 1.5296 → away_share **1.1592** 인데 1.3444 를 써서 **+16% 과대**.
+    🔴 `away_share = 2 × per_team − home_share`(총골 = 홈 몫 + 원정 몫).
+    """
+    if home_share is None or not per_team:
+        return 1.0, "⬜ 원정 배율 — 실측이 **없다**(1.0 · 다른 대회에서 안 빌린다)"
+    away = 2.0 * float(per_team) - float(home_share)
+    if away <= 0:
+        return 1.0, "🔴 원정 몫이 0 이하다 — 1.0 으로 둔다(수가 이상하다)"
+    got = away / float(per_team)
+    return got, (f"원정 몫 {away:.4f} ÷ 한 팀 몫 {float(per_team):.4f} = "
+                 f"×{got:.3f}")
+
+
+def side_center(*, home_share: float | None, per_team: float | None
+                ) -> tuple[float, str]:
+    """🔴🔴 2(a) — **쪽 폼 중심화 값 Δ**. `(Δ, 사유)`. 실측이 없으면 `0.0`.
+
+    🔴 홈에서 뛴 팀의 득실차에는 **홈 이점이 이미** 들어 있다:
+       기대 득 `home_share` − 기대 실 `away_share` = **Δ**.
+       그 Δ 가 축1 로 들어가고 λ 홈 배율이 **또** 걸리면 **이중 계산**이다.
+    🔴 그래서 쪽 폼에서 Δ 를 뺀다(원정 쪽은 더한다).
+    """
+    if home_share is None or not per_team:
+        return 0.0, "⬜ 중심화 — 홈 이점 실측이 없다(0.0)"
+    away = 2.0 * float(per_team) - float(home_share)
+    got = float(home_share) - away
+    return got, (f"중심화 Δ = 홈 몫 {float(home_share):.4f} − 원정 몫 "
+                 f"{away:.4f} = {got:.4f}")
+
+
 def home_mul(facts, varset, *, ref=None,
              home_games: list[dict] | None = None
              ) -> tuple[float | None, str]:
@@ -271,8 +309,15 @@ def run(ref, facts, mr, varset, *, edge: dict | None = None,
     #  🔴 `tilt` 는 이제 **보고용**이다(카드가 종합을 적는다) — λ 는 안 만든다.
     sides = {k: mr.axis(k).sides() for k in weights}
     move = sides_move(sides, weights, beta=beta, cap=cap)
+    # 🔴🔴 2(b) — **원정 배율을 건다**(사용자 지시 2026-10-12). ⚠️ 종전엔 원정이
+    #    `mean`(한 팀 평균)이었다 — 원정 팀이 덜 넣는다는 실측을 버린 식이다.
+    from app import rules as _rules
+    said_kind = _kind(ref, facts)
+    said_base = _rules.goal_baseline(said_kind)
+    mul_a, why_mul_a = away_mul(home_share=said_base.get("home_share"),
+                                per_team=_rules.goal_share(said_kind))
     lam_h = mean * mul * math.exp(move["home"])
-    lam_a = mean * math.exp(move["away"])
+    lam_a = mean * mul_a * math.exp(move["away"])
     got.lam = {"home": round(lam_h, 4), "away": round(lam_a, 4)}
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **3-2 시간대·경기 상태** — 축3 이 구간과 상태 배율을 준다
@@ -307,10 +352,13 @@ def run(ref, facts, mr, varset, *, edge: dict | None = None,
     _fill(got, out)
     why_rules = str(args.get("why") or "")
     # 🔴 3-4 — **리그 평균 대비** 축별 기여(합 = 전체 변화)
-    base = _sim.run(mean * mul, mean)
+    # 🔴 기준선도 **같은 식**이어야 한다 — 원정 배율을 빼면 분해 합이 안 맞는다
+    #    (계약 `test_v7_기여_합이_리그_평균_대비_변화와_같다` 가 그것을 센다)
+    base = _sim.run(mean * mul, mean * mul_a)
     got.share, got.share_refs = _share(mean, mul, beta, cap, weights, gaps, mr,
-                                       base=base)
-    got.why = (f"{why_mean} → 한 팀 평균 {mean:.3f} · {why_home} · 축 종합 "
+                                       base=base, mul_a=mul_a)
+    got.why = (f"{why_mean} → 한 팀 평균 {mean:.3f} · {why_home} · "
+               f"{why_mul_a} · 축 종합 "
                f"{tilt:+.3f} × β {beta:g} → λ 이동 홈 {move['home']:+.3f} · "
                f"원정 {move['away']:+.3f}"
                + (f"(상한 ±{cap:.0%})"
@@ -345,7 +393,8 @@ def _fill(got: ProbOut, out) -> None:
 
 
 def _share(mean: float, mul: float, beta: float, cap: float, weights: dict,
-           gaps: dict, mr, *, base) -> tuple[dict, dict]:
+           gaps: dict, mr, *, base, mul_a: float = 1.0
+           ) -> tuple[dict, dict]:
     """🔴🔴 3-4 — 축별 기여(%p). **합이 리그 평균 대비 변화와 같다**.
 
     🔴 재는 법: 축을 **하나씩 더해** 가며 홈 승 확률의 차를 적는다(겹침 없이
@@ -359,7 +408,9 @@ def _share(mean: float, mul: float, beta: float, cap: float, weights: dict,
     for name in ("axis0", "axis1", "axis2", "axis3"):
         run += float(weights.get(name) or 0.0) * float(gaps.get(name) or 0.0)
         move = max(-cap, min(cap, beta * run))
-        now = _sim.run(mean * mul * math.exp(move), mean * math.exp(-move))
+        # 🔴 **λ 식과 같은 꼴**이어야 한다 — 원정 배율을 빼면 합이 안 맞는다
+        now = _sim.run(mean * mul * math.exp(move),
+                       mean * mul_a * math.exp(-move))
         out[name] = round((float(now.home) - prev) * 100.0, 2)
         prev = float(now.home)
         refs[name] = list(mr.axis(name).refs)[:3]
@@ -383,5 +434,11 @@ def league_base(ref, facts, varset) -> dict | None:
     mul, _said = home_mul(facts, varset, ref=ref)
     if mul is None:
         return None            # 🔴 기준 분포도 홈 이점 없이는 안 만든다
-    out = _sim.run(mean * mul, mean)
+    # 🔴 **λ 식과 같은 꼴** — 원정 배율도 건다(2026-10-12 2-b). ⚠️ 여기만 빠지면
+    #    기여 분해의 합이 리그 평균 대비 변화와 **안 맞는다**(계약이 센다).
+    from app import rules as _r2
+    said_kind2 = _kind(ref, facts)
+    mul_a2, _w = away_mul(home_share=_r2.goal_baseline(said_kind2).get(
+        "home_share"), per_team=_r2.goal_share(said_kind2))
+    out = _sim.run(mean * mul, mean * mul_a2)
     return {"home": out.home, "draw": out.draw, "away": out.away}

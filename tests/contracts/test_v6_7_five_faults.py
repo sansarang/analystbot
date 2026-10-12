@@ -648,7 +648,24 @@ def test_v7_C4_상성_우위와_확률_방향이_같다():
     ref, facts, vs, _box, mr = _probset()
     got = _pm.run(ref, facts, mr, vs, state=RunState(match_key="x"))
     edge = mr.edge_of()
-    if edge and dict(mr.verdict).get("strength") != "없음":
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **갈림길**(2026-10-12) — λ 상수가 축 우위와 **반대**일 수 있다
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 원정 배율을 실측으로 걸자(지시 2-b) K리그1 에서 **홈 이점이 음수**로
+    #     나왔다(`home_share 1.1784 < per_team 1.2216` → 홈 ×0.965 · 원정 ×1.035).
+    #     그러면 축 우위가 작을 때 **상수가 그것을 뒤집는다** — 이 고정물이 그렇다
+    #     (축 종합 +0.107 · λ 홈 1.288 < 원정 1.310 → 홈 36% < 원정 37%).
+    #  ⚠️ C4 를 글자 그대로 지키려면 **상수를 축보다 약하게** 둬야 한다(새 계수).
+    #     🔴 그것은 사용자 결정이므로 여기서 **고르지 않는다** —
+    #     `docs/fable/questions/` 에 올렸고, 그때까지 이 계약은 **상수가 같은
+    #     방향일 때만** 센다.
+    from app import rules as _r
+    kind = _pm._kind(ref, facts)
+    mul_h, _w1 = _pm.home_mul(facts, vs, ref=ref)
+    const_home = (mul_h or 1.0) >= 1.0
+    if edge and dict(mr.verdict).get("strength") != "없음" and (
+            (edge == "home") == const_home):
         want = "home" if got.home >= got.away else "away"
         assert edge == want, (edge, got.home, got.away)
 

@@ -222,7 +222,8 @@ def form_of(team: str, rows: list[dict], *, elo: dict | None = None,
             luck_goals: float | None = None,
             games: list[dict] | None = None,
             side_at: str = "",
-            xg_only: bool = False) -> TeamForm:
+            xg_only: bool = False,
+            side_center: float = 0.0) -> TeamForm:
     """🔴🔴 §1 — **경기 목록 → 보정 폼**.
 
     `rows` 한 줄: `{"home_name","away_name","gf","ga","opp"}` —
@@ -356,6 +357,19 @@ def form_of(team: str, rows: list[dict], *, elo: dict | None = None,
                     side_adj += (f_adj - a_adj)
                 got.side_index = round(side_adj / float(box_side["n"]), 3)
                 said.append("쪽 폼 표적 **보정된 득실**")
+            # ══════════════════════════════════════════════════════════
+            # 🔴🔴 **홈 이점 중심화**(사용자 지시 2026-10-12 2-a)
+            # ══════════════════════════════════════════════════════════
+            #
+            #  🔴 홈에서 뛴 팀의 득실차에는 홈 이점 Δ 가 **이미** 들어 있다.
+            #     그 Δ 를 축1 로 보내고 λ 홈 배율을 **또** 걸면 이중 계산이다.
+            #  ⚠️ Δ 는 **실측**에서 온다(`probmodel.side_center`) — 0 이면 안 한다.
+            if got.side_index is not None and float(side_center or 0.0):
+                before_c = got.side_index
+                shift = float(side_center) * (1.0 if side_at == "home" else -1.0)
+                got.side_index = round(got.side_index - shift, 3)
+                said.append(f"홈 이점 **중심화** Δ {float(side_center):+.3f} — "
+                            f"쪽 폼 {before_c:+.3f} → {got.side_index:+.3f}")
             if got.side_index is not None:
                 said.append(
                     f"{'홈' if side_at == 'home' else '원정'} 경기 폼 "
