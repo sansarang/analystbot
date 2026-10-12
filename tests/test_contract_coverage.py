@@ -224,8 +224,11 @@ def test_v5_9_3_계약은_contracts_폴더에_있다():
            #    (`test_v10_1_player_id.py` = 그 지시서 ①②).
            # 🔴 v11 = **감독 의도·흐름 스크립트·반증 우선** 지시서(2026-10-12)
            #    (`test_v11_1_break_conditions.py` = 그 지시서 [3a]).
+           # 🔴 v12 = **적중률(확률에 닿는 단계만)** 지시서(2026-10-12).
+           # 🔴 v13 = **예측 엔진 교체 + 경기 직전 상태** 지시서(2026-10-12)
+           #    (`test_v13_1_metrics.py` = 그 지시서 §1 · 계약 E1).
            if not re.search(
                r"v5_\d|v5a_|v6_\d|v7_\d|v8_f\d|v9_\d|v10_\d|v11_\d"
-               r"|v12_\d|_m\d|solar",
+               r"|v12_\d|v13_\d|_m\d|solar",
                f, re.I)]
     assert not bad, f"🔴 조항 번호가 이름에 없는 계약 파일: {bad}"

@@ -30,18 +30,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def wilson(hit: int, n: int) -> tuple[float, float]:
-    """🔴 95% 구간 — 윌슨(작은 표본에서 정규 근사보다 낫다)."""
-    if n <= 0:
-        return (float("nan"), float("nan"))
-    z = 1.959964
-    p = hit / n
-    d = 1.0 + z * z / n
-    mid = (p + z * z / (2 * n)) / d
-    half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d
-    return (max(0.0, mid - half), min(1.0, mid + half))
-
-
 def binom_two_sided(b: int, c: int) -> float:
     """🔴 맥니마 **정확 검정**(이항) — `n = b + c` · `p = 0.5`.
 
@@ -53,10 +41,6 @@ def binom_two_sided(b: int, c: int) -> float:
     k = min(b, c)
     tail = sum(math.comb(n, i) for i in range(k + 1)) / (2.0 ** n)
     return min(1.0, 2.0 * tail)
-
-
-def direction(p: list[float]) -> int:
-    return int(max(range(3), key=lambda i: float(p[i])))
 
 
 def main(argv: list[str]) -> int:
@@ -71,6 +55,7 @@ def main(argv: list[str]) -> int:
         r["season"] = str(r.get("season") or "") or str(r.get("day") or "")[:4]
     from app.core import base as _base
     from app.core import matchup as _mu
+    from app.core import metrics as _me
     from app.core import probfloor as _pf
     sys.path.insert(0, str(ROOT / "tools"))
     from fit_base_model import _fit_rows
@@ -118,6 +103,9 @@ def main(argv: list[str]) -> int:
                       " **적합하지 않는다**(100 미만) → 그 시즌은 **뺀다**")
                 continue
             got = _fit_rows([(float(r["dr"]), 2 - int(r["hit"])) for r in other])
+            # 🔴🔴 **계약 E1** — 적합 기간과 평가 기간이 겹치면 **예외**다.
+            #    ⚠️ 같은 데이터로 적합·평가한 수는 **보고 금지**(지시 §1).
+            _me.check_split(fit={r["season"] for r in other}, eval={s})
             cross[(kind, s)] = got
             print(f"- 교차 적합 `{kind}` 평가 {s} ← 바깥 {len(other)}경기 · "
                   f"b_dr {got['b_dr']} · c1 {got['c1']} · c2 {got['c2']} · "
@@ -144,7 +132,7 @@ def main(argv: list[str]) -> int:
     print()
 
     def rate(key: str, sub: list[dict]) -> tuple[int, int]:
-        got = sum(1 for p in sub if direction(p[key]) == p["hit"])
+        got = sum(1 for p in sub if _me.direction_hit(p[key], p["hit"]))
         return got, len(sub)
 
     # ══════════════════════════════════════════════════════════════════
@@ -152,15 +140,28 @@ def main(argv: list[str]) -> int:
     # ══════════════════════════════════════════════════════════════════
     print("## 방향 적중률(시즌 교차)")
     print()
-    print("| 모형 | 적중 | 경기 | 적중률 | 브라이어 |")
-    print("|---|---|---|---|---|")
+    print("| 모형 | **로그 손실** | RPS | 방향 적중 | 적중률 | 브라이어 |")
+    print("|---|---|---|---|---|---|")
     for nm, key in (("**새 구조**(Elo 바닥+축0·축1)", "new"),
                     ("옛 구조(네 축)", "old"),
                     ("Elo만(교차 적합 바닥)", "floor")):
         h, m_ = rate(key, pairs)
-        br = sum(sum((p[key][i] - (1.0 if i == p["hit"] else 0.0)) ** 2
-                     for i in range(3)) for p in pairs) / max(1, m_)
-        print(f"| {nm} | {h} | {m_} | **{h / max(1, m_):.1%}** | {br:.4f} |")
+        ll = sum(_me.logloss(p[key], p["hit"]) for p in pairs) / max(1, m_)
+        rp = sum(_me.rps(p[key], p["hit"]) for p in pairs) / max(1, m_)
+        br = sum(_me.brier(p[key], p["hit"]) for p in pairs) / max(1, m_)
+        print(f"| {nm} | **{ll:.4f}** | {rp:.4f} | {h}/{m_} | "
+              f"**{h / max(1, m_):.1%}** | {br:.4f} |")
+    print()
+    # 🔴🔴 **짝지은 차이**(지시 §1) — 주지표는 로그 손실이다
+    print("| 짝지은 차이(로그 손실) | 평균 | 95% 구간 | 판정 |")
+    print("|---|---|---|---|")
+    for nm, a, b in (("새 구조 − Elo만", "new", "floor"),
+                     ("새 구조 − 옛 구조", "new", "old"),
+                     ("옛 구조 − Elo만", "old", "floor")):
+        got = _me.paired([_me.logloss(p[a], p["hit"]) for p in pairs],
+                         [_me.logloss(p[b], p["hit"]) for p in pairs])
+        print(f"| {nm} | {got['mean']:+.4f} | {got['lo']:+.4f}~{got['hi']:+.4f}"
+              f" | **{_me.verdict_of(got)}** |")
     print()
 
     # ══════════════════════════════════════════════════════════════════
@@ -168,12 +169,12 @@ def main(argv: list[str]) -> int:
     # ══════════════════════════════════════════════════════════════════
     print("## 2. 맥니마 검정 — 두 모형의 방향이 **다른** 경기")
     print()
-    both = sum(1 for p in pairs
-               if direction(p["new"]) == p["hit"] and direction(p["old"]) == p["hit"])
-    b = sum(1 for p in pairs
-            if direction(p["new"]) == p["hit"] and direction(p["old"]) != p["hit"])
-    c = sum(1 for p in pairs
-            if direction(p["new"]) != p["hit"] and direction(p["old"]) == p["hit"])
+    def _ok(p: dict, key: str) -> bool:
+        return _me.direction_hit(p[key], p["hit"])
+
+    both = sum(1 for p in pairs if _ok(p, "new") and _ok(p, "old"))
+    b = sum(1 for p in pairs if _ok(p, "new") and not _ok(p, "old"))
+    c = sum(1 for p in pairs if not _ok(p, "new") and _ok(p, "old"))
     none = n - both - b - c
     p_val = binom_two_sided(b, c)
     print(f"- 둘 다 맞음 **{both}** · 둘 다 틀림 **{none}**")
@@ -191,18 +192,14 @@ def main(argv: list[str]) -> int:
     print("| 구간 | 경기 | 새 구조 | 95% | 옛 구조 | 95% |")
     print("|---|---|---|---|---|---|")
     bands: dict[float, tuple[float, float]] = {}
-    for frac in (0.30, 0.20, 0.10):
-        k = max(1, int(round(n * frac)))
-        said_row = [f"| 상위 {frac:.0%} | {k} "]
-        got_rates = []
-        for key in ("new", "old"):
-            top = sorted(pairs, key=lambda p: -max(p[key]))[:k]
-            h, m_ = rate(key, top)
-            lo, hi = wilson(h, m_)
-            said_row.append(f"| **{h / m_:.1%}**({h}/{m_}) | {lo:.1%}~{hi:.1%} ")
-            got_rates.append(h / m_)
-        bands[frac] = (got_rates[0], got_rates[1])
-        print("".join(said_row) + "|")
+    said_bands = _me.bands(pairs, keys=("new", "old"))
+    for frac, box in said_bands.items():
+        a, b = box["new"], box["old"]
+        bands[frac] = (a["rate"], b["rate"])
+        print(f"| 상위 {frac:.0%} | {a['n']} | **{a['rate']:.1%}**"
+              f"({a['hit']}/{a['n']}) | {a['lo']:.1%}~{a['hi']:.1%} | "
+              f"**{b['rate']:.1%}**({b['hit']}/{b['n']}) | "
+              f"{b['lo']:.1%}~{b['hi']:.1%} |")
     print()
 
     # ══════════════════════════════════════════════════════════════════

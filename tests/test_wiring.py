@@ -630,6 +630,19 @@ TOOL_ONLY: dict[str, str] = {
     "app.core.probfloor.floor_of": "tools/backfill_score.py",
     "app.core.probfloor.blend": "tools/backfill_score.py",
     "app.core.probfloor.direction_hit": "tools/backfill_score.py",
+    # 🔴🔴 **§1 평가 지표**(지시서 2026-10-12 엔진 교체) — 지표는 `app/` 에 한 곳에
+    #    두고 **도구들이** 부른다(사본 금지). ⚠️ 운영 카드 채점이 같은 지표를 써야
+    #    하므로 `app/` 에 있고, 운영 확률 경로는 이것을 **안 부른다**(검증 전용).
+    "app.core.metrics.bands": "tools/judge_models.py",
+    "app.core.metrics.calib": "tools/backfill_score.py",
+    "app.core.metrics.check_split": "tools/judge_models.py",
+    "app.core.metrics.paired": "tools/backfill_score.py",
+    "app.core.metrics.verdict_of": "tools/backfill_score.py",
+    "app.core.metrics.rps": "tools/backfill_score.py",
+    "app.core.metrics.brier": "tools/backfill_score.py",
+    "app.core.metrics.logloss": "tools/backfill_score.py",
+    "app.core.metrics.boot_ci": "tools/backfill_score.py",
+    "app.core.metrics.direction_hit": "tools/judge_models.py",
     "app.core.backfill.features": "tools/fit_matchup_model.py",
     "app.core.backfill.score_of": "tools/fit_matchup_model.py",
     # 🔴 사용자 지시 2026-10-11 ① — 리그 홈 이점을 **그 리그 결과로** 잰다.

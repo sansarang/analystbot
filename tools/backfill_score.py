@@ -26,24 +26,14 @@ logging.basicConfig(level=logging.WARNING, format="%(message)s")
 logger = logging.getLogger("backfill_score")
 
 
-def brier(p: list[float], hit: int) -> float:
-    return sum((p[i] - (1.0 if i == hit else 0.0)) ** 2 for i in range(3))
-
-
-def logloss(p: list[float], hit: int) -> float:
-    return -math.log(max(1e-9, min(1.0, p[hit])))
-
-
-def boot_ci(vals: list[float], *, n: int = 2000) -> tuple[float, float]:
-    if len(vals) < 2:
-        return (float("nan"), float("nan"))
-    rnd = random.Random(7)
-    got = []
-    for _ in range(n):
-        said = [vals[rnd.randrange(len(vals))] for _ in vals]
-        got.append(sum(said) / len(said))
-    got.sort()
-    return got[int(0.025 * n)], got[int(0.975 * n)]
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **지표는 `app/core/metrics.py` 하나다**(지시서 §1 · 사본 금지)
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 종전에는 브라이어·로그 손실·부트스트랩이 이 파일과 `score_cards.py`·
+#     `judge_models.py` 에 **세 벌**이었다 — 한쪽만 고치면 두 보고가 다른 수를
+#     말한다. 🔴 이름만 여기 두고 **몸은 한 곳**이다.
+from app.core.metrics import boot_ci, brier, logloss, rps  # noqa: E402
 
 
 def elo_probs(dr: float, *, kind: str) -> list[float]:
@@ -215,27 +205,63 @@ async def main() -> None:
         hit = sum(1 for p, h in box if _pf2.direction_hit(list(p), h))
         print(f"| {name} | {len(box)} | **{hit / len(box):.1%}** |")
     print()
-    print("| 모형 | n | 브라이어 | 95% 구간 | 로그 손실 |")
-    print("|---|---|---|---|---|")
-    got_b: dict[str, list[float]] = {}
+    # 🔴🔴 **주지표는 로그 손실**이다(지시서 2026-10-12 §1) — 브라이어는 참고다
+    print("| 모형 | n | **로그 손실** | 95% 구간 | RPS | 브라이어 |")
+    print("|---|---|---|---|---|---|")
+    got_l: dict[str, list[float]] = {}
     for name, box in models.items():
         b = [brier(p, hit) for p, hit in box]
         ll = [logloss(p, hit) for p, hit in box]
-        lo, hi = boot_ci(b)
-        got_b[name] = b
-        print(f"| {name} | {len(box)} | **{sum(b) / len(b):.4f}** | "
-              f"{lo:.4f}~{hi:.4f} | {sum(ll) / len(ll):.4f} |")
+        rp = [rps(p, hit) for p, hit in box]
+        lo, hi = boot_ci(ll)
+        got_l[name] = ll
+        print(f"| {name} | {len(box)} | **{sum(ll) / len(ll):.4f}** | "
+              f"{lo:.4f}~{hi:.4f} | {sum(rp) / len(rp):.4f} | "
+              f"{sum(b) / len(b):.4f} |")
     print()
-    print("| 차이(봇 − 기준) | 브라이어 차 | 95% 구간 | 판정 |")
+    # 🔴 판정 규칙은 `metrics.verdict_of` **하나다**(결과를 보고 고치지 않는다)
+    from app.core import metrics as _me
+    print("| 짝지은 차이(봇 − 기준) | 로그 손실 차 | 95% 구간 | 판정 |")
     print("|---|---|---|---|")
-    mine = got_b.get("**새 구조**(Elo 바닥+축0·축1)") or got_b["봇(옛 구조 · 네 축)"]
+    mine = got_l.get("**새 구조**(Elo 바닥+축0·축1)") or got_l["봇(옛 구조 · 네 축)"]
     for name in ("Elo만", "리그 기본률", "균등 33/33/33"):
-        diff = [x - y for x, y in zip(mine, got_b[name], strict=True)]
-        lo, hi = boot_ci(diff)
-        said = ("⚠️ 0 을 품는다" if lo <= 0 <= hi
-                else ("🔴 **봇이 나쁘다**" if lo > 0 else "✅ **봇이 낫다**"))
-        print(f"| vs {name} | {sum(diff) / len(diff):+.4f} | "
-              f"{lo:+.4f}~{hi:+.4f} | {said} |")
+        got = _me.paired(mine, got_l[name])
+        print(f"| vs {name} | {got['mean']:+.4f} | "
+              f"{got['lo']:+.4f}~{got['hi']:+.4f} | "
+              f"**{_me.verdict_of(got)}** |")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **리그·시즌별**(지시 §1) + **하위 그룹 보정표**(§1 마지막 줄 · §8)
+    # ══════════════════════════════════════════════════════════════════
+    print()
+    print("| 묶음 | n | 새 구조 로그손실 | Elo만 | 차 | 95% 구간 | 판정 |")
+    print("|---|---|---|---|---|---|---|")
+    for field in ("league", "season"):
+        seen = sorted({str(r.get(field) or "?") for r in scored})
+        for one in seen:
+            sub = [r for r in scored if str(r.get(field) or "?") == one]
+            if len(sub) < 20:
+                print(f"| {field} {one} | {len(sub)} | 표본 부족(<20) | — | — "
+                      f"| — | — |")
+                continue
+            a = [logloss(list(r["fresh"] or r["ours"]), r["hit"]) for r in sub]
+            b2 = [logloss(elo_probs(r["dr"], kind=r["league"]), r["hit"])
+                  for r in sub]
+            got = _me.paired(a, b2)
+            print(f"| {field} {one} | {len(sub)} | {sum(a) / len(a):.4f} | "
+                  f"{sum(b2) / len(b2):.4f} | {got['mean']:+.4f} | "
+                  f"{got['lo']:+.4f}~{got['hi']:+.4f} | "
+                  f"**{_me.verdict_of(got)}** |")
+    print()
+    print("**하위 그룹 보정표**(홈 승 칸 · 평균 예측 − 실제 · 양수 = 과대평가)")
+    print()
+    print("| 그룹 | n | 편향 | 95% 구간 |")
+    print("|---|---|---|---|")
+    rows_c = [{"p": list(r["fresh"] or r["ours"]), "hit": r["hit"],
+               "g": f"{r.get('league')}·{r.get('season') or '?'}"}
+              for r in scored]
+    for name, box in sorted(_me.calib(rows_c, group="g").items()):
+        print(f"| {name} | {box['n']} | {box['bias']:+.4f} | "
+              f"{box['lo']:+.4f}~{box['hi']:+.4f} |")
     # ── 🔴 4번 — 축별 단독 예측력(상관)과 "Elo만 + 축 하나" 전진 선택
     print()
     print("| 축 | n(≠0) | 득실차 상관 | Elo만+그 축 로그손실 | 개선 |")
