@@ -36,6 +36,39 @@ logger = logging.getLogger("backfill_score")
 from app.core.metrics import boot_ci, brier, logloss, rps  # noqa: E402
 
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **옛 구조의 잔차 섞기**(손값 β) — §3 이 `probfloor` 에서 걷어 낸 식이다
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 지시서 2026-10-12 §3: *"손값 β 삭제"*. 🔴 그런데 **비교 기준**으로는 아직
+#     필요하다(§1: 후보를 **기준과** 견준다) — 그래서 `app/` 에서 걷고 **채점기**
+#     안에 둔다. 운영 확률은 이 식을 쓰지 않는다.
+def legacy_blend(floor: list[float] | None, *, gaps: dict, weights: dict,
+                 beta: float) -> tuple[list[float] | None, str]:
+    """🔴 바닥에 **축0·축1 잔차**를 얹는다(옛 구조 · 손값 β). 사유를 함께 돌려준다."""
+    from app.core.probfloor import RESIDUAL_AXES
+    if not floor:
+        return None, "🔴 바닥이 없다 — 잔차를 얹지 않는다"
+    tilt = 0.0
+    said: list[str] = []
+    for name in RESIDUAL_AXES:
+        got = float(dict(gaps or {}).get(name) or 0.0)
+        w = float(dict(weights or {}).get(name) or 0.0)
+        if got and w:
+            tilt += w * got
+            said.append(f"{name} {got:+.3f}×{w:g}")
+    if not tilt:
+        return list(floor), "잔차 0 — 바닥 그대로(축0·축1 이 비었다)"
+    move = float(beta) * tilt
+    home = float(floor[0]) * math.exp(move)
+    away = float(floor[2]) * math.exp(-move)
+    draw = float(floor[1])
+    tot = home + draw + away
+    out = [home / tot, draw / tot, away / tot]
+    return out, (f"잔차 {' · '.join(said)} → 합 {tilt:+.3f} × β {beta:g} = "
+                 f"로그 오즈 {move:+.3f}")
+
+
 def elo_probs(dr: float, *, kind: str) -> list[float]:
     """🔴 **Elo만** 기준 — 입구는 `app/core/base.triple_of` **하나다**(사본 금지).
 
@@ -144,7 +177,8 @@ async def main() -> None:
             # 🔴🔴 **새 구조**(사용자 지시 2026-10-12 1번) — Elo 바닥 + 축0·축1 잔차
             from app.core import probfloor as _pf
             floor, _wf = _pf.floor_of(kind=name, dr=dr)
-            fresh, _wb = _pf.blend(floor, gaps=gaps, weights=conf, beta=beta)
+            fresh, _wb = legacy_blend(floor, gaps=gaps, weights=conf,
+                                      beta=beta)
             rows_all.append({"season": str(one.get("season") or ""),
                              "floor": floor, "fresh": fresh,
                              "league": name, "day": str(one.get("utc"))[:10],
@@ -195,14 +229,14 @@ async def main() -> None:
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **방향 적중률** — 지표 고정(사용자 지시 2026-10-12) · 보고 첫 줄
     # ══════════════════════════════════════════════════════════════════
-    from app.core import probfloor as _pf2
+    from app.core import metrics as _me2
     print()
     print("| 모형 | n | **방향 적중률** |")
     print("|---|---|---|")
     for name, box in models.items():
         if not box:
             continue
-        hit = sum(1 for p, h in box if _pf2.direction_hit(list(p), h))
+        hit = sum(1 for p, h in box if _me2.direction_hit(list(p), h))
         print(f"| {name} | {len(box)} | **{hit / len(box):.1%}** |")
     print()
     # 🔴🔴 **주지표는 로그 손실**이다(지시서 2026-10-12 §1) — 브라이어는 참고다

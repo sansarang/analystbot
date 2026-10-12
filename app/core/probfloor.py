@@ -1,4 +1,9 @@
-"""🔴🔴 **확률 경로 재구성 — Elo 바닥 + 상성 잔차**(사용자 지시 2026-10-12 1번).
+"""🔴🔴 **확률 변환 — λ 식 하나**(지시서 2026-10-12 엔진 교체 §3 · 적중률 1번).
+
+⚠️ **2026-10-12 §3 로 바뀐 것**: 손값 β 로 바닥을 기울이던 `blend` 는 이 파일에서
+   **걷었다**(그 식은 옛 구조의 비교용이라 `tools/backfill_score.py` 로 옮겼다).
+   🔴 이 파일의 λ 는 이제 **적합된 계수**(`b0`·`b1`·`b2`·`h_league`·ρ)만 쓴다.
+   `direction_hit` 도 걷었다 — 지표는 `app/core/metrics.py` 하나다(사본 금지).
 
 > ③ **Elo → 바닥 λ/승무패**. ⑪ **축0·축1만**(Elo 대비 잔차).
 > **축2·축3·⑩ 전략 판정은 확률 경로 밖**(표시·검증).
@@ -46,37 +51,6 @@ def floor_of(*, kind: str, dr: float | None) -> tuple[list[float] | None, str]:
             f"Elo 바닥(순서형 로짓 · 등급 차 {float(dr):+.1f}) — {why}")
 
 
-def blend(floor: list[float] | None, *, gaps: dict, weights: dict,
-          beta: float) -> tuple[list[float] | None, str]:
-    """🔴🔴 ⑪ — 바닥에 **축0·축1 잔차**를 얹는다. `([홈, 무, 원정], 사유)`.
-
-    🔴 잔차는 **로그 오즈 이동**이다: `exp(β × Σ 비중×축차)` 를 홈 쪽에 곱하고
-       원정 쪽에 나눈다(무는 그대로 두고 **다시 정규화**한다).
-    ⚠️ `RESIDUAL_AXES` 밖의 축은 **읽지 않는다** — 계약이 그것을 센다.
-    """
-    if not floor:
-        return None, "🔴 바닥이 없다 — 잔차를 얹지 않는다"
-    tilt = 0.0
-    said: list[str] = []
-    for name in RESIDUAL_AXES:
-        got = float(dict(gaps or {}).get(name) or 0.0)
-        w = float(dict(weights or {}).get(name) or 0.0)
-        if got and w:
-            tilt += w * got
-            said.append(f"{name} {got:+.3f}×{w:g}")
-    if not tilt:
-        return list(floor), "잔차 0 — 바닥 그대로(축0·축1 이 비었다)"
-    move = float(beta) * tilt
-    home = float(floor[0]) * math.exp(move)
-    away = float(floor[2]) * math.exp(-move)
-    draw = float(floor[1])
-    tot = home + draw + away
-    out = [home / tot, draw / tot, away / tot]
-    return out, (f"잔차 {' · '.join(said)} → 합 {tilt:+.3f} × β {beta:g} = "
-                 f"로그 오즈 {move:+.3f} · 바닥 {floor[0]:.0%}/{floor[1]:.0%}/"
-                 f"{floor[2]:.0%} → {out[0]:.0%}/{out[1]:.0%}/{out[2]:.0%}")
-
-
 def solve_move(want: list[float] | None, *, mean: float, mul_home: float,
                mul_away: float, tries: int = 40
                ) -> tuple[float | None, str]:
@@ -118,8 +92,130 @@ def solve_move(want: list[float] | None, *, mean: float, mul_home: float,
                  f"(시뮬 {_home(got):.1%})")
 
 
-def direction_hit(p: list[float], hit: int) -> bool:
-    """🔴 **방향 적중** — 가장 높은 칸이 결과와 같나(지표 고정 · 매 보고 첫 줄)."""
-    if not p:
-        return False
-    return int(max(range(3), key=lambda i: float(p[i]))) == int(hit)
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **§3 확률 변환 — 손값 β 를 지운 식 하나**(지시서 2026-10-12 §3)
+# ══════════════════════════════════════════════════════════════════
+#
+#  > log λ홈  = b0 + b1·diff + b2·player_diff + h_league [+ 채택 항]
+#  > log λ원정 = b0 − b1·diff − b2·player_diff
+#  > 그 위에 **Dixon-Coles ρ**(리그별) → 스코어 격자 → 승무패·오버·핸디·BTTS
+#  > **전부 같은 격자에서**.
+#
+#  🔴 왜 — 종전에는 λ 를 *"리그 평균 × 홈 배율 × exp(β×축합)"* 으로 만들었고 β 는
+#     **손값**이었다(`matchup_model.yaml: beta 0.25` · `fit.provisional: true`).
+#     그러면 *"무엇이 λ 를 움직였나"* 를 적합이 말하지 않는다.
+#  🔴 이제 계수는 **포아송 최대우도**가 정하고 **판 파일**에 적힌다
+#     (`data/probfloor/<리그>/<날>.yaml` · `tools/fit_probfloor.py`).
+#  🔴 홈 이점은 `h_league` **한 자리**다(계약 P3) — 리그 배율을 따로 곱하지 않는다.
+#  ⚠️ 승격 전까지 운영 ⑯ 은 **옛 식**으로 돈다(§0: 백필 판정을 통과한 판만 승격).
+
+#: 🔴 격자 상한 — 한 팀 최대 골(그 위는 꼬리가 1e-6 보다 작다)
+GRID_MAX = 12
+
+#: 🔴 계수 판이 사는 표
+COEF_TABLE = "probfloor"
+
+#: 🔴 식에 들어가는 이름 — `fit_probfloor` 가 **이 목록만** 적합한다
+COEF_NAMES: tuple[str, ...] = ("b0", "b1", "b2", "h_league", "rho")
+
+
+def lambdas(*, diff: float, player_diff: float, coef: dict,
+            extra_home: float = 0.0, extra_away: float = 0.0
+            ) -> tuple[dict, str]:
+    """🔴🔴 §3 — **λ 두 개**를 그 식 하나로 만든다. `({home, away}, 사유)`.
+
+    🔴 `extra_*` 는 **§6 에서 채택된 항**만 들어오는 자리다(채택 안 된 항은 0 —
+       계약 C6-2). ⚠️ 홈 이점은 `h_league` 로만 들어온다(계약 P3).
+    """
+    b0 = float(dict(coef).get("b0") or 0.0)
+    b1 = float(dict(coef).get("b1") or 0.0)
+    b2 = float(dict(coef).get("b2") or 0.0)
+    h = float(dict(coef).get("h_league") or 0.0)
+    log_h = b0 + b1 * float(diff) + b2 * float(player_diff) + h + float(extra_home)
+    log_a = b0 - b1 * float(diff) - b2 * float(player_diff) + float(extra_away)
+    out = {"home": math.exp(log_h), "away": math.exp(log_a)}
+    said = (f"λ {out['home']:.3f}/{out['away']:.3f} ← b0 {b0:+.3f} · "
+            f"diff {float(diff):+.3f}×b1 {b1:.3f} · 선수 차 "
+            f"{float(player_diff):+.3f}×b2 {b2:.3f} · h_league {h:+.3f}")
+    if extra_home or extra_away:
+        said += f" · 채택 항 홈 {float(extra_home):+.3f}/원정 {float(extra_away):+.3f}"
+    return out, said
+
+
+def score_grid(*, lam_home: float, lam_away: float, rho: float = 0.0,
+               nmax: int = GRID_MAX) -> dict:
+    """🔴🔴 **스코어 격자 하나** — `{(홈골, 원정골): 확률}`(합 1.0).
+
+    🔴 **Dixon-Coles ρ** 는 낮은 스코어 **네 칸**(0-0·1-0·0-1·1-1)만 고친다 —
+       포아송 둘이 서로 모른다고 보면 **무승부가 모자란다**(실측된 축구의 성질).
+    ⚠️ 고친 뒤 **다시 정규화**한다(합이 1 이어야 한다).
+    """
+    import math as _m
+
+    def pois(k: int, lam: float) -> float:
+        return _m.exp(-lam) * (lam ** k) / _m.factorial(k)
+
+    out: dict = {}
+    for h in range(int(nmax) + 1):
+        for a in range(int(nmax) + 1):
+            out[(h, a)] = pois(h, float(lam_home)) * pois(a, float(lam_away))
+    r = float(rho)
+    if r:
+        lh, la = float(lam_home), float(lam_away)
+        tau = {(0, 0): 1.0 - lh * la * r, (0, 1): 1.0 + lh * r,
+               (1, 0): 1.0 + la * r, (1, 1): 1.0 - r}
+        for key, mul in tau.items():
+            out[key] = max(0.0, out[key] * mul)
+    tot = sum(out.values())
+    return {k: v / tot for k, v in out.items()}
+
+
+def markets_of(grid: dict) -> dict:
+    """🔴🔴 **P2** — 승무패·오버·핸디·BTTS 를 **그 격자 하나**에서 센다.
+
+    ⚠️ 한 마켓이라도 다른 곳에서 세면 카드의 두 줄이 **서로 다른 말**을 한다.
+    """
+    out: dict = {"home": 0.0, "draw": 0.0, "away": 0.0,
+                 "btts_yes": 0.0, "btts_no": 0.0,
+                 "over": {}, "ah": {}}
+    tot_lines = (0.5, 1.5, 2.5, 3.5, 4.5)
+    over = dict.fromkeys(tot_lines, 0.0)
+    ah = {f"home{l:+.1f}": 0.0 for l in (-2.5, -1.5, -0.5, 0.5, 1.5, 2.5)}
+    for (h, a), p in dict(grid).items():
+        if h > a:
+            out["home"] += p
+        elif h == a:
+            out["draw"] += p
+        else:
+            out["away"] += p
+        if h > 0 and a > 0:
+            out["btts_yes"] += p
+        else:
+            out["btts_no"] += p
+        for line in tot_lines:
+            if h + a > line:
+                over[line] += p
+        for key in ah:
+            line = float(key.replace("home", ""))
+            if (h - a) + line > 0:
+                ah[key] += p
+    out["over"] = {k: round(v, 6) for k, v in over.items()}
+    out["ah"] = {k: round(v, 6) for k, v in ah.items()}
+    return out
+
+
+def load_coef(*, league: str, as_of=None) -> tuple[dict | None, str]:
+    """🔴🔴 계수 판을 읽는다 — **없으면 `(None, 사유)`**(손값으로 안 돈다 · §0).
+
+    🔴 판을 고르는 곳은 `app/core/versions.py` 하나다(L3 · as_of 이전 최신).
+    """
+    from app.core import versions as _v
+    box = _v.path_of(COEF_TABLE, str(league).replace(":", "_"))
+    try:
+        got, why = _v.pick(box, as_of=as_of)
+    except ValueError as exc:
+        return None, f"🔴 계수 판 없음 — {exc}"
+    if not got or not all(str(n) in got for n in ("b0", "b1")):
+        return None, (f"🔴 `{league}` **계수 판이 없다**({why}) — 확률을 만들지 "
+                      f"않는다(`tools/fit_probfloor.py` 로 적합해야 한다)")
+    return dict(got), f"계수 {why}"

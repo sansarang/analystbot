@@ -122,8 +122,10 @@ def main(argv: list[str]) -> int:
         got = _base.triple_from(c1=co["c1"], c2=co["c2"], b_dr=co["b_dr"],
                                 dr=float(r["dr"]))
         floor = [got.home, got.draw, got.away]
-        fresh, _w = _pf.blend(floor, gaps=dict(r.get("gaps") or {}),
-                              weights=conf, beta=beta)
+        # 🔴 옛 구조 잔차 식은 **채점기**에 있다(§3 가 `probfloor` 에서 걷었다)
+        from backfill_score import legacy_blend as _blend
+        fresh, _w = _blend(floor, gaps=dict(r.get("gaps") or {}),
+                           weights=conf, beta=beta)
         pairs.append({"hit": int(r["hit"]), "new": fresh, "old": list(r["ours"]),
                       "floor": floor, "league": r.get("league"),
                       "season": r["season"]})

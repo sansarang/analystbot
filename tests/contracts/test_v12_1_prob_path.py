@@ -49,10 +49,22 @@ def test_residual_uses_axis0_and_axis1_only() -> None:
     assert tuple(pf.RESIDUAL_AXES) == ("axis0", "axis1")
 
 
+# ⚠️ **옮긴 자리 2026-10-12**: 손값 β 로 바닥을 기울이던 `probfloor.blend` 는
+#    엔진 교체 지시서 §3(*"손값 β 삭제"*)으로 `app/` 에서 걷혔고, **비교 기준**
+#    으로만 쓰이므로 채점기(`tools/backfill_score.legacy_blend`)로 갔다.
+#    🔴 지키는 것은 그대로다 — 잔차는 **축0·축1만**이고 축2·축3 은 확률을 못 민다.
+
+def _blend():
+    import sys
+    sys.path.insert(0, str(ROOT / "tools"))
+    from backfill_score import legacy_blend
+    return legacy_blend
+
+
 def test_residual_moves_the_floor() -> None:
     from app.core import probfloor as pf
     flat, _w = pf.floor_of(kind="league:J1", dr=0.0)
-    got, why = pf.blend(flat, gaps={"axis0": 1.0, "axis1": 1.0},
+    got, why = _blend()(flat, gaps={"axis0": 1.0, "axis1": 1.0},
                         weights={"axis0": 0.3, "axis1": 0.3}, beta=0.25)
     assert got[0] > flat[0], (flat, got, why)
 
@@ -60,12 +72,13 @@ def test_residual_moves_the_floor() -> None:
 def test_axis2_axis3_cannot_move_the_probability() -> None:
     """🔴 축2·축3 을 넣어도 **확률이 안 바뀐다**(경로 밖이다)."""
     from app.core import probfloor as pf
+    blend = _blend()
     flat, _w = pf.floor_of(kind="league:J1", dr=50.0)
-    a, _w1 = pf.blend(flat, gaps={"axis0": 0.5}, weights={"axis0": 0.3},
-                      beta=0.25)
-    b, _w2 = pf.blend(flat, gaps={"axis0": 0.5, "axis2": 2.0, "axis3": -2.0},
-                      weights={"axis0": 0.3, "axis2": 0.2, "axis3": 0.2},
-                      beta=0.25)
+    a, _w1 = blend(flat, gaps={"axis0": 0.5}, weights={"axis0": 0.3},
+                   beta=0.25)
+    b, _w2 = blend(flat, gaps={"axis0": 0.5, "axis2": 2.0, "axis3": -2.0},
+                   weights={"axis0": 0.3, "axis2": 0.2, "axis3": 0.2},
+                   beta=0.25)
     assert a == b, (a, b)
 
 

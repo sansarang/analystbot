@@ -628,8 +628,6 @@ TOOL_ONLY: dict[str, str] = {
     #    ⚠️ 아래 셋은 **백필 채점기 전용**이다(바닥·잔차를 승무패 수준에서 직접
     #    섞는 길 · 운영은 λ 수준에서 섞는다).
     "app.core.probfloor.floor_of": "tools/backfill_score.py",
-    "app.core.probfloor.blend": "tools/backfill_score.py",
-    "app.core.probfloor.direction_hit": "tools/backfill_score.py",
     # 🔴🔴 **§1 평가 지표**(지시서 2026-10-12 엔진 교체) — 지표는 `app/` 에 한 곳에
     #    두고 **도구들이** 부른다(사본 금지). ⚠️ 운영 카드 채점이 같은 지표를 써야
     #    하므로 `app/` 에 있고, 운영 확률 경로는 이것을 **안 부른다**(검증 전용).
@@ -637,6 +635,12 @@ TOOL_ONLY: dict[str, str] = {
     #    이다(§0: *"운영 확률은 현 새 구조 그대로 두고, 백필 판정을 통과한 판만
     #    운영으로 승격"*). 🔴 적합·비교는 도구가 부른다.
     #    ⚠️ 운영 ③ 에 잇는 것은 **§2 판정이 끝난 뒤**다.
+    # 🔴🔴 **§3 새 λ 식**(지시서 2026-10-12 §3) — 적합 도구가 부른다. ⚠️ 운영 ⑯ 에
+    #    잇는 것은 **§3 판정이 끝난 뒤**다(§0 승격 절차 · §10).
+    "app.core.probfloor.lambdas": "tools/fit_probfloor.py",
+    "app.core.probfloor.load_coef": "tools/fit_probfloor.py",
+    "app.core.probfloor.score_grid": "tools/compare_engines.py",
+    "app.core.probfloor.markets_of": "tools/compare_engines.py",
     "app.core.ratings.load_params": "tools/fit_ratings.py",
     "app.core.ratings.elo.rate": "tools/fit_ratings.py",
     "app.core.ratings.elo.prob_input": "tools/fit_ratings.py",
