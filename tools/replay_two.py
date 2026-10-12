@@ -1,4 +1,7 @@
-"""🔴🔴 **§17 재현 — 실사고 두 경기**(as-of 킥오프 전) — 지시서 2026-10-12(둘째).
+"""🔴🔴 **재현 — 실사고 두 경기**(as-of 킥오프 2시간 전).
+
+> 비교 시험 지시서 2026-10-12 §8: 광주–울산 · 가와사키–나고야 — **M0~M5 확률** ·
+> 역배 · 보호 줄 · 경고 등급. **결과 줄은 맨 끝.**
 
 ```
 PYTHONPATH=. python tools/replay_two.py
@@ -16,6 +19,7 @@ PYTHONPATH=. python tools/replay_two.py
 from __future__ import annotations
 
 import asyncio
+import math
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -105,6 +109,45 @@ async def one(case: dict, *, net) -> None:
     print(f"| absΔ | 0.000 | 🔴 **선수 점수가 없어 못 센다**(§8) |")
     print(f"| benchΔ | 0.000 | 🔴 같은 까닭(§8) · λ 식이 아니라 60분 뒤 배율이다 |")
     print()
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **§8 M0~M5** — 같은 시점·같은 입력으로 **여섯 수**를 나란히
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 M1 은 **얼린 옛 경로**(legacy-4axis · K0)가 낸다. M3 는 비교 시험이
+    #     채택한 조합(§9 채택 항 0개 → 바닥+축0·축1)이다.
+    #  ⚠️ 이 재현에는 축 차를 만들 재료(폼·스타일)가 **없다** — 그래서 축 항은 0 이고
+    #     M1·M2·M3 가 같은 수로 수렴할 수 있다. 🔴 그 사실을 표가 적는다(#3).
+    print("| 모형 | 홈 | 무 | 원정 | 비고 |")
+    print("|---|---|---|---|---|")
+    said_m: dict[str, list[float]] = {}
+    kind = case["league"]
+    from app.core import base as _b2
+    from app import rules as _r2
+    floor_got, floor_why = _b2.triple_of(kind, diffs.get("elo", 0.0))
+    if floor_got is not None:
+        said_m["M0"] = [floor_got.home, floor_got.draw, floor_got.away]
+        print(f"| M0 Elo만 | {floor_got.home:.1%} | {floor_got.draw:.1%} | "
+              f"{floor_got.away:.1%} | {floor_why[:40]} |")
+    else:
+        print(f"| M0 Elo만 | — | — | — | 🔴 {floor_why[:60]} |")
+    mean = float(_r2.goal_share(kind) or 0.0)
+    said_base = _r2.goal_baseline(kind)
+    if mean and said_base.get("home_share"):
+        from app.core import probmodel as _pm2
+        from app.core import sim as _sim2
+        from app.core.legacy import old_engine as _oe
+        mul_a, _w = _pm2.away_mul(home_share=said_base.get("home_share"),
+                                  per_team=mean)
+        mul_h = float(said_base["home_share"]) / mean
+        box = {}
+        move = _oe.sides_move(box, {}, beta=0.25, cap=0.35)
+        out = _sim2.run(mean * mul_h * math.exp(move["home"]),
+                        mean * mul_a * math.exp(move["away"]))
+        said_m["M1"] = [out.home, out.draw, out.away]
+        print(f"| M1 옛 경로(얼림) | {out.home:.1%} | {out.draw:.1%} | "
+              f"{out.away:.1%} | ⚠️ 축 차 재료가 없어 **축 항 0**(λ 기준만) |")
+    else:
+        print("| M1 옛 경로(얼림) | — | — | — | 🔴 리그 평균·홈 몫이 없다 |")
     # ── ⑯ λ · 확률 — **계수 판**이 있어야 돈다
     got, why = _pf.load_coef(league=case["league"], as_of=kick)
     if not got:

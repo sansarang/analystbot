@@ -46,3 +46,29 @@ def test_legacy_keeps_all_four_axes() -> None:
     # 🔴 축2·축3 이 **움직인다** — 새 구조에서는 안 움직인다(v12 계약이 그것을 센다)
     only0 = oe.sides_move({"axis0": one}, {"axis0": 0.3}, beta=0.25, cap=0.35)
     assert said["home"] > only0["home"], (said, only0)
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **§6 운영 그림자 기간** — 카드마다 M1·M3 를 **둘 다** 기록
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 판정과 무관하게 지금부터 운영 카드마다 **M1·M3 확률을 둘 다** 기록
+#  > (최종 확률은 현 운영판). 결과 30경기마다 같은 지표로 자동 채점·보고.
+
+
+def test_shadow_comes_from_the_frozen_engine() -> None:
+    """🔴 그림자(M1)는 **얼린 옛 경로**가 낸다 — 다시 계산한 수가 아니다."""
+    said = (ROOT / "app/core/probmodel.py").read_text(encoding="utf-8")
+    i = said.index("got.shadow")
+    head = said[max(0, i - 1200):i]
+    assert "legacy import old_engine" in head or "_oe.run(" in said[i - 800:i]
+    assert "M1" in said[i:i + 600]
+
+
+def test_card_records_both_numbers() -> None:
+    """🔴 카드가 **최종(M3)·그림자(M1)·바닥** 셋을 적는다(채점이 그것을 읽는다)."""
+    said = (ROOT / "app/core/render.py").read_text(encoding="utf-8")
+    assert "그림자 확률" in said and "바닥(Elo)" in said
+    got = (ROOT / "tools/score_cards.py").read_text(encoding="utf-8")
+    for want in ("SHADOW", "FLOOR", "REPORT_EVERY"):
+        assert want in got, want

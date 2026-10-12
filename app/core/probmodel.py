@@ -399,9 +399,28 @@ def run(ref, facts, mr, varset, *, edge: dict | None = None,
         got.floor = {"home": round(said_floor[0], 4),
                      "draw": round(said_floor[1], 4),
                      "away": round(said_floor[2], 4)}
-        got.shadow = {"home": got.home, "draw": got.draw, "away": got.away,
-                      "lam": dict(got.lam or {}),
-                      "why": "옛 구조(네 축 · 표시만 · 판정에 안 쓴다)"}
+        # 🔴🔴 **§6 운영 그림자 기간**(비교 시험 지시서 2026-10-12 §6):
+        #    *"운영 카드마다 **M1·M3 확률을 둘 다** 기록(최종 확률은 현 운영판)"*.
+        #  🔴 M1 은 **얼린 옛 경로**가 낸다(`legacy/old_engine` · 계약 K0) —
+        #     이 모듈이 다시 계산한 수가 아니다. ⚠️ 그래야 30경기 뒤 채점이
+        #     *"백필의 M1"* 과 **같은 모형**을 센다.
+        #  ⚠️ 얼린 경로가 수를 못 내면 그 사실을 적고(사유) 이 모듈의 네 축 수를 둔다.
+        from app.core.legacy import old_engine as _oe
+        said_m1 = None
+        try:
+            said_m1 = _oe.run(ref, facts, mr, varset, edge=edge, state=None)
+        except Exception as exc:                            # noqa: BLE001
+            logger.info("[S3] 그림자(M1) 실패 — %r", exc)
+        if said_m1 is not None and said_m1.ok():
+            got.shadow = {"home": said_m1.home, "draw": said_m1.draw,
+                          "away": said_m1.away, "lam": dict(said_m1.lam or {}),
+                          "why": ("M1 **얼린 옛 경로**(legacy-4axis · 네 축) — "
+                                  "표시·채점용이고 판정에 안 쓴다")}
+        else:
+            got.shadow = {"home": got.home, "draw": got.draw, "away": got.away,
+                          "lam": dict(got.lam or {}),
+                          "why": ("🔴 얼린 옛 경로가 수를 못 냈다 — 이 모듈의 "
+                                  "네 축 수를 둔다(표시만)")}
         from app.core import probfloor as _pf
         m0, why_m0 = _pf.solve_move(said_floor, mean=mean, mul_home=mul,
                                     mul_away=mul_a)
