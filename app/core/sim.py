@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
@@ -86,6 +87,24 @@ def minute_rates(lam_home: float, lam_away: float, *,
             out = [(r[0] * (scale if idx == 0 else 1.0),
                     r[1] * (scale if idx == 1 else 1.0)) for r in out]
     return out
+
+
+def bench_shift(rates: list[tuple[float, float]], mul: float
+                ) -> list[tuple[float, float]]:
+    """🔴🔴 §8(c) — **60분 이후** 득점률을 팀 사이로 옮긴다. 경기 전체 λ 보존.
+
+    🔴 `mul = exp(d1·benchΔ)` — 홈 쪽에 곱하고 원정 쪽에 나눈다(`BENCH_FROM` 뒤).
+    🔴 그 뒤 **두 팀 합**을 원래 합으로 되맞춘다(지시의 ±2% 안에 들어온다 —
+       정확히 보존하므로 0% 다). ⚠️ 팀별 λ 는 **일부러** 바뀐다(그래야 효과가 있다).
+    """
+    want = sum(h + a for h, a in rates)
+    out = [(h * mul, a / mul) if i + 1 > BENCH_FROM else (h, a)
+           for i, (h, a) in enumerate(rates)]
+    tot = sum(h + a for h, a in out)
+    if tot <= 0:
+        return rates
+    scale = want / tot
+    return [(h * scale, a * scale) for h, a in out]
 
 
 #: 🔴 상태 이름 — **표의 열쇠**다(`staterates` 가 같은 글자를 쓴다)
@@ -180,9 +199,15 @@ def _run_with_table(rates: list, table: dict, lam_home: float,
     return _sum(box, buckets=acc)
 
 
+#: 🔴🔴 **벤치 배율이 걸리는 분**(지시서 2026-10-12(둘째) §8 · 계약 C8-2) —
+#  교체는 그 뒤에 들어온다. ⚠️ 이 수를 두 곳에 적지 않는다.
+BENCH_FROM = 60
+
+
 def run(lam_home: float, lam_away: float, *, late_home: float = 0.0,
         late_away: float = 0.0, lead_mul: dict | None = None,
-        state_mult: dict | None = None) -> Out:
+        state_mult: dict | None = None, bench_d: float = 0.0,
+        bench_coef: float = 0.0) -> Out:
     """🔴🔴 §4 — **분 단위 전진으로 스코어 분포**를 만든다(해석 계산).
 
     `lead_mul` 은 **상태 배율**이다:
@@ -199,12 +224,32 @@ def run(lam_home: float, lam_away: float, *, late_home: float = 0.0,
     #  🔴 실측 표(`state_mult`)가 오면 **그것만** 쓴다 — T11 임시 배율
     #     (`lead_mul` 의 `leading`·`trailing`)은 같은 효과이므로 **끈다**.
     #  ⚠️ 표가 없으면 T11 이 그대로 돈다(퇴로를 끊지 않는다).
+    # ══════════════════════════════════════════════════════════════
+    # 🔴🔴 **§8(c) 벤치 강도 — 60분 이후에만**(계약 C8-2)
+    # ══════════════════════════════════════════════════════════════
+    #
+    #  > `λ_60+ ×= exp(±d1·benchΔ)` · 정규화로 경기 전체 λ **±2%**.
+    #
+    #  🔴 길은 **`late_*` 와 같은 길**이다(사본 금지) — 그 함수가 이미 *"61분
+    #     이후에 걸고 전체 합을 되맞춘다"* 를 한다. 그래서 전체 λ 가 보존된다.
+    #  ⚠️ `bench_coef`(d1)는 **백필이 적합한 수**다 — 없으면 0 이고 아무 일도
+    #     일어나지 않는다(손값 금지).
+    #  🔴🔴 **실측으로 배운 것 2026-10-12**: 벤치 배율을 `late_*` 처럼 걸고 **팀별
+    #     λ 를 되맞추면 효과가 정확히 0 이 된다** — 포아송 합의 분포는 **적분에만**
+    #     달려 있어서 분포 모양을 바꿔도 승무패가 한 치도 안 움직인다(계약이 그것을
+    #     잡았다: 0.41563 != 0.41563).
+    #  🔴 그래서 **경기 전체 λ**(두 팀 합)를 지키고 **팀 사이로 옮긴다** — 지시의
+    #     *"정규화로 경기 전체 λ ±2% 유지"* 가 그 뜻이다.
+    bench_mul = (math.exp(float(bench_coef) * float(bench_d))
+                 if (bench_coef and bench_d) else 1.0)
     said_tab = dict(state_mult or {})
     mul = {} if said_tab else dict(lead_mul or {})
     lead = float(mul.get("leading") or 1.0)
     trail = float(mul.get("trailing") or 1.0)
     rates = minute_rates(lam_home, lam_away, late_home=late_home,
                          late_away=late_away)
+    if bench_mul != 1.0:
+        rates = bench_shift(rates, bench_mul)
     if said_tab:
         return _run_with_table(rates, said_tab, lam_home, lam_away)
     # 🔴 상태 = `(홈 득점, 원정 득점, 선제골이 누구였나)`

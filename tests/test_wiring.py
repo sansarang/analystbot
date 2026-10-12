@@ -639,6 +639,14 @@ TOOL_ONLY: dict[str, str] = {
     #    들어가는 것은 **§9 전진 선택이 채택한 뒤**다(계약 S1). 지금 부르는 곳은
     #    전진 선택 도구다.
     "app.core.context.covariates": "tools/forward_terms.py",
+    # 🔴🔴 **§8 결장의 무게·벤치**(지시서 2026-10-12(둘째)) — 후보 판이다.
+    #    ⚠️ ⑪ 에 잇는 것은 §5(선수 점수 판)·§9 채택 뒤다(§15 승격 순서).
+    "app.core.ratings.lineup_strength.usual_xi": "tools/fit_player_pm.py",
+    "app.core.ratings.lineup_strength.absence_loss": "tools/fit_player_pm.py",
+    "app.core.ratings.lineup_strength.bench_mean": "tools/fit_player_pm.py",
+    # 🔴 §5 선수 ± — 적합 도구가 부른다(운영 ⑪ 은 §9 채택 뒤다)
+    "app.core.ratings.player_pm.fit": "tools/fit_player_pm.py",
+    "app.core.ratings.player_pm.value_of": "tools/fit_player_pm.py",
     # 🔴🔴 **§3 새 λ 식**(지시서 2026-10-12 §3) — 적합 도구가 부른다. ⚠️ 운영 ⑯ 에
     #    잇는 것은 **§3 판정이 끝난 뒤**다(§0 승격 절차 · §10).
     "app.core.probfloor.lambdas": "tools/fit_probfloor.py",
