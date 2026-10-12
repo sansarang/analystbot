@@ -42,6 +42,22 @@ def _logistic(x: float) -> float:
     return 1.0 / (1.0 + math.exp(-x))
 
 
+def triple_from(*, c1: float, c2: float, b_dr: float, dr: float) -> ProbTriple:
+    """🔴🔴 **순서형 로짓 한 줄** — 계수를 **받아서** 승·무·패를 낸다.
+
+    🔴 `triple_of`(설정에서 계수를 읽는 길)와 **같은 식**이다 — 사본 금지. 시즌
+       교차 시험(사용자 지시 2026-10-12 판정 시험 1번)은 *다른 시즌에서 적합한*
+       계수를 들고 와야 해서 이 입구가 필요하다.
+    """
+    eta = float(b_dr) * float(dr) / 100.0
+    lo, hi = _logistic(float(c1) - eta), _logistic(float(c2) - eta)
+    hi = max(hi, lo)
+    home, draw, away = 1.0 - hi, hi - lo, lo
+    tot = home + draw + away
+    h6, d6 = round(home / tot, 6), round(draw / tot, 6)
+    return ProbTriple(home=h6, draw=d6, away=round(1.0 - h6 - d6, 6))
+
+
 def triple_of(kind: str, dr: float) -> tuple[ProbTriple | None, str]:
     """🔴 §3-2 — 순서형 로짓으로 `dr` 을 승·무·패로 나눈다. `(확률, 사유)`.
 
@@ -59,13 +75,7 @@ def triple_of(kind: str, dr: float) -> tuple[ProbTriple | None, str]:
     if float(m.get("logloss", 0.0)) >= float(m.get("logloss_base", 1e9)):
         return None, (f"`{kind}` 모형이 기준선보다 나쁘다"
                       f"({m.get('logloss')} ≥ {m.get('logloss_base')})")
-    eta = b * float(dr) / 100.0
-    lo, hi = _logistic(c1 - eta), _logistic(c2 - eta)
-    hi = max(hi, lo)
-    home, draw, away = 1.0 - hi, hi - lo, lo
-    tot = home + draw + away
-    got = ProbTriple(home=round(home / tot, 6), draw=round(draw / tot, 6),
-                     away=round(1.0 - round(home / tot, 6) - round(draw / tot, 6), 6))
+    got = triple_from(c1=c1, c2=c2, b_dr=b, dr=float(dr))
     return got, (f"순서형 로짓 `{kind}`(표본 {m.get('n')}경기 · 적합 "
                  f"{m.get('fitted_at')} · logloss {m.get('logloss')})")
 

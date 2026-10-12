@@ -875,6 +875,21 @@ def parse_h2h(j: dict, q: Question, *, url: str, when) -> list[Fact]:
                      "matchUrl": str(m.get("matchUrl") or "")})
     if not rows:
         return []
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **L1 누설 금지 — 맞대결에도 문을 건다**(계약 L1)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실사고 2026-10-12(광주–울산 as-of 재현): 끝난 경기의 맞대결 표에는
+    #     **그 경기 자신**이 들어 있었다(4-3). 가설이 그 스코어를 근거로 적었다.
+    #  🔴 `when` 은 **이 경기의 킥오프**다(`parse_context` 가 `kickoff(j)` 로 준다).
+    #     문은 하나다 — `before_as_of`(날짜만 있는 줄이므로 `day_strict`).
+    had = len(rows)
+    rows = before_as_of(rows, as_of=when, key="date", day_strict=True)
+    if len(rows) != had:
+        logger.info("[fotmob] 맞대결 L1 — %d줄 중 %d줄만 썼다(킥오프 %s 이전)",
+                    had, len(rows), f"{when:%Y-%m-%d}")
+    if not rows:
+        return []
     # 🔴 **창을 자르고 표본 수로 weight 를 정한다**(§4 `h2h_pattern.sample_weight`).
     #
     #  ⚠️ 실측 2026-10-02: 같은 맞대결 30경기를 창만 바꿔 재니 3경기 창은 상대
@@ -2732,8 +2747,8 @@ def player_adv(j: dict) -> dict[str, dict]:
     return out
 
 
-def before_as_of(rows: list[dict], *, as_of, key: str = "utc"
-                 ) -> list[dict]:
+def before_as_of(rows: list[dict], *, as_of, key: str = "utc",
+                 day_strict: bool = False) -> list[dict]:
     """🔴🔴 **누설 금지의 문 하나**(사용자 지시 2026-10-12 ⓐ) — `as_of` **이전** 줄만.
 
     > 계약 L1: as-of 재현에서 킥오프 시각 **이후** 경기가 어떤 목록에도 없다
@@ -2743,6 +2758,12 @@ def before_as_of(rows: list[dict], *, as_of, key: str = "utc"
        각자 거르면 한 곳만 고쳐지고 나머지로 **미래가 새 들어온다**(실사고
        2026-10-12: 재현 카드 폼에 그 경기 자신이 들어갔다).
     ⚠️ `as_of` 가 없거나 tz 가 없으면 **예외**다 — 조용히 넘어가면 누설이 남는다.
+
+    🔴🔴 `day_strict` — 줄이 **날짜만** 들 때(맞대결 표의 `date`) 쓴다. 날짜만
+       있으면 그 줄은 자정으로 읽혀 **같은 날 킥오프보다 앞선 것이 되고**, 분석
+       대상 경기 자신이 통과한다. ⚠️ 실사고 2026-10-12(광주–울산 as-of 재현):
+       맞대결 10경기에 **그 경기 자신(4-3)** 이 들어와 가설이 그 스코어를 적었다.
+       🔴 그래서 `day_strict` 는 **날짜끼리** 견주고 `<` 를 쓴다(같은 날은 버린다).
     """
     from datetime import datetime, timezone
     if as_of is None:
@@ -2760,6 +2781,10 @@ def before_as_of(rows: list[dict], *, as_of, key: str = "utc"
             continue
         if when.tzinfo is None:
             when = when.replace(tzinfo=timezone.utc)
+        if day_strict:
+            if when.date() < as_of.date():
+                out.append(dict(one))
+            continue
         if when < as_of:
             out.append(dict(one))
     return out

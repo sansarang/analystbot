@@ -85,3 +85,30 @@ def test_fit_tools_pass_as_of() -> None:
     for rel in ("tools/fit_state_rates.py", "tools/fit_matchup_model.py"):
         said = (root / rel).read_text(encoding="utf-8")
         assert "as_of" in said, rel
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **맞대결에도 문을 건다** — 실사고 2026-10-12(광주–울산 as-of 재현)
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 끝난 경기의 맞대결 표에는 **그 경기 자신**이 들어 있었다(광주 4-3 울산) —
+#     가설이 그 스코어를 근거로 적었다. 🔴 날짜만 있는 줄이라 자정으로 읽혀
+#     "킥오프보다 앞"으로 통과했다.
+
+
+def test_day_strict_drops_the_same_day() -> None:
+    """🔴 `day_strict` — **같은 날** 줄은 버린다(날짜만 있는 표의 자기 경기)."""
+    from app.collect import fotmob as fm
+    rows = [{"date": "2026-10-11", "score": "4-3"},
+            {"date": "2026-07-05", "score": "1-1"}]
+    got = fm.before_as_of(rows, as_of=datetime(2026, 10, 11, 5, 0,
+                                               tzinfo=UTC),
+                          key="date", day_strict=True)
+    assert [r["date"] for r in got] == ["2026-07-05"], got
+
+
+def test_h2h_goes_through_the_one_door() -> None:
+    """🔴 `parse_h2h` 가 **그 문**으로 거른다(글자로 센다 · 사본 금지)."""
+    said = inspect.getsource(
+        __import__("app.collect.fotmob", fromlist=["x"]).parse_h2h)
+    assert "before_as_of" in said and "day_strict=True" in said, said[:200]

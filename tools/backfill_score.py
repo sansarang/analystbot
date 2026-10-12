@@ -68,6 +68,9 @@ async def main() -> None:
     ap.add_argument("--limit", type=int, default=200)
     ap.add_argument("--seasons", type=int, default=1,
                     help="🔴 받을 시즌 수(1 이면 이번 시즌만)")
+    ap.add_argument("--dump", default="",
+                    help="🔴 재생한 줄을 JSON 으로 적는다(판정 시험이 읽는다 — "
+                         "같은 재생을 두 번 돌리지 않는다)")
     args = ap.parse_args()
     from app.collect import fotmob as fm
     from app.core import backfill as bf
@@ -163,6 +166,14 @@ async def main() -> None:
                      "opp": (away if mine else home),
                      "goals": fm.goals_of(j), "stats": fm.stats_of(j),
                      "starters": []})
+    if args.dump:
+        # 🔴🔴 **판정 시험은 같은 재생을 읽는다**(사용자 지시 2026-10-12 판정 시험).
+        #    ⚠️ 다시 재생하면 Elo 굴림·난수가 미세하게 달라 두 모형 비교가
+        #    **같은 표본**이 아니게 된다 — 그래서 **한 번 재생해 적어 둔다**.
+        import json as _json
+        Path(args.dump).write_text(
+            _json.dumps(rows_all, ensure_ascii=False), encoding="utf-8")
+        print(f"🔴 재생한 {len(rows_all)}줄을 적었다 — {args.dump}")
     scored = [r for r in rows_all if r.get("ours")]
     print()
     print(f"재생한 경기 **{len(rows_all)}건** · 확률을 만든 경기 "

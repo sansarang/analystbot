@@ -762,7 +762,12 @@ async def _fill_form(ref: MatchRef, box: dict, *, state: RunState, net: Any,
     from app.core.stages.s2e_matchup import _history as _hist
     from app.core.stages.s2e_matchup import games_of as _games_of
     for name, key in want.items():
-        rows = await _hist(net, name, state=state)
+        # 🔴🔴 **L1 누설 금지** — 이 통로도 **킥오프 이전**만 본다.
+        #    ⚠️ 실사고 2026-10-12(광주–울산 as-of 재현): `as_of` 를 **안 넘겨**
+        #       `TypeError` 로 터졌다 — 게이트를 필수 인자로 만든 뒤 이 자리를
+        #       안 고쳤다. 🔴 터져서 보인 것이 다행이다(조용히 새지 않았다).
+        rows = await _hist(net, name, state=state, as_of=ref.kickoff_utc,
+                           ref=ref)
         made = _games_of(rows or [])
         if not made:
             state.note(f"s2 ① 폼 한 원천 — `{name}` 경기 목록을 못 받았다"

@@ -19,6 +19,9 @@ from datetime import datetime, timezone
 from typing import Any
 
 
+sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent))
+
+
 async def main(argv: list[str]) -> int:
     if len(argv) < 2:
         print('쓰는 법: tools/v6_run.py "<팀> vs <상대>" [--to s1|s2|s3|card] [--record id]')
@@ -35,6 +38,21 @@ async def main(argv: list[str]) -> int:
     if "--replay-fallthrough" in argv:
         os.environ[cassette.FALLTHROUGH_ENV] = "1"
 
+    # ══════════════════════════════════════════════════════════════
+    # 🔴🔴 **`--as-of` — 재현 모드**(사용자 지시 2026-10-10(재작성) §4)
+    # ══════════════════════════════════════════════════════════════
+    #
+    #  🔴 시계는 `app/window.set_clock` **하나다** — 운영(`app/`)이 부르면 계약이
+    #     빨개진다. **도구 입구만** 부른다(`tools/run_stage8.py` 와 같은 자리).
+    #  🔴 `_as_of` 는 **들여온다**(사본 금지 · CLAUDE.md #1).
+    #  ⚠️ 끝난 경기를 *"안 끝났다는 가정"* 으로 다시 돌릴 때 쓴다 — 창·라인업
+    #     상태·"이미 시작" 판단이 **그 시각** 기준이 된다.
+    if "--as-of" in argv:
+        from run_stage8 import _as_of
+        from app import window as _w
+        _w.set_clock(_as_of(argv[argv.index("--as-of") + 1]))
+        print(f"[v6] 🕒 `--as-of` {_w.now_utc():%Y-%m-%d %H:%M}Z — "
+              f"모든 창이 이 시각 기준이다", flush=True)
     from app import net as _net_mod
     from app import search as _search
     from app.config import get_settings
