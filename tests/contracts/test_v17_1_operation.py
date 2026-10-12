@@ -136,3 +136,38 @@ def test_header_wins_over_the_goal_list() -> None:
     i = said.index("def score_of")
     j = said.index("fm.goals_of(j)", i)
     assert said.index("scoreStr", i) < j, "🔴 골 목록을 먼저 본다"
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **폼 창의 대회 기준은 "이 경기의 대회"다** — 실사고 2026-10-13
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 종전에는 **지난 경기 목록 첫 줄**의 대회 이름을 기준으로 삼았다. 토리노의
+#     첫 줄이 `Coppa Italia` 라 기준이 컵이 되고 **세리에A 경기 3건이 전부 빠졌다**
+#     → 축1 폼이 **친선(13-0 포함)과 컵**만 봤다. 🔴 그 수가 운영 확률(57%)을 만들었다.
+
+
+def test_form_level_reference_is_this_match() -> None:
+    """🔴 폼 창의 대회 기준은 `ref.competition` 이다(목록 첫 줄이 아니다)."""
+    said = _code("app/core/stages/s2e_matchup.py")
+    i = said.index("_level.keep(")
+    head = said[max(0, i - 900):i]
+    assert "getattr(ref, 'competition'" in head.replace('"', "'"), head[-300:]
+    # 🔴 **목록 첫 줄에서 집는 길이 없다**
+    assert "for one in rows['home'] + rows['away']" not in head.replace(
+        '"', "'")
+
+
+def test_level_keep_drops_friendlies_and_keeps_the_league() -> None:
+    """🔴 그 리그 경기는 **남고**, 친선·하위 리그 컵은 **빠진다**."""
+    from app.core import level
+    rows = [{"league": "Serie A", "opp": "Milan", "gf": 1, "ga": 1},
+            {"league": "Club Friendlies", "opp": "Pinzolo", "gf": 13,
+             "ga": 0},
+            {"league": "Coppa Italia", "opp": "Carrarese", "gf": 2, "ga": 0}]
+    got, why = level.keep(rows, league="Serie A",
+                          elo={"Milan": 1500.0, "Monza": 1400.0})
+    kept = [r["opp"] for r in got]
+    assert "Milan" in kept, (kept, why)
+    assert "Pinzolo" not in kept, (kept, why)
+    assert "Carrarese" not in kept, (kept, why)   # 컵 · 상대가 표에 없다

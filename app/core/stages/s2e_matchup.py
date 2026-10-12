@@ -95,11 +95,17 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
     #  ⚠️ 실측 2026-10-12(가와사키): 창 9경기 중 **3경기가 컵**이고 상대가 하위
     #     리그였다 — 그 득점이 축1 을 +1.085(강)로 끌어올렸다.
     from app.core import level as _level
-    said_lg = ""
-    for one in (rows["home"] + rows["away"]):
-        said_lg = str(dict(one).get("league") or "")
-        if said_lg:
-            break
+    # 🔴🔴 **기준은 "이 경기의 대회"다**(실사고 2026-10-13 · 토리노–우디네세):
+    #    종전에는 **지난 경기 목록의 첫 줄**에서 대회 이름을 집었다. 토리노의 첫
+    #    줄이 `Coppa Italia` 라 기준이 컵이 되고, **세리에A 경기 3건이 전부
+    #    "다른 대회"로 빠졌다**(로그: `Milan[Serie A]`·`Sassuolo[Serie A]`·
+    #    `Fiorentina[Serie A]` 제거) — 그래서 축1 폼이 친선·컵만 봤다.
+    #  🔴 그 경기의 대회 이름은 `ref` 가 든다(`competition`·`competition_short`).
+    #  ⚠️ 그것도 비면 **아무것도 빼지 않는다**(#4 추측 금지) — `level.keep` 이
+    #     그 사실을 사유로 적는다.
+    said_lg = str(getattr(ref, "competition", "") or "")
+    if not said_lg:
+        said_lg = str(getattr(ref, "competition_short", "") or "")
     elo_tab = _elo_of(ref, rows)
     level_why: dict = {}
     for side in ("home", "away"):
