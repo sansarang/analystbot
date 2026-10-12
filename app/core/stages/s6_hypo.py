@@ -76,7 +76,7 @@ BREAK_SAID: dict[str, str] = {
 }
 
 #: 🔴🔴 K5 문턱 — **백필 적합 전 임시값**이다(🔴 표시로 카드에 나간다)
-PRIORITY_LOW = 0.80
+# ⚠️ `PRIORITY_LOW` 는 지웠다 — K5 가 없다(§1 처분)
 
 #: 🔴 K1 이 보는 **공격 기여 상위 몇 명**(지시서: 상위 2)
 KEY_TOP = 2
@@ -84,13 +84,12 @@ KEY_TOP = 2
 
 def build_break_conditions(ref: MatchRef, mr, variables: list,
                            *, hypo_ids: list[str] | None = None,
-                           priority: dict | None = None,
                            reads: dict | None = None) -> list:
     """🔴🔴 [3a] — **무너뜨릴 조건 목록**. 코드만 만든다(LLM 금지 · B2).
 
     `mr` 은 `matchup.MatchupReport`(우위 팀·꺼진 무기·XI 상태)다.
-    `priority` 는 1번(우선순위 지수)이 서면 `{side: 지수}` 로 온다 — **없으면
-    K5 를 만들지 않는다**(지어내지 않는다 · 지시서 [3a] K5).
+    ⚠️ **K5(우선순위 지수)는 사라졌다** — ⑨ 가 지시서 2026-10-12(셋째) §1 으로
+    지워졌다(§7 결장의 무게가 그 일을 한다).
     `reads` 는 `{side: strategy.TeamRead}` — K1 의 핵심 선수 상태를 거기서 읽는다.
 
     🔴 C3 — **확률을 보지 않는다**(인자에도 본문에도 없다 · 계약이 센다).
@@ -136,13 +135,6 @@ def build_break_conditions(ref: MatchRef, mr, variables: list,
     if str(getattr(mr, "xi_state", "") or "") != "confirmed":
         add("K4", how="구조 사실",
             extra=f"지금 XI `{getattr(mr, 'xi_state', '') or '없다'}`")
-    # ── K5 우선순위 지수 — **1번이 서야 만든다**
-    said_pri = dict(priority or {})
-    if edge and said_pri.get(edge) is not None:
-        got = float(said_pri[edge])
-        if got < PRIORITY_LOW:
-            add("K5", side=edge, how="구조 사실",
-                extra=f"지수 {got:.2f} < 문턱 {PRIORITY_LOW:.2f}(🔴 임시값)")
     # ── K6 열세 팀 핵심 복귀 — 변수(returning)로 본다
     #  ⚠️ `Variable` 의 방향 칸은 **`favors`** 다(`affects_side` 라는 칸은 없다 —
     #     계약이 그 오타를 잡았다 · 2026-10-12).

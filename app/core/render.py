@@ -1816,22 +1816,9 @@ def prob_long(card: Card) -> str:
     if xg:
         out.append("- 기대 득점(분포 평균) — "
                    + " · ".join(f"{k} {float(v):.3f}" for k, v in xg.items()))
-    said_pri = priority_line(card)
-    if said_pri:
-        out.append(f"- {said_pri} — 🔴 축0 **근거 줄**이다(확률에 곱하지 않는다)")
     out += _xg_board(box, now={"home": pull("home"), "draw": pull("draw"),
                                "away": pull("away")})
     return "\n".join(out)
-
-
-def priority_line(card) -> str:
-    """🔴 [1겹] — *"🎯 우선순위 홈 0.94 · 원정 0.71"*(지시서 2026-10-12 ⑯).
-
-    ⚠️ 못 센 쪽은 `⬜` 다 — 그 사유는 📖자세히(`matchup_report_long`)가 적는다.
-    """
-    box = dict(getattr(card, "matchup", None) or {})
-    said = str(box.get("axis0_said") or "")
-    return said or ""
 
 
 def _xg_board(box: dict, *, now: dict) -> list[str]:
@@ -1935,13 +1922,7 @@ def verify_long(card: Card) -> str:
     if not rows:
         return f"**{VERIFY_LONG_HEAD}** — ⬜ 검증 출처가 없다"
     out = [f"**{VERIFY_LONG_HEAD}** — {len(rows)}줄"]
-    # 🔴🔴 **[1d] 말·일정 ↔ 행동(우선순위 지수)**(수정 지시서 2026-10-12) —
-    #    ⚠️ 확률에 닿지 않는다(C1·C7) · 이 줄은 **검증표의 한 줄**이다.
-    said_wa = dict(dict(getattr(card, "check", None) or {}).get("word_action")
-                   or {})
-    for side in ("home", "away"):
-        if said_wa.get(side):
-            out.append(f"- 🗣 {side} {said_wa[side]}")
+    # ⚠️ **말·일정 ↔ 행동 줄은 걷었다** — ⑨ 우선순위 지수가 §1 처분으로 지워졌다.
     for one in rows:
         said = dict(one)
         out.append(f"- `{said.get('src')}` {said.get('name')} — 방향 "

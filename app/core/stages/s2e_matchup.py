@@ -35,7 +35,7 @@ def _plan_of(strategy: Any, side: str) -> str:
 
 async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
               varset: Any = None, turnover: dict | None = None,
-              strategy: Any = None, priority: dict | None = None) -> dict:
+              strategy: Any = None) -> dict:
     """🔴🔴 세 축을 모은다. ⚠️ 못 모은 축은 **사유를 담아** 돌려준다.
 
     ══════════════════════════════════════════════════════════════════
@@ -253,17 +253,6 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
         out["state_said"] = _sr.said_of(
             said_state, dict(getattr(facts, "state_rates_why", None) or {}))
         state.note("s2e [2b] 상태 배율 — " + out["state_said"])
-    # 🔴🔴 **[1c] 우선순위 지수는 근거 줄로만 간다**(수정 지시서 2026-10-12).
-    #    ⚠️ 축0 은 **이미 오늘 XI 가치**를 쓴다 — 지수를 그 값에 또 곱하면
-    #       같은 사실이 두 번 들어간다(P1 계약이 그것을 센다).
-    if dict(priority or {}):
-        from app.core import priority as _pri
-        out["priority"] = dict(priority or {})
-        out["axis0_said"] = ("🎯 우선순위 "
-                             + " · ".join(
-                                 f"{s} {_pri.said_of(dict(priority or {}).get(s))}"
-                                 for s in ("home", "away")))
-        state.note("s2e [1c] " + out["axis0_said"] + " — 축0 **근거 줄**로만 쓴다")
     out["reads"] = reads
     out["r"] = _mu.r_of(varset, ref, turnover=turnover)
     out["turnover"] = dict(turnover or {})

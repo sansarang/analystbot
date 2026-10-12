@@ -135,15 +135,9 @@ def test_k6_fires_on_returning_for_the_trailing_side() -> None:
     assert any(c.kind == "K6" and c.team == "team:000002" for c in got), got
 
 
-def test_k5_only_with_priority_index() -> None:
-    """🔴 1번(우선순위 지수)이 서기 전에는 **빈칸**이다 — 지어내지 않는다."""
-    from app.core.stages import s6_hypo
-    none = s6_hypo.build_break_conditions(_ref(), _MR(), [], hypo_ids=["H1"])
-    assert not [c for c in none if c.kind == "K5"]
-    got = s6_hypo.build_break_conditions(_ref(), _MR(), [], hypo_ids=["H1"],
-                                         priority={"home": 0.55, "away": 0.9})
-    assert any(c.kind == "K5" for c in got), got
-
+# ⚠️ **K5 계약은 걷었다** — ⑨ 우선순위 지수가 지시서 2026-10-12(셋째) §1 으로
+#    **지워졌다**(§7 결장의 무게가 그 일을 한다). 🔴 그래서 K5 라는 조건 자체가
+#    없다 — 없는 조건을 시험하면 그 계약이 거짓을 지킨다.
 
 def test_every_condition_has_an_id_and_a_hypothesis() -> None:
     from app.core.stages import s6_hypo

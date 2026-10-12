@@ -190,7 +190,6 @@ def grade_move(rows: list[dict], claims: dict) -> dict:
 def run(ref: MatchRef, facts: Facts, hypo: HypoSet, sim: dict, *,
         variables: list | None = None, turnover: dict | None = None,
         mr=None, varset=None, layers: dict | None = None,
-        priority: dict | None = None,
         state: RunState) -> dict:
     """🔴🔴 §4 — 검증표를 만든다. 돌려주는 표:
 
@@ -232,29 +231,9 @@ def run(ref: MatchRef, facts: Facts, hypo: HypoSet, sim: dict, *,
            "counts": counts, "stale": stale, "rerun": rerun,
            # 🔴 **못 센 칸**은 따로 든다(카드가 적는다 · 모델 글에는 안 섞인다)
            "gaps": [GAP_COACH], "why": said}
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **[1d] 말·일정 ↔ 행동(우선순위 지수)** — 수정 지시서 2026-10-12
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  > ⑫ 검증에서 "말·일정 ↔ 행동(우선순위 지수)" 일치 여부를 적는다.
-    #  > 예: "다음 경기 결승(V3) — 오늘 지수 0.71로 아꼈다(행동 일치)".
-    #  > **확률 경로 없음**(C1·C7) — 이 글자는 검증표의 한 줄이다.
-    #
-    #  🔴 말(V4 감독 발언)·일정(V3)은 **변수에서** 읽는다 — 새 자료가 아니다.
-    from app.core import priority as _pri
-    said_v3 = [str(getattr(v, "claim", "") or "") for v in (variables or [])
-               if str(getattr(v, "type", "")) in ("fatigue", "travel_schedule",
-                                                  "match_type")]
-    said_v4 = [str(getattr(v, "claim", "") or "") for v in (variables or [])
-               if str(getattr(v, "type", "")).startswith("coach")]
-    got_pri = dict(priority or {})
-    got["word_action"] = {
-        side: _pri.word_vs_action(index=got_pri.get(side), v3=said_v3,
-                                  v4=said_v4)
-        for side in ("home", "away")}
-    state.note("⑫ [1d] 말·일정 ↔ 행동 — "
-               + " / ".join(f"{s} {got['word_action'][s]}"
-                            for s in ("home", "away")))
+    # ⚠️ **[1d] 말·일정 ↔ 행동 줄은 걷었다** — 그 줄의 수(우선순위 지수 ⑨)가
+    #    지시서 2026-10-12(셋째) §1 으로 **지워졌다**. 🔴 지수가 없으면 *"아꼈다"*
+    #    를 말할 근거가 없다(지어내지 않는다 · #4).
     # 🔴🔴 S5-1·S5-3 — **검증 출처 표**와 **등급 조정**(확률은 그대로)
     if mr is not None:
         got["sources"] = sources(ref, facts, mr, varset, layers=layers,
