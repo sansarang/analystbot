@@ -437,6 +437,19 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     if _s6c.rerun_needed(got_check):
         # 🔴 §4-3 — **최대 1회**. 지금은 조건이 성립하지 않아 안 돈다(사유는 표에)
         st.note("단계 4-3 — 재실행 1회")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **⑫b 반증 딥서치** — 수정 지시서 2026-10-12 [3b]
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > pipeline.py에서 ⑫ 호출 직후·⑬ 앞에서 **조건 없이** 부른다(재생 포함).
+    #
+    #  🔴 등급만 바꾼다(C2) — 이 단계는 **확률을 만지지 않는다**(B3).
+    #  ⚠️ 재생에서는 질의를 안 던지고 구조 사실만 판정한다(그 사실을 적는다).
+    from app.core.stages import s5b_falsify
+    edge["breaks"] = await s5b_falsify.run(
+        ref, facts, list(edge.get("breaks") or []), state=st, chain=chain,
+        net=net, edge=str(mr.edge_of() if mr is not None else ""),
+        xi_state=str(getattr(mr, "xi_state", "") or ""))
     hypo = s6_hypo.scenarios(ref, facts, variables, hypo,
                              dict(edge.get("sim") or {}), state=st,
                              supported=list(got_check.get("supported") or []))
