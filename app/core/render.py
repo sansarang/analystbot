@@ -70,6 +70,8 @@ def card_text(card: Card, *, debug: bool = False) -> str:
             out.append("\n" + prob_long(card))
             out.append("\n" + score_grid(card))
             out.append("\n" + verify_long(card))
+            # 🔴🔴 **반증 표**(지시서 2026-10-12 ⑯) — 검증 바로 뒤다(같은 얘기다)
+            out.append("\n" + breaks_long(card))
             out.append("\n" + fit_long(card))
             # 🔴🔴 **가설 검증표**(순서 재편 §4-5) — 최종 평의 재료다(바로 앞)
             out.append("\n" + check_long(card))
@@ -968,7 +970,43 @@ def _comment(card: Card, *, debug: bool = False) -> str:
 
 
 def _b8(card: Card) -> str:
-    return card.conclusion or "- ⬜ 결론을 못 적었다"
+    """🔴 결론 — 🔴🔴 **반증 한 줄을 함께 적는다**(지시서 2026-10-12 ⑯).
+
+    > 결론 줄에 "반증 6조건: 무너짐 0 · 미확인 1 → 조건부(방아쇠: K4 확정 XI)"
+    """
+    out = [card.conclusion or "- ⬜ 결론을 못 적었다"]
+    rows = list(card.breaks or [])
+    if card.stance or rows:
+        n_b = sum(1 for c in rows if str(getattr(c, "state", "")) == "확인-무너짐")
+        n_u = sum(1 for c in rows if str(getattr(c, "state", "")) == "미확인")
+        said = [f"`{getattr(c, 'id', '')}`" for c in rows
+                if str(getattr(c, "state", "")) == "미확인"][:2]
+        out.append(
+            f"🧪 **반증 {len(rows)}조건**: 무너짐 {n_b} · 미확인 {n_u} → "
+            f"**{card.stance or '판정 없음'}**"
+            + (f"(방아쇠: {', '.join(said)})" if said else ""))
+    return "\n".join(out)
+
+
+def breaks_long(card: Card) -> str:
+    """🔴 📖자세히 — **반증 표 전문**(조건·종류·확인 방법·결과·출처·시각)."""
+    rows = list(card.breaks or [])
+    if not rows:
+        return "**🧪 반증 표** — ⬜ 조건 0건"
+    out = [f"**🧪 반증 표** — 판정 `{card.stance or '없음'}` · 조건 {len(rows)}건",
+           "| 조건 | 종류 | 확인 | 결과 | 강도 | 출처 |",
+           "|---|---|---|---|---|---|"]
+    for one in rows:
+        out.append(
+            f"| `{getattr(one, 'id', '')}` | {getattr(one, 'kind', '')} "
+            f"| {getattr(one, 'how', '')} | {getattr(one, 'state', '')} "
+            f"| {getattr(one, 'strength', '') or '—'} "
+            f"| {str(getattr(one, 'source', '') or '—')[:40]} |")
+    for one in rows:
+        said = str(getattr(one, "said", "") or "")
+        if said:
+            out.append(f"    `{getattr(one, 'id', '')}` {said[:140]}")
+    return "\n".join(out)
 
 
 def _b9(card: Card) -> str:

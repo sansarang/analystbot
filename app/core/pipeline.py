@@ -462,8 +462,12 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
                         board_source=board_src, now=now,
                         dist=dict(dict(edge.get("sim") or {}).get("scores")
                                   or {}))
-    said = _direction(_grade_by_check(said, layers, state=st),
-                      layers, ref)
+    # 🔴🔴 **[3d] 반증 판정을 기존 등급 위에 얹는다**(지시서 2026-10-12)
+    #    ⚠️ 확률은 안 바뀐다(C2) · 시장은 들어가지 않는다(C12).
+    said = s7_judge.by_breaks(_grade_by_check(said, layers, state=st),
+                              list(edge.get("breaks") or []))
+    st.note(f"⑭ 반증 판정 — **{said.stance}**")
+    said = _direction(said, layers, ref)
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **먼저 숫자를 고치고, 그 숫자에서 논평을 만든다**(2026-10-07 ②③)
     # ══════════════════════════════════════════════════════════════════
@@ -762,6 +766,11 @@ def card_of(ref: MatchRef, facts: Facts, variables: list[Variable],
         match=ref, facts=facts, variables=variables,
         drops=[*state.drops, *hypo.drops], hypo=hypo, evals=said.evals,
         direction=said.direction, conclusion=said.conclusion,
+        # 🔴 [3d] 반증 — 판정과 조건 전문을 카드가 든다(⑯)
+        # ⚠️ 이 자리에서 재료 묶음의 이름은 `box["matchup"]` 이다(`edge` 가 아니다 —
+        #    그것은 파이프라인 본체의 지역 이름이다 · 계약이 잡았다 2026-10-12).
+        stance=said.stance,
+        breaks=list(dict(box.get("matchup") or {}).get("breaks") or []),
         triggers=said.triggers,
         funnel=Funnel(counts=state.counted(),
                       drops=[*state.drops, *hypo.drops]),

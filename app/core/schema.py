@@ -1162,6 +1162,10 @@ class Judgement(Frozen):
     conclusion: str = ""
     triggers: list[str] = Field(default_factory=list)
     #: 🔴 이미 시작한 경기면 등급이 없다(M97) — 그 사유가 여기 든다
+    #: 🔴🔴 **반증 판정**(수정 지시서 2026-10-12 [3d]) — `간다`·`조건부`·
+    #   `접는다`·`한 단계↓`·`조건 없음`. ⚠️ 확률은 안 바뀐다(C2) — 이 칸과
+    #   등급만 움직인다. 🔴 `간다` 는 **조건 전부에 확인 결과가 있을 때만**(B1).
+    stance: str = ""
     started: bool = False
     started_why: str = ""
     #: 🔴 **왜 그 상한인가** — 사람이 되짚을 수 있게 수와 사유를 함께 든다
@@ -1202,6 +1206,10 @@ class Card(Frozen):
     board_source: str = "none"
     direction: str = ""
     conclusion: str = ""
+    #: 🔴🔴 **반증 판정**(지시서 2026-10-12 ⑯) — 결론 줄이 한 줄로 적는다
+    stance: str = ""
+    #: 🔴 반증 조건 전문 — 📖자세히가 표로 적는다(조건·질의·결과·출처·시각)
+    breaks: list = Field(default_factory=list)
     triggers: list[str] = Field(default_factory=list)
     funnel: Funnel = Field(default_factory=Funnel)
     cost: Cost = Field(default_factory=Cost)

@@ -292,6 +292,74 @@ def _grade(survival: float, *, cap: float, enough: bool, started: bool,
     return words.get(got, "없음")                     # type: ignore[return-value]
 
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **3d 반증 판정** — 수정 지시서 2026-10-12 [3d]
+# ══════════════════════════════════════════════════════════════════
+#
+# > 판정 칸 = 기존 등급 계산 결과 **위에** 반증 규칙을 얹는다:
+# >   모든 조건 "확인-무너짐 없음" → 간다
+# >   "미확인" 하나 이상, hard 무너짐 없음 → 조건부 · 미확인 조건을 방아쇠로 자동 등록
+# >   hard 무너짐 1개 이상 → 접는다(등급 없음)
+# >   soft 무너짐만 → 한 단계↓
+# > 확률 불변(C2). 시장(V6)은 이 판정에 안 들어간다(C12).
+
+#: 🔴 등급 사다리 — `_grade_by_check` 와 **같은 목록**이다(사본이면 한쪽만 고쳐진다)
+BREAK_LADDER: tuple[str, ...] = ("낸다", "소액", "소액하단", "없음")
+
+
+def by_breaks(said, rows: list):
+    """🔴🔴 [3d] — 반증 결과로 **판정 칸과 등급**을 정한다. 확률은 안 본다(C2).
+
+    🔴 B1 — `간다` 는 **조건 전부에 확인 결과가 있을 때만**이다. 조건이 0건이면
+       *"전부 확인"* 이 아니라 **`조건 없음`** 이다(없는 것을 통과로 바꾸지 않는다).
+    ⚠️ 이 함수는 등급을 **내리기만** 한다 — 올리는 길이 없다.
+    """
+    from app.core.stages.s5b_falsify import BROKEN, INTACT, UNKNOWN
+    got = [one for one in (rows or [])]
+    if not got:
+        return said.model_copy(update={"stance": "조건 없음"})
+    hard = [c for c in got
+            if str(c.state) == BROKEN and str(c.strength) == "hard"]
+    soft = [c for c in got
+            if str(c.state) == BROKEN and str(c.strength) != "hard"]
+    unknown = [c for c in got if str(c.state) == UNKNOWN]
+    intact = [c for c in got if str(c.state) == INTACT]
+    if hard:
+        step, stance = len(BREAK_LADDER), "접는다"
+        why = ("🔴 반증 **hard 무너짐** "
+               + ", ".join(f"`{c.id}`" for c in hard[:3]))
+    elif unknown:
+        step, stance = 0, "조건부"
+        why = ("⚠️ 반증 **미확인** "
+               + ", ".join(f"`{c.id}`" for c in unknown[:3])
+               + " — 방아쇠로 등록했다")
+    elif soft:
+        step, stance = 1, "한 단계↓"
+        why = ("⚠️ 반증 soft 무너짐 "
+               + ", ".join(f"`{c.id}`" for c in soft[:3]))
+    else:
+        step, stance = 0, "간다"
+        why = f"반증 {len(intact)}조건 전부 **무너짐 없음**"
+    evals = list(said.evals)
+    if step > 0:
+        out = []
+        for ev in evals:
+            grade = ev.grade
+            if grade in BREAK_LADDER:
+                i = min(len(BREAK_LADDER) - 1,
+                        BREAK_LADDER.index(grade) + step)
+                grade = BREAK_LADDER[i]
+            out.append(ev.model_copy(update={
+                "grade": grade, "why": f"{ev.why} · {why}".strip(" ·")}))
+        evals = out
+    # 🔴 미확인 조건은 **방아쇠**로 자동 등록한다(지시서 [3d])
+    triggers = list(said.triggers) + [
+        f"{c.id} — {c.said} (확인되면 다시 센다)" for c in unknown[:4]]
+    return said.model_copy(update={
+        "stance": stance, "evals": evals, "triggers": triggers,
+        "notes": list(said.notes) + [f"반증 판정 — {stance} · {why}"]})
+
+
 def _tell_operator(ref) -> None:
     """🔴 §2 마지막 줄 — **운영자 알림에 받은 표기를 보낸다**(다음에 표에 넣게).
 
