@@ -539,10 +539,38 @@ async def _by_index(net, *, team: str, opponent: str, day: date,
         got.tried.append(f"⏱ 이미 시작했다 — {said_when}")
         logger.info("[findgame] 찾았지만 이미 시작했다 — %s", got.why)
         return None
+    # 🔴🔴 **경기 번호로 받는다** — 일정이 주는 주소는 조각(`#6106260`)이 붙은
+    #    **옛 경기 주소**일 수 있다(실측 2026-10-12 아스널:
+    #    `/matches/lille-vs-arsenal/2thy7l#6106260`). 번호 주소(`/match/{번호}`)는
+    #    같은 페이지를 곧바로 준다 — 받아서 확인했다(홈 Arsenal · 킥오프 10-13).
+    said_id = str(out.match.get("id") or "").strip()
+    if said_id:
+        page_url = fotmob.match_url(said_id)
     page = await net.get(page_url)
-    row = fotmob.slate_row(page, day=day) if page.ok else None
+    # 🔴 `asked=True` — 사용자가 **이 경기를 물었다**. 슬레이트 창(36시간)으로
+    #    버리지 않는다(그 창은 그날 슬레이트를 모으는 수집기들의 것이다).
+    row = fotmob.slate_row(page, day=day, asked=True) if page.ok else None
     if row is None:
-        got.tried.append(f"{page_url} 슬레이트 행을 못 만들었다({page.reason})")
+        # 🔴 **사유를 이름으로** 남긴다(#3) — ⚠️ 실사고 2026-10-12: 여기 줄이
+        #    `page.reason`(빈 글자)만 적어 *"슬레이트 행을 못 만들었다()"* 가 됐고,
+        #    실제 까닭(창 밖 36시간)이 **카드에도 로그에도 안 보였다**.
+        why = str(getattr(page, "reason", "") or "")
+        if not why:
+            from app import window as _win
+            when = str(out.match.get("utc") or "")
+            said_win = "킥오프를 못 읽었다"
+            try:
+                said_k = datetime.fromisoformat(when.replace("Z", "+00:00"))
+                # 🔴 tz 가 없으면 **UTC 로 둔다** — naive 가 새면 창 판단이
+                #    거짓이 된다(계약 `test_fromisoformat_뒤에_tz_를_확인한다`)
+                if said_k.tzinfo is None:
+                    said_k = said_k.replace(tzinfo=timezone.utc)
+                said_win = _win.why_out(said_k) or "창 통과"
+            except ValueError:
+                pass
+            why = ("페이지를 받았지만 행을 못 만들었다 — 킥오프 "
+                   f"`{when[:16]}` · 창 `{said_win}`")
+        got.tried.append(f"{page_url} 슬레이트 행을 못 만들었다({why})")
         return None
     # 🔴🔴 **리그 id 는 경기 페이지에서 읽는다** — 팀 일정은 글자만 준다.
     #    ⚠️ 실사고 2026-10-10: `tournament` 가 `"Serie B"` 글자라 `league_id` 가

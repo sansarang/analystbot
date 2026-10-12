@@ -169,7 +169,8 @@ def sources_context(ext_id: str) -> list[Source]:
                    dateless_ok=True)]
 
 
-def slate_row(got, *, day: date | None = None) -> dict | None:
+def slate_row(got, *, day: date | None = None,
+              asked: bool = False) -> dict | None:
     """🔴 **경기 페이지 → 슬레이트 한 줄.** `ingest._slate` 가 받는 그 모양이다.
 
     ══════════════════════════════════════════════════════════════════
@@ -221,6 +222,25 @@ def slate_row(got, *, day: date | None = None) -> dict | None:
     said_out = window.why_out(when)
     if said_out:
         logger.info("[fotmob] 창 밖이라 안 싣는다 — %s (%s)", said_out, url[:70])
+    # ══════════════════════════════════════════════════════════
+    # 🔴🔴 **사용자가 직접 물은 경기는 슬레이트 창으로 버리지 않는다**
+    # ══════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실사고 2026-10-12(아스널): 사다리 ② 가 **찾았는데**(`Arsenal vs Lille`
+    #     10-13 19:00Z) 이 함수가 버려 `match_not_found` 가 됐다. 🔴 까닭은 **창이
+    #     둘**이어서다 — 경기 찾기는 `discover.window`(오늘~+3일 ≈ 96시간)로 찾고
+    #     이 함수는 `window.HOURS`(36시간)로 거른다.
+    #  🔴 36시간은 **그날의 슬레이트를 모으는 창**(수집기들이 쓰는 것)이고,
+    #     사용자가 *"아스널"* 이라 물은 것은 **그 경기를 분석해 달라**는 뜻이다.
+    #     그래서 물어서 온 길(`asked`)에서는 창을 **사유로만** 남긴다(#3).
+    #  ⚠️ 수집기(ingest·espn·nhl·fdorg)는 `asked=False` 그대로다 — 슬레이트가
+    #     넓어지면 호출·비용이 는다.
+    #  🔴 ⚠️ **앞으로만 푼다** — 계약이 잡았다(2026-10-12): 창을 통째로 풀면
+    #     **이미 지난 경기**도 행이 된다. 분석은 시작 전에만 뜻이 있다(§1-3).
+    if said_out and asked and when > window.now_utc():
+        logger.info("[fotmob] 물어서 온 경기다 — 슬레이트 창(%d시간) 밖이지만 "
+                    "싣는다: %s", window.HOURS, said_out)
+        said_out = ""
     if said_out:
         logger.info("[fotmob] 날짜가 다르다 — 페이지 %s vs 물은 날짜 %s (%s)",
                     when.astimezone(KST).date(), day, url)
