@@ -103,6 +103,10 @@ def warn_lines(card: Card) -> list[str]:
         out.append(f"{_comp_mod().UNKNOWN_HEAD} — 받은 표기 "
                    f"`{card.match.competition or '없음'}` · 기준·경우의 수·리그 "
                    f"평균이 **비었다** · 등급은 전부 **보류**")
+    # 🔴🔴 **[3c] 되돌려 다시 센 카드**(지시서 2026-10-12) — 머리에 찍는다
+    if str(getattr(card, "break_rerun", "") or ""):
+        out.append(f"🔁 **반증으로 재계산** — {card.break_rerun} · 바뀐 것: "
+                   f"상성·확률·등급(이 카드가 **뒤**다)")
     said, why = thin_card(card)
     if said:
         out.append(f"🔴 **자료 부족 카드 — 판단에 쓰지 말 것**({why})")

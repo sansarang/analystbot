@@ -1208,6 +1208,9 @@ class Card(Frozen):
     conclusion: str = ""
     #: 🔴🔴 **반증 판정**(지시서 2026-10-12 ⑯) — 결론 줄이 한 줄로 적는다
     stance: str = ""
+    #: 🔴🔴 **반증으로 되돌려 다시 센 카드인가**([3c]) — 머리에 그 줄을 찍는다.
+    #   ⚠️ 상한 1회다(B4) — 두 번째 무너짐은 **표시만** 한다.
+    break_rerun: str = ""
     #: 🔴 반증 조건 전문 — 📖자세히가 표로 적는다(조건·질의·결과·출처·시각)
     breaks: list = Field(default_factory=list)
     triggers: list[str] = Field(default_factory=list)

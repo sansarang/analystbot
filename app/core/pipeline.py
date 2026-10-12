@@ -74,7 +74,9 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
                   board_text: str = "", board_image: str = "",
                   pick_key: str = "", xi_image: str = "",
                   reuse: dict | None = None, before: Card | None = None,
-                  now: datetime | None = None) -> Card | Ambiguous:
+                  now: datetime | None = None,
+                  break_facts: list | None = None,
+                  break_rerun: str = "") -> Card | Ambiguous:
     """🔴 질문 하나 → 카드 하나. ⚠️ 경기를 **못 고르면** `Ambiguous`(묻는다).
 
     🔴 `board_text` 를 주면 **코드가 파싱한다**(축구 §4 · `app/core/board.py`) —
@@ -450,10 +452,38 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
         ref, facts, list(edge.get("breaks") or []), state=st, chain=chain,
         net=net, edge=str(mr.edge_of() if mr is not None else ""),
         xi_state=str(getattr(mr, "xi_state", "") or ""))
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **[3c] 되돌림 — 최대 1회**(수정 지시서 2026-10-12)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > ⑫b에서 새로 확인된 무너짐이 **라인업·결장 사실(K1·K6)** 이면 그 사실을
+    #  > VariableSet에 넣고 **④부터 재실행**(F1 경로). 루프 상한 **1회** —
+    #  > 두 번째는 표시만.
+    #
+    #  🔴 재실행은 **이 함수를 다시 부른다** — 파이프라인의 사본을 만들지 않는다
+    #     (F1 이 그 규율이다 · 계약 `test_v8_f1_reanalyze`).
+    #  ⚠️ 깃발(`break_rerun`)이 이미 있으면 **안 돈다** — 그 사실만 적는다(B4).
+    said_again = s5b_falsify.rerun_rows(list(edge.get("breaks") or []))
+    if said_again and not break_rerun:
+        facts_more = s5b_falsify.rerun_facts(said_again)
+        st.note("🔁 [3c] 반증이 **라인업·결장 사실**을 찾았다 — ④부터 다시 센다"
+                f"({', '.join(c.id for c in said_again[:3])})")
+        return await analyze(
+            raw, pool=pool, net=net, chain=chain, state=st, board=board,
+            board_text=board_text, board_image=board_image,
+            pick_key=pick_key, xi_image=xi_image, reuse=reuse, before=before,
+            now=now, break_facts=[*(break_facts or []), *facts_more],
+            break_rerun=("반증으로 재계산 — "
+                         + ", ".join(c.id for c in said_again[:3])))
+    if said_again and break_rerun:
+        st.note("⚠️ [3c] 반증 무너짐이 또 있지만 **표시만** 한다(상한 1회 · B4) — "
+                + ", ".join(c.id for c in said_again[:3]))
     hypo = s6_hypo.scenarios(ref, facts, variables, hypo,
                              dict(edge.get("sim") or {}), state=st,
                              supported=list(got_check.get("supported") or []))
     layers["check"] = got_check
+    # 🔴 [3c] — 되돌려 다시 센 카드면 **머리에 찍는다**(⑯)
+    layers["break_rerun"] = break_rerun
     layers["varset"] = varset
     from app.core import reweight as _reweight
     hypo = _reweight.of(hypo, layers.get("ours"), ref=ref, state=st)
@@ -770,6 +800,7 @@ def card_of(ref: MatchRef, facts: Facts, variables: list[Variable],
         # ⚠️ 이 자리에서 재료 묶음의 이름은 `box["matchup"]` 이다(`edge` 가 아니다 —
         #    그것은 파이프라인 본체의 지역 이름이다 · 계약이 잡았다 2026-10-12).
         stance=said.stance,
+        break_rerun=str(box.get("break_rerun") or ""),
         breaks=list(dict(box.get("matchup") or {}).get("breaks") or []),
         triggers=said.triggers,
         funnel=Funnel(counts=state.counted(),

@@ -94,6 +94,43 @@ def by_structure(rows: list, *, xi_state: str = "",
     return out
 
 
+#: 🔴🔴 **되돌림을 부르는 종류**(지시서 [3c]) — 라인업·결장 사실뿐이다
+#
+#  🔴 왜 둘만인가: K2~K5 는 *"우리가 이미 아는 것"* 이라 다시 돌려도 같은 수가
+#     나온다. K1·K6 은 **오늘 명단이 달라졌다**는 새 사실이므로 ④ 깃발·⑦ 전략·
+#     ⑧ 상성이 통째로 달라진다(F1 경로).
+RERUN_KINDS: tuple[str, ...] = ("K1", "K6")
+
+
+def rerun_rows(rows: list) -> list:
+    """🔴 [3c] — **되돌릴 무너짐**만 골라 준다(K1·K6 × `확인-무너짐`)."""
+    return [one for one in (rows or [])
+            if str(getattr(one, "kind", "")) in RERUN_KINDS
+            and str(getattr(one, "state", "")) == BROKEN]
+
+
+def rerun_facts(rows: list) -> list[dict]:
+    """🔴 [3c] — 그 무너짐을 **변수 재료**로 바꾼다(VariableSet 에 넣는다).
+
+    ⚠️ 우리가 **지어낸 사실이 아니다** — 반증 질의가 찾은 기사의 주소·시각을
+       그대로 들고 간다(`source`·`found_at`). 그래야 ⑤ 가 평소처럼 검증한다.
+    """
+    out: list[dict] = []
+    for one in rerun_rows(rows):
+        kind = ("returning" if str(getattr(one, "kind", "")) == "K6"
+                else "absence")
+        out.append({
+            "type": kind,
+            "subject": str(getattr(one, "player_name", "") or ""),
+            "team": str(getattr(one, "team", "") or ""),
+            "claim": (f"반증이 찾았다 — {getattr(one, 'said', '')}"),
+            "source": str(getattr(one, "source", "") or ""),
+            "found_at": str(getattr(one, "found_at", "") or ""),
+            "from_break": str(getattr(one, "id", "") or ""),
+        })
+    return out
+
+
 def _h2h_against(facts: Facts, ref: MatchRef, edge: str) -> bool | None:
     """🔴 맞대결이 **우위 팀과 반대**인가. 못 세면 `None`(미확인)."""
     box = dict(getattr(facts, "h2h", None) or {})
