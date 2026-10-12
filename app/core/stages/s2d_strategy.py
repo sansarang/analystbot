@@ -26,7 +26,8 @@ MIN_REFS = 2
 
 
 def run(ref: MatchRef, facts: Facts, *, state: RunState,
-        news: list | None = None, turnover: dict | None = None) -> StrategyOut:
+        news: list | None = None, turnover: dict | None = None,
+        priority: dict | None = None) -> StrategyOut:
     """🔴🔴 §2-2 — 전략 판정 한 번. ⚠️ 못 하면 **사유를 담은 빈 산출**이다.
 
     🔴🔴 `turnover` 가 켜진 팀은 **`squad_turnover` 로 고정**한다(사용자 지시
@@ -36,6 +37,20 @@ def run(ref: MatchRef, facts: Facts, *, state: RunState,
     """
     from app.core import strategy as _st
     reads = {side: _st.read(ref, facts, side=side) for side in ("home", "away")}
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **[1b] 경기 우선순위 지수**(수정 지시서 2026-10-12)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > ⑦ 전략 판정, 판정 함수 **앞**. 지수 = 오늘 XI 가치 ÷ 최강 XI 가치.
+    #  > 전략 판정 입력에 넣는다 … **LLM 판정이 지수와 반대면 버리고 코드 판정.**
+    #
+    #  🔴 수를 만드는 곳은 `app/core/priority.py` 하나다(사본 금지).
+    #  ⚠️ 지수가 없으면(가치·선발 빈도 부족) **아무것도 바꾸지 않는다**.
+    said_pri = dict(priority or {})
+    if said_pri:
+        state.note("s2d [1b] 우선순위 지수 — "
+                   + " · ".join(f"{s} {said_pri.get(s) if said_pri.get(s) is not None else '⬜'}"
+                                for s in ("home", "away")))
     logger.info("[s2d] 전략 입력 — 확정 %s · 사실 %s",
                 {s: g.confirmed for s, g in reads.items()},
                 {s: len(g.facts) for s, g in reads.items()})
@@ -74,14 +89,38 @@ def run(ref: MatchRef, facts: Facts, *, state: RunState,
         logger.info("[s2d] 버렸다 → 코드 판정 — %s", bad)
         got = got.model_copy(update={"lines": _code_lines(reads, box)})
         return _settle(got, ref, facts, reads, turnover, box, state=state,
-                       audit="코드 판정(LLM 버림)", violations=bad)
+                       audit="코드 판정(LLM 버림)", violations=bad,
+                       priority=said_pri)
     return _settle(got, ref, facts, reads, turnover, box, state=state,
-                   audit="통과", violations=[])
+                   audit="통과", violations=[], priority=said_pri)
+
+
+def _pri_lines(lines: list, *, priority: dict | None,
+               state: RunState) -> list:
+    """🔴 [1b] — 지수와 **반대 판정을 버린다**. 사유를 줄에 남긴다."""
+    from app.core import priority as _pr
+    said = dict(priority or {})
+    if not said:
+        return list(lines or [])
+    out = []
+    for one in (lines or []):
+        got = said.get(str(getattr(one, "side", "") or ""))
+        now, why = _pr.verdict_check(str(getattr(one, "strategy", "") or ""),
+                                     index=got)
+        if now != str(getattr(one, "strategy", "") or ""):
+            state.note(f"s2d [1b] {one.side} — {why}")
+            out.append(one.model_copy(update={
+                "strategy": now, "why": f"{one.why} · {why}".strip(" ·")}))
+        else:
+            out.append(one.model_copy(update={
+                "why": f"{one.why} · {why}".strip(" ·")}))
+    return out
 
 
 def _settle(got, ref: MatchRef, facts: Facts, reads: dict,
             turnover: dict | None, box: dict, *, state: RunState,
-            audit: str, violations: list) -> "StrategyOut":
+            audit: str, violations: list,
+            priority: dict | None = None) -> "StrategyOut":
     """🔴 전략 줄 → **산출**. 🔴 LLM 줄과 **코드 판정 줄이 같은 길**을 지난다.
 
     ⚠️ 종전엔 이 뒷단(교체 덮기·양상·총골 사실)이 `run` 안에만 있어서 **코드
@@ -91,6 +130,10 @@ def _settle(got, ref: MatchRef, facts: Facts, reads: dict,
     # 🔴🔴 지적 ③ — **선수단 교체는 로테이션이 아니다**. LLM 판정을 덮는다.
     lines = _turn_lines(got.lines, ref, turnover, state=state, box=box,
                         reads=reads)
+    # 🔴🔴 **[1b] 지수가 LLM 판정을 덮는다**(수정 지시서 2026-10-12) —
+    #    *"LLM 판정이 지수와 반대면 ④ 검사처럼 버리고 코드 판정"*.
+    #    ⚠️ 지수가 없으면 아무것도 바꾸지 않는다(`priority.verdict_check`).
+    lines = _pri_lines(lines, priority=priority, state=state)
     got = got.model_copy(update={"lines": lines})
     shape = _st.shape_of(_side(got.lines, "home"), _side(got.lines, "away"),
                          home_name=ref.home_name, away_name=ref.away_name)

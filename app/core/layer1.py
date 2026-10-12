@@ -659,7 +659,17 @@ def text(card: Card, *, buttons: bool = True) -> str:
     said_edge = edge_block(card)
     if said_edge:
         out.append(said_edge)
+    # 🔴🔴 **⑯ 1겹 — 상성 줄 아래 `🎯 우선순위`**(수정 지시서 2026-10-12)
+    said_pri = str(dict(getattr(card, "matchup", None) or {})
+                   .get("axis0_said") or "")
+    if said_pri:
+        out.append(said_pri)
     out.append(_probs(card))
+    # 🔴🔴 **⑯ 1겹 — 확률 줄 아래 `📜 스크립트`**(상태 배율 · 지시서 [2b])
+    said_script = str(dict(getattr(card, "matchup", None) or {})
+                      .get("state_said") or "")
+    if said_script:
+        out.append(f"📜 스크립트 — {said_script[:160]}")
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 §4 — **확정 XI 일 때만** 전략·확률 변화 블록
     # ══════════════════════════════════════════════════════════════════
@@ -673,6 +683,18 @@ def text(card: Card, *, buttons: bool = True) -> str:
         if said_block:
             out.append(said_block)
     out.append(f"🎯 예상 {_scores(card)}")
+    # 🔴🔴 **⑯ 1겹 — 결론 줄에 반증 요약**(지시서 [3d])
+    said_brk = list(getattr(card, "breaks", None) or [])
+    if said_brk or str(getattr(card, "stance", "") or ""):
+        n_b = sum(1 for c in said_brk
+                  if str(getattr(c, "state", "")) == "확인-무너짐")
+        n_u = sum(1 for c in said_brk
+                  if str(getattr(c, "state", "")) == "미확인")
+        hit = [str(getattr(c, "id", "")) for c in said_brk
+               if str(getattr(c, "state", "")) == "미확인"][:2]
+        out.append(f"🧪 반증 {len(said_brk)}조건: 무너짐 {n_b} · 미확인 {n_u} → "
+                   f"{getattr(card, 'stance', '') or '판정 없음'}"
+                   + (f"(방아쇠: {', '.join(hit)})" if hit else ""))
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **🔎 검증**(상성 엔진 지시서 §3 카드) — 상성 밖 정보는 여기 선다
     # ══════════════════════════════════════════════════════════════════

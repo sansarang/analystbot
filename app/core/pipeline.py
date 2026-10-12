@@ -238,7 +238,22 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     # 🔴🔴 **확정 라인업 전략**(사용자 지시 2026-10-10(둘째) §1·§3) — 확정 XI 일
     #    때만 판정이 나온다. 🔴 **잠정 확률을 먼저 세고** 최종과 나란히 든다(§4).
     from app.core.stages import s2d_strategy as _s2d
-    plan = _s2d.run(ref, facts, state=st, turnover=turn,
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **[1a·1b] 경기 우선순위 지수** — 수정 지시서 2026-10-12
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > [1b] 위치: ⑦ 전략 판정, 판정 함수 **앞**.
+    #
+    #  🔴 재료: 오늘 XI(`facts.xi`) · 선수 가치(`facts.player_value`) ·
+    #     선발 빈도(⑧ 이 만든 `usual_starts` — **창 10경기**).
+    #  ⚠️ **시즌 출전 시간 자료가 없다**(실측 2026-10-12) — 그래서 "최강 XI" 는
+    #     선발 빈도로 고르고 카드가 그 사실을 적는다(#4).
+    #  🔴 P1 — 이 수를 **축0 에 곱하지 않는다**. 축0 근거 줄과 K5 입력으로만.
+    pri, pri_why = await _priority_of(ref, facts, net=net, state=st)
+    st.note("⑦ [1b] 우선순위 지수 — "
+            + " · ".join(f"{s} {pri_why.get(s) or '⬜'}"
+                         for s in ("home", "away")))
+    plan = _s2d.run(ref, facts, state=st, turnover=turn, priority=pri,
                     news=[v for v in variables
                           if str(getattr(v, "subtask", "") or "").startswith("F-")])
     # ══════════════════════════════════════════════════════════════════
@@ -263,7 +278,9 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     from app.core.stages import s2e_matchup as _s2e
     # 🔴 F2 — 재료가 **변수·깃발·전략**을 받는다(전략은 바로 위에서 섰다)
     edge = await _s2e.run(ref, facts, state=st, net=net,
-                          varset=varset, turnover=turn, strategy=plan)
+                          varset=varset, turnover=turn, strategy=plan,
+                          # 🔴 [1c] 지수는 **근거 줄**로만 쓴다(P1)
+                          priority=pri)
     # 🔴 **가설은 S2 뒤에 선다**(C3) — 그래서 여기서는 **빈 묶음**으로 열을 만든다.
     #    ⚠️ `_layers` 는 시나리오를 **읽지 않는다**(확률을 S3 가 낸다) — 빈 묶음이
     #       뜻을 바꾸지 않는다.
@@ -329,7 +346,9 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
                 for i, one in enumerate(hypo.hypotheses or [])]
     breaks = s6_hypo.build_break_conditions(
         ref, mr, variables, hypo_ids=hypo_ids,
-        reads=dict(edge.get("reads") or {}))
+        reads=dict(edge.get("reads") or {}),
+        # 🔴 [1c] — 지수는 **K5 반증 조건**의 입력이다(확률 경로가 아니다)
+        priority=dict(edge.get("priority") or {}))
     edge["breaks"] = breaks
     st.note("⑩b 무너뜨릴 조건 — "
             + (" · ".join(f"{c.kind}×{sum(1 for x in breaks if x.kind == c.kind)}"
@@ -439,7 +458,9 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     from app.core.stages import s6c_check as _s6c
     got_check = _s6c.run(ref, facts, hypo, dict(edge.get("sim") or {}),
                          variables=variables, turnover=turn, mr=mr,
-                         varset=varset, layers=layers, state=st)
+                         varset=varset, layers=layers,
+                         # 🔴 [1d] 말·일정 ↔ 행동(지수) — 확률 경로가 아니다
+                         priority=dict(edge.get("priority") or {}), state=st)
     if _s6c.rerun_needed(got_check):
         # 🔴 §4-3 — **최대 1회**. 지금은 조건이 성립하지 않아 안 돈다(사유는 표에)
         st.note("단계 4-3 — 재실행 1회")
@@ -618,6 +639,45 @@ def _id_rows(facts, key: str) -> list[dict]:
              "source": "결장 명단"}
             for m in ((facts.missing or {}).get(key) or [])]
     return [r for r in out if str(r.get("name") or "").strip()]
+
+
+def _pr_said(index) -> str:
+    """🔴 카드 1겹 — `🎯 우선순위 홈 0.94` 의 그 수(사본 금지: `priority.said_of`)."""
+    from app.core import priority as _pr
+    return _pr.said_of(index)
+
+
+async def _priority_of(ref: MatchRef, facts: Facts, *, net: Any,
+                       state: RunState) -> tuple[dict, dict]:
+    """🔴🔴 **[1a·1b] 우선순위 지수** — `({side: 지수}, {side: 사유})`.
+
+    🔴 최강 XI 는 **창 10경기 선발 빈도 상위 11명**의 가치 합이다 — ⚠️ 시즌 출전
+       시간 자료가 **없다**(실측 2026-10-12: fotmob 선수단 페이지의 `minutes_played`
+       는 번역 사전 열쇠였다). 그 사실을 사유가 적는다(#4).
+    🔴 선발 빈도는 ⑧ 이 쓰는 그 함수(`s2e_matchup.usual_starts`)로 센다 —
+       같은 경기 목록을 두 번 받지 않게 **거기서 쓰는 통로**를 그대로 쓴다.
+    ⚠️ 못 세면 **빈칸과 사유**다(0 이 아니다).
+    """
+    from app.core import priority as _pr
+    from app.core.stages import s2e_matchup as _s2e
+    out: dict = {}
+    why: dict = {}
+    value = dict(getattr(facts, "player_value", None) or {})
+    for side in ("home", "away"):
+        key = str(getattr(ref, side, "") or "")
+        name = str(getattr(ref, f"{side}_name", "") or "")
+        xi = (getattr(facts, "xi", None) or {}).get(key)
+        lineup = list(getattr(xi, "lineup", None) or []) or list(
+            getattr(xi, "players", None) or [])
+        today, why_today = _pr.today_xi(lineup=lineup, value=value)
+        rows = await _s2e._history(net, name, state=state, ref=ref)
+        starts, _n = _s2e.usual_starts(rows or [])
+        best, why_best = _pr.best_xi(starts=starts, value=value)
+        got, why_one = _pr.index_of(today=today, best=best)
+        out[side] = got
+        why[side] = (f"{why_one} · {why_today} · {why_best}"
+                     if got is not None else f"{why_one} — {why_best}")
+    return out, why
 
 
 def _gate_of(ref: MatchRef, facts, turn: dict, *, state: RunState):
