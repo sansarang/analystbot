@@ -49,7 +49,17 @@ async def collect(leagues: list[tuple[str, str]], *, seasons: int,
     from app.core import backfill as bf
     from app.net import Net
     net = Net(cache=True)
+    # 🔴🔴 **조용한 0 금지**(#3) — 이미 받은 것과 **합치고**, 빠진 것은 **이유를
+    #    세어 적는다**. ⚠️ 실사고 2026-10-13: 같은 코드가 J1 290 → **94** 를
+    #    적었고(fotmob 쪽 응답이 중간에 껍데기로 왔다) 그 196 건이 **조용히**
+    #    사라졌다. 다시 돌리면 캐시가 찬 만큼 메워진다.
     rows: list[dict] = []
+    if out.exists():
+        rows = json.loads(out.read_text(encoding="utf-8"))
+        print(f"[lineup] 이미 적힌 {len(rows)}경기에 **더한다**", flush=True)
+    seen = {(str(r.get("utc")), str(r.get("home")), str(r.get("away")))
+            for r in rows}
+    drop = {"payload 없음": 0, "스코어 없음": 0, "선발 11명 아님": 0}
     for lid, name in leagues:
         said = await fm.league_matches(net, lid)
         page0 = await net.get(fm.league_matches_url(lid, "x"))
@@ -73,9 +83,13 @@ async def collect(leagues: list[tuple[str, str]], *, seasons: int,
         for i, one in enumerate(done, 1):
             if i % 50 == 0:
                 print(f"   … {i}/{len(done)}", flush=True)
+            if (str(one["utc"]), str(one["home"]),
+                    str(one["away"])) in seen:
+                continue
             page = await net.get(fm.match_url(str(one["id"])))
             j = fm.payload(getattr(page, "text", "") or "")
             if not j:
+                drop["payload 없음"] += 1
                 continue
             score = bf.score_of(j)
             lu = ((j.get("props") or {}).get("pageProps") or {}).get(
@@ -86,12 +100,29 @@ async def collect(leagues: list[tuple[str, str]], *, seasons: int,
                      if p.get("id")]
             a_ids = [str(p.get("id")) for p in (away.get("starters") or [])
                      if p.get("id")]
-            if score is None or len(h_ids) != 11 or len(a_ids) != 11:
+            if score is None:
+                drop["스코어 없음"] += 1
                 continue
+            if len(h_ids) != 11 or len(a_ids) != 11:
+                drop["선발 11명 아님"] += 1
+                continue
+            # 🔴🔴 **등번호를 함께 적는다**(라인업 지시서 §1 · 2026-10-13) —
+            #    J리그 분 자료는 **일본어 이름**만 준다. 등번호는 양쪽이 **둘 다**
+            #    가진 수(`shirtNumber`)이므로 그것이 신원 열쇠다(손 표 금지).
+            def _nums(side: dict) -> dict:
+                got = {}
+                for p in ((side.get("starters") or [])
+                          + (side.get("subs") or [])):
+                    num = p.get("shirtNumber", p.get("shirt"))
+                    if p.get("id") and str(num or "").strip().isdigit():
+                        got[str(p["id"])] = int(str(num).strip())
+                return got
+
             rows.append({
-                "utc": str(one["utc"]), "league": name,
+                "utc": str(one["utc"]), "league": name, "fm_id": str(one["id"]),
                 "home": str(one["home"]), "away": str(one["away"]),
                 "hg": score[0], "ag": score[1],
+                "home_nums": _nums(home), "away_nums": _nums(away),
                 "home_ids": h_ids, "away_ids": a_ids,
                 "home_bench": [str(p.get("id"))
                                for p in (home.get("subs") or []) if p.get("id")],
@@ -100,6 +131,9 @@ async def collect(leagues: list[tuple[str, str]], *, seasons: int,
             })
     out.write_text(json.dumps(rows, ensure_ascii=False), encoding="utf-8")
     print(f"🔴 라인업 재생 **{len(rows)}경기**를 적었다 — {out}")
+    print("🔴 **빠진 경기의 이유** — "
+          + " · ".join(f"{k} {v}건" for k, v in drop.items())
+          + " (0 이 아니면 **다시 돌려 메운다**)")
     return 0
 
 

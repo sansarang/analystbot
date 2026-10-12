@@ -674,6 +674,14 @@ TOOL_ONLY: dict[str, str] = {
     "app.core.ratings.elog.prob_input": "tools/fit_ratings.py",
     "app.core.ratings.pi.rate": "tools/fit_ratings.py",
     "app.core.ratings.pi.prob_input": "tools/fit_ratings.py",
+    # 🔴🔴 **§1 출전 시간**(라인업 지시서 2026-10-13 §1) — 백필 도구가 부른다.
+    #    ⚠️ 운영 ⑪ 에 잇는 것은 §5 `lineupfix` 가 **판정을 통과한 뒤**다(§8 배선).
+    "app.collect.minutes.sides_of_jleague": "tools/minutes_backfill.py",
+    "app.collect.minutes.intervals_by_number": "tools/minutes_backfill.py",
+    "app.collect.minutes.pick_card": "tools/minutes_backfill.py",
+    "app.collect.minutes.learn_names": "tools/minutes_backfill.py",
+    "app.collect.minutes.intervals": "tools/minutes_backfill.py",
+    "app.collect.minutes.before": "tools/minutes_backfill.py",
     "app.core.metrics.bands": "tools/judge_models.py",
     "app.core.metrics.calib": "tools/backfill_score.py",
     "app.core.metrics.check_split": "tools/judge_models.py",
