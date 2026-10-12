@@ -28,31 +28,45 @@ def states() -> tuple[str, ...]:
     return tuple(STATES)
 
 
-def load(league: str) -> dict:
-    """🔴 그 리그의 표. 없으면 **빈 표**(0 이 아니라 없음이다)."""
+def load(league: str, *, as_of) -> dict:
+    """🔴🔴 그 리그의 표 — **as_of 이전 최신 판**(L3). 없으면 빈 표.
+
+    🔴 판 고르기는 `versions.pick` 하나다(사본 금지) — 운영은 오늘 이전 판,
+       재현·백필은 **그 경기 날짜 이전** 판을 본다.
+    ⚠️ 옛 자리(`data/state_rates/<리그>.yaml`)는 **판이 없을 때만** 본다 —
+       그 파일은 as-of 가 없어 **누설 의심**이므로 사유에 그렇게 적는다.
+    """
+    from app.core import versions as _vz
     key = str(league or "").replace("/", "_").replace(":", "_")
     if not key:
         return {}
+    got, said = _vz.pick(_vz.path_of("state_rates", league), as_of=as_of)
+    if got:
+        logger.info("[staterates] %s — %s", key, said)
+        return dict(got)
     path = STORE / f"{key}.yaml"
     if not path.exists():
+        logger.info("[staterates] %s — %s · 옛 파일도 없다", key, said)
         return {}
     import yaml
     try:
-        got = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        old = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     except yaml.YAMLError as exc:
         logger.info("[staterates] %s 를 못 읽었다: %s", path.name, exc)
         return {}
-    return dict(got)
+    logger.info("[staterates] %s — 🔴 **판이 없어 옛 파일**을 썼다(as-of 없음 · "
+                "누설 의심): %s", key, said)
+    return dict(old)
 
 
-def for_team(*, league: str, team: str, table: dict | None = None
-             ) -> tuple[dict, str]:
+def for_team(*, league: str, team: str, table: dict | None = None,
+             as_of=None) -> tuple[dict, str]:
     """🔴🔴 [2a] — 그 팀의 **상태 배율**과 사유. `({상태: {for, against}}, 사유)`.
 
     🔴 차례: ① 그 팀 칸 → ② **리그 칸 + 🔴**(표본 부족) → ③ 빈 표 + 사유.
     ⚠️ 리그 칸을 쓸 때 **그 사실을 숨기지 않는다** — 카드가 🔴 를 그대로 적는다.
     """
-    box = dict(table if table is not None else load(league))
+    box = dict(table if table is not None else load(league, as_of=as_of))
     if not box:
         return {}, f"🔴 상태 배율 표가 **없다**(리그 `{league}`) — 상태를 안 쓴다"
     rows = dict(box.get("teams") or {})
@@ -68,11 +82,13 @@ def for_team(*, league: str, team: str, table: dict | None = None
     return {}, f"🔴 리그 칸도 비었다(`{league}`) — 상태를 안 쓴다"
 
 
-def pair(*, league: str, home: str, away: str, table: dict | None = None
-         ) -> tuple[dict, dict]:
+def pair(*, league: str, home: str, away: str, table: dict | None = None,
+         as_of=None) -> tuple[dict, dict]:
     """🔴 ⑪ 이 쓰는 꼴 — `({"home": …, "away": …}, {"home": 사유, …})`."""
-    got_h, why_h = for_team(league=league, team=home, table=table)
-    got_a, why_a = for_team(league=league, team=away, table=table)
+    got_h, why_h = for_team(league=league, team=home, table=table,
+                            as_of=as_of)
+    got_a, why_a = for_team(league=league, team=away, table=table,
+                            as_of=as_of)
     out = {}
     if got_h:
         out["home"] = got_h

@@ -286,9 +286,11 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
         said_lg = str(_ck(ref, got_facts) or "")
     except Exception as exc:                                # noqa: BLE001
         state.note(f"s2 [2a] 대회 유형 열쇠를 못 만들었다({exc!r:.40})")
+    # 🔴 L3 — **as_of 이전 판**만 본다(운영은 오늘 이전, 재현은 그 경기 이전)
     state_tab, state_why = _sr.pair(
         league=said_lg, home=str(getattr(ref, "home", "") or ""),
-        away=str(getattr(ref, "away", "") or ""))
+        away=str(getattr(ref, "away", "") or ""),
+        as_of=getattr(ref, "kickoff_utc", None))
     state.note(f"s2 [2a] 상태 배율(`{said_lg}`) — "
                + (_sr.said_of(state_tab, state_why) if state_tab
                   else f"⬜ 없다({state_why.get('home') or ''})"))

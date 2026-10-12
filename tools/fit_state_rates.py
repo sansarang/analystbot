@@ -200,6 +200,14 @@ async def main() -> None:
         # 🔴 #3 — 이름을 못 푼 경기는 **이름으로** 남긴다(조용히 빠지지 않게)
         "unresolved": sorted(set(miss))[:20],
     }
+    # 🔴🔴 **판으로 적는다**(L3) — `data/state_rates/<리그>/<as_of>.yaml`.
+    #    ⚠️ 덮어쓰지 않는다 — 어제 카드를 다시 돌릴 때 **그날 이전 판**이 붙어야 한다.
+    from tools.versions_write import write as _vwrite
+    said_day = said_cut.date()
+    _vwrite("state_rates", str(args.name), day=said_day, body=out,
+              head=("# 🔴 `tools/fit_state_rates.py` 가 만든 **판**이다 — "
+                    f"as-of {said_cut.isoformat()[:16]} 이전 경기만 썼다.\n"
+                    "# ⚠️ 손으로 고치지 않는다 · 로더는 `versions.pick` 이다."))
     import yaml
     path = ROOT / "data" / "state_rates"
     path.mkdir(parents=True, exist_ok=True)
