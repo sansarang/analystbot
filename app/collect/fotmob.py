@@ -2659,6 +2659,59 @@ def goals_of(j: dict) -> list[dict]:
 #     🔴 그래서 **수와 백분율을 따로** 뽑고 못 읽으면 `None` 이다(0 으로 안 메운다).
 
 
+#: 🔴🔴 **슈팅 줄의 상황 값**(실측 2026-10-12 · 12리그 36경기에서 본 것 전부)
+#
+#  ⚠️ 목록을 **쓰는 쪽이 늘리지 않는다** — 여기 없는 값이 오면 `기타`로 센다(#3).
+SHOT_SITUATIONS: tuple[str, ...] = (
+    "RegularPlay", "FromCorner", "SetPiece", "FreeKick", "FastBreak",
+    "Penalty", "IndividualPlay", "ThrowInSetPiece")
+
+#: 🔴 상황 → **무기 묶음**(지시서 2026-10-12 ②: 세트피스·역습·오픈)
+SHOT_GROUP: dict[str, str] = {
+    "FromCorner": "set", "SetPiece": "set", "FreeKick": "set",
+    "ThrowInSetPiece": "set", "FastBreak": "fast", "Penalty": "pen",
+    "RegularPlay": "open", "IndividualPlay": "open"}
+
+
+def side_ids(j: dict) -> tuple[str, str]:
+    """🔴 그 경기의 **(홈 팀 번호, 원정 팀 번호)**. 못 읽으면 빈 글자.
+
+    🔴 슈팅 줄은 `teamId` 로만 편을 말한다 — 그 번호를 이 함수가 댄다.
+    """
+    g = (_page(j or {}).get("general") or {})
+    return (str(((g.get("homeTeam") or {}).get("id") or "")),
+            str(((g.get("awayTeam") or {}).get("id") or "")))
+
+
+def shots_of(j: dict) -> list[dict]:
+    """🔴🔴 그 경기의 **슈팅 목록** — `{min, situation, group, xg, team_id, player_id}`.
+
+    > 슈팅별 xG(분·상황) — 사용자 지시 2026-10-12 ⓞ
+    🔴 축3(분 구간 xG)·무기 표(상황별 xG 비중)의 **유일한 재료**다.
+    ⚠️ xG 가 없는 슈팅은 **xg=None** 으로 그대로 싣는다 — 0 으로 세면 그 팀이
+       빈 슈팅을 한 것처럼 보인다(#3 조용한 0 금지).
+    ⚠️ 자책골 줄(`isOwnGoal`)은 **그 슈팅을 한 팀**으로 둔다 — 득점은 상대에게
+       가지만 xG 는 슈팅한 팀의 것이다(골 목록이 득점을 따로 센다).
+    """
+    sm = ((_page(j or {}).get("content") or {}).get("shotmap") or {})
+    rows = (sm.get("shots") if isinstance(sm, dict) else None) or []
+    out: list[dict] = []
+    for one in rows:
+        said = dict(one)
+        sit = str(said.get("situation") or "")
+        val = said.get("expectedGoals")
+        out.append({
+            "min": said.get("min"),
+            "situation": sit or "기타",
+            "group": SHOT_GROUP.get(sit, "기타"),
+            "xg": (float(val) if isinstance(val, (int, float)) else None),
+            "team_id": str(said.get("teamId") or ""),
+            "player_id": str(said.get("playerId") or ""),
+            "own_goal": bool(said.get("isOwnGoal")),
+        })
+    return out
+
+
 def stats_of(j: dict, *, period: str = "All") -> dict:
     """🔴🔴 그 경기의 **통계 표** — `{key: (홈, 원정)}`. 없으면 빈 표.
 

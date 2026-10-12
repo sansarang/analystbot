@@ -140,7 +140,29 @@ class Profile:
     led_first: dict = field(default_factory=dict)
     #: 🔴 §3-2 — 선실점 한 경기의 결과 `{역전승, 무, 패}`
     trailed_first: dict = field(default_factory=dict)
+    #: 🔴🔴 **분 구간 xG**(지시서 2026-10-12 ② 축3) — `{"0-30": xG 합, …}`.
+    #   ⚠️ 비면 **못 쟀다**는 뜻이다(0 이 아니다 · #3) — 슈팅별 xG 가 없는 리그다.
+    xg_min: dict = field(default_factory=dict)
+    #: 🔴🔴 **상황별 xG**(무기 표) — `{"open","set","fast","pen"}` 합
+    xg_group: dict = field(default_factory=dict)
+    #: 🔴 위 둘을 센 경기 수(없으면 0 — 비중을 그 수로 나눈다)
+    xg_games: int = 0
     why: str = ""
+
+    def xg_share(self) -> dict:
+        """🔴 상황별 **비중**(합이 1). ⚠️ 못 쟀으면 **빈 표**다(0 이 아니다)."""
+        tot = sum(float(v) for v in (self.xg_group or {}).values())
+        if not tot:
+            return {}
+        return {k: round(float(v) / tot, 3)
+                for k, v in sorted(self.xg_group.items())}
+
+    def xg_per_bucket(self) -> dict:
+        """🔴 **경기당** 분 구간 xG. ⚠️ 못 쟀으면 빈 표."""
+        if not self.xg_games or not self.xg_min:
+            return {}
+        return {k: round(float(v) / self.xg_games, 3)
+                for k, v in self.xg_min.items()}
 
     def hold_rate(self) -> float | None:
         """🔴 **리드 유지력** — 선제골 경기 중 이긴 비율. 표본 0 이면 `None`."""
@@ -179,8 +201,20 @@ def profile_of(team_name: str, rows: list[dict]) -> Profile:
         got.matches += 1
         _one_match(got, list(box.get("goals") or []),
                    mine_home=bool(box.get("mine_home")))
+        # 🔴🔴 **분 구간·상황별 xG**(지시서 2026-10-12 ② 축3·무기 표) —
+        #    재료는 `s2e_matchup._adv_of` 가 이미 경기 줄에 담아 둔다(사본 금지).
+        mins = dict(box.get("xg_min") or {})
+        grp = dict(box.get("xg_group") or {})
+        if mins or grp:
+            got.xg_games += 1
+            for k, v in mins.items():
+                got.xg_min[k] = round(got.xg_min.get(k, 0.0) + float(v), 3)
+            for k, v in grp.items():
+                got.xg_group[k] = round(got.xg_group.get(k, 0.0) + float(v), 3)
     got.why = (f"경기 {got.matches}건 · 득점 {got.scored.n} · 실점 "
                f"{got.conceded.n}"
+               + (f" · xG 구간 {got.xg_games}경기" if got.xg_games
+                  else " · ⚠️ 분 구간 xG 없음(슈팅별 xG 를 못 받았다)")
                + (f" · ⚠️ 홈/원정을 못 가린 경기 {skipped}건은 건너뛰었다"
                   if skipped else ""))
     return got

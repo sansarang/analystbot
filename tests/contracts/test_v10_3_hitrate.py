@@ -89,15 +89,49 @@ def test_axis0_why_says_the_share() -> None:
 # ══════════════════════════════════════════════════════════════════
 
 def test_games_carry_xg() -> None:
-    """🔴 A — 경기 목록 한 줄이 **xG 합**을 들고 온다(골 줄에 이미 있다)."""
+    """🔴🔴 경기 줄의 **xG 두 종류를 가른다**(지시서 2026-10-12 ①).
+
+    ⚠️ 종전 이 계약은 `xgf` 를 **득점한 골의 xG**(`goals[].xg`)로 고정했다 —
+       🔴 그것은 *운 요소* 재료(T12)이고 **팀 xG 가 아니다**. 팀 xG 는 경기 통계
+       `expected_goals` 다(실측 2026-10-12 · 12리그 36경기 전부에 있다).
+    🔴 그래서 골의 xG 는 `luck_xg*` 로, 팀 xG 는 `xgf/xga` 로 갈라 싣는다.
+    """
     from app.core.stages import s2e_matchup
     rows = [{"home_name": "A", "away_name": "B", "mine_home": True,
              "utc": "2026-09-01T00:00:00Z", "league": "L", "starters": [],
              "goals": [{"home": True, "xg": 0.8}, {"home": False, "xg": 0.3}],
-             "stats": {}}]
+             "stats": {"expected_goals": ({"n": 1.7}, {"n": 0.9})}}]
     got = s2e_matchup.games_of(rows)[0]
-    assert abs(float(got["xgf"]) - 0.8) < 1e-9, got
-    assert abs(float(got["xga"]) - 0.3) < 1e-9, got
+    # 🔴 운 요소 재료 — 골의 xG
+    assert abs(float(got["luck_xgf"]) - 0.8) < 1e-9, got
+    assert abs(float(got["luck_xga"]) - 0.3) < 1e-9, got
+    # 🔴 폼이 보는 수 — 팀 xG
+    assert abs(float(got["xgf"]) - 1.7) < 1e-9, got
+    assert abs(float(got["xga"]) - 0.9) < 1e-9, got
+    assert got["xg_n"] == 1, got
+
+
+def test_team_xg_missing_is_named() -> None:
+    """🔴 #3 — 팀 xG 가 없는 리그는 **0 이 아니라 사유**다."""
+    from app.core.stages import s2e_matchup
+    rows = [{"home_name": "A", "away_name": "B", "mine_home": True,
+             "utc": "2026-09-01T00:00:00Z", "league": "L", "starters": [],
+             "goals": [], "stats": {}}]
+    got = s2e_matchup.games_of(rows)[0]
+    assert got["xgf"] is None and got["xg_n"] == 0, got
+    assert "팀 xG 없음" in got["adv_why"], got["adv_why"]
+
+
+def test_xg_only_form_is_pure_xg() -> None:
+    """🔴🔴 **xG 판은 100% xG**(사용자 결정 2026-10-12 1번) · 운 할인은 끈다."""
+    from app.core import form
+    rows = [{"gf": 3, "ga": 0, "opp": "X"}] * 5
+    games = [{"gf": 3, "ga": 0, "xgf": 1.0, "xga": 1.0, "xg_n": 1}] * 5
+    got = form.form_of("xG판", rows, elo={}, games=games, luck_goals=2.0,
+                       xg_only=True)
+    assert got.xg_only is True and got.xg_n == 5
+    # 🔴 xG 가 같으면 지수는 0 이다 — 득실(3-0)도, 운 할인(2골)도 안 본다
+    assert abs(float(got.index())) < 1e-9, (got.index(), got.why)
 
 
 def test_form_blends_xg() -> None:

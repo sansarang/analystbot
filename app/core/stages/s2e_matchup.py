@@ -61,6 +61,15 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
         if got is None:
             out[f"{side}_why"] = f"🔴 `{name}` 의 과거 경기를 못 받았다"
             continue
+        # 🔴🔴 **고급 지표를 줄에 붙인다**(지시서 2026-10-12 ② 축3·무기 표) —
+        #    `goals.profile_of` 가 `xg_min`·`xg_group` 을 그 줄에서 읽는다.
+        #    🔴 세는 함수는 `_adv_of` **하나다**(사본 금지 · `games_of` 도 그것을 쓴다).
+        for one in got:
+            if one.get("mine_home") is None:
+                continue
+            adv = _adv_of(one, mine_home=bool(one["mine_home"]))
+            one["xg_min"] = adv["xg_min"]
+            one["xg_group"] = adv["xg_group"]
         rows[side] = got
     if len(rows) != 2:
         out["axis2_why"] = "🔴 두 팀 과거 경기를 다 못 받아 축2 를 안 센다"
@@ -304,11 +313,130 @@ async def _history(net: Any, name: str, *, state: RunState,
                         "starters": [x for x in starters if x],
                         "goals": fm.goals_of(j),
                         # 🔴 §2 — **6축 재료**(경기 통계 · 같은 페이지에서 온다)
-                        "stats": fm.stats_of(j)})
+                        "stats": fm.stats_of(j),
+                        # 🔴🔴 **고급 지표 재료**(지시서 2026-10-12 ①) — 슈팅별
+                        #    xG(분·상황)와 편을 가릴 팀 번호. ⚠️ 팀 xG 자체는
+                        #    `stats` 에 이미 있다(`expected_goals`) — 두 번 받지 않는다.
+                        "shots": fm.shots_of(j),
+                        "side_ids": fm.side_ids(j)})
         return out or None
     except Exception as exc:                                # noqa: BLE001
         state.note(f"s2e 과거 경기 — 🔴 터졌다({name}): {exc!r}")
         return None
+
+
+#: 🔴🔴 **분 구간**(§3-2 와 같은 경계다 — 사본 금지: 그 블록이 이 셋을 쓴다)
+XG_BUCKETS: tuple[tuple[str, int, int], ...] = (
+    ("0-30", 0, 30), ("31-60", 31, 60), ("61-90+", 61, 200))
+
+#: 🔴 팀 통계에서 읽는 열쇠 — **fotmob 의 `key` 글자**다(실측 2026-10-12)
+#  ⚠️ `tackles` 만 꼴이 다르다(`matchstats.headers.tackles`) — 받아서 확인했다.
+ADV_KEYS: dict[str, str] = {
+    "xg": "expected_goals",
+    "xg_open": "expected_goals_open_play",
+    "xg_set": "expected_goals_set_play",
+    "box_touch": "touches_opp_box",
+    "shots_in_box": "shots_inside_box",
+    "interceptions": "interceptions",
+    "tackles": "matchstats.headers.tackles",
+    "passes_ok": "accurate_passes",
+}
+
+
+def _pair(stats: dict, key: str) -> tuple[float | None, float | None]:
+    """🔴 `{key: (홈, 원정)}` 에서 수 둘. 없으면 `(None, None)`(0 이 아니다 · #3)."""
+    got = (dict(stats or {})).get(key)
+    if not got or len(tuple(got)) != 2:
+        return (None, None)
+    out = []
+    for one in tuple(got):
+        val = (dict(one).get("n") if isinstance(one, dict) else one)
+        out.append(float(val) if isinstance(val, (int, float)) else None)
+    return (out[0], out[1])
+
+
+def _mine_theirs(stats: dict, key: str, *, mine_home: bool
+                 ) -> tuple[float | None, float | None]:
+    """🔴 그 열쇠를 **우리/상대**로 갈라 준다."""
+    a, b = _pair(stats, key)
+    return (a, b) if mine_home else (b, a)
+
+
+def _adv_of(box: dict, *, mine_home: bool) -> dict:
+    """🔴🔴 한 경기의 **고급 지표**(지시서 2026-10-12 ①②) — 우리 기준.
+
+    🔴 재료는 둘뿐이다: `stats`(팀 통계 · `ADV_KEYS`)와 `shots`(슈팅별 xG).
+       ⚠️ 못 읽은 칸은 **`None` 과 이름**이다(0 으로 메우지 않는다 · #3).
+    🔴 `press` 대리 지표(사용자 결정 2026-10-12 ②): PPDA 가 어디에도 없다
+       (fotmob 168항목·Understat 전면 금지) → **(태클+인터셉트) ÷ 상대 정확 패스**.
+       그 분자·분모를 **따로** 싣는다 — 창을 합칠 때 비율을 다시 세야 한다
+       (경기별 비율의 평균은 합의 비율과 다르다).
+    """
+    stats = dict(box.get("stats") or {})
+    why: list[str] = []
+    xgf, xga = _mine_theirs(stats, ADV_KEYS["xg"], mine_home=mine_home)
+    if xgf is None or xga is None:
+        why.append("팀 xG 없음")
+    open_f, _ = _mine_theirs(stats, ADV_KEYS["xg_open"], mine_home=mine_home)
+    set_f, _ = _mine_theirs(stats, ADV_KEYS["xg_set"], mine_home=mine_home)
+    if open_f is None and set_f is None:
+        why.append("상황별 xG 없음")
+    tk_f, _ = _mine_theirs(stats, ADV_KEYS["tackles"], mine_home=mine_home)
+    ic_f, _ = _mine_theirs(stats, ADV_KEYS["interceptions"],
+                           mine_home=mine_home)
+    _, pass_t = _mine_theirs(stats, ADV_KEYS["passes_ok"],
+                             mine_home=mine_home)
+    num = None if (tk_f is None and ic_f is None) else (
+        float(tk_f or 0.0) + float(ic_f or 0.0))
+    if num is None or not pass_t:
+        why.append("press 대리 지표 재료 없음")
+    box_f, _ = _mine_theirs(stats, ADV_KEYS["box_touch"],
+                            mine_home=mine_home)
+    if box_f is None:
+        why.append("박스 터치 없음")
+    _, in_box_t = _mine_theirs(stats, ADV_KEYS["shots_in_box"],
+                               mine_home=mine_home)
+    if in_box_t is None:
+        why.append("허용 박스 슈팅 없음")
+    # ── 슈팅별 xG → 분 구간·상황 묶음(우리 슈팅만)
+    ids = tuple(box.get("side_ids") or ("", ""))
+    mine_id = (ids[0] if mine_home else ids[1]) if len(ids) == 2 else ""
+    mins = {name: 0.0 for name, _, _ in XG_BUCKETS}
+    group: dict[str, float] = {}
+    n_shot = 0
+    for one in (box.get("shots") or []):
+        said = dict(one)
+        if mine_id and str(said.get("team_id") or "") != mine_id:
+            continue
+        val = said.get("xg")
+        if val is None:
+            continue
+        n_shot += 1
+        got = int(said.get("min") or 0)
+        for name, lo, hi in XG_BUCKETS:
+            if lo <= got <= hi:
+                mins[name] = round(mins[name] + float(val), 3)
+                break
+        key = str(said.get("group") or "기타")
+        group[key] = round(group.get(key, 0.0) + float(val), 3)
+    if not n_shot:
+        why.append("슈팅별 xG 없음")
+    return {
+        "xgf": (round(float(xgf), 3) if xgf is not None else None),
+        "xga": (round(float(xga), 3) if xga is not None else None),
+        # 🔴 `xg_n` 은 **팀 xG 를 읽은 경기냐**다(1 또는 0) — 골 수가 아니다
+        "xg_n": (1 if (xgf is not None and xga is not None) else 0),
+        "xg_open": (round(float(open_f), 3) if open_f is not None else None),
+        "xg_set": (round(float(set_f), 3) if set_f is not None else None),
+        "xg_min": dict(mins) if n_shot else {},
+        "xg_group": dict(group),
+        "press_num": (round(num, 2) if num is not None else None),
+        "press_den": (round(float(pass_t), 2) if pass_t else None),
+        "box_touch": (round(float(box_f), 2) if box_f is not None else None),
+        "shots_in_box_against": (round(float(in_box_t), 2)
+                                 if in_box_t is not None else None),
+        "why": " · ".join(why),
+    }
 
 
 def games_of(rows: list[dict]) -> list[dict]:
@@ -352,6 +480,16 @@ def games_of(rows: list[dict]) -> list[dict]:
             else:
                 xga += float(val)
         at_home, at_away = ((gf, ga) if mine_home else (ga, gf))
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **고급 지표**(지시서 2026-10-12 ①②) — 이 줄의 재료는 전부
+        #     `stats`(팀 통계)와 `shots`(슈팅별)에서 온다.
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 실사고 2026-10-12: 축1 이 쓰던 `xgf/xga` 는 **득점한 골의 xG**였다
+        #     (`goals[].xg`) — 그것은 *운 요소* 재료이고 **팀 xG 가 아니다**.
+        #     🔴 그래서 위에서 센 수는 `luck_xg*` 로 이름을 바꿔 남기고, 폼이
+        #        보는 `xgf/xga` 는 **팀 xG**(`expected_goals`)로 갈아 끼운다.
+        adv = _adv_of(box, mine_home=mine_home)
         out.append({
             "date": str(box.get("utc") or "")[:10],
             "league": str(box.get("league") or ""),
@@ -360,8 +498,18 @@ def games_of(rows: list[dict]) -> list[dict]:
                        else box.get("home_name")),
             "score": f"{at_home}-{at_away}",
             "gf": gf, "ga": ga,
-            # 🔴 A — xG 합과 **그 수를 센 골 수**(없으면 0 이 아니라 0건이다)
-            "xgf": round(xgf, 3), "xga": round(xga, 3), "xg_n": xg_n,
+            # 🔴 **운 요소 재료**(T12) — 득점한 골의 xG 합과 그 수(폼이 아니다)
+            "luck_xgf": round(xgf, 3), "luck_xga": round(xga, 3),
+            "luck_xg_n": xg_n,
+            # 🔴🔴 **팀 xG**(폼·축1 이 보는 수) — 없으면 `None` 이고 `xg_n` 이 0 이다
+            "xgf": adv["xgf"], "xga": adv["xga"], "xg_n": adv["xg_n"],
+            # 🔴 무기 표(상황별 xG)·축3(분 구간 xG)·축2 대리 지표
+            "xg_open": adv["xg_open"], "xg_set": adv["xg_set"],
+            "xg_min": adv["xg_min"], "xg_group": adv["xg_group"],
+            "press_num": adv["press_num"], "press_den": adv["press_den"],
+            "box_touch": adv["box_touch"],
+            "shots_in_box_against": adv["shots_in_box_against"],
+            "adv_why": adv["why"],
             "starters": list(box.get("starters") or [])})
     return out
 

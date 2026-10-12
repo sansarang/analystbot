@@ -87,18 +87,29 @@ def profile_of(team: str, rows: list[dict]) -> Style:
 
 
 def _ratio(st: dict, spec: dict, i: int) -> float | None:
-    """🔴 한 경기의 축 값 — `num 합 ÷ per`. 못 세면 `None`."""
+    """🔴 한 경기의 축 값 — `num 합 ÷ per`. 못 세면 `None`.
+
+    🔴🔴 **상대 쪽 수도 쓴다**(사용자 결정 2026-10-12 ② 대리 지표):
+       `per_side: opponent` · `num_side: opponent` 면 그 칸을 **상대 열**에서 읽는다.
+    ⚠️ 왜 필요한가 — PPDA 는 *"상대 패스 몇 개마다 한 번 끊나"* 다. 분모가 **우리**
+       패스면 그것은 압박이 아니라 *"우리가 공을 덜 돌렸다"* 를 센다(실측
+       2026-10-12: 니스 press 가 패스 많은 경기에서 **내려갔다**).
+    🔴 `low_block` 도 같은 꼴이다 — **상대가 어디서 쐈나**가 깊이의 증거다.
+    """
+    them = 1 - i
     per_key = str(spec.get("per") or "")
-    per = dict((st.get(per_key) or ({}, {}))[i]).get("n") if per_key in st \
-        else None
+    per_i = them if str(spec.get("per_side") or "") == "opponent" else i
+    per = dict((st.get(per_key) or ({}, {}))[per_i]).get("n") \
+        if per_key in st else None
     if not per:
         return None
+    num_i = them if str(spec.get("num_side") or "") == "opponent" else i
     tot = 0.0
     hit = False
     for key, w in dict(spec.get("num") or {}).items():
         if str(key) not in st:
             continue
-        said = dict(st[str(key)][i]).get("n")
+        said = dict(st[str(key)][num_i]).get("n")
         if said is None:
             continue
         tot += float(said) * float(w)

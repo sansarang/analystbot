@@ -163,16 +163,27 @@ style:
       num: {long_balls_accurate: 1.0, accurate_crosses: 1.0}
       per: passes
       why: "정확한 롱볼·크로스 비중 — 높으면 직선적이고 제공권 싸움이 많다"
-    # ④ 압박 — 상대 진영에서 끊나
+    # ④ 압박 — 🔴🔴 **PPDA 대리 지표**(사용자 결정 2026-10-12 ②)
+    #    ⚠️ PPDA 자체는 **어디서도 못 받는다** — fotmob 168항목에 없고
+    #       Understat 은 `robots: Disallow: /`(전면 금지 · 실측 2026-10-12)다.
+    #    🔴 그래서 *"상대 패스 몇 개마다 한 번 끊나"* 를 그대로 흉내 낸다 —
+    #       분자는 **우리** 태클+인터셉트, 분모는 **상대** 정확 패스다.
+    #    ⚠️ 종전엔 분모가 **우리** 패스였다(`per: passes`) — 그러면 우리가 공을
+    #       덜 돌린 경기에서 압박이 올라가는 거짓 수가 된다.
     press:
       num: {"matchstats.headers.tackles": 1.0, interceptions: 1.0}
-      per: passes
-      why: "태클+인터셉트를 패스 수로 나눈 것 — 높으면 많이 끊는다"
-    # ⑤ 블록 깊이 — 걷어내기·블록이 많으면 깊게 선다
+      per: accurate_passes
+      per_side: opponent
+      why: "(태클+인터셉트) ÷ **상대** 정확 패스 — PPDA 대리 지표(값이 클수록 압박)"
+    # ⑤ 블록 깊이 — 🔴🔴 **허용 슈팅의 위치**(지시서 2026-10-12 ②)
+    #    🔴 깊게 선 팀은 상대를 **박스 밖에서** 쏘게 만든다. 그래서 상대가 쏜
+    #       슈팅 중 **박스 밖 비중**이 깊이의 증거다(걷어내기 수는 점유율에 흔들렸다).
     low_block:
-      num: {clearances: 1.0, shot_blocks: 1.0, blocked_shots: 1.0}
-      per: passes
-      why: "걷어내기·블록 비중 — 높으면 뒤로 물러서 버틴다"
+      num: {shots_outside_box: 1.0}
+      num_side: opponent
+      per: total_shots
+      per_side: opponent
+      why: "상대 슈팅 중 **박스 밖** 비중 — 높으면 박스를 닫고 밖에서 쏘게 했다"
     # ⑥ 세트피스 비중 — xG 중 세트플레이 몫
     setpiece:
       num: {expected_goals_set_play: 1.0}

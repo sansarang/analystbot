@@ -32,6 +32,15 @@ ELO_SLOPE = 0.15
 XG_MIX = 0.4
 #: 🔴 xG 를 센 골이 이만큼은 돼야 섞는다(모자라면 안 섞는다 · #4)
 XG_MIN = 5
+#: 🔴🔴 **xG 판은 100% xG 다**(사용자 결정 2026-10-12 — 1번)
+#
+#  > 1번 100% xG로 … (지시서 2026-10-12 ② 축1 폼: 득실 → xG·xGA 기반 지수)
+#
+#  🔴 그래서 `XG_MIX`(섞음)는 **득실판에서만** 쓴다 — 두 판을 섞지 않는다(지시 3번).
+#  ⚠️ 그리고 xG 판에서는 **T12 운 할인을 끈다**(지시: *"xG 있는 리그에선 끈다 —
+#     이중 반영 금지"*). xG 자체가 운을 이미 걷어 낸 수다.
+#: 🔴 팀 xG 를 읽은 **경기 수** 문턱 — 이만큼은 돼야 xG 판을 만든다
+XG_GAMES_MIN = 5
 PROVISIONAL = "🔴 **임시값**(적합 전)"
 
 
@@ -59,6 +68,9 @@ class TeamForm:
     xgf: float | None = None
     xga: float | None = None
     xg_n: int = 0
+    #: 🔴🔴 **xG 판이냐**(사용자 결정 2026-10-12 1번) — 참이면 지수가 100% xG 이고
+    #   운 할인(T12)을 **안 본다**. ⚠️ 두 판은 섞지 않는다(지시 3번).
+    xg_only: bool = False
     #: 🔴 같은 리그 팀 대비 백분위(0~1) — 비교 대상이 없으면 `None`
     pct_att: float | None = None
     pct_def: float | None = None
@@ -74,7 +86,11 @@ class TeamForm:
             return None
         got = self.gf_after_luck if self.gf_after_luck is not None else self.adj_gf
         said = (got - self.adj_ga) / self.n
-        if self.xg_n and self.xgf is not None and self.xga is not None:
+        if self.xg_only and self.xgf is not None and self.xga is not None:
+            # 🔴🔴 **xG 판** — 100% xG(사용자 결정 2026-10-12 1번). 운 할인은
+            #    여기 들어오지 않는다(`gf_after_luck` 을 안 본다 · 이중 반영 금지).
+            said = (float(self.xgf) - float(self.xga)) / self.n
+        elif self.xg_n and self.xgf is not None and self.xga is not None:
             xg = (float(self.xgf) - float(self.xga)) / self.n
             said = (1.0 - XG_MIX) * said + XG_MIX * xg
         # 🔴🔴 C — **그 쪽 폼으로 수축**한다(표본만큼만)
@@ -182,7 +198,8 @@ def windows_bad(games: list[dict]) -> str:
 def form_of(team: str, rows: list[dict], *, elo: dict | None = None,
             luck_goals: float | None = None,
             games: list[dict] | None = None,
-            side_at: str = "") -> TeamForm:
+            side_at: str = "",
+            xg_only: bool = False) -> TeamForm:
     """🔴🔴 §1 — **경기 목록 → 보정 폼**.
 
     `rows` 한 줄: `{"home_name","away_name","gf","ga","opp"}` —
@@ -242,7 +259,26 @@ def form_of(team: str, rows: list[dict], *, elo: dict | None = None,
         #     ⚠️ xG 를 센 골이 모자라면(`XG_MIN` 미만) **안 섞는다**(#4).
         rows_xg = [dict(g) for g in games[-RECENT:]]
         n_xg = sum(int(g.get("xg_n") or 0) for g in rows_xg)
-        if n_xg >= XG_MIN:
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **xG 판** — 100% xG(사용자 결정 2026-10-12 1번)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  🔴 `xg_n` 은 이제 **팀 xG 를 읽은 경기 수**다(`_adv_of` 가 1/0 으로 센다).
+        #     ⚠️ 전에는 *"xG 를 센 골 수"* 였다 — 그 수는 운 요소 재료이고
+        #        폼 재료가 아니다(실사고 2026-10-12).
+        if xg_only and n_xg >= XG_GAMES_MIN:
+            got.xgf = round(sum(float(g.get("xgf") or 0.0)
+                                for g in rows_xg), 3)
+            got.xga = round(sum(float(g.get("xga") or 0.0)
+                                for g in rows_xg), 3)
+            got.xg_n, got.xg_only = n_xg, True
+            said.append(f"🔴 **xG 판** — 지수 100% xG(섞지 않는다) · xG 득 "
+                        f"{got.xgf:.2f}·실 {got.xga:.2f}({n_xg}경기) · "
+                        f"운 할인 **끔**(이중 반영 금지)")
+        elif xg_only:
+            said.append(f"⬜ xG 판 못 만듦 — 팀 xG 를 읽은 경기 {n_xg}건"
+                        f"(<{XG_GAMES_MIN}) → 득실판으로 간다")
+        elif n_xg >= XG_MIN:
             got.xgf = round(sum(float(g.get("xgf") or 0.0)
                                 for g in rows_xg), 3)
             got.xga = round(sum(float(g.get("xga") or 0.0)
