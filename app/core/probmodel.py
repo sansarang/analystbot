@@ -35,6 +35,11 @@ class ProbOut:
     first_then_win: dict = field(default_factory=dict)
     first_wins: float | None = None
     lam: dict = field(default_factory=dict)
+    #: 🔴🔴 **그림자 확률**(사용자 결정 2026-10-12 (a)) — **옛 구조**(네 축)의 수다.
+    #   ⚠️ **표시만** 한다 — 판정·등급·보드는 새 구조(Elo 바닥 + 축0·축1)가 낸다.
+    shadow: dict = field(default_factory=dict)
+    #: 🔴 바닥(Elo)이 낸 승무패 — 카드가 그 줄을 적는다
+    floor: dict = field(default_factory=dict)
     #: 🔴🔴 **C4 재정의**(사용자 결정 2026-10-12) — 상성이 λ 를 **민 방향**이다.
     #   `{"home": +x, "away": -x}` · 홈 이점(상수)은 **여기 안 들어간다**.
     move: dict = field(default_factory=dict)
@@ -267,7 +272,7 @@ def sides_move(box: dict, weights: dict, *, beta: float, cap: float) -> dict:
 
 
 def run(ref, facts, mr, varset, *, edge: dict | None = None,
-        state=None) -> ProbOut:
+        state=None, floor: object = None) -> ProbOut:
     """🔴🔴 S3 — **상성만으로** λ 를 세고 시뮬로 바꾼다.
 
     `mr` 은 `matchup.MatchupReport` 다. ⚠️ `facts` 에서 읽는 것은 **리그 평균**
@@ -379,10 +384,88 @@ def run(ref, facts, mr, varset, *, edge: dict | None = None,
     if said_edge and said_win != said_edge:
         got.why += (f" · 🔴 **상성 {said_edge} 우위 · 홈 이점이 뒤집음**"
                     f"(배율 홈 ×{mul:.3f} · 원정 ×{mul_a:.3f})")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **⑯ 배선 — 새 구조가 판정이다**(사용자 결정 2026-10-12 (a))
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > (a) 새 구조로 운영 ⑯ 을 잇는다. 옛 구조는 **그림자 확률**로 카드에 함께
+    #  > 기록(표시만, 판정은 새 구조).
+    #
+    #  🔴 새 구조 = **Elo 바닥**(③)을 λ 로 번역하고 그 위에 **축0·축1 잔차**만 얹는다.
+    #     축2·축3 은 백필에서 **손실**이었다(−0.0038 · −0.0039) → 확률 경로 밖이다.
+    #  ⚠️ 바닥이 없으면(Elo 없음) **옛 구조가 그대로 남는다** — 그 사실을 사유에 적는다.
+    said_floor = _floor_triple(floor)
+    if said_floor:
+        got.floor = {"home": round(said_floor[0], 4),
+                     "draw": round(said_floor[1], 4),
+                     "away": round(said_floor[2], 4)}
+        got.shadow = {"home": got.home, "draw": got.draw, "away": got.away,
+                      "lam": dict(got.lam or {}),
+                      "why": "옛 구조(네 축 · 표시만 · 판정에 안 쓴다)"}
+        from app.core import probfloor as _pf
+        m0, why_m0 = _pf.solve_move(said_floor, mean=mean, mul_home=mul,
+                                    mul_away=mul_a)
+        if m0 is None:
+            got.why += f" · 🔴 **바닥 번역 실패** — 옛 구조를 쓴다({why_m0})"
+        else:
+            res = sum(float(weights.get(k) or 0.0)
+                      * float(gaps.get(k) or 0.0) for k in _pf.RESIDUAL_AXES)
+            rmove = max(-cap, min(cap, beta * res))
+            lam_h = mean * mul * math.exp(m0 + rmove)
+            lam_a = mean * mul_a * math.exp(-(m0 + rmove))
+            out = _sim.run(lam_h, lam_a,
+                           late_home=args["late_home"],
+                           late_away=args["late_away"],
+                           lead_mul=args["lead_mul"],
+                           state_mult=(said_state or None))
+            _fill(got, out)
+            got.lam = {"home": round(lam_h, 4), "away": round(lam_a, 4)}
+            got.move = {"home": round(rmove, 4), "away": round(-rmove, 4)}
+            # 🔴 기여 분해도 **바닥 대비**로 다시 센다 — 축2·축3 은 비중 0 이라
+            #    정확히 `0.00`(조용한 0 금지: 사유에 그 이름을 적는다)
+            keep_w = {k: (float(weights.get(k) or 0.0)
+                          if k in _pf.RESIDUAL_AXES else 0.0)
+                      for k in ("axis0", "axis1", "axis2", "axis3")}
+            base = _sim.run(mean * mul * math.exp(m0),
+                            mean * mul_a * math.exp(-m0))
+            got.share, got.share_refs = _share(mean, mul, beta, cap, keep_w,
+                                               gaps, mr, base=base,
+                                               mul_a=mul_a, move0=m0)
+            got.why = (f"🔴 **새 구조**(Elo 바닥 + 축0·축1 잔차) — {why_m0} · "
+                       f"{why_mean} → 한 팀 평균 {mean:.3f} · {why_home} · "
+                       f"{why_mul_a} · 잔차 합 {res:+.3f} × β {beta:g} → "
+                       f"λ 이동 {rmove:+.3f}(바닥 {m0:+.3f} 위) · "
+                       f"⚠️ 축2·축3 은 **확률 경로 밖**(백필 개선 −0.0038·−0.0039) · "
+                       f"그림자(옛 구조 네 축) 홈 "
+                       f"{float(got.shadow['home']):.1%}"
+                       + (f" · 규칙(축 안에서 셌다) {why_rules}"
+                          if why_rules else "")
+                       + (" · 📜 **상태 배율**(실측 표 · T11 끔) "
+                          + _state_said(facts) if said_state else "")
+                       + (f" · {_m.PROVISIONAL}" if got.provisional else ""))
     _note(state, f"S3 확률(상성) — 홈 {got.home:.1%} · 무 {got.draw:.1%} · "
                  f"원정 {got.away:.1%} · {got.why}")
     logger.info("[S3] %s", got.why)
     return got
+
+
+def _floor_triple(floor: object) -> list[float] | None:
+    """🔴 바닥을 **세 수**로 받는다(`ProbTriple`·사전·목록 전부). 없으면 `None`."""
+    if floor is None:
+        return None
+    got = floor
+    if hasattr(got, "home") and hasattr(got, "away"):
+        got = {"home": got.home, "draw": got.draw, "away": got.away}
+    if isinstance(got, dict):
+        said = [got.get("home"), got.get("draw"), got.get("away")]
+    elif isinstance(got, (list, tuple)) and len(got) == 3:
+        said = list(got)
+    else:
+        return None
+    if any(v is None for v in said):
+        return None
+    out = [float(v) for v in said]
+    return out if abs(sum(out) - 1.0) < 0.02 else None
 
 
 def _state_said(facts) -> str:
@@ -405,7 +488,7 @@ def _fill(got: ProbOut, out) -> None:
 
 
 def _share(mean: float, mul: float, beta: float, cap: float, weights: dict,
-           gaps: dict, mr, *, base, mul_a: float = 1.0
+           gaps: dict, mr, *, base, mul_a: float = 1.0, move0: float = 0.0
            ) -> tuple[dict, dict]:
     """🔴🔴 3-4 — 축별 기여(%p). **합이 리그 평균 대비 변화와 같다**.
 
@@ -419,7 +502,7 @@ def _share(mean: float, mul: float, beta: float, cap: float, weights: dict,
     prev = float(base.home)
     for name in ("axis0", "axis1", "axis2", "axis3"):
         run += float(weights.get(name) or 0.0) * float(gaps.get(name) or 0.0)
-        move = max(-cap, min(cap, beta * run))
+        move = max(-cap, min(cap, beta * run)) + float(move0)
         # 🔴 **λ 식과 같은 꼴**이어야 한다 — 원정 배율을 빼면 합이 안 맞는다
         now = _sim.run(mean * mul * math.exp(move),
                        mean * mul_a * math.exp(-move))

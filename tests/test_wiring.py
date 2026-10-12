@@ -620,10 +620,13 @@ NOT_WIRED: set[str] = {
 #     것)와 뜻이 다르므로 **따로** 적는다 — 그리고 아래 검사가 *"그 도구가 정말
 #     부르나"* 를 센다(이름만 적어 두고 비는 것을 막는다).
 TOOL_ONLY: dict[str, str] = {
-    # 🔴🔴 **확률 경로 재구성 중**(사용자 지시 2026-10-12 적중률 1번) —
-    #    `probfloor`(Elo 바닥 + 축0·축1 잔차)를 **백필 채점기**가 부른다.
-    #    ⚠️ 운영 ⑯ 에 잇는 것은 **444경기 전후 비교가 오른 뒤**다
-    #    (지시 2번: *"오르면 넣고 아니면 버린다"*).
+    # 🔴🔴 **확률 경로 재구성**(사용자 지시 2026-10-12 적중률 1번).
+    #    🔴 운영 ⑯ 은 **이어졌다**(사용자 결정 (a) 2026-10-12): `pipeline` 이
+    #    `base_p.probs`(Elo 바닥)를 `probmodel.run(floor=)` 에 넘기고, 그 안에서
+    #    `probfloor.solve_move`·`RESIDUAL_AXES` 를 쓴다 — 그 둘은 **배선된 것**이라
+    #    여기 없다.
+    #    ⚠️ 아래 셋은 **백필 채점기 전용**이다(바닥·잔차를 승무패 수준에서 직접
+    #    섞는 길 · 운영은 λ 수준에서 섞는다).
     "app.core.probfloor.floor_of": "tools/backfill_score.py",
     "app.core.probfloor.blend": "tools/backfill_score.py",
     "app.core.probfloor.direction_hit": "tools/backfill_score.py",

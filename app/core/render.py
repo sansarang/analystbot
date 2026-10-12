@@ -1733,6 +1733,23 @@ def prob_long(card: Card) -> str:
                    + " · ".join(f"{k} {float(v):.3f}" for k, v in lam.items()))
     if pull("why"):
         out.append(f"- 유도 — {pull('why')}")
+    # 🔴🔴 **그림자 확률**(사용자 결정 2026-10-12 (a)) — 옛 구조(네 축)의 수다.
+    #  ⚠️ **표시만** 한다 — 등급·보드·최종 평은 위의 새 구조가 낸다.
+    said_floor = dict(box.get("floor") or pull("floor") or {})
+    if said_floor:
+        out.append("- 바닥(Elo) — "
+                   + " · ".join(f"{nm} {float(said_floor[k]):.0%}"
+                                for nm, k in (("홈", "home"), ("무", "draw"),
+                                              ("원정", "away"))
+                                if said_floor.get(k) is not None))
+    said_shadow = dict(box.get("shadow") or pull("shadow") or {})
+    if said_shadow:
+        out.append("- 🕯 **그림자 확률**(옛 구조 · 네 축 · 표시만) — "
+                   + " · ".join(f"{nm} {float(said_shadow[k]):.0%}"
+                                for nm, k in (("홈", "home"), ("무", "draw"),
+                                              ("원정", "away"))
+                                if said_shadow.get(k) is not None)
+                   + " — 🔴 판정에는 **안 쓴다**(짝지은 채점용으로 쌓는다)")
     share = dict(box.get("share") or pull("share") or {})
     refs = dict(box.get("share_refs") or {})
     if share:

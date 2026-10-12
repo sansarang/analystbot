@@ -108,3 +108,52 @@ def test_survival_source_is_only_the_distribution() -> None:
     # 🔴 분포가 없으면 **보류**다
     i = said.index("if not dist:")
     assert '"보류"' in said[i:i + 500]
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **운영 ⑯ 배선**(사용자 결정 2026-10-12 (a)) — 새 구조가 판정이다
+# ══════════════════════════════════════════════════════════════════
+
+def test_lambda_is_solved_to_match_the_floor() -> None:
+    """🔴 바닥 승무패를 **시뮬이 재현**하도록 λ 기울기를 푼다.
+
+    🔴 그래야 *"최종 확률 = 시뮬 결과"*(C2)와 *"Elo 가 바닥"*(C1 개정)이 **함께**
+       선다. ⚠️ 못 맞추면 그 사실을 사유에 남긴다(지어내지 않는다).
+    """
+    from app.core import probfloor as pf
+    want = [0.55, 0.25, 0.20]
+    move, why = pf.solve_move(want, mean=1.4, mul_home=1.05, mul_away=0.95)
+    assert move is not None, why
+    from app.core import sim as _sim
+    import math
+    out = _sim.run(1.4 * 1.05 * math.exp(move), 1.4 * 0.95 * math.exp(-move))
+    assert abs(out.home - want[0]) < 0.02, (out.home, want[0], why)
+
+
+def test_solver_says_when_it_cannot() -> None:
+    from app.core import probfloor as pf
+    move, why = pf.solve_move(None, mean=1.4, mul_home=1.0, mul_away=1.0)
+    assert move is None and ("없다" in why or "🔴" in why)
+
+
+def test_probmodel_takes_the_floor() -> None:
+    """🔴 ⑯ 이 **바닥을 인자로 받는다**(Elo 가 그 바닥이다)."""
+    import inspect
+
+    from app.core import probmodel as pm
+    assert "floor" in inspect.signature(pm.run).parameters
+
+
+def test_pipeline_passes_the_elo_floor() -> None:
+    """🔴 배선 — 파이프라인이 `base_p`(Elo)를 ⑯ 에 넘긴다."""
+    said = _src("app/core/pipeline.py")
+    i = said.index("prob = _pm.run(")
+    assert "floor=" in said[i:i + 300], said[i:i + 200]
+
+
+def test_old_structure_is_kept_as_a_shadow() -> None:
+    """🔴 옛 구조(네 축)는 **그림자 확률**로 기록만 한다(판정은 새 구조)."""
+    from app.core import probmodel as pm
+    assert "shadow" in pm.ProbOut.__dataclass_fields__
+    said = _src("app/core/render.py")
+    assert "그림자" in said

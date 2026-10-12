@@ -355,7 +355,11 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
                           for c in breaks[:1])
                if breaks else "⬜ 0건")
             + f" · 모두 {len(breaks)}건(상태 전부 `미확인`)")
-    prob = _pm.run(ref, facts, mr, varset, edge=edge, state=st)
+    # 🔴🔴 **⑯ 에 Elo 바닥을 넘긴다**(사용자 결정 2026-10-12 (a) · C1 개정)
+    #  ⚠️ `base_p.probs` 가 `None` 이면(Elo 없음) ⑯ 은 **옛 구조**로 돈다 — 지어내지
+    #     않는다. 그 사실은 `prob.why` 에 적힌다.
+    prob = _pm.run(ref, facts, mr, varset, edge=edge, state=st,
+                   floor=base_p.probs)
     edge["report"] = mr
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **xG 판을 한 번 더 센다**(사용자 결정 2026-10-12 — 3번 b)
@@ -374,7 +378,7 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
             mr_xg = _mu.report(ref, facts, edge_xg, varset, strategy=plan,
                                turnover=turn)
             prob_xg = _pm.run(ref, facts, mr_xg, varset, edge=edge_xg,
-                              state=st)
+                              state=st, floor=base_p.probs)
         # 🔴 **수는 평범한 사전으로 싣는다** — ⚠️ 카드가 저장을 지나면
         #    데이터클래스가 안 살아 있다(실측 2026-10-11: `prob` 칸이 비었다).
         edge["xg_pass"] = {
@@ -399,6 +403,11 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
         edge["sim"] = prob.as_sim()
         edge["share"] = dict(prob.share)
         edge["share_refs"] = dict(prob.share_refs)
+        # 🔴🔴 **수는 평범한 사전으로도 싣는다**(사용자 결정 2026-10-12 5번: *"뼈대
+        #    확률과 최종 확률을 둘 다 기록"*). ⚠️ 카드가 저장을 지나면 데이터클래스가
+        #    안 살아 있다(실측 2026-10-11) — 그래서 `floor`·`shadow` 를 사전으로 둔다.
+        edge["floor"] = dict(prob.floor or {})
+        edge["shadow"] = dict(prob.shadow or {})
         edge["prob"] = prob
         # 🔴🔴 **S3 가 낸 수가 카드의 확률이다**(C2) — 뒤 단계는 안 바꾼다
         layers["ours"] = _PT(home=prob.home, draw=prob.draw, away=prob.away)
