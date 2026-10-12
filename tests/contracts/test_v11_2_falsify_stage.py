@@ -110,9 +110,12 @@ def test_structure_verdicts_without_net() -> None:
                            said="꺼진 무기 ['forward']")]
     got = fx.by_structure(rows, xi_state="predicted")
     by = {c.id: c for c in got}
-    # 🔴 라인업이 예상이면 K4 는 **무너짐**이다(판정이 흔들린다)
-    assert by["BRK:K4:1"].state == fx.BROKEN
-    assert by["BRK:K4:1"].strength in ("hard", "soft")
+    # 🔴🔴 라인업이 예상이면 K4 는 **미확인**이다 — `무너짐` 이 아니다.
+    #    지시서 [3d] 카드 예시: *"무너짐 0 · 미확인 1 → 조건부(방아쇠: K4 확정 XI)"*
+    #    ⚠️ 내가 처음에 `hard 무너짐` 으로 적었더니 라인업 전 카드가 **전부
+    #       접는다** 가 됐다(실측 2026-10-12 레반테–세비야).
+    assert by["BRK:K4:1"].state == fx.UNKNOWN
+    assert by["BRK:K4:1"].strength == ""
     # 🔴 꺼진 무기가 적혀 있으면 K2 도 무너짐이다
     assert by["BRK:K2:2"].state == fx.BROKEN
 

@@ -322,9 +322,13 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #     갈아 주는 자리는 ⑫b(`s5b_falsify`) 하나다.
     #  ⚠️ 우선순위 지수(1번)는 아직 없다 — 그래서 `priority` 를 **안 넘긴다**
     #     (K5 가 안 선다 · 지어내지 않는다).
+    #  ⚠️ **가설에는 id 칸이 없다**(`Hypothesis(team, reasons, breaks)`) — `H1` 류
+    #     번호는 최종 평 묶음(`saybundle`)이 **뒤에** 붙인다. 🔴 그래서 여기서는
+    #     *그 가설이 어느 팀의 몇 번째 줄인가*로 가리킨다(실제 실행이 잡았다).
+    hypo_ids = [f"{one.team}#{i + 1}"
+                for i, one in enumerate(hypo.hypotheses or [])]
     breaks = s6_hypo.build_break_conditions(
-        ref, mr, variables,
-        hypo_ids=[h.id for h in (hypo.hypotheses or [])],
+        ref, mr, variables, hypo_ids=hypo_ids,
         reads=dict(edge.get("reads") or {}))
     edge["breaks"] = breaks
     st.note("⑩b 무너뜨릴 조건 — "

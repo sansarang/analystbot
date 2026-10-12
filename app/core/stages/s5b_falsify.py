@@ -65,11 +65,22 @@ def by_structure(rows: list, *, xi_state: str = "",
         state, said, strength = UNKNOWN, "", ""
         if kind == "K4":
             if xi_state:
-                broke = str(xi_state) != "confirmed"
-                state = BROKEN if broke else INTACT
-                said = f"라인업 상태 `{xi_state}`"
-                # 🔴 확정이 아닌 것은 **hard** 다 — 명단이 바뀌면 판정이 바뀐다
-                strength = "hard" if broke else ""
+                # ══════════════════════════════════════════════════════
+                # 🔴🔴 **확정 전은 `미확인` 이다 — `무너짐` 이 아니다**
+                # ══════════════════════════════════════════════════════
+                #
+                #  ⚠️ 실사고 2026-10-12(레반테–세비야): 내가 이것을 `hard 무너짐`
+                #     으로 뒀더니 판정이 **접는다** 가 됐다 — 라인업 전에 돌리는
+                #     카드가 **전부** 접히는 길이다.
+                #  🔴 지시서 [3d] 의 카드 예시가 답을 적어 뒀다:
+                #     *"반증 6조건: 무너짐 0 · 미확인 1 → 조건부(방아쇠: K4 확정 XI)"*
+                #     즉 확정 전은 **미확인**(→ 조건부 · 방아쇠로 등록)이다.
+                if str(xi_state) != "confirmed":
+                    state, said, strength = (
+                        UNKNOWN, f"라인업 상태 `{xi_state}` — 확정되면 다시 센다",
+                        "")
+                else:
+                    state, said, strength = INTACT, "확정 XI 다", ""
         elif kind == "K2":
             # 🔴 조건이 선 까닭 자체가 "꺼진 무기가 있다"다(⑧ 이 셌다)
             state = BROKEN
