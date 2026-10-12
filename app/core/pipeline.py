@@ -543,6 +543,19 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     layers["infoq"] = said_iq
     said = _iq.apply(said, said_iq)
     st.note(f"[㉑] {said_iq.why}")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **§10·§14 이변 경고** — 확률 불변 · **등급만** 바꾼다(계약 U3·U4·U5)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 🔴 이변 경고: 강팀 승·강팀 핸디 → **등급 없음(접는다)**. 약팀 보호 줄만
+    #  > 판정 대상. 🟡: 강팀 줄 **한 단계↓**.
+    #
+    #  🔴 판(계수·분위·검증 통과)이 없으면 **경고를 켜지 않는다** — 손값 금지(§0).
+    said_up = _upset_of(ref, facts, layers, edge, infoq=said_iq)
+    layers["upset"] = said_up
+    if said_up is not None and said_up.grade:
+        said = _upset_apply(said, said_up, ref=ref, layers=layers)
+        st.note(f"[⑳] {said_up.why}")
     said = _direction(said, layers, ref)
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **먼저 숫자를 고치고, 그 숫자에서 논평을 만든다**(2026-10-07 ②③)
@@ -721,6 +734,76 @@ def _schedule_line(facts) -> str:
                 (" · **4일 내 컵**" if got.cup_4d else ""))
     return (f"일정: 홈 {_one('home')} / 원정 {_one('away')}"
             f" — ⚠️ **확률에는 아직 안 들어간다**(§9 전진 선택 전)")
+
+
+def _upset_of(ref: MatchRef, facts, layers: dict, edge: dict, *, infoq):
+    """🔴🔴 §10 — 경고 점수. **판이 없으면 `None`**(경고를 켜지 않는다).
+
+    🔴 신호는 **확률로 못 간 것만**이다(S2) — λ 식이 채택한 항은 `adopted` 로 뺀다.
+    ⚠️ 지금 λ 식에 채택된 항은 **없다**(§9 전진 선택 전) — 그래서 `adopted` 는
+       빈 묶음이고, 그 사실이 사유에 남는다.
+    """
+    from app.core import upset as _up
+    from app.core import versions as _v
+    box = _v.path_of("upset_model", "all")
+    try:
+        model, why = _v.pick(box, as_of=getattr(ref, "kickoff_utc", None))
+    except ValueError:
+        return None
+    if not model or not dict(model.get("coef") or {}):
+        return None
+    ours = layers.get("ours")
+    if ours is None:
+        return None
+    probs = [float(ours.home), float(ours.draw), float(ours.away)]
+    fav = 0 if probs[0] >= probs[2] else 2
+    said = {"weak_fav": 1.0 if probs[fav] < _up.WEAK_FAV else 0.0,
+            "thin_info": 1.0 if getattr(infoq, "score", 5) <= 2 else 0.0}
+    got = _up.score_of(said, model=dict(model), adopted=set())
+    got.why = f"{got.why} · 판 {why}"
+    return got
+
+
+def _upset_apply(said, got, *, ref: MatchRef, layers: dict):
+    """🔴🔴 §14 — 🔴 는 **강팀 줄을 접고**, 🟡 는 강팀 줄을 한 단계 내린다.
+
+    🔴 확률·생존은 **그대로**다(U3) — 바뀌는 것은 `grade` 와 결론 문구뿐이다.
+    """
+    from app.core import upset as _up
+    from app.core.stages.s7_judge import BREAK_LADDER
+    ours = layers.get("ours")
+    probs = [float(ours.home), float(ours.draw), float(ours.away)]
+    fav_side = "home" if probs[0] >= probs[2] else "away"
+    fav_name = str(getattr(ref, f"{fav_side}_name", "") or "")
+    step = _up.step_of(got.grade)
+    out = []
+    for ev in said.evals:
+        # 🔴 줄 이름 꼴은 **카드 표와 같은 것**이다(`render._b7`: `시장 쪽 점`) —
+        #    다른 글자를 만들면 `folds` 가 강팀 줄을 못 알아본다.
+        point = ("" if getattr(ev.line, "point", None) is None
+                 else f" {ev.line.point}")
+        said_line = (f"{getattr(ev.line, 'market', '')} "
+                     f"{getattr(ev.line, 'side', '') or ''}{point}").strip()
+        if _up.folds(said_line, grade=got.grade, fav_name=fav_name,
+                     fav_side=fav_side, home=ref.home_name,
+                     away=ref.away_name):
+            out.append(ev.model_copy(update={
+                "grade": "보류",
+                "why": f"{ev.why} · 🔴 **이변 경고 — 강팀 줄을 접는다**"}))
+            continue
+        grade = ev.grade
+        if step and grade in BREAK_LADDER:
+            i = min(len(BREAK_LADDER) - 1, BREAK_LADDER.index(grade) + step)
+            grade = BREAK_LADDER[i]
+        out.append(ev.model_copy(update={
+            "grade": grade,
+            "why": (f"{ev.why} · {got.grade} 이변 경고"
+                    if step else ev.why)}))
+    note = (f"{got.grade} **이변 경고** — "
+            + ("강팀 접는다 · 약팀 보호 줄만"
+               if got.grade == _up.RED else "강팀 줄 한 단계↓"))
+    return said.model_copy(update={
+        "evals": out, "notes": list(said.notes) + [f"[⑳] {note} · {got.why}"]})
 
 
 def _infoq_of(ref: MatchRef, facts, layers: dict, edge: dict):
@@ -937,6 +1020,8 @@ def card_of(ref: MatchRef, facts: Facts, variables: list[Variable],
         # ⚠️ 이 자리에서 재료 묶음의 이름은 `box["matchup"]` 이다(`edge` 가 아니다 —
         #    그것은 파이프라인 본체의 지역 이름이다 · 계약이 잡았다 2026-10-12).
         stance=said.stance,
+        # 🔴 §10 — 이변 경고 한 줄(등급만 바꿨다 · 확률은 그대로다)
+        upset=str(getattr(box.get("upset"), "why", "") or ""),
         # 🔴 §7 — 일정 한 줄(표시 전용 · 확률은 §9 가 채택할 때 들어간다)
         schedule=_schedule_line(facts),
         # 🔴 §13 — 머리 줄이 적는다(확률에는 안 닿는다 · C13-1)
