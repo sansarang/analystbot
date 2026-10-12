@@ -272,6 +272,13 @@ def _head(card: Card) -> str:
     #
     #  🔴 **조용히 나가지 않는다** — 실사고 2026-10-09(가시마–감바)는 변수 1개 ·
     #     기준 없음 · 폼·XI·순위 전무인 카드가 **아무 표시도 없이** 나간 일이다.
+    # 🔴🔴 **§13 정보 품질** — 머리 줄에 적는다(지시서 2026-10-12(둘째) §13·§14).
+    #  ⚠️ 확률은 안 바뀐다 — **등급만** 내린다(그 사실을 줄이 말한다).
+    if card.infoq:
+        head += ("\n📏 " + card.infoq
+                 + (" → **등급 한 단계↓**"
+                    if (card.infoq_score is not None
+                        and int(card.infoq_score) <= 2) else ""))
     for line in warn_lines(card):
         head += f"\n{line}"
     c = card.cost

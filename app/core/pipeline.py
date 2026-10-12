@@ -13,6 +13,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
+from app.core import infoquality as _iq
 from app.core.schema import (AdjProb, Ambiguous, BaseProb, Board, Card, Doc,
                              Facts, Funnel, HypoSet, Judgement, MarketEval,
                              MarketProb, MatchRef, ProbTriple, Question,
@@ -531,6 +532,17 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     said = s7_judge.by_breaks(_grade_by_check(said, layers, state=st),
                               list(edge.get("breaks") or []))
     st.note(f"⑭ 반증 판정 — **{said.stance}**")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **§13·§14 정보 품질 InfoQ** — 지시서 2026-10-12(둘째) · 등급만 바꾼다
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > InfoQ ≤ 2 → 등급 한 단계↓ · "조건부" 이상 불가 · 빠진 칸을 방아쇠로.
+    #
+    #  🔴 확률·λ·생존에 **닿지 않는다**(계약 C13-1) — 이 자리는 등급 **뒤**다.
+    said_iq = _infoq_of(ref, facts, layers, edge)
+    layers["infoq"] = said_iq
+    said = _iq.apply(said, said_iq)
+    st.note(f"[㉑] {said_iq.why}")
     said = _direction(said, layers, ref)
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **먼저 숫자를 고치고, 그 숫자에서 논평을 만든다**(2026-10-07 ②③)
@@ -689,6 +701,36 @@ async def _priority_of(ref: MatchRef, facts: Facts, *, net: Any,
         why[side] = (f"{why_one} · {why_today} · {why_best}"
                      if got is not None else f"{why_one} — {why_best}")
     return out, why
+
+
+def _infoq_of(ref: MatchRef, facts, layers: dict, edge: dict):
+    """🔴🔴 §13 — 다섯 칸을 **이 실행이 이미 아는 것**에서 센다(새로 받지 않는다).
+
+    🔴 `None` 은 **계산 불가**(⬜)다 — 재현·백필은 기사 칸을 만들 수 없다.
+    ⚠️ 점수를 만드는 규칙은 `app/core/infoquality.BOXES` 하나다(사본 금지).
+    """
+    xi = dict(getattr(facts, "xi", None) or {})
+    both_xi = all(getattr(xi.get(str(getattr(ref, side, "") or "")), "lineup",
+                          None) for side in ("home", "away"))
+    ladder = dict(getattr(facts, "absence_ladder", None) or {})
+    said_ladder = (bool(ladder) and
+                   any(int(v or 0) > 0 for v in ladder.values())) if ladder \
+        else None
+    fresh = layers.get("fresh_count")
+    bench = dict(getattr(facts, "bench", None) or {})
+    said_bench = bool(bench) and all(bench.get(str(getattr(ref, side, "")
+                                                  or "")) is not None
+                                     for side in ("home", "away"))
+    ctx = dict(getattr(facts, "context", None) or {})
+    said_ctx = (bool(ctx) and all(ctx.get(side) for side in ("home", "away"))
+                if ctx else None)
+    return _iq.score_of({
+        "xi_ids": bool(both_xi),
+        "ladder": said_ladder,
+        "fresh": (None if fresh is None else bool(int(fresh or 0) > 0)),
+        "context": said_ctx,
+        "bench_ids": said_bench,
+    })
 
 
 def _gate_of(ref: MatchRef, facts, turn: dict, *, state: RunState):
@@ -875,6 +917,10 @@ def card_of(ref: MatchRef, facts: Facts, variables: list[Variable],
         # ⚠️ 이 자리에서 재료 묶음의 이름은 `box["matchup"]` 이다(`edge` 가 아니다 —
         #    그것은 파이프라인 본체의 지역 이름이다 · 계약이 잡았다 2026-10-12).
         stance=said.stance,
+        # 🔴 §13 — 머리 줄이 적는다(확률에는 안 닿는다 · C13-1)
+        infoq=str(getattr(box.get("infoq"), "why", "") or ""),
+        infoq_score=(int(getattr(box.get("infoq"), "score", 0))
+                     if box.get("infoq") is not None else None),
         break_rerun=str(box.get("break_rerun") or ""),
         breaks=list(dict(box.get("matchup") or {}).get("breaks") or []),
         triggers=said.triggers,
