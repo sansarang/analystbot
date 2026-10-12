@@ -210,6 +210,9 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
     # 🔴 F2/R3 — **r 가중**(선수단 교체)을 재료에 적어 둔다 — 축1·축3 이 그 수로
     #    과거 경기를 깎고, 보고가 그 사실을 적는다(조용히 깎지 않는다 · #3)
     from app.core import matchup as _mu
+    # 🔴 3a(2026-10-12) — **핵심 선수 상태**를 쓰는 곳이 둘이 됐다(꺼진 무기 ·
+    #    무너뜨릴 조건 K1). 그 읽은 것을 재료로 내보낸다(두 번 읽지 않는다).
+    out["reads"] = reads
     out["r"] = _mu.r_of(varset, ref, turnover=turnover)
     out["turnover"] = dict(turnover or {})
     out["strategy_move"] = {s: said_plan[s] for s in ("home", "away")}

@@ -929,6 +929,36 @@ class Scenario(Frozen):
     strength: float = 0.0
 
 
+class BreakCondition(Frozen):
+    """🔴🔴 **무너뜨릴 조건** 하나 — 수정 지시서 2026-10-12 [3a].
+
+    > 출력: BreakCondition 목록 — {id, 가설 id, 종류, 대상 팀·선수 id,
+    > 확인 방법(구조 사실/질의), 상태=미확인}
+
+    🔴 종류는 **코드 상수**다(`s6_hypo.BREAK_KINDS`) — LLM 이 늘리거나 줄이면
+       계약이 빨개진다(B2).
+    ⚠️ `state` 는 ⑫b 반증 단계가 갈아 준다 — 여기서 만들 때는 **늘 `미확인`**이다.
+    """
+
+    #: 🔴 `BRK:` 로 시작한다 — 최종 평 검열 카탈로그가 그 꼴로 등록한다
+    id: str
+    kind: str
+    #: 🔴 어느 가설을 무너뜨리나(가설 id). ⚠️ 가설이 없으면 빈 글자다
+    hypo_id: str = ""
+    team: str = ""
+    player_id: str = ""
+    player_name: str = ""
+    #: 🔴 `구조 사실`(이미 아는 것으로 판정) · `질의`(⑫b 가 검색한다)
+    how: str = "질의"
+    said: str = ""
+    #: 🔴 `미확인` · `확인-무너짐` · `확인-무너짐 없음`
+    state: str = "미확인"
+    #: 🔴 무너짐일 때 그 근거 — 출처·시각·강도
+    source: str = ""
+    found_at: str = ""
+    strength: str = ""
+
+
 class HypoSet(Frozen):
     """🔴 s6 산출."""
 

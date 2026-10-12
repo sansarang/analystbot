@@ -309,6 +309,27 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #     확률 뒤에 서면 *"수를 보고 말을 맞춘 것"* 과 구분이 안 된다.
     hypo = s6_hypo.claims(ref, facts, variables, state=st, mr=mr,
                           varset=varset)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **3a 무너뜨릴 조건** — 수정 지시서 2026-10-12 [3a]
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 위치: ⑩ 가설 세우기 **직후**, ⑪ 확률 **앞**. … C3 유지: 이 함수는
+    #  > S3 숫자를 보지 않는다.
+    #
+    #  🔴 조건은 **코드가** 만든다(LLM 금지 · B2). ⚠️ 상태는 전부 `미확인` 이고
+    #     갈아 주는 자리는 ⑫b(`s5b_falsify`) 하나다.
+    #  ⚠️ 우선순위 지수(1번)는 아직 없다 — 그래서 `priority` 를 **안 넘긴다**
+    #     (K5 가 안 선다 · 지어내지 않는다).
+    breaks = s6_hypo.build_break_conditions(
+        ref, mr, variables,
+        hypo_ids=[h.id for h in (hypo.hypotheses or [])],
+        reads=dict(edge.get("reads") or {}))
+    edge["breaks"] = breaks
+    st.note("⑩b 무너뜨릴 조건 — "
+            + (" · ".join(f"{c.kind}×{sum(1 for x in breaks if x.kind == c.kind)}"
+                          for c in breaks[:1])
+               if breaks else "⬜ 0건")
+            + f" · 모두 {len(breaks)}건(상태 전부 `미확인`)")
     prob = _pm.run(ref, facts, mr, varset, edge=edge, state=st)
     edge["report"] = mr
     # ══════════════════════════════════════════════════════════════════

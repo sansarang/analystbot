@@ -52,6 +52,110 @@ CLAIM_CUT = 80
 STAGES = ("claims", "scenarios")
 
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **3a 무너뜨릴 조건** — 수정 지시서 2026-10-12(반증 우선)
+# ══════════════════════════════════════════════════════════════════
+#
+# > [3a] 위치: ⑩ 가설 세우기 직후, ⑪ 확률 앞. … 종류(코드만 만든다,
+# > **LLM 추가·삭제 금지**) K1~K6. C3 유지: 이 함수는 S3 숫자를 보지 않는다.
+#
+# 🔴 왜 코드가 만드나 — 조건을 LLM 이 만들면 *"불리한 조건을 빼는"* 길이 열린다.
+#    그러면 반증은 장식이 된다. 목록은 **늘 같은 여섯 종류**다(B2).
+
+#: 🔴 조건 종류 — **여기가 원본이다**(계약이 이 순서를 센다)
+BREAK_KINDS: tuple[str, ...] = ("K1", "K2", "K3", "K4", "K5", "K6")
+
+#: 🔴 종류별 한 줄 설명(카드·반증 표가 그대로 적는다)
+BREAK_SAID: dict[str, str] = {
+    "K1": "우위 팀 핵심 공격 선수(공격 기여 상위 2)가 결장·벤치면 무너진다",
+    "K2": "우위 팀 무기가 꺼져 있으면(⑧ 꺼진 무기) 그 우위가 무너진다",
+    "K3": "맞대결(V5)이 반대 방향이면 무너진다",
+    "K4": "라인업이 확정이 아니면(예상·보도) 판정이 무너질 수 있다",
+    "K5": "우위 팀의 경기 우선순위 지수가 낮으면(아끼는 경기) 무너진다",
+    "K6": "열세 팀 핵심이 복귀하면 우위가 무너진다",
+}
+
+#: 🔴🔴 K5 문턱 — **백필 적합 전 임시값**이다(🔴 표시로 카드에 나간다)
+PRIORITY_LOW = 0.80
+
+#: 🔴 K1 이 보는 **공격 기여 상위 몇 명**(지시서: 상위 2)
+KEY_TOP = 2
+
+
+def build_break_conditions(ref: MatchRef, mr, variables: list,
+                           *, hypo_ids: list[str] | None = None,
+                           priority: dict | None = None,
+                           reads: dict | None = None) -> list:
+    """🔴🔴 [3a] — **무너뜨릴 조건 목록**. 코드만 만든다(LLM 금지 · B2).
+
+    `mr` 은 `matchup.MatchupReport`(우위 팀·꺼진 무기·XI 상태)다.
+    `priority` 는 1번(우선순위 지수)이 서면 `{side: 지수}` 로 온다 — **없으면
+    K5 를 만들지 않는다**(지어내지 않는다 · 지시서 [3a] K5).
+    `reads` 는 `{side: strategy.TeamRead}` — K1 의 핵심 선수 상태를 거기서 읽는다.
+
+    🔴 C3 — **확률을 보지 않는다**(인자에도 본문에도 없다 · 계약이 센다).
+    ⚠️ 상태는 **늘 `미확인`**이다. 갈아 주는 자리는 ⑫b(`s5b_falsify`) 하나다.
+    """
+    from app.core.schema import BreakCondition
+    said_ids = [str(x) for x in (hypo_ids or []) if str(x)]
+    first = said_ids[0] if said_ids else ""
+    edge = str(mr.edge_of() if hasattr(mr, "edge_of") else "")
+    other = ("away" if edge == "home" else "home") if edge else ""
+    key_of = {"home": str(getattr(ref, "home", "") or ""),
+              "away": str(getattr(ref, "away", "") or "")}
+    out: list = []
+
+    def add(kind: str, *, side: str = "", how: str = "질의",
+            player: str = "", pid: str = "", extra: str = "") -> None:
+        out.append(BreakCondition(
+            id=f"BRK:{kind}:{len(out) + 1}", kind=kind, hypo_id=first,
+            team=key_of.get(side, ""), player_id=pid, player_name=player,
+            how=how, said=BREAK_SAID[kind] + (f" — {extra}" if extra else ""),
+            state="미확인"))
+
+    # ── K1 우위 팀 핵심 공격 선수(상위 2) — 질의로 확인한다
+    if edge:
+        box = dict((reads or {}).get(edge) or {}) if isinstance(
+            (reads or {}).get(edge), dict) else {}
+        table = dict(box.get("att_table") or (
+            getattr((reads or {}).get(edge), "att_table", None) or {}))
+        top = [nm for nm, _ in sorted(table.items(), key=lambda kv: -kv[1])
+               ][:KEY_TOP]
+        for nm in top:
+            add("K1", side=edge, player=str(nm), extra=f"대상 `{nm}`")
+        if not top:
+            add("K1", side=edge, extra="🔴 공격 기여표가 없다 — 대상을 못 골랐다")
+    # ── K2 우위 팀 무기 꺼짐 — **구조 사실**로 안다(⑧ 이 이미 셌다)
+    off = dict(getattr(mr, "off_weapons", None) or {})
+    if edge and list(off.get(edge) or []):
+        add("K2", side=edge, how="구조 사실",
+            extra=f"꺼진 무기 {list(off.get(edge) or [])}")
+    # ── K3 맞대결 반대 방향 — 구조 사실(V5 가 든 수)
+    add("K3", side=other or edge, how="구조 사실")
+    # ── K4 라인업 미확정 — 구조 사실
+    if str(getattr(mr, "xi_state", "") or "") != "confirmed":
+        add("K4", how="구조 사실",
+            extra=f"지금 XI `{getattr(mr, 'xi_state', '') or '없다'}`")
+    # ── K5 우선순위 지수 — **1번이 서야 만든다**
+    said_pri = dict(priority or {})
+    if edge and said_pri.get(edge) is not None:
+        got = float(said_pri[edge])
+        if got < PRIORITY_LOW:
+            add("K5", side=edge, how="구조 사실",
+                extra=f"지수 {got:.2f} < 문턱 {PRIORITY_LOW:.2f}(🔴 임시값)")
+    # ── K6 열세 팀 핵심 복귀 — 변수(returning)로 본다
+    #  ⚠️ `Variable` 의 방향 칸은 **`favors`** 다(`affects_side` 라는 칸은 없다 —
+    #     계약이 그 오타를 잡았다 · 2026-10-12).
+    for one in (variables or []):
+        kind = str(getattr(one, "type", "") or "")
+        side = str(getattr(one, "favors", "") or "")
+        if kind in ("returning", "national_duty_return") and (
+                not other or side == other):
+            add("K6", side=(side if side in ("home", "away") else other),
+                how="질의", extra=f"변수 `{getattr(one, 'id', '')}`")
+    return out
+
+
 def claims(ref: MatchRef, facts: Facts, variables: list[Variable], *,
            state: RunState, mr=None, varset=None) -> HypoSet:
     """🔴🔴 **단계 2 — 가설만 세운다**(순서 재편 지시서 2026-10-10 다섯째).
