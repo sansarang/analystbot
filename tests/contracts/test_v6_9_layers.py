@@ -1128,8 +1128,13 @@ def _judge(board, source: str):
                      driver_vars=["V1"]),
             Scenario(id="C", outcomes=[(0, 2)], mechanism="m", strength=1.0,
                      driver_vars=["V2"])]
+    # 🔴🔴 **시뮬 분포를 준다**(사용자 지시 2026-10-12): 생존의 출처는 분포
+    #    하나이고, 분포가 없으면 **보류**다. ⚠️ 이 고정물은 *"보드 유무"* 를 보는
+    #    것이므로 운영처럼 분포를 함께 준다(안 주면 보드 규칙을 못 본다).
+    said_dist = {"2-0": 0.3, "1-1": 0.4, "0-2": 0.3}
     return s7_judge.run(ref, Facts(), rows, HypoSet(scenarios=scen),
                         state=RunState(), board=board, board_source=source,
+                        dist=said_dist,
                         now=ref.kickoff_utc - timedelta(hours=2))
 
 

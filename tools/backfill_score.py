@@ -66,6 +66,8 @@ async def main() -> None:
     ap.add_argument("--name", action="append", required=True,
                     help="그 리그의 대회 유형 열쇠(예: league:J1)")
     ap.add_argument("--limit", type=int, default=200)
+    ap.add_argument("--seasons", type=int, default=1,
+                    help="🔴 받을 시즌 수(1 이면 이번 시즌만)")
     args = ap.parse_args()
     from app.collect import fotmob as fm
     from app.core import backfill as bf
@@ -77,9 +79,27 @@ async def main() -> None:
     rows_all: list[dict] = []
     for lid, name in zip(args.league, args.name, strict=True):
         rows = await fm.league_matches(net, lid)
+        # 🔴 **여러 시즌** — 지시 3번(각 두 시즌). ⚠️ 받은 경기는 캐시에 남아
+        #    다시 돌릴 때 재사용된다(`Net(cache=True)`).
+        page0 = await net.get(fm.league_matches_url(lid, "x"))
+        said_seasons = fm.league_seasons(
+            fm.payload(getattr(page0, "text", "") or "") or {})
+        for season in said_seasons[1:max(1, int(args.seasons))]:
+            more = await net.get(fm.league_matches_url(lid, "x")
+                                 + f"?season={season}")
+            j_more = fm.payload(getattr(more, "text", "") or "") or {}
+            pp = ((j_more.get("props") or {}).get("pageProps") or {})
+            for m in (((pp.get("fixtures") or {}).get("allMatches")) or []):
+                st = m.get("status") or {}
+                rows.append({"id": str(m.get("id") or ""),
+                             "home": str((m.get("home") or {}).get("name") or ""),
+                             "away": str((m.get("away") or {}).get("name") or ""),
+                             "utc": str(st.get("utcTime") or ""),
+                             "finished": bool(st.get("finished"))})
         done = sorted([r for r in rows if r.get("finished") and r.get("utc")],
                       key=lambda r: str(r["utc"]))[-int(args.limit):]
-        print(f"리그 {lid}({name}) — 끝난 경기 {len(done)}건")
+        print(f"리그 {lid}({name}) — 끝난 경기 {len(done)}건 "
+              f"· 시즌 {said_seasons[:max(1, int(args.seasons))]}", flush=True)
         prior: dict[str, list] = {}
         elo: dict[str, float] = {}
         mean = rules.goal_share(name)
@@ -93,7 +113,9 @@ async def main() -> None:
         conf = dict(mu.table().get("weights") or {})
         beta = float(dict(mu.table().get("lambda_model") or {}).get("beta")
                      or 0.25)
-        for one in done:
+        for n_i, one in enumerate(done, 1):
+            if n_i % 25 == 0:
+                print(f"   … {n_i}/{len(done)}", flush=True)
             page = await net.get(fm.match_url(str(one.get("id") or "")))
             j = fm.payload(getattr(page, "text", "") or "")
             if not j:
@@ -119,7 +141,12 @@ async def main() -> None:
                 ours = [out.home, out.draw, out.away]
             else:
                 ours = None
-            rows_all.append({"league": name, "day": str(one.get("utc"))[:10],
+            # 🔴🔴 **새 구조**(사용자 지시 2026-10-12 1번) — Elo 바닥 + 축0·축1 잔차
+            from app.core import probfloor as _pf
+            floor, _wf = _pf.floor_of(kind=name, dr=dr)
+            fresh, _wb = _pf.blend(floor, gaps=gaps, weights=conf, beta=beta)
+            rows_all.append({"floor": floor, "fresh": fresh,
+                             "league": name, "day": str(one.get("utc"))[:10],
                              "hit": hit, "ours": ours, "dr": dr,
                              "gaps": dict(gaps), "why": why,
                              "diff": h - a})
@@ -148,12 +175,26 @@ async def main() -> None:
           f"원정 {base[2]:.1%}")
     even = [1 / 3, 1 / 3, 1 / 3]
     models = {
-        "봇(구조 특징만)": [(r["ours"], r["hit"]) for r in scored],
+        "**새 구조**(Elo 바닥+축0·축1)": [(r["fresh"], r["hit"]) for r in scored
+                                   if r.get("fresh")],
+        "봇(옛 구조 · 네 축)": [(r["ours"], r["hit"]) for r in scored],
         "Elo만": [(elo_probs(r["dr"], kind=r["league"]), r["hit"])
                  for r in scored],
         "리그 기본률": [(base, r["hit"]) for r in scored],
         "균등 33/33/33": [(even, r["hit"]) for r in scored],
     }
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **방향 적중률** — 지표 고정(사용자 지시 2026-10-12) · 보고 첫 줄
+    # ══════════════════════════════════════════════════════════════════
+    from app.core import probfloor as _pf2
+    print()
+    print("| 모형 | n | **방향 적중률** |")
+    print("|---|---|---|")
+    for name, box in models.items():
+        if not box:
+            continue
+        hit = sum(1 for p, h in box if _pf2.direction_hit(list(p), h))
+        print(f"| {name} | {len(box)} | **{hit / len(box):.1%}** |")
     print()
     print("| 모형 | n | 브라이어 | 95% 구간 | 로그 손실 |")
     print("|---|---|---|---|---|")
@@ -168,7 +209,7 @@ async def main() -> None:
     print()
     print("| 차이(봇 − 기준) | 브라이어 차 | 95% 구간 | 판정 |")
     print("|---|---|---|---|")
-    mine = got_b["봇(구조 특징만)"]
+    mine = got_b.get("**새 구조**(Elo 바닥+축0·축1)") or got_b["봇(옛 구조 · 네 축)"]
     for name in ("Elo만", "리그 기본률", "균등 33/33/33"):
         diff = [x - y for x, y in zip(mine, got_b[name], strict=True)]
         lo, hi = boot_ci(diff)

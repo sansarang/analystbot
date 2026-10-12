@@ -258,14 +258,26 @@ def _one(old: Any, line: BoardLine, ref: MatchRef, scen: list[Scenario],
                    + (f"(못 읽음 {unread})" if unread else ""))
         return None
     # 🔴🔴 **F5/R7 — 생존은 시뮬 분포에서**(시나리오 갈래를 바꿔도 안 변한다)
-    if dist:
-        survival = round(survive.from_dist(
-            old, dist, home=ref.home_name, away=ref.away_name,
-            sport=ref.sport), 4)
-    else:
-        survival = round(hit / mass, 4) if mass else 0.0
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **생존의 출처는 시뮬 분포 하나다**(사용자 지시 2026-10-12)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 퇴로는 끊는다: 시뮬 분포가 없으면 시나리오 무게로 생존을 세지 않는다 →
+    #  > 생존·등급 **"보류 — 확률 없음(사유)"**.
+    #
+    #  🔴 왜 — 시나리오 무게는 **재가중(⑳)** 을 지난 수다. 그것이 생존에 닿으면
+    #     *"확률이 없을 때만 도는 다른 모형"* 이 조용히 생긴다(F5 가 막은 그것).
+    if not dist:
         state.note(f"s7 `{survive.name_of(old)}` — 🔴 **시뮬 분포가 없다** → "
-                   f"생존을 시나리오 무게로 센다(F5 의 그 수가 아니다)")
+                   f"생존·등급 **보류**(시나리오 무게로 세지 않는다)")
+        return MarketEval(line=line, marks=marks, survival=0.0, cap=cap,
+                          grade="보류",
+                          why="🔴 보류 — 확률 없음(시뮬 분포가 없다)",
+                          dead=survive.dead_marks(marks,
+                                                  [s.id for s in scen]))
+    survival = round(survive.from_dist(
+        old, dist, home=ref.home_name, away=ref.away_name,
+        sport=ref.sport), 4)
     grade = _grade(survival, cap=cap, enough=enough, started=started,
                    n_scen=len(marks))
     return MarketEval(line=line, marks=marks, survival=survival, cap=cap,

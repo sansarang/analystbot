@@ -620,6 +620,13 @@ NOT_WIRED: set[str] = {
 #     것)와 뜻이 다르므로 **따로** 적는다 — 그리고 아래 검사가 *"그 도구가 정말
 #     부르나"* 를 센다(이름만 적어 두고 비는 것을 막는다).
 TOOL_ONLY: dict[str, str] = {
+    # 🔴🔴 **확률 경로 재구성 중**(사용자 지시 2026-10-12 적중률 1번) —
+    #    `probfloor`(Elo 바닥 + 축0·축1 잔차)를 **백필 채점기**가 부른다.
+    #    ⚠️ 운영 ⑯ 에 잇는 것은 **444경기 전후 비교가 오른 뒤**다
+    #    (지시 2번: *"오르면 넣고 아니면 버린다"*).
+    "app.core.probfloor.floor_of": "tools/backfill_score.py",
+    "app.core.probfloor.blend": "tools/backfill_score.py",
+    "app.core.probfloor.direction_hit": "tools/backfill_score.py",
     "app.core.backfill.features": "tools/fit_matchup_model.py",
     "app.core.backfill.score_of": "tools/fit_matchup_model.py",
     # 🔴 사용자 지시 2026-10-11 ① — 리그 홈 이점을 **그 리그 결과로** 잰다.

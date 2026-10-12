@@ -226,6 +226,6 @@ def test_v5_9_3_계약은_contracts_폴더에_있다():
            #    (`test_v11_1_break_conditions.py` = 그 지시서 [3a]).
            if not re.search(
                r"v5_\d|v5a_|v6_\d|v7_\d|v8_f\d|v9_\d|v10_\d|v11_\d"
-               r"|_m\d|solar",
+               r"|v12_\d|_m\d|solar",
                f, re.I)]
     assert not bad, f"🔴 조항 번호가 이름에 없는 계약 파일: {bad}"
