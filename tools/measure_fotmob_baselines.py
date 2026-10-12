@@ -25,6 +25,12 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = ROOT / "config/goal_baselines.yaml"
 #: 🔴 사용자 지시 ① — 이번 시즌이 이보다 적으면 직전 시즌까지 더한다
 MIN_N = 30
+#: 🔴🔴 **홈 배율은 여러 시즌으로 잰다**(사용자 지시 2026-10-12 1번) — 한 시즌
+#   표본으로 **음수 홈 이점**이 나왔다(K리그1 185경기: 홈 1.1784 < 한 팀 1.2216).
+#   ⚠️ K리그 홈 이점은 원래 작다 — 한 시즌 잡음을 그대로 쓰지 않는다.
+MIN_N_HOME = 400
+#: 🔴 수축 — 표본이 이만큼일 때 실측과 1.0 이 **반반**이다(🔴 임시 · 적합 전)
+SHRINK_HALF_N = 400
 
 
 async def measure(lid: str, slug: str, *, as_of=None) -> dict:
@@ -44,7 +50,9 @@ async def measure(lid: str, slug: str, *, as_of=None) -> dict:
     used = [seasons[0]] if seasons else ["이번"]
     # 🔴 이번 시즌이 얇으면 **직전 시즌까지** 받는다(지시 ①)
     i = 1
-    while len(rows) < MIN_N and i < len(seasons):
+    # 🔴 홈 배율 때문에 **더 많이** 받는다(`MIN_N_HOME`) — 총골은 한 시즌이면
+    #    충분하지만 홈/원정 쪼갬은 잡음이 크다(지시 1번).
+    while len(rows) < max(MIN_N, MIN_N_HOME) and i < len(seasons):
         more = await net.get(fm.league_matches_url(lid, slug)
                              + f"?season={seasons[i]}")
         got = fm.league_results(
@@ -59,8 +67,23 @@ async def measure(lid: str, slug: str, *, as_of=None) -> dict:
     n = len(rows)
     gh = sum(r["gh"] for r in rows)
     ga = sum(r["ga"] for r in rows)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **홈 배율을 1.0 쪽으로 수축한다**(사용자 지시 2026-10-12 1번)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 수축 뒤 값을 `home_share` 로 적는다 — 운영은 `home_share ÷ 한 팀 몫`
+    #     으로 배율을 만들므로, **몫 자체를 당겨** 배율이 1 쪽으로 가게 한다.
+    per_team = (gh + ga) / n / 2.0
+    raw_home = gh / n
+    w = float(n) / (float(n) + SHRINK_HALF_N)
+    said_home = w * raw_home + (1.0 - w) * per_team
     return {"goals_per_match": round((gh + ga) / n, 4),
-            "home_share": round(gh / n, 4),
+            "home_share_raw": round(raw_home, 4),
+            "home_shrink_w": round(w, 4),
+            "home_mul_raw": round(raw_home / per_team, 4) if per_team else None,
+            "home_mul": round(said_home / per_team, 4) if per_team else None,
+            # 🔴 운영이 읽는 칸은 **수축된 값**이다(위 주석 · 지시 1번)
+            "home_share": round(said_home, 4),
             "n": n, "n_home": n,
             "source": (f"fotmob 리그 {lid} 결과 {used} · ⚠️ 중립 경기 표시를 "
                        f"안 준다(홈 몫에 섞일 수 있다)")}

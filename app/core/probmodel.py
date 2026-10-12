@@ -35,6 +35,9 @@ class ProbOut:
     first_then_win: dict = field(default_factory=dict)
     first_wins: float | None = None
     lam: dict = field(default_factory=dict)
+    #: 🔴🔴 **C4 재정의**(사용자 결정 2026-10-12) — 상성이 λ 를 **민 방향**이다.
+    #   `{"home": +x, "away": -x}` · 홈 이점(상수)은 **여기 안 들어간다**.
+    move: dict = field(default_factory=dict)
     #: 🔴 §3 — 검증이 읽는 **기대 득점**(분포 평균). `lam` 과 다르다(상태 배율 반영)
     xg: dict = field(default_factory=dict)
     #: 🔴 3-4 — `{"axis0": %p, …}`(리그 평균 대비) + 축별 주요 변수
@@ -319,6 +322,8 @@ def run(ref, facts, mr, varset, *, edge: dict | None = None,
     lam_h = mean * mul * math.exp(move["home"])
     lam_a = mean * mul_a * math.exp(move["away"])
     got.lam = {"home": round(lam_h, 4), "away": round(lam_a, 4)}
+    # 🔴 C4 — **상성이 민 방향**을 따로 싣는다(상수를 뺀 수다)
+    got.move = {k: round(float(v), 4) for k, v in dict(move).items()}
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **3-2 시간대·경기 상태** — 축3 이 구간과 상태 배율을 준다
     # ══════════════════════════════════════════════════════════════════
@@ -367,6 +372,13 @@ def run(ref, facts, mr, varset, *, edge: dict | None = None,
                + (" · 📜 **상태 배율**(실측 표 · T11 끔) "
                   + _state_said(facts) if said_state else "")
                + (f" · {_m.PROVISIONAL}" if got.provisional else ""))
+    # 🔴🔴 **C4 재정의**(사용자 결정 2026-10-12) — 상성이 민 방향과 **최종 확률**이
+    #    다르면 그 사실을 사유에 적는다: *"상성 X 우위 · 홈 이점이 뒤집음(배율)"*.
+    said_edge = mr.edge_of() if hasattr(mr, "edge_of") else ""
+    said_win = "home" if got.home >= got.away else "away"
+    if said_edge and said_win != said_edge:
+        got.why += (f" · 🔴 **상성 {said_edge} 우위 · 홈 이점이 뒤집음**"
+                    f"(배율 홈 ×{mul:.3f} · 원정 ×{mul_a:.3f})")
     _note(state, f"S3 확률(상성) — 홈 {got.home:.1%} · 무 {got.draw:.1%} · "
                  f"원정 {got.away:.1%} · {got.why}")
     logger.info("[S3] %s", got.why)

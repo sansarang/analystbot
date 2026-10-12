@@ -639,35 +639,35 @@ def test_v7_C2_카드_확률이_S3_산출과_같다():
 
 
 def test_v7_C4_상성_우위와_확률_방향이_같다():
-    """🔴 C4 — *"상성 우위 팀 = S3 확률이 더 높은 팀(강도 '없음' 제외)"*.
+    """🔴🔴 **C4 재정의**(사용자 결정 2026-10-12): *"상성 기여의 **λ 이동 방향** =
+    상성 우위 팀 쪽"*.
 
-    🔴 지금은 **구조로** 보장된다 — 같은 축 합이 λ 기울기를 만든다.
+    ══════════════════════════════════════════════════════════════════
+    🔴 왜 바꿨나
+    ══════════════════════════════════════════════════════════════════
+
+    옛 C4 는 *"상성 우위 팀 = **최종 확률**이 더 높은 팀"* 이었다. 그런데 최종
+    확률에는 **홈 이점(λ 상수)** 이 함께 들어간다 — 홈 이점이 큰 경기에서는 축
+    우위가 작으면 **상수가 그것을 뒤집는다**(실측 2026-10-12 K리그1·친선).
+    🔴 그래서 **상성이 λ 를 미는 방향**만 센다. 최종 확률이 반대면 카드가
+       *"상성 X 우위 · 홈 이점이 뒤집음(배율)"* 을 적는다(`probmodel` 의 `why`).
     """
     from app.core import probmodel as _pm
     from app.core.state import RunState
     ref, facts, vs, _box, mr = _probset()
     got = _pm.run(ref, facts, mr, vs, state=RunState(match_key="x"))
     edge = mr.edge_of()
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **갈림길**(2026-10-12) — λ 상수가 축 우위와 **반대**일 수 있다
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  🔴 원정 배율을 실측으로 걸자(지시 2-b) K리그1 에서 **홈 이점이 음수**로
-    #     나왔다(`home_share 1.1784 < per_team 1.2216` → 홈 ×0.965 · 원정 ×1.035).
-    #     그러면 축 우위가 작을 때 **상수가 그것을 뒤집는다** — 이 고정물이 그렇다
-    #     (축 종합 +0.107 · λ 홈 1.288 < 원정 1.310 → 홈 36% < 원정 37%).
-    #  ⚠️ C4 를 글자 그대로 지키려면 **상수를 축보다 약하게** 둬야 한다(새 계수).
-    #     🔴 그것은 사용자 결정이므로 여기서 **고르지 않는다** —
-    #     `docs/fable/questions/` 에 올렸고, 그때까지 이 계약은 **상수가 같은
-    #     방향일 때만** 센다.
-    from app import rules as _r
-    kind = _pm._kind(ref, facts)
-    mul_h, _w1 = _pm.home_mul(facts, vs, ref=ref)
-    const_home = (mul_h or 1.0) >= 1.0
-    if edge and dict(mr.verdict).get("strength") != "없음" and (
-            (edge == "home") == const_home):
-        want = "home" if got.home >= got.away else "away"
-        assert edge == want, (edge, got.home, got.away)
+    if not edge or dict(mr.verdict).get("strength") == "없음":
+        return
+    # 🔴 **λ 이동 방향**이 그 쪽이어야 한다(상수는 빼고 본다)
+    move = dict(got.move or {})
+    assert move, got.why
+    want = "home" if float(move.get("home") or 0.0) >= 0 else "away"
+    assert edge == want, (edge, move, got.why)
+    # 🔴 최종 확률이 반대면 **그 사실이 사유에 적혀 있어야** 한다
+    said = "home" if got.home >= got.away else "away"
+    if said != edge:
+        assert "뒤집" in got.why, got.why
 
 
 def test_v7_기여_합이_리그_평균_대비_변화와_같다():

@@ -1,4 +1,4 @@
-measured_at: '2026-10-11'
+measured_at: '2026-10-12'
 kinds:
   league:
     goals_per_match: 2.7458
@@ -36,11 +36,16 @@ kinds:
     n_home: 655
     source: football-data FL1 ['2024', '2025', '2026']
   league:J1:
-    goals_per_match: 2.9302
-    home_share: 1.6047
-    n: 86
-    n_home: 86
-    source: fotmob 리그 223 결과 ['2026/2027'] · ⚠️ 중립 경기 표시를 안 준다(홈 몫에 섞일 수 있다)
+    goals_per_match: 2.5448
+    home_share_raw: 1.3672
+    home_shrink_w: 0.6262
+    home_mul_raw: 1.0745
+    home_mul: 1.0466
+    home_share: 1.3317
+    n: 670
+    n_home: 670
+    source: fotmob 리그 223 결과 ['2026/2027', '2026', '2025'] · ⚠️ 중립 경기 표시를 안 준다(홈 몫에
+      섞일 수 있다)
   league:K-League 1:
     goals_per_match: 2.4432
     home_share: 1.1784
@@ -48,11 +53,15 @@ kinds:
     n_home: 185
     source: fotmob 리그 9080 결과 ['2026'] · ⚠️ 중립 경기 표시를 안 준다(홈 몫에 섞일 수 있다)
   league:KL1:
-    goals_per_match: 2.4432
-    home_share: 1.1784
-    n: 185
-    n_home: 185
-    source: fotmob 리그 9080 결과 ['2026'] · ⚠️ 중립 경기 표시를 안 준다(홈 몫에 섞일 수 있다)
+    goals_per_match: 2.5048
+    home_share_raw: 1.2874
+    home_shrink_w: 0.5086
+    home_mul_raw: 1.028
+    home_mul: 1.0142
+    home_share: 1.2702
+    n: 414
+    n_home: 414
+    source: fotmob 리그 9080 결과 ['2026', '2025'] · ⚠️ 중립 경기 표시를 안 준다(홈 몫에 섞일 수 있다)
   league:K리그1:
     goals_per_match: 2.4432
     home_share: 1.1784
@@ -60,10 +69,14 @@ kinds:
     n_home: 185
     source: fotmob 리그 9080 결과 ['2026'] · ⚠️ 중립 경기 표시를 안 준다(홈 몫에 섞일 수 있다)
   league:MLS:
-    goals_per_match: 3.2391
-    home_share: 1.8454
-    n: 414
-    n_home: 414
+    goals_per_match: 3.2571
+    home_share_raw: 1.8524
+    home_shrink_w: 0.5122
+    home_mul_raw: 1.1374
+    home_mul: 1.0704
+    home_share: 1.7432
+    n: 420
+    n_home: 420
     source: fotmob 리그 130 결과 ['2026'] · ⚠️ 중립 경기 표시를 안 준다(홈 몫에 섞일 수 있다)
   league:PD:
     goals_per_match: 2.6888
