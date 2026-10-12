@@ -164,9 +164,16 @@ def test_pipeline_passes_the_elo_floor() -> None:
     assert "floor=" in said[i:i + 300], said[i:i + 200]
 
 
-def test_old_structure_is_kept_as_a_shadow() -> None:
-    """🔴 옛 구조(네 축)는 **그림자 확률**로 기록만 한다(판정은 새 구조)."""
+def test_shadow_field_and_card_line_exist() -> None:
+    """🔴 그림자 확률 칸과 카드 줄이 있다.
+
+    ⚠️ **방향이 뒤집혔다**(사용자 결정 2026-10-12 운영 교체): 이제 운영 ⑯ 은
+       **M1(얼린 옛 경로)** 이고 **M3(새 경로)가 그림자**다. 🔴 근거는 460경기
+       비교 시험 — M3 가 **어느 지표에서도 M1 을 앞서지 못했다**.
+       (규칙 해석은 `M3 유지` 였고 그 기록은 그대로 남는다 ·
+        `docs/fable/stages/2026-10-12_compare_paths.md`)
+    """
     from app.core import probmodel as pm
     assert "shadow" in pm.ProbOut.__dataclass_fields__
     said = _src("app/core/render.py")
-    assert "그림자" in said
+    assert "그림자" in said and "M3" in said

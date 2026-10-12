@@ -1638,7 +1638,7 @@ def prob_long(card: Card) -> str:
                                 if said_floor.get(k) is not None))
     said_shadow = dict(box.get("shadow") or pull("shadow") or {})
     if said_shadow:
-        out.append("- 🕯 **그림자 확률**(옛 구조 · 네 축 · 표시만) — "
+        out.append("- 🕯 **그림자 확률**(M3 새 경로 · 표시만) — "
                    + " · ".join(f"{nm} {float(said_shadow[k]):.0%}"
                                 for nm, k in (("홈", "home"), ("무", "draw"),
                                               ("원정", "away"))

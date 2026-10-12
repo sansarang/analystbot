@@ -244,6 +244,13 @@ if __name__ == "__main__":
 #     적었다(완전히 0 밖일 것을 요구하지 않는다).
 
 #: 🔴 (a) 가 허용하는 구간 상한(로그 손실 단위) — 지시서 §7 의 그 수
+#
+#  🔴🔴 **규칙 결함 기록**(사용자 2026-10-12 · 비교 시험 확인):
+#     *"(a) 상한 +0.005 는 460경기 구간 폭(±0.02)으로는 **도달 불가** — 다음
+#     시험부터 (a) = 점추정이 낮고 **구간 하한 < 0**."*
+#  ⚠️ 그래서 `HI_CAP` 은 **이번 시험의 기록용**으로 남기고, 다음 시험은
+#     `passes(..., rule="v2")` 로 부른다(아래). 🔴 지난 판정을 **소급해 고치지
+#     않는다** — 그 기록은 `docs/fable/stages/2026-10-12_compare_paths.md` 다.
 HI_CAP = 0.005
 
 #: 🔴 (b) 의 유의 문턱 — 맥니마 p < 0.05
@@ -254,14 +261,21 @@ BANDS = (0.30, 0.20, 0.10)
 
 
 def passes(*, diff: dict, dir_rate: float, base_dir: float, p_value: float,
-           bands: dict, base_bands: dict) -> tuple[bool, dict, str]:
+           bands: dict, base_bands: dict,
+           rule: str = "v1") -> tuple[bool, dict, str]:
     """🔴🔴 §7 — 도전 모형이 **(a)(b)(c) 셋 다** 통과하나. `(통과, 칸, 사유)`.
 
     `diff` 는 `metrics.paired(도전 로그손실, 기준 로그손실)` 다(음수면 도전이 낫다).
     `bands`·`base_bands` 는 `{비율: 적중률}`.
     """
-    a = bool(float(diff.get("mean", 1.0)) < 0.0
-             and float(diff.get("hi", 1.0)) < HI_CAP)
+    # 🔴 `rule="v1"` — 이번 시험의 규칙(구간 **상한** < +0.005)
+    #    `rule="v2"` — 다음 시험부터(사용자 결정): 점추정이 낮고 **구간 하한 < 0**
+    if str(rule) == "v2":
+        a = bool(float(diff.get("mean", 1.0)) < 0.0
+                 and float(diff.get("lo", 1.0)) < 0.0)
+    else:
+        a = bool(float(diff.get("mean", 1.0)) < 0.0
+                 and float(diff.get("hi", 1.0)) < HI_CAP)
     b = bool(float(dir_rate) > float(base_dir) and float(p_value) < P_CAP)
     mine = [float(bands.get(x, float("nan"))) for x in BANDS]
     theirs = [float(base_bands.get(x, float("nan"))) for x in BANDS]

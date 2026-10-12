@@ -56,13 +56,22 @@ def test_legacy_keeps_all_four_axes() -> None:
 #  > (최종 확률은 현 운영판). 결과 30경기마다 같은 지표로 자동 채점·보고.
 
 
-def test_shadow_comes_from_the_frozen_engine() -> None:
-    """🔴 그림자(M1)는 **얼린 옛 경로**가 낸다 — 다시 계산한 수가 아니다."""
+def test_operation_uses_the_frozen_engine() -> None:
+    """🔴🔴 **운영 교체**(사용자 결정 2026-10-12) — 운영 ⑯ 의 수는 **얼린 M1** 이다.
+
+    ⚠️ 방향이 뒤집혔다: 종전에는 *"새 구조가 판정 · 옛 구조가 그림자"* 였다.
+       🔴 460경기 비교 시험에서 M3 가 **어느 지표에서도 M1 을 앞서지 못했다**.
+    🔴 그래서 ⑯ 은 `legacy/old_engine.run` 의 수를 **그대로** 쓰고(다시 계산하지
+       않는다 · K0), **M3 가 그림자**다.
+    """
     said = (ROOT / "app/core/probmodel.py").read_text(encoding="utf-8")
-    i = said.index("got.shadow")
-    head = said[max(0, i - 1200):i]
-    assert "legacy import old_engine" in head or "_oe.run(" in said[i - 800:i]
-    assert "M1" in said[i:i + 600]
+    assert "from app.core.legacy import old_engine" in said
+    # 🔴 운영 수가 M1 에서 온다(그 대입이 있다)
+    i = said.index("said_m1 is not None and said_m1.ok()")
+    assert "got.home, got.draw, got.away = (said_m1.home" in said[i:i + 400]
+    # 🔴 그림자는 M3 다
+    j = said.index("got.shadow = dict(said_m3)")
+    assert j > i and "M3 **새 경로**" in said
 
 
 def test_card_records_both_numbers() -> None:

@@ -394,74 +394,88 @@ def run(ref, facts, mr, varset, *, edge: dict | None = None,
     #  🔴 새 구조 = **Elo 바닥**(③)을 λ 로 번역하고 그 위에 **축0·축1 잔차**만 얹는다.
     #     축2·축3 은 백필에서 **손실**이었다(−0.0038 · −0.0039) → 확률 경로 밖이다.
     #  ⚠️ 바닥이 없으면(Elo 없음) **옛 구조가 그대로 남는다** — 그 사실을 사유에 적는다.
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **운영 교체 — ⑯ = M1(옛 경로) · 그림자 = M3**(사용자 결정 2026-10-12)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 운영 교체: 운영 ⑯ = **M1**(옛 경로 legacy-4axis), 그림자 = **M3**.
+    #  > 근거: M3 가 **어느 지표에서도 M1 을 앞서지 못함**(방향·선택 적중률·로그
+    #  > 손실 점추정 모두 M1 우세). 2층 통로·경고·InfoQ·역배 표시·코드 서술은
+    #  > 유지(**확률 엔진만** 교체).
+    #
+    #  🔴 비교 시험(460경기 · 시즌 교차): M1 로그손실 **1.0471** vs M3 1.0548 ·
+    #     방향 **51.5%** vs 45.7% · 상위 30/20/10% **57.2/58.7/65.2** vs
+    #     50.0/54.3/56.5 · 맥니마 b=54·c=27·p=0.0036.
+    #  ⚠️ **규칙 해석으로는 M3 유지**였다(§7 (a) 의 구간 상한 +0.005 를 못 넘었다)
+    #     — 그 기록은 `docs/fable/stages/2026-10-12_compare_paths.md` 에 그대로
+    #     남는다. 🔴 **운영 판단은 사용자가 따로** 내렸다(이 주석이 그 자리다).
+    #  🔴 **M1 은 얼린 코드**다(`legacy/old_engine` · 계약 K0) — 이 모듈이 다시
+    #     계산하지 않는다. 그래야 운영이 백필의 M1 과 **같은 모형**을 쓴다.
+    from app.core.legacy import old_engine as _oe
+    said_m1 = None
+    try:
+        said_m1 = _oe.run(ref, facts, mr, varset, edge=edge, state=None)
+    except Exception as exc:                                # noqa: BLE001
+        logger.info("[S3] M1(얼린 옛 경로) 실패 — %r", exc)
     said_floor = _floor_triple(floor)
     if said_floor:
         got.floor = {"home": round(said_floor[0], 4),
                      "draw": round(said_floor[1], 4),
                      "away": round(said_floor[2], 4)}
-        # 🔴🔴 **§6 운영 그림자 기간**(비교 시험 지시서 2026-10-12 §6):
-        #    *"운영 카드마다 **M1·M3 확률을 둘 다** 기록(최종 확률은 현 운영판)"*.
-        #  🔴 M1 은 **얼린 옛 경로**가 낸다(`legacy/old_engine` · 계약 K0) —
-        #     이 모듈이 다시 계산한 수가 아니다. ⚠️ 그래야 30경기 뒤 채점이
-        #     *"백필의 M1"* 과 **같은 모형**을 센다.
-        #  ⚠️ 얼린 경로가 수를 못 내면 그 사실을 적고(사유) 이 모듈의 네 축 수를 둔다.
-        from app.core.legacy import old_engine as _oe
-        said_m1 = None
-        try:
-            said_m1 = _oe.run(ref, facts, mr, varset, edge=edge, state=None)
-        except Exception as exc:                            # noqa: BLE001
-            logger.info("[S3] 그림자(M1) 실패 — %r", exc)
-        if said_m1 is not None and said_m1.ok():
-            got.shadow = {"home": said_m1.home, "draw": said_m1.draw,
-                          "away": said_m1.away, "lam": dict(said_m1.lam or {}),
-                          "why": ("M1 **얼린 옛 경로**(legacy-4axis · 네 축) — "
-                                  "표시·채점용이고 판정에 안 쓴다")}
-        else:
-            got.shadow = {"home": got.home, "draw": got.draw, "away": got.away,
-                          "lam": dict(got.lam or {}),
-                          "why": ("🔴 얼린 옛 경로가 수를 못 냈다 — 이 모듈의 "
-                                  "네 축 수를 둔다(표시만)")}
+    # ── 🔴 **M3(새 경로)를 먼저 세운다** — 이제 그것이 **그림자**다
+    said_m3: dict = {}
+    if said_floor:
         from app.core import probfloor as _pf
         m0, why_m0 = _pf.solve_move(said_floor, mean=mean, mul_home=mul,
                                     mul_away=mul_a)
-        if m0 is None:
-            got.why += f" · 🔴 **바닥 번역 실패** — 옛 구조를 쓴다({why_m0})"
-        else:
+        if m0 is not None:
             res = sum(float(weights.get(k) or 0.0)
                       * float(gaps.get(k) or 0.0) for k in _pf.RESIDUAL_AXES)
             rmove = max(-cap, min(cap, beta * res))
-            lam_h = mean * mul * math.exp(m0 + rmove)
-            lam_a = mean * mul_a * math.exp(-(m0 + rmove))
-            out = _sim.run(lam_h, lam_a,
-                           late_home=args["late_home"],
-                           late_away=args["late_away"],
-                           lead_mul=args["lead_mul"],
-                           state_mult=(said_state or None))
-            _fill(got, out)
-            got.lam = {"home": round(lam_h, 4), "away": round(lam_a, 4)}
-            got.move = {"home": round(rmove, 4), "away": round(-rmove, 4)}
-            # 🔴 기여 분해도 **바닥 대비**로 다시 센다 — 축2·축3 은 비중 0 이라
-            #    정확히 `0.00`(조용한 0 금지: 사유에 그 이름을 적는다)
-            keep_w = {k: (float(weights.get(k) or 0.0)
-                          if k in _pf.RESIDUAL_AXES else 0.0)
-                      for k in ("axis0", "axis1", "axis2", "axis3")}
-            base = _sim.run(mean * mul * math.exp(m0),
-                            mean * mul_a * math.exp(-m0))
-            got.share, got.share_refs = _share(mean, mul, beta, cap, keep_w,
-                                               gaps, mr, base=base,
-                                               mul_a=mul_a, move0=m0)
-            got.why = (f"🔴 **새 구조**(Elo 바닥 + 축0·축1 잔차) — {why_m0} · "
-                       f"{why_mean} → 한 팀 평균 {mean:.3f} · {why_home} · "
-                       f"{why_mul_a} · 잔차 합 {res:+.3f} × β {beta:g} → "
-                       f"λ 이동 {rmove:+.3f}(바닥 {m0:+.3f} 위) · "
-                       f"⚠️ 축2·축3 은 **확률 경로 밖**(백필 개선 −0.0038·−0.0039) · "
-                       f"그림자(옛 구조 네 축) 홈 "
-                       f"{float(got.shadow['home']):.1%}"
-                       + (f" · 규칙(축 안에서 셌다) {why_rules}"
-                          if why_rules else "")
-                       + (" · 📜 **상태 배율**(실측 표 · T11 끔) "
-                          + _state_said(facts) if said_state else "")
-                       + (f" · {_m.PROVISIONAL}" if got.provisional else ""))
+            lam_h3 = mean * mul * math.exp(m0 + rmove)
+            lam_a3 = mean * mul_a * math.exp(-(m0 + rmove))
+            out3 = _sim.run(lam_h3, lam_a3,
+                            late_home=args["late_home"],
+                            late_away=args["late_away"],
+                            lead_mul=args["lead_mul"],
+                            state_mult=(said_state or None))
+            said_m3 = {"home": out3.home, "draw": out3.draw,
+                       "away": out3.away,
+                       "lam": {"home": round(lam_h3, 4),
+                               "away": round(lam_a3, 4)},
+                       "why": (f"M3 **새 경로**(Elo 바닥 + 축0·축1 잔차) — "
+                               f"{why_m0} · 잔차 {res:+.3f}×β {beta:g} → "
+                               f"λ 이동 {rmove:+.3f} · 표시·채점용이고 "
+                               f"**판정에 안 쓴다**")}
+        else:
+            said_m3 = {"why": f"🔴 M3 를 못 세웠다 — {why_m0}"}
+    # ── 🔴🔴 **운영 수 = M1**(얼린 옛 경로). 못 내면 이 모듈의 네 축 수를 둔다.
+    if said_m1 is not None and said_m1.ok():
+        got.home, got.draw, got.away = (said_m1.home, said_m1.draw,
+                                        said_m1.away)
+        # ⚠️ **꼴을 맞춘다(경계에서)** — 얼린 경로는 스코어 열쇠를 `"1-0"` 글자로
+        #    담고, 카드·생존은 `(1, 0)` 쌍을 본다. 🔴 얼린 파일을 고치지 않는다
+        #    (K0) — **여기서** 옮긴다(실측 2026-10-12: e2e 가 그 차이를 잡았다).
+        got.scores = {}
+        for key, val in dict(said_m1.scores or {}).items():
+            if isinstance(key, str) and "-" in key:
+                h, a = key.split("-", 1)
+                got.scores[(int(h), int(a))] = float(val)
+            else:
+                got.scores[key] = float(val)
+        got.over = dict(said_m1.over or {})
+        got.lam = dict(said_m1.lam or {})
+        got.move = dict(said_m1.move or {})
+        if said_m1.share:
+            got.share = dict(said_m1.share)
+        got.why = (f"🔴🔴 **운영 = M1 얼린 옛 경로**(legacy-4axis · 네 축) — "
+                   f"{said_m1.why}"
+                   + (f" · 🕯 그림자 M3 홈 {float(said_m3['home']):.1%}"
+                      if said_m3.get("home") is not None
+                      else f" · 🕯 {said_m3.get('why', '그림자 없음')}"))
+    else:
+        got.why = (f"⚠️ **M1 을 못 냈다** — 이 모듈의 네 축 수로 간다 · {got.why}")
+    got.shadow = dict(said_m3)
     _note(state, f"S3 확률(상성) — 홈 {got.home:.1%} · 무 {got.draw:.1%} · "
                  f"원정 {got.away:.1%} · {got.why}")
     logger.info("[S3] %s", got.why)
