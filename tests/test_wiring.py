@@ -633,6 +633,17 @@ TOOL_ONLY: dict[str, str] = {
     # 🔴🔴 **§1 평가 지표**(지시서 2026-10-12 엔진 교체) — 지표는 `app/` 에 한 곳에
     #    두고 **도구들이** 부른다(사본 금지). ⚠️ 운영 카드 채점이 같은 지표를 써야
     #    하므로 `app/` 에 있고, 운영 확률 경로는 이것을 **안 부른다**(검증 전용).
+    # 🔴🔴 **§2 바닥 점수 후보**(지시서 2026-10-12 엔진 교체) — 지금은 **후보 판**
+    #    이다(§0: *"운영 확률은 현 새 구조 그대로 두고, 백필 판정을 통과한 판만
+    #    운영으로 승격"*). 🔴 적합·비교는 도구가 부른다.
+    #    ⚠️ 운영 ③ 에 잇는 것은 **§2 판정이 끝난 뒤**다.
+    "app.core.ratings.load_params": "tools/fit_ratings.py",
+    "app.core.ratings.elo.rate": "tools/fit_ratings.py",
+    "app.core.ratings.elo.prob_input": "tools/fit_ratings.py",
+    "app.core.ratings.elog.rate": "tools/fit_ratings.py",
+    "app.core.ratings.elog.prob_input": "tools/fit_ratings.py",
+    "app.core.ratings.pi.rate": "tools/fit_ratings.py",
+    "app.core.ratings.pi.prob_input": "tools/fit_ratings.py",
     "app.core.metrics.bands": "tools/judge_models.py",
     "app.core.metrics.calib": "tools/backfill_score.py",
     "app.core.metrics.check_split": "tools/judge_models.py",
