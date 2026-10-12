@@ -102,3 +102,37 @@ def test_card_shows_the_confidence_band() -> None:
     from app.core import bands
     assert bands.of(0.62) == "상위 10%" or bands.of(0.62) == "상위 20%"
     assert bands.of(0.30) == ""
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **0-0 경기가 빠지지 않는다** — 실사고 2026-10-12(코모 0-0 로마)
+# ══════════════════════════════════════════════════════════════════
+#
+#  🔴 종전 `backfill.score_of` 는 **골 목록**으로만 스코어를 셌다 → 0-0 은 골이
+#     없어 `None` 이 되고 **백필·재생·채점에서 통째로 빠졌다**. 무승부가 구조적
+#     으로 덜 세졌다. ⚠️ 그 표본으로 잰 무승부율·보정 판은 **다시 재야 한다**.
+
+
+def test_zero_zero_is_read_from_the_header() -> None:
+    """🔴 0-0 도 **스코어로 읽힌다**(골 목록이 비어도)."""
+    from app.core import backfill as bf
+    said = {"props": {"pageProps": {"header": {
+        "status": {"finished": True, "scoreStr": "0 - 0"}}}}}
+    assert bf.score_of(said) == (0, 0)
+
+
+def test_unfinished_match_is_still_none() -> None:
+    """⚠️ 끝나지 않은 경기는 **여전히 `None`** 이다(지어내지 않는다)."""
+    from app.core import backfill as bf
+    said = {"props": {"pageProps": {"header": {
+        "status": {"finished": False, "scoreStr": "1 - 0"}}}}}
+    assert bf.score_of(said) is None
+
+
+def test_header_wins_over_the_goal_list() -> None:
+    """🔴 헤더가 **1순위**다 — 골 목록은 그것이 없을 때만 본다."""
+    from app.core import backfill as bf
+    said = (ROOT / "app/core/backfill.py").read_text(encoding="utf-8")
+    i = said.index("def score_of")
+    j = said.index("fm.goals_of(j)", i)
+    assert said.index("scoreStr", i) < j, "🔴 골 목록을 먼저 본다"

@@ -12,6 +12,8 @@
 """
 from __future__ import annotations
 
+import re
+
 import logging
 from dataclasses import dataclass, field
 
@@ -54,8 +56,25 @@ class Row:
 
 
 def score_of(j: dict) -> tuple[int, int] | None:
-    """🔴 그 경기의 **최종 스코어** — 골 목록에서 센다(사본 금지: `goals_of`)."""
+    """🔴🔴 그 경기의 **최종 스코어**. 못 읽으면 `None`.
+
+    🔴🔴 **실사고 2026-10-12(코모 0-0 로마)**: 종전에는 **골 목록**으로만 셌다
+       (`goals_of` 의 마지막 줄의 `after`). 🔴 그래서 **0-0 경기는 골이 없어
+       `None`** 이 되고, 백필·재생·카드 채점에서 **통째로 빠졌다** — 무승부가
+       구조적으로 덜 세졌다(실측: 그 표본의 무승부율이 실제보다 낮게 나왔다).
+    🔴 그래서 **헤더의 최종 스코어**(`status.scoreStr`)를 1순위로 읽고, 골 목록은
+       **그것이 없을 때만** 본다. ⚠️ 끝나지 않은 경기는 여전히 `None` 이다.
+    """
     from app.collect import fotmob as fm
+    page = ((j or {}).get("props") or {}).get("pageProps") or {}
+    for box in (dict(page.get("header") or {}), dict(page.get("general") or {})):
+        st = dict(box.get("status") or {})
+        if not st.get("finished"):
+            continue
+        said = str(st.get("scoreStr") or "").strip()
+        got = re.match(r"^(\d+)\s*-\s*(\d+)$", said.replace(" ", ""))
+        if got:
+            return int(got.group(1)), int(got.group(2))
     rows = fm.goals_of(j)
     if not rows:
         return None
