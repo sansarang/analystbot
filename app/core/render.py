@@ -1808,8 +1808,15 @@ def _xg_board(box: dict, *, now: dict) -> list[str]:
         f"| xG 판 | {_pct(sim)} | " + _tot(dict(said.get("gaps") or {}))
         + " | " + _forms(dict(said.get("form") or {})) + " |",
     ]
+    # 🔴🔴 ⓑ 계약 — 두 판 축1 이 **같으면 경고**(xG 가 안 쓰였다는 뜻이다)
+    from app.core import form as _form
+    said_warn = _form.boards_warn(
+        goal=(dict(box.get("form") or {}).get("home").index()
+              if dict(box.get("form") or {}).get("home") else None),
+        xg=dict(said.get("form") or {}).get("home"))
     out = ["- 🔬 **두 판 나란히**(지시 2026-10-12 4번 b) — 🔴 **기본값은 득실판**"
-           "이다(xG 판은 백필 브라이어 비교 전이다)",
+           "이다(xG 판은 백필 브라이어 비교 전이다)"
+           + (f"\n    {said_warn}" if said_warn else ""),
            "    | 판 | 홈 | 무 | 원정 | 축 종합 | 축1 폼(홈/원정) |",
            "    |---|---|---|---|---|---|"]
     out += [f"    {x}" for x in body]

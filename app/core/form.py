@@ -100,6 +100,21 @@ class TeamForm:
         return round(said, 3)
 
 
+def boards_warn(*, goal: float | None, xg: float | None) -> str:
+    """🔴🔴 ⓑ 계약 — 두 판의 축1 이 **소수 셋째 자리까지 같으면** 경고 글자.
+
+    > xG판과 득실판의 축1이 소수 셋째 자리까지 같으면 경고(한 판만 xG면 xG판 무효).
+
+    🔴 같다는 것은 **xG 가 실제로 안 쓰였다**는 뜻이다(실사고 2026-10-12).
+    """
+    if goal is None or xg is None:
+        return ""
+    if round(float(goal), 3) != round(float(xg), 3):
+        return ""
+    return (f"🔴 **두 판 축1 이 같다**({float(goal):+.3f}) — xG 가 실제로 쓰이지 "
+            f"않았다는 뜻이다(xG 판 무효로 본다)")
+
+
 def adjust_one(goals: float, *, mine_elo: float | None,
                their_elo: float | None) -> tuple[float, str]:
     """🔴🔴 §1 — 한 경기 득점을 **상대 전력으로 보정**. `(보정값, 사유)`.
@@ -142,6 +157,14 @@ def window_sums(games: list[dict], n: int) -> dict:
 #: 🔴🔴 C — 그 쪽(홈·원정) 경기가 이만큼이면 **쪽 폼을 그대로** 쓴다.
 #   ⚠️ 그보다 적으면 전체 폼으로 **수축**한다(표본이 반으로 줄기 때문이다).
 SIDE_FULL = 5
+#: 🔴🔴 **수축 가중 상한**(사용자 지시 2026-10-12 ⓑ) — 🔴 **임시값**(백필 적합 전).
+#
+#  ⚠️ 실사고 2026-10-12(가와사키–나고야): 상한이 없어 `n>=SIDE_FULL` 이면 가중이
+#     **100%** 가 됐다 — 그 쪽 폼이 전체 폼(보정·운 할인·xG)을 **통째로 덮었다**.
+#     가와사키 축1 이 *컵 포함 홈 생득실* **1.6** 으로 섰고, xG판이 득실판과
+#     소수점까지 같아졌다(레반테–세비야 원정 +0.600).
+#  🔴 그래서 쪽 폼은 **절반까지만** 당긴다.
+SIDE_CAP = 0.5
 
 
 def side_sums(games: list[dict], side: str) -> dict:
@@ -157,10 +180,10 @@ def side_sums(games: list[dict], side: str) -> dict:
 def shrink(*, whole: float, side: float, n: int) -> float:
     """🔴🔴 C — **표본으로 수축**. `n=0` 이면 전체 폼, `n>=SIDE_FULL` 이면 쪽 폼.
 
-    🔴 새 계수를 만들지 않는다 — 가중은 `min(n, SIDE_FULL) / SIDE_FULL` 이다
-       (표본 비율 그 자체다).
+    🔴 가중은 `표본 비율 × SIDE_CAP` 이다 — ⚠️ 상한(0.5)이 없으면 쪽 폼이 전체
+       폼을 **통째로 덮는다**(실사고 2026-10-12 · 위 `SIDE_CAP` 주석).
     """
-    w = min(max(int(n or 0), 0), SIDE_FULL) / float(SIDE_FULL)
+    w = (min(max(int(n or 0), 0), SIDE_FULL) / float(SIDE_FULL)) * SIDE_CAP
     return round((1.0 - w) * float(whole) + w * float(side), 4)
 
 
@@ -302,15 +325,54 @@ def form_of(team: str, rows: list[dict], *, elo: dict | None = None,
         if box_side["n"]:
             got.side_at = str(side_at)
             got.side_n = int(box_side["n"])
-            got.side_index = round(
-                (float(box_side["gf"]) - float(box_side["ga"]))
-                / float(box_side["n"]), 3)
-            said.append(
-                f"{'홈' if side_at == 'home' else '원정'} 경기 폼 "
-                f"{got.side_index:+.3f}({got.side_n}경기) · 수축 가중 "
-                f"{min(got.side_n, SIDE_FULL) / SIDE_FULL:.0%}")
+            # ══════════════════════════════════════════════════════════
+            # 🔴🔴 **수축 표적은 같은 판 재료다**(사용자 지시 2026-10-12 ⓑ)
+            # ══════════════════════════════════════════════════════════
+            #
+            #  🔴 xG 판이면 **그 쪽 경기의 xG 차**, 득실판이면 **상대 보정을 지난
+            #     득실 차**다. ⚠️ 종전엔 둘 다 **생득실**이어서 xG 판이 득실판과
+            #     소수점까지 같아졌다(실사고 2026-10-12 · 레반테–세비야 +0.600).
+            rows_side = [dict(x) for x in (box_side.get("games") or [])]
+            if got.xg_only:
+                f_xg = sum(float(x.get("xgf") or 0.0) for x in rows_side)
+                a_xg = sum(float(x.get("xga") or 0.0) for x in rows_side)
+                n_xg = sum(int(x.get("xg_n") or 0) for x in rows_side)
+                if n_xg:
+                    got.side_index = round((f_xg - a_xg) / float(n_xg), 3)
+                    said.append(f"쪽 폼 표적 **xG**({n_xg}경기)")
+                else:
+                    got.side_index = None
+                    said.append("⬜ 쪽 폼 xG 가 0건 — 수축 안 한다")
+            else:
+                # 🔴 **보정된 득실**로 당긴다 — 생득실 금지(위 주석)
+                side_adj = 0.0
+                for one in rows_side:
+                    f_adj, _w1 = adjust_one(
+                        float(one.get("gf") or 0.0), mine_elo=mine,
+                        their_elo=(dict(elo or {}).get(str(one.get("opp")))))
+                    a_adj, _w2 = adjust_one(
+                        float(one.get("ga") or 0.0), mine_elo=mine,
+                        their_elo=(dict(elo or {}).get(str(one.get("opp")))))
+                    side_adj += (f_adj - a_adj)
+                got.side_index = round(side_adj / float(box_side["n"]), 3)
+                said.append("쪽 폼 표적 **보정된 득실**")
+            if got.side_index is not None:
+                said.append(
+                    f"{'홈' if side_at == 'home' else '원정'} 경기 폼 "
+                    f"{got.side_index:+.3f}({got.side_n}경기) · 수축 가중 "
+                    f"{min(got.side_n, SIDE_FULL) / SIDE_FULL * SIDE_CAP:.0%}"
+                    f"(상한 {SIDE_CAP:.0%} · {PROVISIONAL})")
         else:
             said.append(f"⬜ {side_at} 경기가 창 안에 0건 — 쪽 폼 안 쓴다")
+    # 🔴 ⓑ — **수축 전후 값을 사유에 적는다**(사용자 지시 2026-10-12)
+    if got.side_index is not None:
+        said_keep = got.side_index
+        got.side_index = None
+        before = got.index()
+        got.side_index = said_keep
+        after = got.index()
+        if before is not None and after is not None:
+            said.append(f"수축 전 {before:+.3f} → 수축 뒤 {after:+.3f}")
     got.why = (f"최근 {got.n}경기 — 득점 {got.gf:.0f}→보정 {got.adj_gf:.1f} · "
                f"실점 {got.ga:.0f}→보정 {got.adj_ga:.1f}"
                + (" · " + " · ".join(said) if said else ""))

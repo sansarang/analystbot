@@ -219,15 +219,24 @@ def test_side_form_splits_home_and_away() -> None:
 
 
 def test_side_form_shrinks_on_small_sample() -> None:
-    """🔴 C — 표본이 적으면 **전체 폼으로 수축**한다(그 비율을 적는다)."""
+    """🔴 C — 표본이 적으면 **전체 폼으로 수축**한다(그 비율을 적는다).
+
+    🔴🔴 **규칙이 바뀌었다**(사용자 지시 2026-10-12 ⓑ): 가중에 **상한 `SIDE_CAP`**
+       (0.5 · 🔴 임시)이 걸렸다. ⚠️ 종전엔 `n>=SIDE_FULL` 이면 가중 **100%** 라
+       쪽 폼이 전체 폼(보정·운 할인·xG)을 **통째로 덮었다** — 가와사키 축1 이 컵
+       포함 홈 생득실 1.6 으로 섰고 xG판이 득실판과 같아진 뿌리다.
+    """
     from app.core import form
     whole, side = 1.0, -1.0
     a = form.shrink(whole=whole, side=side, n=0)
     b = form.shrink(whole=whole, side=side, n=form.SIDE_FULL)
     assert a == whole, a
-    assert abs(b - side) < 1e-9, b
+    # 🔴 표본이 다 차도 **상한까지만** 당긴다(절반을 넘지 않는다)
+    want = (1.0 - form.SIDE_CAP) * whole + form.SIDE_CAP * side
+    assert abs(b - want) < 1e-9, (b, want)
+    assert side < b < whole, b
     mid = form.shrink(whole=whole, side=side, n=form.SIDE_FULL // 2)
-    assert side < mid < whole, mid
+    assert side < mid < whole and mid > b, (mid, b)
 
 
 def test_form_of_uses_the_side() -> None:
