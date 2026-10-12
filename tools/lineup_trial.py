@@ -144,7 +144,7 @@ def _cov_of(row: dict, table, hist: dict) -> dict:
     return out
 
 
-def _nll(params, rows, *, terms):
+def _nll(params, rows, terms):
     """🔴 포아송 우도 — λ 는 `exp(b0 ± (b1·diff + 항))`(쪽 대칭)."""
     b0, b1, h = params[0], params[1], params[2]
     extra = dict(zip(terms, params[3:], strict=True))
@@ -165,7 +165,7 @@ def _fit_model(rows, *, terms):
     import numpy as np
     from scipy.optimize import minimize
     start = np.array([0.2, 0.3, 0.1] + [0.0] * len(terms))
-    got = minimize(_nll, start, args=(rows,), kwargs={"terms": terms},
+    got = minimize(_nll, start, args=(rows, tuple(terms)),
                    method="Nelder-Mead",
                    options={"maxiter": 40000, "xatol": 1e-6, "fatol": 1e-7})
     return [float(v) for v in got.x]
@@ -261,15 +261,31 @@ def main(argv: list[str]) -> int:
             if best is None or sse < best[0]:
                 best = (sse, lam, table)
         if best is None:
-            print(f"- 🔴 시즌 `{s}` — 선수 점수를 못 적합했다")
+            print(f"- 🔴 시즌 `{s}` — 선수 점수를 못 적합했다"
+                  f"(바깥 {len(fi)}경기 · 평가 {len(ev)}경기) — 그 시즌은 **뺀다**")
             continue
         _sse, lam, table = best
         print(f"- 시즌 `{s}` — 선수 점수 벌 λ **{lam:g}** · 선수 "
               f"{len(table.value)}명 · 수축 {table.shrunk}명 · {table.why[:60]}")
         for r in ev + fi:
             r["cov"] = _cov_of(r, table, hist)
+        # 🔴 **진단** — 그 항의 크기와 적합 계수를 적는다. 로그 손실이 크게
+        #    나빠지면 *"항이 해롭다"* 와 *"계수가 폭주했다"* 를 가려야 한다(#4).
+        import statistics as _st
+        for t in ("pdiff", "abs_d", "bench_d"):
+            vals = [float(r["cov"].get(t) or 0.0) for r in fi]
+            if vals:
+                print(f"    · `{t}` 평균 {_st.fmean(vals):+.3f} · 표준편차 "
+                      f"{(_st.pstdev(vals) if len(vals) > 1 else 0.0):.3f} · "
+                      f"최대 |{max(abs(v) for v in vals):.3f}|")
         for name, terms in MODELS:
             params = _fit_model(fi, terms=terms)
+            if terms:
+                print(f"    · {name} 계수 — b0 {params[0]:+.3f} · b1 "
+                      f"{params[1]:+.3f} · h {params[2]:+.3f} · "
+                      + " · ".join(f"{t} {w:+.4f}"
+                                   for t, w in zip(terms, params[3:],
+                                                   strict=True)))
             p = _probs(ev, params, terms=terms)
             probs[name] += p
             for one, pp in zip(ev, p, strict=True):
