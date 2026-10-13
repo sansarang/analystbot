@@ -701,6 +701,14 @@ TOOL_ONLY: dict[str, str] = {
     "app.core.lineupfix.apply": "tools/lineup_trial2.py",
     "app.core.lineupfix.check": "tools/lineup_trial2.py",
     "app.core.lineupfix.plate_of": "tools/lineup_trial2.py",
+    # 🔴🔴 **§2 데이터 준비**(통합 지시서 2026-10-13 밤) — 보고 도구가 부른다.
+    #    ⚠️ 운영 ③(`facts.season`)에 잇는 것은 **§7·§9 채택분만**이다.
+    "app.core.season.require": "tools/season_prep.py",
+    "app.core.season.games_of": "tools/season_prep.py",
+    "app.core.ratings.retention.of": "tools/season_prep.py",
+    "app.collect.coach.row_of": "tools/season_prep.py",
+    "app.collect.coach.since_of": "tools/season_prep.py",
+    "app.collect.coach.games_of": "tools/season_prep.py",
     "app.core.metrics.bands": "tools/judge_models.py",
     "app.core.metrics.calib": "tools/backfill_score.py",
     "app.core.metrics.check_split": "tools/judge_models.py",

@@ -1,0 +1,40 @@
+# 🔴🔴 리그 달력 규칙 — 시즌 표기(`app/core/season.py`)의 **원본 하나**
+#
+#  > 모든 경기에 season_id(리그 달력 기준: J1 2026/27 추춘제 전환 · K리그 단일
+#  > 연도 등 리그별 규칙 표) — 통합 지시서 2026-10-13(밤) §2-1
+#
+#  🔴 `from` 은 **그 규칙이 시작되는 달**(YYYY-MM)이다. 경기 날짜보다 작거나 같은
+#     마지막 줄이 그 경기의 규칙이다.
+#  🔴 `kind`
+#     - `calendar`      : 한 해가 한 시즌 → `season_id = "2026"`
+#     - `autumn_spring` : `start_month` 부터 다음 해까지 → `"2026/27"`
+#  ⚠️ **표에 없는 리그는 빈 글자**다(연도를 지어내지 않는다 · 계약 SE1).
+#
+#  🔴 J1 의 경계는 **실측**이다(2026-10-13): J리그 자료 사이트에 2025시즌이
+#     `25/12/06` 에 끝나고 2026-27시즌이 `26/08/07` 에 시작한다. fotmob 의
+#     "2026" 시즌은 2026-02~06 이다 → 그래서 전환 경계를 **2026-07** 로 둔다.
+
+"league:J1":
+  - {from: "2005-01", kind: calendar}
+  - {from: "2026-07", kind: autumn_spring, start_month: 7}
+"league:J2":
+  - {from: "2005-01", kind: calendar}
+  - {from: "2026-07", kind: autumn_spring, start_month: 7}
+"league:KL1":
+  - {from: "2013-01", kind: calendar}
+"league:KL2":
+  - {from: "2013-01", kind: calendar}
+# 🔴 유럽 리그는 예전부터 추춘제다(8월 시작)
+"league:PL":
+  - {from: "1992-07", kind: autumn_spring, start_month: 7}
+"league:SA":
+  - {from: "1929-07", kind: autumn_spring, start_month: 7}
+"league:LL":
+  - {from: "1929-07", kind: autumn_spring, start_month: 7}
+"league:BL":
+  - {from: "1963-07", kind: autumn_spring, start_month: 7}
+"league:L1":
+  - {from: "1932-07", kind: autumn_spring, start_month: 7}
+# 🔴 MLS 는 단일 연도(2~12월)
+"league:MLS":
+  - {from: "1996-01", kind: calendar}
