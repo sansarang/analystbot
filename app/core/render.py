@@ -44,6 +44,10 @@ def card_text(card: Card, *, debug: bool = False) -> str:
     🔴 축구 완성 지시서 §5 가 블록 **2b(결장)**·**3b(경우의 수)** 를 더했다.
     """
     out: list[str] = [_head(card)]
+    # 🔴🔴 **확률 요약**(사용자 지시 2026-10-13) — **맨 위 고정**. 발송 쪼개기가
+    #    `… (이어짐 N)` 을 넣기 **전**이라 표가 반으로 갈리지 않는다.
+    #    ⚠️ 잘린 칸이 하나라도 있으면 `CardCut` 으로 **출력이 실패한다**.
+    out.append("\n" + prob_summary(card))
     # 🔴🔴 **§11 역배·보호 줄**(지시서 2026-10-12(둘째) · 즉시 적용) — **1겹 맨 위**.
     #  🔴 왜 여기인가: 실사고 둘에서 시장도 봇도 **강팀만** 봤다. 같은 격자에서
     #     나온 약팀 쪽 줄을 **머리 바로 아래** 두면 그 확률이 확신으로 안 읽힌다.
@@ -1665,6 +1669,120 @@ MATCHUP_LONG_HEAD = "⚔️ MatchupReport (전체)"
 VERIFY_LONG_HEAD = "🔎 VerificationTable"
 GRID_HEAD = "🎲 시뮬 스코어 상위 10"
 FIT_HEAD = "🧮 적합 정보"
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **확률 요약 — 카드 맨 위 고정 블록**(사용자 지시 2026-10-13)
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 카드 맨 위에 "확률 요약" 고정 블록을 둔다 — 승무패 · 핸디 양쪽
+#  > ±0.5/1.5/2.5 · 오버/언더 0.5~4.5 를 **표 3개**로.
+#  > 터미널 폭 때문에 줄이 잘리지 않게 **표로** 출력하고, **잘린 칸이 하나라도
+#  > 있으면 출력 실패** 처리.
+#
+#  🔴 **맨 위여야 하는 까닭이 그것이다** — 발송은 3800자마다 쪼개지고
+#     (`bot.main._split`) 그 자리에 `… (이어짐 N)` 이 들어간다. 맨 위 블록은
+#     **첫 조각 안**에 있으므로 표가 반으로 갈리지 않는다.
+#  🔴 수는 **한 격자**에서 온다(C2 · `markets_of`) — 표준 확률 블록과 **같은 수**다.
+#  ⚠️ 격자가 없으면 **표를 그대로 그리고 칸마다 ⬜** 다(#3 조용한 0 금지).
+
+#: 🔴 한 줄 폭 상한 — 이보다 길면 터미널이 접는다(접히면 표가 깨진다)
+CUT_WIDTH = 100
+
+#: 🔴 잘림을 뜻하는 글자 — 하나라도 표 안에 있으면 **출력 실패**다
+CUT_MARKS: tuple[str, ...] = ("…", "⋯", "(잘림)", "(이어짐", "...")
+
+
+class CardCut(RuntimeError):
+    """🔴🔴 **출력 실패** — 확률 요약 표의 칸이 잘렸다(사용자 지시 2026-10-13)."""
+
+
+def _pct(x: object) -> str:
+    """🔴 표 칸 하나 — 짧게(`42.2%`). 없으면 `⬜`."""
+    try:
+        return f"{float(x):.1%}"           # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return "⬜"
+
+
+def prob_summary(card: Card) -> str:
+    """🔴🔴 **확률 요약**(맨 위 고정) — 표 셋. 잘린 칸이 있으면 `CardCut`."""
+    from app.core import probfloor as _pf
+    box = dict(getattr(card, "matchup", None) or {})
+    sim = dict(box.get("sim") or {})
+    got = box.get("prob")
+    pull = (lambda k: (sim.get(k) if sim.get(k) is not None
+                       else getattr(got, k, None)))
+    grid: dict = {}
+    for key, val in dict(pull("scores") or {}).items():
+        if isinstance(key, str) and "-" in key:
+            h, a = key.split("-", 1)
+            grid[(int(h), int(a))] = float(val)
+        elif isinstance(key, (tuple, list)) and len(key) == 2:
+            grid[(int(key[0]), int(key[1]))] = float(val)
+    mk = _pf.markets_of(grid) if grid else {}
+    why = str(pull("why") or pull("gap") or getattr(card, "stance", "")
+              or card.conclusion or "사유 없음")
+    out = ["**📈 확률 요약**(맨 위 고정 · 같은 격자 하나에서 · **봇 확률만**)", ""]
+    # ── 표 ① 승무패
+    out += ["| 승무패 | 홈 | 무 | 원정 |", "|---|---|---|---|",
+            "| 확률 | " + " | ".join(_pct(mk.get(k)) for k in
+                                     ("home", "draw", "away")) + " |", ""]
+    # ── 표 ② 핸디(양쪽 여섯 줄)
+    head = " | ".join(f"{x:+.1f}" for x in AH_LINES)
+    out += [f"| 핸디 | {head} |", "|---|" + "---|" * len(AH_LINES)]
+    for side, nm in (("home", "홈"), ("away", "원정")):
+        said = " | ".join(_pct(dict(mk.get("ah") or {}).get(
+            f"{side}{x:+.1f}")) for x in AH_LINES)
+        out.append(f"| {nm} | {said} |")
+    out.append("")
+    # ── 표 ③ 오버/언더
+    out += ["| 총골 | " + " | ".join(f"{x}" for x in OU_LINES) + " |",
+            "|---|" + "---|" * len(OU_LINES)]
+    said_over = [dict(mk.get("over") or {}).get(x) for x in OU_LINES]
+    out.append("| 오버 | " + " | ".join(_pct(v) for v in said_over) + " |")
+    out.append("| 언더 | " + " | ".join(
+        _pct(1.0 - float(v)) if v is not None else "⬜"
+        for v in said_over) + " |")
+    if not mk:
+        out.append(f"🔴 **칸이 비었다** — {why}")
+    said = "\n".join(out)
+    check(said)
+    return said
+
+
+def check(said: str) -> None:
+    """🔴🔴 **출력 실패 검사** — 표가 잘렸거나 칸 수가 어긋나면 `CardCut`.
+
+    🔴 세 가지를 센다: ① 잘림 글자 ② 줄 폭 ③ **줄마다 같은 칸 수**.
+    ⚠️ 조용히 넘기지 않는다 — 카드가 **안 나가는 것**이 잘린 표가 나가는 것보다
+       낫다(사용자 지시 2026-10-13: *"잘린 칸이 하나라도 있으면 출력 실패"*).
+    """
+    rows = [ln for ln in str(said or "").splitlines() if ln.startswith("|")]
+    for ln in rows:
+        for bad in CUT_MARKS:
+            if bad in ln:
+                raise CardCut(f"🔴 확률 요약 표에 잘림 글자 `{bad}` 가 있다: {ln}")
+        if len(ln) > CUT_WIDTH:
+            raise CardCut(f"🔴 확률 요약 표 줄이 {len(ln)}자다(> {CUT_WIDTH}) — "
+                          f"터미널이 접는다: {ln[:60]}")
+    # 🔴 표마다 칸 수가 같아야 한다 — 머리와 몸이 어긋나면 표가 깨진다
+    widths: list[int] = []
+    for ln in rows:
+        n = len(ln.strip().strip("|").split("|"))
+        if set(ln.replace("|", "").replace("-", "").strip()) == set():
+            widths.append(n)                       # 구분선
+            continue
+        widths.append(n)
+    i = 0
+    while i < len(widths):
+        said_n = widths[i]
+        j = i
+        while j < len(widths) and widths[j] == said_n:
+            j += 1
+        if j - i < 2:
+            raise CardCut(f"🔴 확률 요약 표의 칸 수가 어긋난다({widths})")
+        i = j
 
 
 # ══════════════════════════════════════════════════════════════════
