@@ -29,13 +29,32 @@ def _yaml(rel: str) -> dict:
     return dict(yaml.safe_load(path.read_text(encoding="utf-8")) or {})
 
 
-def replay_count(key: str) -> int:
-    """🔴 그 대회의 **0-0 포함 재생**이 몇 경기 적혀 있나(없으면 0)."""
-    path = ROOT / "var/judge/replay_big2.json"
-    if not path.exists():
-        return 0
-    rows = json.loads(path.read_text(encoding="utf-8"))
-    return sum(1 for r in rows if str(r.get("league")) == key)
+def replay_count(key: str) -> tuple[int, str]:
+    """🔴 그 대회의 **0-0 포함 재생**이 몇 경기 적혀 있나 + **어느 덤프**인가.
+
+    ⚠️ 종전에는 `replay_big2.json` **하나만** 봤다 — 그래서 챔피언십(500경기)·
+       MLS(500·900)·세리에A(440)·PL(438)·라리가 재생이 *"재생 0"* 으로 찍혔다
+       (실측 2026-10-13: ELC 가 그렇게 보였다). 🔴 **`var/judge/replay_*.json`
+       전부**를 센다 — 목록을 손으로 들지 않는다(사본 금지 · #1).
+    """
+    # 🔴🔴 **같은 경기를 두 번 세지 않는다** — 덤프끼리 겹친다(실측: J1 이
+    #    `replay_444`·`replay_big`·`replay_big2`·`replay_fix` 에 다 들어 있어
+    #    1,049경기로 찍혔다. 실제 서로 다른 경기는 그보다 적다).
+    seen: set[tuple] = set()
+    box = []
+    for path in sorted((ROOT / "var/judge").glob("replay_*.json")):
+        try:
+            rows = json.loads(path.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            continue
+        mine = {(str(r.get("day")), str(r.get("home")), str(r.get("away")))
+                for r in rows if isinstance(r, dict)
+                and str(r.get("league")) == key}
+        fresh = mine - seen
+        if fresh:
+            box.append(f"{path.stem} +{len(fresh)}")
+        seen |= mine
+    return len(seen), " · ".join(box) or "없다"
 
 
 def main(argv: list[str]) -> int:
@@ -62,7 +81,7 @@ def main(argv: list[str]) -> int:
             continue
         one = dict(rows.get(key) or {})
         ids = list((one.get("sources") or {}).get("fotmob_ids") or [])
-        n_replay = replay_count(key)
+        n_replay, said_dumps = replay_count(key)
         said_base = rules.goal_baseline(key)
         home = said_base.get("home_share")
         elo = dict(cp.elo_source(key) or {})
@@ -77,9 +96,9 @@ def main(argv: list[str]) -> int:
             ("✅ id " + ",".join(str(x) for x in ids)) if ids
             else ("⬜ id 없다(친선은 id 로 안 가린다)"
                   if kind == "national_friendly" else "🔴 fotmob id 없다"),
-            (f"✅ {n_replay}경기" if n_replay >= 100
-             else (f"🔴 {n_replay}경기(2시즌 재생 미완)" if n_replay
-                   else "🔴 **재생 0** — 미산출")),
+            (f"✅ {n_replay}경기({said_dumps})" if n_replay >= 100
+             else (f"🔴 {n_replay}경기({said_dumps} · 2시즌 재생 미완)"
+                   if n_replay else "🔴 **재생 0** — 미산출")),
             (f"✅ 홈 몫 {float(home):.3f}" if home else "🔴 **홈 이점 판 없다**"),
             (f"✅ {elo.get('elo')}·적합 `{fit}`"
              if (elo.get("elo") and fit in base_fits)
