@@ -14,6 +14,13 @@
 #     `25/12/06` 에 끝나고 2026-27시즌이 `26/08/07` 에 시작한다. fotmob 의
 #     "2026" 시즌은 2026-02~06 이다 → 그래서 전환 경계를 **2026-07** 로 둔다.
 
+# 🔴🔴 **열쇠는 대회 표(`config/competitions.yaml`)의 것과 같아야 한다.**
+#  ⚠️ 실사고 2026-10-13: 내가 `league:LL`·`league:BL`·`league:L1` 처럼 **열쇠를
+#     지어냈고**, 챔피언십(`league:ELC`)은 **아예 없었다** → 격자 만들기에서
+#     **500경기가 "시즌 모른다"로 떨어졌다**. 🔴 아래는 등록 열쇠 그대로다.
+#  🔴 추춘제/단일 연도 판단은 **덤프의 fotmob 시즌 글자로 검증한다**
+#     (`2025/2026` → 추춘제 · `2025` → 단일 연도 · `tools/season_check.py`).
+
 "league:J1":
   - {from: "2005-01", kind: calendar}
   - {from: "2026-07", kind: autumn_spring, start_month: 7}
@@ -29,12 +36,27 @@
   - {from: "1992-07", kind: autumn_spring, start_month: 7}
 "league:SA":
   - {from: "1929-07", kind: autumn_spring, start_month: 7}
-"league:LL":
+"league:PD":
   - {from: "1929-07", kind: autumn_spring, start_month: 7}
-"league:BL":
+"league:BL1":
   - {from: "1963-07", kind: autumn_spring, start_month: 7}
-"league:L1":
+"league:FL1":
   - {from: "1932-07", kind: autumn_spring, start_month: 7}
 # 🔴 MLS 는 단일 연도(2~12월)
 "league:MLS":
   - {from: "1996-01", kind: calendar}
+# 🔴 유럽 추춘제 — 덤프의 fotmob 시즌 글자가 `2025/2026` 이다(검증)
+"league:ELC":
+  - {from: "1992-07", kind: autumn_spring, start_month: 7}
+"league:DED":
+  - {from: "1956-07", kind: autumn_spring, start_month: 7}
+"league:PPL":
+  - {from: "1934-07", kind: autumn_spring, start_month: 7}
+# 🔴 단일 연도 — 브라질·아르헨티나(fotmob 시즌 글자가 한 해다)
+"league:BSA":
+  - {from: "2003-01", kind: calendar}
+"league:ARG1":
+  - {from: "1991-01", kind: calendar}
+# 🔴 J리그 컵 — 리그와 같은 달력(2026-27 시즌과 함께 돈다)
+"league:JLC":
+  - {from: "2026-07", kind: autumn_spring, start_month: 7}

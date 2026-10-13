@@ -34,8 +34,18 @@ def rows_of() -> tuple[list[dict], str]:
     from forward_terms import _ctx_rows
     from app.core import context as _ctx
     from app.core import season as se
-    back = json.loads((ROOT / "var/judge/replay_big2.json").read_text(
-        encoding="utf-8"))
+    # 🔴🔴 **국내 리그 재생 전부**를 읽는다(2,582경기 · 2026-10-13 밤 넷째 5번).
+    #    ⚠️ `replay_big2` 만 보던 자리다 — 표본이 **2,000 문턱**을 넘었으므로
+    #    앙상블·판정을 **같은 규칙으로 다시** 돌린다.
+    back: list[dict] = []
+    for name in ("replay_big2", "replay_mls", "replay_elc", "replay_sa",
+                 "replay_pl"):
+        path = ROOT / f"var/judge/{name}.json"
+        if not path.exists():
+            continue
+        said = json.loads(path.read_text(encoding="utf-8"))
+        back += said
+        print(f"   · {name} {len(said)}경기", flush=True)
     ids = {}
     for r in json.loads((ROOT / "var/judge/lineup_rows2.json").read_text(
             encoding="utf-8")):
@@ -121,17 +131,34 @@ def main(argv: list[str]) -> int:
         for r in test:
             kind = r["league"]
             co = by_kind.get(kind)
+            said_fallback = False
             if not co:
-                gone["Elo 바닥 없음"] = gone.get("Elo 바닥 없음", 0) + 1
-                continue
+                # 🔴🔴 **퇴로 — 운영 판**(`config/base_model.yaml`)을 쓴다.
+                #  ⚠️ 실측 2026-10-13: 리그마다 **다른 시즌 표본이 100경기 미만**
+                #     이어서(예: 2026/27 이 58경기) 교차 적합이 **1,380경기에서
+                #     바닥을 못 만들었다**. 🔴 그때는 **운영이 쓰는 그 판**으로
+                #     간다 — 그 판은 **전 표본 적합**이라 평가 시즌이 섞인다
+                #     (그 사실을 보고가 센다 · 누설이 아니라 **낙관**이다).
+                said_fallback = True
             mean = float(rules.goal_share(kind) or 1.3)
             box_base = rules.goal_baseline(kind)
             mul_a, _w = pm.away_mul(home_share=box_base.get("home_share"),
                                     per_team=mean)
             mul_h = (float(box_base.get("home_share")) / mean
                      if box_base.get("home_share") else 1.0)
-            floor = _base.triple_from(c1=co["c1"], c2=co["c2"],
-                                      b_dr=co["b_dr"], dr=r["dr"])
+            if said_fallback:
+                got_f, why_f = pf.floor_of(kind=kind, dr=float(r["dr"]))
+                if got_f is None:
+                    gone[f"Elo 바닥 없음({why_f[:24]})"] = gone.get(
+                        f"Elo 바닥 없음({why_f[:24]})", 0) + 1
+                    continue
+                from app.core.schema import ProbTriple as _PT3
+                floor = _PT3(home=got_f[0], draw=got_f[1], away=got_f[2])
+                gone["⚠️ 운영 판으로 바닥(교차 표본 부족)"] = gone.get(
+                    "⚠️ 운영 판으로 바닥(교차 표본 부족)", 0) + 1
+            else:
+                floor = _base.triple_from(c1=co["c1"], c2=co["c2"],
+                                          b_dr=co["b_dr"], dr=r["dr"])
             move = m0_of(floor, mean, mul_h, mul_a)
             if move is None:
                 gone["바닥 λ 못 풀었다"] = gone.get("바닥 λ 못 풀었다", 0) + 1
