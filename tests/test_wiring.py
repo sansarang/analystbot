@@ -690,6 +690,15 @@ TOOL_ONLY: dict[str, str] = {
     "app.collect.minutes.before": "tools/minutes_backfill.py",
     # 🔴 **둘째 통로**(fotmob `playerStats` 의 뛴 분) — 같은 백필이 부른다
     "app.collect.minutes.intervals_from_minutes": "tools/minutes_backfill.py",
+    # 🔴🔴 **§5 라인업 보정 경계**(라인업 지시서 2026-10-13) — 지금은 **후보 판**
+    #    이라 비교 도구가 부른다. ⚠️ 운영 ⑯ 뒤에 잇는 것은 **§6 판정이 채택한
+    #    뒤**다(§8 배선) — 그때 이 줄들을 **지운다**.
+    "app.core.lineupfix.raw_of": "tools/lineup_trial2.py",
+    "app.core.lineupfix.ortho": "tools/lineup_trial2.py",
+    "app.core.lineupfix.apply": "tools/lineup_trial2.py",
+    "app.core.lineupfix.check": "tools/lineup_trial2.py",
+    "app.core.lineupfix.plate_of": "tools/lineup_trial2.py",
+    "app.core.lineupfix.bench_shift_of": "tools/lineup_trial2.py",
     "app.core.metrics.bands": "tools/judge_models.py",
     "app.core.metrics.calib": "tools/backfill_score.py",
     "app.core.metrics.check_split": "tools/judge_models.py",

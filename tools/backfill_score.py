@@ -169,11 +169,16 @@ async def main() -> None:
                 tilt = sum(float(conf.get(k) or 0.0) * float(v)
                            for k, v in gaps.items())
                 move = max(-0.35, min(0.35, beta * tilt))
-                out = _sim.run(float(mean) * mul_home * math.exp(move),
-                               float(mean) * mul_h * math.exp(-move))
+                # 🔴🔴 **λ 를 적어 둔다**(라인업 지시서 §5·§6 · 2026-10-13) —
+                #    라인업 보정은 M1 의 **λ 에** 거는 것이므로 비교 판이 그 수를
+                #    받아야 한다(확률만 있으면 λ 를 되돌릴 수 없다).
+                lam = [float(mean) * mul_home * math.exp(move),
+                       float(mean) * mul_h * math.exp(-move)]
+                out = _sim.run(lam[0], lam[1])
                 ours = [out.home, out.draw, out.away]
             else:
                 ours = None
+                lam = None
             # 🔴🔴 **새 구조**(사용자 지시 2026-10-12 1번) — Elo 바닥 + 축0·축1 잔차
             from app.core import probfloor as _pf
             floor, _wf = _pf.floor_of(kind=name, dr=dr)
@@ -185,7 +190,7 @@ async def main() -> None:
                              "home": home, "away": away, "hg": h, "ag": a,
                              "floor": floor, "fresh": fresh,
                              "league": name, "day": str(one.get("utc"))[:10],
-                             "hit": hit, "ours": ours, "dr": dr,
+                             "hit": hit, "ours": ours, "dr": dr, "lam": lam,
                              "gaps": dict(gaps), "why": why,
                              "diff": h - a})
             # ── 🔴 Elo 를 **경기 뒤** 굴린다(다음 경기의 "경기 전 등급")

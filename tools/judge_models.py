@@ -270,6 +270,29 @@ def passes(*, diff: dict, dir_rate: float, base_dir: float, p_value: float,
     """
     # 🔴 `rule="v1"` — 이번 시험의 규칙(구간 **상한** < +0.005)
     #    `rule="v2"` — 다음 시험부터(사용자 결정): 점추정이 낮고 **구간 하한 < 0**
+    # 🔴🔴 `rule="lineup"` — **라인업 지시서 §6**(2026-10-13)이 다시 쓴 v2 다.
+    #    > (a) 로그 손실 점추정 < B · 구간 하한 < 0
+    #    > (b) 방향이 B 보다 **낮지 않음**(맥니마 **B 우세** p<0.05 탈락)
+    #    > (c) 상위 30/20/10% 평균 **≥ B**
+    #    ⚠️ 앞선 v2 의 (b)는 *"도전이 유의하게 낫다"* 였다 — **더 엄격**했다.
+    #       그래서 이름을 가른다(옛 시험의 판정이 바뀌지 않도록).
+    if str(rule) == "lineup":
+        a = bool(float(diff.get("mean", 1.0)) < 0.0
+                 and float(diff.get("lo", 1.0)) < 0.0)
+        worse = bool(float(dir_rate) < float(base_dir)
+                     and float(p_value) < P_CAP)
+        b = not worse
+        mine = [float(bands.get(x, float("nan"))) for x in BANDS]
+        theirs = [float(base_bands.get(x, float("nan"))) for x in BANDS]
+        c = bool(sum(mine) / len(mine) >= sum(theirs) / len(theirs))
+        said = (f"(a) 점추정 {float(diff.get('mean', 0.0)):+.4f} · 하한 "
+                f"{float(diff.get('lo', 0.0)):+.4f} < 0 → "
+                f"{'✅' if a else '🔴'} · "
+                f"(b) 방향 {float(dir_rate):.1%} vs {float(base_dir):.1%} · "
+                f"B 우세 p {float(p_value):.4f} → {'✅' if b else '🔴'} · "
+                f"(c) 구간 평균 {sum(mine) / len(mine):.1%} ≥ "
+                f"{sum(theirs) / len(theirs):.1%} → {'✅' if c else '🔴'}")
+        return (a and b and c), {"a": a, "b": b, "c": c}, said
     if str(rule) == "v2":
         a = bool(float(diff.get("mean", 1.0)) < 0.0
                  and float(diff.get("lo", 1.0)) < 0.0)
