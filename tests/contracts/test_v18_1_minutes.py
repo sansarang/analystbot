@@ -193,3 +193,34 @@ def test_learned_names_break_the_tie() -> None:
     # 🔴 표가 없으면 그대로 **안 맞춘다**(없는 것을 지어내지 않는다)
     assert mn.pick_card(rows=rows, day="d", home="Kashiwa Reysol",
                         away="Mito Hollyhock", score=(2, 1)) is None
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **둘째 통로 — fotmob `playerStats` 의 "뛴 분"**(실측 2026-10-13)
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 이 실측은 2026-10-12 의 *"fotmob 은 교체 시각을 주지 않는다"* 를 **덮는다**.
+#     선수 칸의 `minutesPlayed` 는 비어 있지만 **경기 선수 기록**
+#     (`content.playerStats`)에는 `minutes_played` 가 있다(두 리그 다 · 32명).
+#  🔴 그것은 **in/out 시각이 아니라 뛴 분**이다 → 선발은 `[0, 분]`, 교체 투입은
+#     `[90 − 분, 90]` 으로 읽고 **그 차이를 사유가 적는다**(지어내지 않는다).
+
+
+def test_intervals_from_played_minutes() -> None:
+    from app.collect import minutes as mn
+    got, why = mn.intervals_from_minutes(
+        starters=["s1", "s2"], bench=["b1", "b2"],
+        played={"s1": 90.0, "s2": 60.0, "b1": 30.0})
+    assert got["s1"] == (0, 90) and got["s2"] == (0, 60), got
+    assert got["b1"] == (60, 90), got
+    # 🔴 **MN2** — 안 뛴 벤치(b2)는 **칸이 없다**(0분 금지)
+    assert "b2" not in got, got
+    assert "뛴 분" in why and "in/out" in why, why
+
+
+def test_played_minutes_plate_is_named_apart() -> None:
+    """🔴 분이 **정확한 시각**인지 **뛴 분**인지 섞어 적지 않는다."""
+    from app.collect import minutes as mn
+    _got, why = mn.intervals_from_minutes(starters=["s1"], bench=[],
+                                          played={})
+    assert "🔴" in why and "없다" in why

@@ -657,6 +657,12 @@ TOOL_ONLY: dict[str, str] = {
     "app.core.ratings.lineup_strength.bench_mean": "tools/fit_player_pm.py",
     # 🔴 §5 선수 ± — 적합 도구가 부른다(운영 ⑪ 은 §9 채택 뒤다)
     "app.core.ratings.player_pm.fit": "tools/fit_player_pm.py",
+    # 🔴🔴 **§2 구간 ±**(라인업 지시서 2026-10-13) — 벌은 **시즌 교차**로 고르고
+    #    판은 `.parquet` 다. ⚠️ 운영 ⑪ 에 잇는 것은 §6 판정 뒤다(§8 배선).
+    "app.core.ratings.player_pm.pick_lam": "tools/fit_pm.py",
+    "app.core.ratings.player_pm.stability": "tools/fit_pm.py",
+    "app.core.ratings.player_pm.save": "tools/fit_pm.py",
+    "app.core.ratings.player_pm.load": "tools/fit_pm.py",
     "app.core.ratings.player_pm.value_of": "tools/fit_player_pm.py",
     # 🔴🔴 **§3 새 λ 식**(지시서 2026-10-12 §3) — 적합 도구가 부른다. ⚠️ 운영 ⑯ 에
     #    잇는 것은 **§3 판정이 끝난 뒤**다(§0 승격 절차 · §10).
@@ -682,6 +688,8 @@ TOOL_ONLY: dict[str, str] = {
     "app.collect.minutes.learn_names": "tools/minutes_backfill.py",
     "app.collect.minutes.intervals": "tools/minutes_backfill.py",
     "app.collect.minutes.before": "tools/minutes_backfill.py",
+    # 🔴 **둘째 통로**(fotmob `playerStats` 의 뛴 분) — 같은 백필이 부른다
+    "app.collect.minutes.intervals_from_minutes": "tools/minutes_backfill.py",
     "app.core.metrics.bands": "tools/judge_models.py",
     "app.core.metrics.calib": "tools/backfill_score.py",
     "app.core.metrics.check_split": "tools/judge_models.py",

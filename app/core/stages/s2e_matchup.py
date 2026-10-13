@@ -543,6 +543,7 @@ def adv_players(rows: list[dict], *, mine_home_key: str = "mine_home"
 
     🔴 우리 팀 선수만 센다 — 편은 `side_ids` + `mine_home` 으로 가린다(이름 비교
        금지 · 신원 계약). ⚠️ 한 경기도 못 읽으면 **빈 표**다(0 이 아니다 · #3).
+    🔴🔴 **열쇠는 선수 id** 이고 이름은 값 안에 있다(표시용) — 지시서 §3.
     """
     out: dict[str, dict] = {}
     for row in (rows or []):
@@ -552,14 +553,19 @@ def adv_players(rows: list[dict], *, mine_home_key: str = "mine_home"
         ids = tuple(box.get("side_ids") or ("", ""))
         mine_id = (ids[0] if box[mine_home_key] else ids[1]) \
             if len(ids) == 2 else ""
-        for one in dict(box.get("player_adv") or {}).values():
+        for pid, one in dict(box.get("player_adv") or {}).items():
             said = dict(one)
             if mine_id and str(said.get("team_id") or "") != mine_id:
                 continue
             name = str(said.get("name") or "")
-            if not name:
+            if not str(pid or "").strip():
                 continue
-            got = out.setdefault(name, {"xg": 0.0, "xa": 0.0, "n": 0})
+            # 🔴🔴 **열쇠는 선수 id 다**(§3 · 2026-10-13) — 전에는 **이름**이었고,
+            #    쓰는 쪽(`usual`·`out_today`)은 **신원표를 지난 id** 였다. 그래서
+            #    `style._att_share` 가 언제나 빈손이었고 *"빠진 주전"* 비중이
+            #    **늘 0** 이었다(공격 기여표 "공백"의 진짜 원인).
+            got = out.setdefault(str(pid), {"xg": 0.0, "xa": 0.0, "n": 0,
+                                            "name": name})
             got["xg"] = round(got["xg"] + float(said.get("xg") or 0.0), 3)
             got["xa"] = round(got["xa"] + float(said.get("xa") or 0.0), 3)
             got["n"] += 1

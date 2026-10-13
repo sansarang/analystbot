@@ -124,12 +124,19 @@ async def main(argv: list[str]) -> int:
     from app.collect import minutes as mn
     from app.net import Net
     net = Net(cache=True)
-    print("# 🔴🔴 §1 교체 시각 확보율")
+    print("# 🔴🔴 §1 출전 시간 — **통로 셋**(정확한 시각 · 뛴 분 · 거친 판)")
     print()
     rows = json.loads((ROOT / "var/judge/lineup_rows2.json").read_text(
         encoding="utf-8"))
-    # 🔴🔴 **MN1** — `--as-of` 를 주면 그 **이전 경기만** 적는다(§2 의 전진 판을
-    #    만들 때 쓴다). 문은 `minutes.before` 하나다(= `fotmob.before_as_of`).
+    ev_path = ROOT / "var/judge/events.json"
+    ev = (json.loads(ev_path.read_text(encoding="utf-8"))
+          if ev_path.exists() else {})
+    print(f"🔴 fotmob 경기 선수 기록(`playerStats`) — 받아 둔 경기 "
+          f"**{len(ev)}건**"
+          + ("" if ev else " 🔴 **없다**(`tools/match_events.py` 를 먼저 돌린다)"))
+    print()
+    # 🔴🔴 **MN1** — `--as-of` 를 주면 그 **이전 경기만** 적는다(§2 전진 판).
+    #    문은 `minutes.before` 하나다(= `fotmob.before_as_of`).
     said_as_of = ([a.split("=", 1)[1] for a in argv[1:]
                    if a.startswith("--as-of=")] or [None])[0]
     if said_as_of:
@@ -143,98 +150,89 @@ async def main(argv: list[str]) -> int:
     for r in rows:
         by_league.setdefault(str(r["league"]), []).append(r)
     lines: list[str] = []
-    #: 🔴 §2 가 쓸 **출전 구간**을 적어 둔다(경기 열쇠 = utc·홈·원정)
-    dump: dict[str, dict] = {}
+    dump: dict[str, dict] = {}       #: 🔴 §2 가 쓸 출전 구간
     for league, said in sorted(by_league.items()):
-        if league not in FRAMES:
-            # 🔴🔴 통로가 없는 리그는 **거친 판**이다 — 선발 90분 · 안 뛴 벤치는
-            #    칸이 없다(MN2). 🔴 그 사실을 사유가 **이름으로** 적는다(#3).
-            why0 = ""
-            for r in said:
-                for side in ("home", "away"):
-                    box, why0 = mn.intervals(
-                        starters=[str(x) for x in r[f"{side}_ids"]], subs=None,
-                        bench=[str(x) for x in r[f"{side}_bench"]])
-                    dump.setdefault(
-                        f"{r['utc']}|{r['home']}|{r['away']}", {})[side] = {
-                            k: list(v) for k, v in box.items()}
-            lines.append(f"| {league} | — | {len(said)} | **0** | **0.0%** | "
-                         f"🔴 **통로 없음**(kleague.com 빈 응답 · fotmob 교체 "
-                         f"사건 없음) → **거친 판**({why0[:60]}…) |")
-            continue
         flat: list[dict] = []
-        for year in (2026, 2027):
-            try:
-                flat += await jl_cards(net, year=year, frame=FRAMES[league])
-            except Exception as exc:                        # noqa: BLE001
-                print(f"🔴 {league} {year} 목록 실패 {exc!r:.60}")
-        print(f"   · J리그 경기 목록 **{len(flat)}건**(2026·2027)", flush=True)
-        # 🔴 목록이 **덮는 날짜 구간**으로 가른다 — 그 밖은 "통로 없음"이다
-        got_days = sorted({str(c.get("day") or "") for c in flat
+        names: dict[str, str] = {}
+        window = ("", "")
+        if league in FRAMES:
+            for year in (2026, 2027):
+                try:
+                    flat += await jl_cards(net, year=year,
+                                           frame=FRAMES[league])
+                except Exception as exc:                    # noqa: BLE001
+                    print(f"🔴 {league} {year} 목록 실패 {exc!r:.60}")
+            days = sorted({str(c.get("day") or "") for c in flat
                            if str(c.get("day") or "")})
-        lo, hi = (got_days[0], got_days[-1]) if got_days else ("", "")
-        names = learn(flat, said)
-        by_season: dict[str, list[dict]] = {}
-        for r in said:
-            day = jst_day(r)
-            key = (f"{lo}~{hi} (목록 있음)" if lo <= day <= hi
-                   else "🔴 목록 밖(통로 없음)")
-            by_season.setdefault(key, []).append(r)
-        for season, group in sorted(by_season.items()):
-            got = 0
-            miss_card = 0
-            ids: list[float] = []
-            for i, r in enumerate(group, 1):
-                if i % 25 == 0:
-                    print(f"   … {season} {i}/{len(group)}", flush=True)
-                box, why = await one_match(net, flat=flat, row=r,
-                                           names=names)
-                if not box:
-                    # 🔴 분을 못 얻은 경기도 **거친 판**으로 남긴다(§2 가 쓴다) —
-                    #    ⚠️ 표의 "확보"에는 **안 센다**(거친 판은 분이 아니다).
-                    miss_card += 1
-                    dump[f"{r['utc']}|{r['home']}|{r['away']}"] = {
-                        side: {k: list(v) for k, v in mn.intervals(
+            window = (days[0], days[-1]) if days else ("", "")
+            print(f"   · J리그 경기 목록 **{len(flat)}건** "
+                  f"({window[0]}~{window[1]})", flush=True)
+            names = learn(flat, said)
+        kind = {"정확한 시각": 0, "뛴 분": 0, "거친 판": 0}
+        fails: list[float] = []
+        for i, r in enumerate(said, 1):
+            if i % 50 == 0:
+                print(f"   … {league} {i}/{len(said)}", flush=True)
+            key = f"{r['utc']}|{r['home']}|{r['away']}"
+            box: dict[str, dict] = {}
+            # ① J리그 **정확한 시각**
+            if flat and window[0] <= jst_day(r) <= window[1]:
+                box, why = await one_match(net, flat=flat, row=r, names=names)
+                if box:
+                    stat = dict(box.get("_stat") or {})
+                    span = int(stat.get("구간") or 0)
+                    fails.append(max(0.0, 1.0 - int(stat.get("이음") or 0)
+                                     / max(1, span)))
+                    kind["정확한 시각"] += 1
+            # ② fotmob **뛴 분**
+            if not box:
+                pstat = dict((ev.get(key) or {}).get("pstat") or {})
+                if pstat:
+                    got: dict[str, dict] = {}
+                    ok = True
+                    for side in ("home", "away"):
+                        one, _w = mn.intervals_from_minutes(
                             starters=[str(x) for x in r[f"{side}_ids"]],
-                            subs=None,
-                            bench=[str(x) for x in r[f"{side}_bench"]])[0]
-                            .items()}
-                        for side in ("home", "away")}
-                    continue
-                got += 1
-                dump[f"{r['utc']}|{r['home']}|{r['away']}"] = {
-                    "home": {k: list(v) for k, v in box["home"].items()},
-                    "away": {k: list(v) for k, v in box["away"].items()}}
-                # 🔴🔴 신원 실패율 — **출전한 선수**(구간이 있는 선수) 중 id 로
-                #    못 이은 비율이다. ⚠️ 안 뛴 벤치는 분모에 **없다**(MN2 —
-                #    칸 자체가 없으니 실패로 세면 거짓이 된다).
-                stat = dict(box.get("_stat") or {})
-                span = int(stat.get("구간") or 0)
-                ids.append(max(0.0, 1.0 - int(stat.get("이음") or 0)
-                               / max(1, span)))
-            fail = (sum(ids) / len(ids)) if ids else None
-            lines.append(
-                f"| {league} | {season} | {len(group)} | **{got}** | "
-                f"**{got / max(1, len(group)):.1%}** | "
-                + (f"{fail:.1%}" if fail is not None else "—")
-                + f" (경기 못 맞춤 {miss_card}건) |")
+                            bench=[str(x) for x in r[f"{side}_bench"]],
+                            played=pstat)
+                        ok = ok and bool(one)
+                        got[side] = one
+                    if ok:
+                        box = got
+                        kind["뛴 분"] += 1
+            # ③ **거친 판**(선발 90분 · 안 뛴 벤치는 칸이 없다 · MN2)
+            if not box:
+                box = {side: mn.intervals(
+                    starters=[str(x) for x in r[f"{side}_ids"]], subs=None,
+                    bench=[str(x) for x in r[f"{side}_bench"]])[0]
+                    for side in ("home", "away")}
+                kind["거친 판"] += 1
+            dump[key] = {side: {k: list(v) for k, v in box[side].items()}
+                         for side in ("home", "away")}
+        n = max(1, len(said))
+        fail = (sum(fails) / len(fails)) if fails else None
+        lines.append(
+            f"| {league} | {len(said)} | **{kind['정확한 시각']}** "
+            f"({kind['정확한 시각'] / n:.1%}) | **{kind['뛴 분']}** "
+            f"({kind['뛴 분'] / n:.1%}) | {kind['거친 판']} "
+            f"({kind['거친 판'] / n:.1%}) | "
+            + (f"{fail:.1%}" if fail is not None else "—") + " |")
     out = ROOT / "var/judge/minutes.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(dump, ensure_ascii=False), encoding="utf-8")
-    fine = sum(1 for v in dump.values()
-               if any(tuple(x) != (0, 90) for x in v.get("home", {}).values()))
-    print(f"🔴 출전 구간 **{len(dump)}경기**를 적었다 — {out} "
-          f"(그 중 **분 단위 {fine}경기** · 나머지는 **거친 판**)")
     print()
-    print("| 리그 | 시즌 | 경기 | 교체 시각 확보 | 확보율 | 신원 실패율(평균) |")
+    print(f"🔴 출전 구간 **{len(dump)}경기**를 적었다 — {out}")
+    print()
+    print("| 리그 | 경기 | ① 정확한 시각(J리그) | ② 뛴 분(fotmob) | "
+          "③ 거친 판 | 신원 실패율(①) |")
     print("|---|---|---|---|---|---|")
     for one in lines:
         print(one)
     print()
-    print("🔴 경기는 **날짜+스코어**로, 선수는 **등번호**(J리그 `NUMBER` ↔ fotmob "
-          "`shirtNumber`)로 이었다 — 손으로 쓴 이름 표는 없다.")
-    print("⚠️ **MN2** — 안 뛴 벤치 선수는 칸이 없다(0분으로 넣지 않는다). 그래서 "
-          "신원 실패율의 분모는 **출전한 선수**(구간이 있는 선수)뿐이다.")
+    print("🔴 ① 은 **교체 시각**이다(J리그 자료 사이트 · 경기는 날짜+스코어, 선수는 "
+          "등번호로 이었다). ② 는 **뛴 분**이고 in/out **시각이 아니다** — 선발 "
+          "`[0,분]` · 투입 `[90−분,90]` 로 읽는다. ③ 은 선발 90분이다.")
+    print("⚠️ **MN2** — 안 뛴 벤치 선수는 **칸이 없다**(0분으로 넣지 않는다).")
     return 0
 
 

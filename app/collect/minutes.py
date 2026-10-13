@@ -96,6 +96,40 @@ def intervals(*, starters: list[str], subs: list[dict] | None,
     return got, why
 
 
+def intervals_from_minutes(*, starters: list[str], bench: list[str],
+                           played: dict
+                           ) -> tuple[dict[str, tuple[int, int]], str]:
+    """🔴🔴 **둘째 통로** — fotmob 경기 선수 기록의 **뛴 분**으로 구간을 만든다.
+
+    🔴 `minutes_played` 는 **in/out 시각이 아니다**. 선발은 `[0, 분]`,
+       교체 투입은 `[90 − 분, 90]` 으로 읽는다 — 가운데 들어왔다 나간 선수는
+       그 둘 중 하나로 **치우친다**(그 사실을 사유가 적는다 · #4 추측 금지).
+    🔴 **MN2** — 안 뛴(분이 없는) 선수는 **칸이 없다**(0분으로 넣지 않는다).
+    """
+    box = {str(k): float(v.get("minutes_played") if isinstance(v, dict) else v)
+           for k, v in dict(played or {}).items()
+           if (v.get("minutes_played") if isinstance(v, dict) else v)
+           is not None}
+    if not box:
+        return {}, "🔴 뛴 분이 **없다** — 이 경기는 다른 통로로 간다"
+    got: dict[str, tuple[int, int]] = {}
+    for pid in [str(p) for p in (starters or [])]:
+        mins = box.get(pid)
+        if mins is None or mins <= 0:
+            continue
+        got[pid] = (0, min(FULL, int(round(mins))))
+    for pid in [str(p) for p in (bench or [])]:
+        mins = box.get(pid)
+        if mins is None or mins <= 0:
+            continue                      # 🔴 안 뛴 벤치는 **칸이 없다**(MN2)
+        got[pid] = (max(0, FULL - int(round(mins))), FULL)
+    left = [p for p in box if p not in got]
+    return got, (f"**뛴 분**으로 만든 구간 {len(got)}명 — ⚠️ in/out **시각이 "
+                 f"아니다**(선발 `[0,분]` · 투입 `[90−분,90]`)"
+                 + (f" · ⬜ 명단에 없는데 분이 있는 선수 {len(left)}명은 "
+                    f"**안 넣었다**" if left else ""))
+
+
 def before(rows: list[dict], *, as_of) -> list[dict]:
     """🔴🔴 **MN1** — `as_of` **이전** 경기만. 문은 `fotmob.before_as_of` 하나다."""
     from app.collect import fotmob as fm

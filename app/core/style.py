@@ -281,7 +281,19 @@ def _att_share(read, gone: list[str]) -> float:
     total = sum(float(v) for v in box.values())
     if total <= 0:
         return 0.0
-    mine = sum(float(box.get(nm) or 0.0) for nm in gone)
+    # 🔴🔴 **식별자는 둘 꼴이다**(§3 · 2026-10-13) — 신원표를 지난 **선수 id**
+    #    이거나, 못 지났으면 `name:<이름>` 이다. 표의 열쇠도 둘 꼴이다(경기별
+    #    xG+xA 표는 **id**, 시즌 누계 퇴로는 **이름**). 🔴 그래서 **양쪽을 다**
+    #    본다 — 전에는 id 만 넣고 이름 표를 뒤져 **늘 0** 이었다.
+    mine = 0.0
+    for nm in (gone or []):
+        said = str(nm or "")
+        if said in box:
+            mine += float(box.get(said) or 0.0)
+            continue
+        want = said[5:] if said.startswith("name:") else said
+        if want in box:
+            mine += float(box.get(want) or 0.0)
     return max(0.0, min(1.0, mine / total))
 
 

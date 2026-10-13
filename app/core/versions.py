@@ -30,8 +30,38 @@ def path_of(table: str, key: str = "") -> Path:
     return (got / said) if said else got
 
 
-def _days(box: Path) -> list[str]:
-    return sorted(p.stem for p in box.glob("*.yaml")) if box.exists() else []
+def _days(box: Path, ext: str = "yaml") -> list[str]:
+    return (sorted(p.stem for p in box.glob(f"*.{ext}"))
+            if box.exists() else [])
+
+
+def pick_file(box, *, as_of, ext: str = "yaml") -> tuple[Path | None, str]:
+    """🔴🔴 L3 를 **한 곳에** 둔다 — `as_of` **이전** 가장 최신 판의 **경로**.
+
+    🔴 yaml 이 아닌 판(§2 선수 점수는 `.parquet`)도 **같은 규칙**을 쓴다 —
+       날짜 고르기를 두 곳에 두면 한쪽이 느슨해진다(사본 금지 · #1).
+    """
+    want = _want(as_of)
+    rows = [d for d in _days(Path(box), ext) if d < want.isoformat()]
+    if not rows:
+        return None, (f"🔴 `{Path(box).name}` 에 {want.isoformat()} **이전 "
+                      f"판이 없다**(있는 판 {len(_days(Path(box), ext))}개)")
+    said = rows[-1]
+    return (Path(box) / f"{said}.{ext}",
+            f"판 `{said}`(as-of {want.isoformat()} 이전 최신)")
+
+
+def _want(as_of):
+    """🔴 `as_of` → **날짜**. tz 없는 datetime 은 받지 않는다(누설 규율)."""
+    if as_of is None:
+        raise ValueError("🔴 `as_of` 가 없다 — 계수 판을 고를 수 없다(L3)")
+    if isinstance(as_of, datetime):
+        if as_of.tzinfo is None:
+            raise ValueError("🔴 `as_of` 에 시간대가 없다 — naive 는 받지 않는다")
+        return as_of.date()
+    if isinstance(as_of, date):
+        return as_of
+    raise ValueError(f"🔴 `as_of` 꼴을 모른다: {as_of!r}")
 
 
 def pick(box: Path, *, as_of) -> tuple[dict, str]:
@@ -40,16 +70,7 @@ def pick(box: Path, *, as_of) -> tuple[dict, str]:
     ⚠️ `as_of` 가 없거나 tz 가 없으면 **예외**다(누설 금지와 같은 규율).
     ⚠️ 이전 판이 없으면 **빈 표 + 사유**다 — 가까운 미래 판으로 갈음하지 않는다.
     """
-    if as_of is None:
-        raise ValueError("🔴 `as_of` 가 없다 — 계수 판을 고를 수 없다(L3)")
-    if isinstance(as_of, datetime):
-        if as_of.tzinfo is None:
-            raise ValueError("🔴 `as_of` 에 시간대가 없다 — naive 는 받지 않는다")
-        want = as_of.date()
-    elif isinstance(as_of, date):
-        want = as_of
-    else:
-        raise ValueError(f"🔴 `as_of` 꼴을 모른다: {as_of!r}")
+    want = _want(as_of)
     rows = [d for d in _days(Path(box)) if d < want.isoformat()]
     if not rows:
         return {}, (f"🔴 `{Path(box).name}` 에 {want.isoformat()} **이전 판이 "
