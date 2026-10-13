@@ -357,6 +357,13 @@ def kind_require(key: str) -> tuple[str, str]:
     got = str(one.get("kind") or "")
     if got in KINDS:
         return got, f"대회 유형 `{got}`(표 `{CONF}`)"
+    # 🔴🔴 **자동 등록 파일의 `kind`**(P1) — 손 표에 없는 리그도 유형을 안다.
+    #    ⚠️ 그 파일에 없으면 그대로 **미등록**이다(CP1 이 막는다).
+    from app.core import autoleague as _al
+    said_auto = str(dict(_al.load(str(key or "")) or {}).get("kind") or "")
+    if said_auto in KINDS:
+        return said_auto, (f"대회 유형 `{said_auto}`(**자동 등록** "
+                           f"`{_al.path_of(str(key)).name}`)")
     return "", (f"🔴 **대회 유형 미등록** — `{key}` 의 `kind` 가 "
                 f"{'없다' if not got else f'모르는 글자다({got!r})'} · "
                 f"`{CONF}` 에 적어야 분석한다(CP1)")

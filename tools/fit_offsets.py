@@ -40,6 +40,51 @@ def box_of(comp: str) -> Path:
 K_ELO = 20.0
 
 
+async def collect_fast(comp: str, *, seasons: int) -> int:
+    """🔴🔴 **빠른 수집**(P1) — 대회 **일정 한 장**(시즌당) + 팀 페이지의 국내 리그.
+
+    🔴 경기 페이지를 받지 않는다 — 일정의 `scoreStr` 로 스코어가 온다(247경기
+       통신 → **시즌 수 + 팀 수**로 줄었다). ⚠️ 그래서 ACL 도 몇 분에 끝난다.
+    """
+    import json as _json
+
+    from fit_comp_record import rows_of as _rows
+    from fit_league_elo import domestic_of as _dom
+    from app.net import Net
+    net = Net(cache=True, day_cache=True)
+    rows, why = await _rows(comp, seasons=seasons)
+    print(f"{comp} — 일정에서 끝난 경기 **{len(rows)}건**({why})", flush=True)
+    # 🔴 팀 번호는 일정 줄에 없다(이름만) — 팀 페이지는 이름으로 찾는다
+    seen: dict[str, tuple[str, str]] = {}
+    out: list[dict] = []
+    gone: dict[str, int] = {}
+    for i, r in enumerate(rows, 1):
+        if i % 50 == 0:
+            print(f"   … {i}/{len(rows)}", flush=True)
+        box: dict[str, str] = {}
+        for side in ("home", "away"):
+            name = str(r.get(side) or "")
+            if name not in seen:
+                key, said, _why = await _dom(net, name, "")
+                seen[name] = (key, said)
+            box[side] = seen[name][0]
+        if not (box.get("home") and box.get("away")):
+            gone["국내 리그를 못 찾았다"] = gone.get("국내 리그를 못 찾았다", 0) + 1
+        out.append({"day": str(r.get("season") or ""), "season": r.get("season"),
+                    "home": r.get("home"), "away": r.get("away"),
+                    "hg": r.get("hg"), "ag": r.get("ag"),
+                    "stage": r.get("stage"),
+                    "home_league": box.get("home") or "",
+                    "away_league": box.get("away") or ""})
+    box_of(comp).write_text(_json.dumps(out, ensure_ascii=False),
+                            encoding="utf-8")
+    print(f"🔴 {len(out)}경기를 적었다 — {box_of(comp).relative_to(ROOT)}")
+    print("🔴 **버린 것** — "
+          + (" · ".join(f"{k} {v}건" for k, v in sorted(gone.items()))
+             if gone else "없다"))
+    return 0
+
+
 async def collect(comp: str, *, seasons: int) -> int:
     """🔴 그 대회의 끝난 경기 + **각 팀의 국내 리그**를 받아 적는다."""
     from app.collect import fotmob as fm
@@ -160,6 +205,25 @@ def domestic_elo() -> tuple[dict, str]:
     # 🔴 덤프 목록은 `replays` 하나가 든다(손으로 들지 않는다 · #1)
     from replays import load as _replays
     rows, why = _replays()
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **P1 — 자동 등록 리그의 Elo 판도 읽는다**(수정 지시 2026-10-13 밤)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 `tools/fit_league_elo.py` 가 적은 `data/league_elo_auto/*.yaml` 이다
+    #     (사우디·중국·태국·V리그 등 **백필이 없는 리그**의 팀별 Elo).
+    #  ⚠️ 재생 덤프로 굴린 Elo 와 **같은 잣대가 아니다**(리그 안에서만 비교 가능).
+    #     오프셋이 하는 일이 바로 그 잣대 맞추기다.
+    auto: dict[str, float] = {}
+    said_auto: list[str] = []
+    box_auto = ROOT / "data/league_elo_auto"
+    if box_auto.is_dir():
+        import yaml
+        for path in sorted(box_auto.glob("*.yaml")):
+            got = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+            teams = dict(got.get("teams") or {})
+            for k, v in teams.items():
+                auto.setdefault(str(k), float(v))
+            said_auto.append(f"{got.get('league')} {len(teams)}팀")
     elo: dict[str, float] = {}
     n = 0
     for r in sorted(rows, key=lambda x: str(x.get("day"))):
@@ -173,7 +237,17 @@ def domestic_elo() -> tuple[dict, str]:
         elo[home] = float(elo.get(home, 1500.0)) + K_ELO * (got - exp)
         elo[away] = float(elo.get(away, 1500.0)) - K_ELO * (got - exp)
         n += 1
-    return elo, f"{why} → **국내 Elo** {n}경기로 굴렸다 · 팀 {len(elo)}개"
+    # 🔴 **재생 Elo 가 먼저**(같은 잣대의 표본이 크다) · 없는 팀만 자동 판으로
+    said_more = 0
+    for k, v in auto.items():
+        if k not in elo:
+            elo[k] = v
+            said_more += 1
+    return elo, (f"{why} → **국내 Elo** {n}경기로 굴렸다 · 팀 {len(elo)}개"
+                 f"(자동 등록 판에서 **{said_more}팀** 보탰다 — "
+                 + " · ".join(said_auto[:6])
+                 + (f" 외 {len(said_auto) - 6}" if len(said_auto) > 6 else "")
+                 + ")")
 
 
 def fit(comp: str, *, as_of: str) -> int:
@@ -183,12 +257,30 @@ def fit(comp: str, *, as_of: str) -> int:
 
     from app.core import competition as _cp
     from app.core import offsets as off
-    path = box_of(comp)
-    if not path.exists():
-        print(f"🔴 모은 경기가 없다 — 먼저 `--collect` 를 돌린다({path.name})")
+    # 🔴🔴 **같은 대륙의 대회를 함께 적합한다**(P1) — ACL Elite + ACL2 를 한 판으로
+    #    보면 리그 쌍 표본이 커진다(V리그처럼 Elite 에 거의 안 오는 리그가 산다).
+    #    ⚠️ 판은 **대륙별 한 장**이므로 섞어야 맞다(안 섞으면 뒤에 돈 쪽이 덮는다).
+    from app.core import competition as _cp0
+    said_conf = str(_cp0.row_of(comp).get("confederation") or "").upper()
+    rows: list[dict] = []
+    said_from: list[str] = []
+    for key, one in sorted(_cp0.rows().items()):
+        if str(one.get("confederation") or "").upper() != said_conf:
+            continue
+        if _cp0.kind_require(key)[0] != "club_continental":
+            continue
+        path = box_of(key)
+        if not path.exists():
+            continue
+        got = [r for r in json.loads(path.read_text(encoding="utf-8"))
+               if str(r.get("day") or "") < str(as_of)]
+        rows += got
+        said_from.append(f"{key} {len(got)}경기")
+    if not rows:
+        print(f"🔴 모은 경기가 없다 — 먼저 `--collect --fast` 를 돌린다"
+              f"({box_of(comp).name})")
         return 2
-    rows = [r for r in json.loads(path.read_text(encoding="utf-8"))
-            if str(r.get("day") or "") < str(as_of)]
+    print(f"- 섞은 대회 — {' · '.join(said_from)}")
     elo, why_elo = domestic_elo()
     print(f"# 🔴🔴 {comp} 리그 오프셋 · 대회 홈 이점")
     print()
@@ -205,8 +297,12 @@ def fit(comp: str, *, as_of: str) -> int:
             gone["같은 리그 맞대결(오프셋에 못 쓴다)"] = gone.get(
                 "같은 리그 맞대결(오프셋에 못 쓴다)", 0) + 1
             continue
-        home = str((r.get("home") or {}).get("name") or r.get("home") or "")
-        away = str((r.get("away") or {}).get("name") or r.get("away") or "")
+        # ⚠️ 수집 판이 두 꼴이다 — `{"home": {"name": …}}`(옛) 와 `{"home": 글자}`
+        #    (새 `fit_comp_record` 꼴). 🔴 둘 다 받는다.
+        def _nm(one) -> str:
+            return str(one.get("name") or "") if isinstance(one, dict) \
+                else str(one or "")
+        home, away = _nm(r.get("home")), _nm(r.get("away"))
         if home not in elo or away not in elo:
             gone["국내 Elo 없다"] = gone.get("국내 Elo 없다", 0) + 1
             continue
@@ -226,6 +322,16 @@ def fit(comp: str, *, as_of: str) -> int:
     cnt = {k: sum(1 for x in use if k in (x["lh"], x["la"])) for k in keys}
     scale = math.log(10.0) / 400.0
 
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **수축**(P1 · 수정 지시 2026-10-13 밤) — 표본이 얇은 리그는 0 쪽으로
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실측 2026-10-13: 수축이 없으면 **4경기짜리 리그가 폭주**한다(−8,171점)
+    #     — 그 한 줄이 평균 0 식별을 끌어가 나머지 전부가 +600 쪽으로 밀렸다.
+    #  🔴 벌은 `K/(n+K)` 가중 L2 다(K = `MIN_GAMES`) — 표본이 많으면 벌이 작고,
+    #     적으면 0 에 붙는다. **새 계수를 만들지 않는다**(문턱 20 을 그대로 쓴다).
+    ridge = np.array([off.MIN_GAMES / (cnt[k] + off.MIN_GAMES) for k in keys])
+
     def loss(theta) -> float:
         offv = np.array(theta[:len(keys)])
         offv = offv - offv.mean()              # 🔴 식별 — 평균 0
@@ -237,15 +343,19 @@ def fit(comp: str, *, as_of: str) -> int:
             p = 1.0 / (1.0 + math.exp(-d * scale))
             p = min(1 - 1e-9, max(1e-9, p))
             tot -= x["s"] * math.log(p) + (1 - x["s"]) * math.log(1 - p)
-        return tot / len(use)
+        # 🔴 수축 벌 — 400점(한 눈금)을 단위로 재서 손실과 같은 자리에 둔다
+        pen = float(np.sum(ridge * (offv / 400.0) ** 2))
+        return tot / len(use) + pen
 
     got = minimize(loss, [0.0] * len(keys) + [40.0], method="Powell")
     vals = np.array(got.x[:len(keys)])
     vals = vals - vals.mean()
     home_elo = float(got.x[len(keys)])
     print()
-    print("| 리그 | 오프셋 | 리그 간 맞대결 | 판에 적나 |")
-    print("|---|---|---|---|")
+    print(f"- 수축 — 벌 `K/(n+K)` · K={off.MIN_GAMES}(표본이 얇으면 0 쪽으로)")
+    print()
+    print("| 리그 | 오프셋 | 리그 간 맞대결 | 수축 가중 | 판에 적나 |")
+    print("|---|---|---|---|---|")
     box: dict[str, dict] = {}
     for k in keys:
         n = cnt[k]
@@ -253,6 +363,7 @@ def fit(comp: str, *, as_of: str) -> int:
         box[k] = ({"value": round(float(vals[idx[k]]), 2), "n": n}
                   if ok else {"n": n})
         print(f"| {k} | {vals[idx[k]]:+.1f} | {n} | "
+              f"{off.MIN_GAMES / (n + off.MIN_GAMES):.2f} | "
               + ("✅" if ok else f"🔴 ⬜ (< {off.MIN_GAMES} — 미산출)") + " |")
     print()
     print(f"- **대회 홈 이점**(Elo 점수) **{home_elo:+.1f}** · 적합 로그 손실 "
@@ -312,10 +423,14 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--collect", action="store_true")
     ap.add_argument("--fit", action="store_true")
     ap.add_argument("--seasons", type=int, default=3)
+    ap.add_argument("--fast", action="store_true",
+                    help="일정 한 장으로 모은다(경기 페이지 안 받는다 · P1)")
     ap.add_argument("--as-of", default="2026-10-13")
     args = ap.parse_args(argv[1:])
     if args.collect:
-        return asyncio.run(collect(args.comp, seasons=args.seasons))
+        return asyncio.run(collect_fast(args.comp, seasons=args.seasons)
+                           if args.fast
+                           else collect(args.comp, seasons=args.seasons))
     if args.fit:
         return fit(args.comp, as_of=args.as_of)
     print("🔴 `--collect` 또는 `--fit` 중 하나를 준다")

@@ -362,6 +362,15 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
                                home=str(getattr(ref, "home_name", "") or ""),
                                away=str(getattr(ref, "away_name", "") or ""))
         said_std["comp_record"] = said_rec
+        # 🔴🔴 **P1 리그 간 전력 차**(표시만 · 확률 경로에 안 넣는다) —
+        #    오늘 사고: 꽁안(V리그) vs 가시마(J1) 가 축0+홈 이점만으로 섰다.
+        from app.core import offsets as _off
+        said_conf = str(_cp3.row_of(said_lg).get("confederation") or "")
+        said_std["league_gap"] = _off.gap_said(
+            conf=said_conf,
+            home=str(getattr(ref, "home_name", "") or ""),
+            away=str(getattr(ref, "away_name", "") or ""))
+        state.note(f"s2 P1 리그 간 전력 차 — {said_std['league_gap'][:140]}")
         state.note(f"s2 ① 대회 홈/원정 성적 — {said_rec[:120]}")
     if said_std.get("match_total_baseline") is not None:
         from app import rules as _r3

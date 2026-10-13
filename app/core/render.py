@@ -1204,6 +1204,13 @@ def _b3c(card: Card) -> str:
     said_rec = _comp_record_line(card)
     if said_rec:
         out.append(said_rec)
+    # 🔴 P1 — **리그 간 전력 차**(표시만 · 확률 불변)
+    try:
+        said_gap = str(dict(card.facts.standings or {}).get("league_gap") or "")
+    except AttributeError:
+        said_gap = ""
+    if said_gap:
+        out.append(f"- 🌐 **리그 간 전력 차**(표시만) — {said_gap}")
     if b.probs is not None:
         out.append(f"- Elo: {card.match.home_name} **{b.home_elo:.0f}** · "
                    f"{card.match.away_name} **{b.away_elo:.0f}** · 차 {b.dr:+.0f} "

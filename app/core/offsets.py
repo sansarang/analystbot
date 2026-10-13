@@ -122,3 +122,85 @@ def home_of(key: str, *, as_of, stage: str = "") -> tuple[float | None, str]:
     except (KeyError, TypeError, ValueError):
         return None, f"🔴 그 판에서 `home_mul` 을 못 읽었다({path.name})"
     return got, f"대회 홈 이점 ×{got:.3f}(표본 {n}경기 · {why})"
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **P1 — "리그 간 전력 차" 표시 줄**(수정 지시 2026-10-13 밤 P1)
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 판정: … 통과 전에는 카드에 **"리그 간 전력 차(표시만)"** 줄로만 낸다 —
+#  > 확률 경로에 안 넣는다.
+#
+#  🔴 그래서 이 아래 함수들은 **글자만** 만든다(계약 CC4 가 확률 모듈에서 호출
+#     0건을 센다). 확률은 여전히 대회 실측 득점·홈 배율만 쓴다.
+#  ⚠️ 판 고르기 — 표시 줄은 **가장 최근 판**을 읽는다(그 수는 그 경기의 정보가
+#     아니라 **지난 대회 맞대결의 성적표**이고 확률에 닿지 않는다). 확률에 쓰는
+#     경로는 그대로 `pick_file`(as-of 이전)이다 — CC2 는 그쪽을 지킨다.
+
+AUTO_ELO = ROOT / "data/league_elo_auto"
+
+
+def league_of(team: str) -> tuple[str, str]:
+    """🔴 그 팀의 **국내 리그 열쇠**(자동 등록 Elo 판들이 팀 목록을 든다)."""
+    import yaml
+    said = str(team or "").strip()
+    if not said or not AUTO_ELO.is_dir():
+        return "", "⬜ 자동 등록 Elo 판이 없다"
+    low = said.lower()
+    from app.core import competition as _cp
+    for path in sorted(AUTO_ELO.glob("*.yaml")):
+        got = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        # 🔴 **대륙 대회 판은 국내 리그가 아니다** — 그 판이 섞이면 모든 팀이
+        #    `league:ACLE` 소속으로 잡힌다(실측 2026-10-13: 그렇게 나왔다).
+        said_key = str(got.get("league") or "")
+        if _cp.kind_require(said_key)[0] == "club_continental":
+            continue
+        teams = {str(k).strip().lower(): float(v)
+                 for k, v in dict(got.get("teams") or {}).items()}
+        if low in teams:
+            return str(got.get("league") or ""), (
+                f"판 `{path.stem}`(경기 {got.get('n')} · 팀 {len(teams)})")
+    return "", f"⬜ `{said}` 가 어느 자동 등록 판에도 없다"
+
+
+def latest_plate(conf: str) -> tuple[dict, str]:
+    """🔴 그 대륙의 **가장 최근** 오프셋 판(표시 전용 · 위 설명)."""
+    box = BOX / str(conf or "").upper()
+    rows = sorted(box.glob("*.yaml")) if box.exists() else []
+    if not rows:
+        return {}, f"⬜ `{conf}` 오프셋 판이 없다"
+    import yaml
+    got = yaml.safe_load(rows[-1].read_text(encoding="utf-8")) or {}
+    return dict(got), f"판 `{rows[-1].stem}`(맞대결 {got.get('n')}경기)"
+
+
+def gap_said(*, conf: str, home: str, away: str) -> str:
+    """🔴🔴 카드 한 줄 — **리그 간 전력 차(표시만)**. 못 쟀으면 ⬜ + 사유."""
+    box, why = latest_plate(conf)
+    out = []
+    vals: dict[str, float | None] = {}
+    for name, side in ((home, "홈"), (away, "원정")):
+        key, why_l = league_of(name)
+        if not key:
+            out.append(f"{side} **{name}** ⬜ {why_l}")
+            vals[side] = None
+            continue
+        one = dict(dict(box.get("leagues") or {}).get(key) or {})
+        n = int(one.get("n") or 0)
+        if one.get("value") is None:
+            out.append(f"{side} **{name}**(`{key}`) ⬜ 오프셋 미산출"
+                       f"(리그 간 맞대결 {n}경기 < {MIN_GAMES})")
+            vals[side] = None
+            continue
+        vals[side] = float(one["value"])
+        out.append(f"{side} **{name}**(`{key}`) **{float(one['value']):+.0f}**"
+                   f"(표본 {n}경기)")
+    tail = ""
+    if vals.get("홈") is not None and vals.get("원정") is not None:
+        said_gap = float(vals["홈"]) - float(vals["원정"])  # type: ignore[arg-type]
+        tail = (f" → **리그 간 전력 차 {said_gap:+.0f}점**"
+                f"({'홈' if said_gap > 0 else '원정'} 리그가 높다)")
+    else:
+        tail = " → 🟡 **차를 못 센다**(한쪽 이상 ⬜)"
+    return (" · ".join(out) + tail + f" · {why}"
+            + " · ⚠️ **표시만**(확률 경로에 안 들어간다 · P1 판정 전)")

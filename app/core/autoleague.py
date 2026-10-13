@@ -215,6 +215,10 @@ def build(*, competition_key: str, meta: dict, teams: list[str],
         "teams": sorted(set(str(x) for x in (teams or []) if str(x).strip())),
         "name": str(meta.get("name") or ""),
         "season": str(meta.get("season") or ""),
+        # 🔴🔴 **대회 유형**(P1 · 수정 지시 2026-10-13 밤) — 자동 등록도 `kind` 를
+        #    들고 있어야 CP1(*"kind 없는 대회는 분석하지 않는다"*)을 통과한다.
+        #    ⚠️ 모르면 **빈 글자**다(지어내지 않는다) — 그때는 CP1 이 막는다.
+        "kind": str(meta.get("kind") or ""),
         # 🔴 §3 — 대회 형식(조가 여럿이면 조별) · 분할은 순위표 구역이 말한다
         "format": ("group" if int(meta.get("groups") or 0) > 1 else "league"),
         "zones": dict(meta.get("zones") or {}),

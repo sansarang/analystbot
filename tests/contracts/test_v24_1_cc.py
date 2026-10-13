@@ -71,14 +71,24 @@ def test_home_advantage_is_not_borrowed() -> None:
 # ══════════════════════════════════════════════════════════════════
 
 def test_plate_comes_from_versions_pick_file() -> None:
-    """🔴 **CC2** — 판 고르기는 `versions.pick_file` **하나**다(사본 금지)."""
+    """🔴 **CC2** — **확률에 쓰는** 판 고르기는 `versions.pick_file` 하나다.
+
+    ⚠️ 범위를 함수로 좁혔다 — `plate_of`·`of`·`score_of`·`home_of` 는 확률
+       경로가 보는 길이고 거기서 날짜를 직접 고르면 안 된다. 🔴 **표시 전용**
+       함수(`latest_plate`·`league_of`·`gap_said` · P1 "리그 간 전력 차")는
+       *"가장 최근 판"* 을 읽는다 — 그 수는 확률에 닿지 않는다(계약 LG5).
+    """
     import ast
     import inspect
     from app.core import offsets as off
-    said = ast.unparse(ast.parse(inspect.getsource(off)))
-    assert "pick_file" in said
-    # 🔴 날짜를 직접 고르는 자리가 없어야 한다
-    assert "glob(" not in said and "sorted(" not in said
+    for fn in (off.plate_of, off.of, off.score_of, off.home_of):
+        said = ast.unparse(ast.parse(inspect.getsource(fn)))
+        assert "glob(" not in said and "sorted(" not in said, fn.__name__
+    assert "pick_file" in ast.unparse(
+        ast.parse(inspect.getsource(off.plate_of)))
+    # 🔴 표시 전용 함수는 **그렇다고 적혀 있어야** 한다
+    said_mod = inspect.getsource(off)
+    assert "표시 전용" in said_mod or "표시만" in said_mod
 
 
 def test_naive_as_of_is_refused() -> None:
