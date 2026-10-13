@@ -92,6 +92,58 @@ UPSET = re.compile(r"이변 경고 S \*\*([+-][\d.]+)\*\* → (🟡|🔴)")
 REPORT_EVERY = 30
 
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **예상 XI 적중** — 지시 2026-10-13 밤 다섯째 2번("전후")
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 실전 기록으로 측정: 예상 XI 판의 XI 적중(예상 11명 중 실제 선발 수) 전후.
+#
+#  🔴 **전후를 같은 카드에서** 센다 — 새 규칙의 예상 XI 는 `결장 의심(B 단독)`
+#     이름을 **품고 있고**, 옛 규칙의 예상 XI 는 그 이름을 **뺀 것**이다. 그래서
+#     한 카드가 두 명단을 다 말해 준다(옛 카드를 다시 돌리지 않는다).
+#  ⚠️ **확정 XI 카드는 세지 않는다** — 그 11명은 실제 선발이므로 적중이 늘 11/11
+#     이고, 규칙이 바꾸는 것은 **예상** XI 뿐이다.
+#: 🔴 XI 머리 — `- **Gwangju FC** 4-2-3-1 [예상] 감독 X`
+XI_HEAD = re.compile(r"^- \*\*(.+?)\*\* .*?\[(확정|예상|없음)\]")
+#: 🔴 선수 줄 — `    A(GK,1) · B(DF,3) · …` (들여쓴 네 칸)
+XI_ROW = re.compile(r"^ {4}(?!⚠️|⬜)(.+)$")
+#: 🔴 의심 줄 — `    ⚠️ 결장 의심(B 단독): 이름`
+XI_DOUBT = re.compile(r"^ {4}⚠️ 결장 의심\(B 단독\): (.+)$")
+
+
+def _bare(said: str) -> str:
+    """🔴 `A(GK,1)` → `A`(포지션·등번호 괄호를 뗀다)."""
+    got = str(said or "").strip()
+    i = got.rfind("(")
+    return (got[:i] if i > 0 else got).strip()
+
+
+def xi_of_card(text: str) -> dict:
+    """🔴 카드 글자 → `{팀: {"state", "names", "doubt"}}`(블록 2 에서 읽는다)."""
+    out: dict[str, dict] = {}
+    who = ""
+    for line in str(text or "").splitlines():
+        head = XI_HEAD.match(line)
+        if head:
+            who = head.group(1).strip()
+            out[who] = {"state": head.group(2), "names": [], "doubt": []}
+            continue
+        if not who or who not in out:
+            continue
+        said = XI_DOUBT.match(line)
+        if said:
+            out[who]["doubt"].append(said.group(1).strip())
+            continue
+        row = XI_ROW.match(line)
+        if row and not out[who]["names"]:
+            out[who]["names"] = [_bare(x) for x in row.group(1).split(" · ")
+                                 if _bare(x)]
+            continue
+        if line and not line.startswith(" "):
+            who = ""                      # 🔴 블록이 끝났다
+    return out
+
+
 def _pct(*vals: str) -> list[float]:
     got = [float(v) / 100.0 for v in vals]
     tot = sum(got)
@@ -143,11 +195,17 @@ def read_card(path: Path) -> dict | None:
     if said:
         out["upset_s"] = float(said.group(1))
         out["upset"] = said.group(2)
+    # 🔴 예상 XI 적중의 재료(블록 2) — 없으면 **빈 표**다(0 으로 세지 않는다)
+    out["xi_block"] = xi_of_card(text)
     return out
 
 
-async def result_of(net, row: dict) -> tuple[int, str] | None:
-    """🔴 그 경기의 **결과**(0 홈승·1 무·2 원정승)와 스코어. 못 찾으면 `None`."""
+async def result_of(net, row: dict) -> tuple[int, str, dict] | None:
+    """🔴 그 경기의 **결과**(0 홈승·1 무·2 원정승)·스코어·**실제 선발 명단**.
+
+    🔴 선발은 같은 경기 페이지에서 온다(`lineup.{home,away}Team.starters`) —
+       예상 XI 적중을 세는 재료다. 못 읽으면 **빈 표**다(#3).
+    """
     from app.collect import fotmob as fm
     from app.core import discover as d
     idx = await fm.team_index(net)
@@ -168,7 +226,14 @@ async def result_of(net, row: dict) -> tuple[int, str] | None:
                 h = sum(1 for x in goals
                         if bool(x.get("home")) != bool(x.get("own_goal")))
                 a = len(goals) - h
-                return (0 if h > a else (1 if h == a else 2)), f"{h}-{a}"
+                said_xi = {}
+                for which in ("homeTeam", "awayTeam"):
+                    side = fm._side(j, which)
+                    got_names = fm._names(side)
+                    if got_names:
+                        said_xi[str(side.get("name") or which)] = got_names
+                return ((0 if h > a else (1 if h == a else 2)), f"{h}-{a}",
+                        said_xi)
     return None
 
 
@@ -230,7 +295,7 @@ async def main() -> None:
         said = await result_of(net, one)
         if said is None:
             continue
-        one["hit"], one["score"] = said
+        one["hit"], one["score"], one["starters"] = said
         scored.append(one)
     print(f"결과를 받은 경기 **{len(scored)}장**")
     if not scored:
@@ -351,6 +416,61 @@ async def main() -> None:
     else:
         print("⬜ **예상/확정 두 판을 적은 카드가 없다** — 그 줄은 이번 지시로 "
               "생겼다(재분석이 돌면 쌓인다)")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **예상 XI 적중 — 전후**(지시 2026-10-13 밤 다섯째 2번)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 **후**(새 규칙) = 카드에 적힌 11명 그대로 · **전**(옛 규칙) = 그 중
+    #     `결장 의심(B 단독)` 이름을 **뺀 명단**. 적중은 *"그 명단 중 실제로
+    #     선발한 수"* 이고, 명단 길이가 다르므로 **비율도 함께** 적는다.
+    print()
+    box_xi: list[dict] = []
+    for r in scored:
+        said_start = dict(r.get("starters") or {})
+        if not said_start:
+            continue
+        for who, one in dict(r.get("xi_block") or {}).items():
+            if str(one.get("state")) != "예상" or not one.get("names"):
+                continue
+            # 🔴 실제 선발은 **같은 경기 페이지**의 팀 이름으로 찾는다
+            real = None
+            for name, rows_real in said_start.items():
+                if (str(name).strip().lower() == str(who).strip().lower()
+                        or str(who) in str(name) or str(name) in str(who)):
+                    real = {str(x).strip() for x in rows_real}
+                    break
+            if not real:
+                continue
+            after = [str(x) for x in one["names"]]
+            doubt = {str(x).strip() for x in (one.get("doubt") or [])}
+            before = [x for x in after if x not in doubt]
+            box_xi.append({"file": r["file"], "team": who, "real": real,
+                           "after": after, "before": before,
+                           "doubt": sorted(doubt)})
+    if box_xi:
+        print("| 규칙 | 명단 | 예상 명단 수 | 실제 선발 적중 | 적중률 |")
+        print("|---|---|---|---|---|")
+        for name, key in (("전(옛 — B 단독도 뺐다)", "before"),
+                          ("후(새 — B 단독은 남긴다)", "after")):
+            n_all = sum(len(x[key]) for x in box_xi)
+            n_hit = sum(sum(1 for p in x[key] if p in x["real"])
+                        for x in box_xi)
+            print(f"| {name} | {len(box_xi)}팀 | {n_all} | **{n_hit}** | "
+                  f"{(n_hit / n_all if n_all else 0):.1%} |")
+        said_diff = [x for x in box_xi if x["doubt"]]
+        print()
+        print(f"🔴 **규칙이 갈린 명단 {len(said_diff)}팀**"
+              + (" — " + " · ".join(
+                  f"{x['team']} {', '.join(x['doubt'])}"
+                  f"(실제 선발 {sum(1 for p in x['doubt'] if p in x['real'])}"
+                  f"/{len(x['doubt'])})" for x in said_diff[:8])
+                 if said_diff else " — 🔴 **B 단독 결장이 한 건도 없었다**("
+                 "규칙이 아직 아무 명단도 바꾸지 않았다)"))
+        if len(box_xi) < REPORT_EVERY:
+            print(f"⚠️ **{REPORT_EVERY}팀 미만 — 참고**(쌓이면 다시 센다)")
+    else:
+        print("⬜ **예상 XI 를 적은 카드가 없다** — 적중을 셀 재료가 없다"
+              "(확정 XI 카드는 세지 않는다 · 늘 11/11 이다)")
     said_l9 = [r for r in scored if r.get("l9_band")]
     print()
     if said_l9:
