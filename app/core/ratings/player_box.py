@@ -145,13 +145,3 @@ def fit(matches: list[dict], *, as_of, half_life: float = 365.0) -> Table:
                + " · ⚠️ 뒷선(GK·DF)은 **출전 분 비중**이다 — 수비 가치는 "
                  "**후속 과제**다(지어내지 않는다)")
     return got
-
-
-def value_of(pid: str, table: Table) -> tuple[float, str]:
-    """🔴 그 선수 가치. 없으면 **평균**과 사유(0 으로 세지 않는다 · PL2 와 같은 규율)."""
-    box = dict(getattr(table, "value", None) or {})
-    if str(pid) in box:
-        return float(box[str(pid)]), ""
-    mid = (sum(box.values()) / len(box)) if box else 0.0
-    return mid, (f"🔴 `{pid}` 는 가치 v2 표에 **없다** — 평균 {mid:+.3f} 로 "
-                 f"메웠다(0 으로 세지 않는다)")

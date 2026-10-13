@@ -37,68 +37,18 @@ TOTAL_BAND = 0.02
 #: 🔴 핵심 주전 수 — L4 가 보는 상위 몇 명인가(§4)
 KEY_TOP = 3
 
-#: 🔴 벤치에서 세는 사람 수(§4 L5)
-BENCH_TOP = 5
-
-
-def _mean(ids, value: dict) -> float:
-    """🔴 그 묶음의 평균 점수. ⚠️ 없는 선수는 **표의 평균**으로 센다(PL2)."""
-    box = dict(value or {})
-    if not box:
-        return 0.0
-    mid = sum(box.values()) / len(box)
-    said = [float(box.get(str(p), mid)) for p in (ids or [])]
-    return (sum(said) / len(said)) if said else 0.0
-
-
-def _side(one: dict, value: dict) -> dict:
-    """🔴 한 팀의 신호 재료 — **차분을 만들기 전**의 쪽 값이다."""
-    box = dict(one or {})
-    xi = [str(p) for p in (box.get("xi") or [])]
-    usual = [str(p) for p in (box.get("usual") or [])]
-    bench = [str(p) for p in (box.get("bench") or [])]
-    gone = [p for p in usual if p not in set(xi)]
-    came = [p for p in xi if p not in set(usual)]
-    top = sorted(usual, key=lambda p: -_mean([p], value))[:KEY_TOP]
-    best = sorted(bench, key=lambda p: -_mean([p], value))[:BENCH_TOP]
-    return {
-        "pdiff": _mean(xi, value),
-        "abs": sum(_mean([p], value) for p in gone)
-        - sum(_mean([p], value) for p in came),
-        "starter": (len([p for p in xi if p in set(usual)]) / len(xi)
-                    if xi else 0.0),
-        "keyout": float(len([p for p in top if p not in set(xi)])),
-        "bench": _mean(best, value),
-        "n_usual": len(usual), "n_gone": len(gone),
-    }
-
-
-def raw_of(*, home: dict, away: dict, value: dict) -> tuple[dict, str]:
-    """🔴🔴 §4 — 후보 신호의 **원값**(전부 홈−원정 차). `(값, 사유)`.
-
-    | 신호 | 무엇 |
-    |---|---|
-    | L1 | XI 선수 점수 **평균** 차 |
-    | L2 | (빠진 평소 주전 점수 합 − 들어온 선수 점수 합)의 차 |
-    | L3 | XI 중 **평소 XI 비율** 차 |
-    | L4 | 평소 XI 상위 3명 중 **빠진 수** 차 |
-    | L5 | 벤치 상위 5명 **평균** 차(시뮬 60분 뒤 배율로만 쓴다) |
-
-    ⚠️ 평소 XI 가 없으면 L2·L3·L4 는 **0 이 아니라 못 센 것**이고 사유가 적는다.
-    """
-    h, a = _side(home, value), _side(away, value)
-    got = {"L1": h["pdiff"] - a["pdiff"], "L2": h["abs"] - a["abs"],
-           "L3": h["starter"] - a["starter"],
-           "L4": h["keyout"] - a["keyout"], "L5": h["bench"] - a["bench"]}
-    thin = [s for s, one in (("home", h), ("away", a)) if not one["n_usual"]]
-    why = (f"L1 {got['L1']:+.3f} · L2 {got['L2']:+.3f} · L3 {got['L3']:+.3f}"
-           f" · L4 {got['L4']:+.0f} · L5 {got['L5']:+.3f}"
-           + (f" · 🔴 평소 XI 가 없다({', '.join(thin)}) — L2·L3·L4 를 **못 쟀다**"
-              if thin else ""))
-    if thin:
-        for k in ("L2", "L3", "L4"):
-            got.pop(k, None)
-    return got, why
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **지운 자리 — L1~L5(구간 ± 재료)**(사용자 결정 2026-10-13 저녁)
+# ══════════════════════════════════════════════════════════════════
+#
+#  🔴 `raw_of`(L1 pdiff · L2 absΔ · L3 starterΔ · L4 keyoutΔ · L5 benchΔ)와
+#     `bench_shift_of` 를 **지웠다** — 재료(구간 ± `player_pm`)가 교체됐고
+#     부르는 곳이 사라졌다(규율 2: *"안 이어진 코드는 없는 코드보다 나쁘다"*).
+#  ⚠️ 그 판의 측정은 **남아 있다** —
+#     `docs/fable/stages/2026-10-13_lineup_to_m1.md`(로그 손실 · 분포 · 계수)와
+#     커밋 `974143ec`. 🔴 결론: 규칙은 `B+L1` 을 통과시켰지만 움직이는 폭이
+#     **0.12%p · ≥3%p 0건** 이어서 사용자가 **배선하지 않기로** 했다.
+#  🔴 그 재료의 뿌리 문제: 선수 ± 반분 상관 **+0.09(J1) · +0.06(K1)**(문턱 0.3).
 
 
 def _front(box: dict) -> tuple[dict, set]:
@@ -251,13 +201,3 @@ def apply(lam: dict, *, raw: dict, plate: dict, axis0: float = 0.0
         why += (f" · ⬜ L5 {float(said['L5']):+.3f} 는 λ 가 아니라 **60분 뒤 "
                 f"배율**이다(여기서 안 걸었다)")
     return out, why
-
-
-def bench_shift_of(raw: dict, *, plate: dict) -> tuple[float, str]:
-    """🔴 L5 — **60분 뒤 배율**로 쓸 몫. 판이 없으면 **0 + 사유**."""
-    ok, why = check(plate)
-    g = float(dict(dict(plate or {}).get("g") or {}).get("L5") or 0.0)
-    val = float(dict(raw or {}).get("L5") or 0.0)
-    if not ok or not g:
-        return 0.0, f"⬜ L5 배율 **미산출** — {why}"
-    return g * val, f"L5 배율 {g * val:+.4f}(L5 {val:+.3f} × g {g:+.3f})"

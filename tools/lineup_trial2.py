@@ -502,13 +502,7 @@ def main(argv: list[str]) -> int:
                   + " · ".join(f"{k} {float(v):+.4f}" for k, v in g.items()))
         for c in (one.get("caps") or []):
             print(f"  · 상한 감시 {c}")
-        # 🔴 L5 는 λ 가 아니다 — **60분 뒤 배율**로 쓸 몫을 따로 적는다
-        if "L5" in dict(PLATES).get(name, ()) and (one.get("g") or []):
-            g5 = dict((one["g"] or [{}])[0])
-            sh, why5 = lf.bench_shift_of(
-                {"L5": 0.1}, plate={"g": g5, "sd": {k: 0.1 for k in g5}})
-            print(f"  · L5(벤치) — 표준편차 0.1 만큼 벌어졌을 때 배율 "
-                  f"{sh:+.4f} · {why5}")
+
     return 0
 
 
