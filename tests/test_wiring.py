@@ -721,6 +721,8 @@ TOOL_ONLY: dict[str, str] = {
     "app.collect.coach.row_of": "tools/season_prep.py",
     "app.collect.coach.since_of": "tools/season_prep.py",
     "app.collect.coach.games_of": "tools/season_prep.py",
+    # 🔴 §12 재현 도구도 같은 문을 쓴다(사본 금지)
+    "app.core.ratings.retention.of ": "tools/season_replay4.py",
     "app.core.metrics.bands": "tools/judge_models.py",
     "app.core.metrics.calib": "tools/backfill_score.py",
     "app.core.metrics.check_split": "tools/judge_models.py",
