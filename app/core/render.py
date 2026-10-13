@@ -1164,10 +1164,28 @@ def _reason_stage(drop) -> str:
     return _rs.stage_of(getattr(said, "value", None) or str(said or ""))
 
 
+def _comp_record_line(card: Card) -> str:
+    """🔴 **대회 홈/원정 성적**(직전 2시즌 · 사용자 지시 2026-10-13 ①).
+
+    🔴 ③ 이 `facts.standings["comp_record"]` 에 **글자로** 담아 둔다(세는 곳은
+       `comprecord` 하나다 · 사본 금지). 없으면 **빈 글자**(대륙 대회가 아니다).
+    """
+    try:
+        said = str(dict(card.facts.standings or {}).get("comp_record") or "")
+    except AttributeError:
+        return ""
+    return (f"- 🏅 **대회 홈/원정 성적**(직전 2시즌 · 표시 전용) — {said}"
+            if said else "")
+
+
 def _b3c(card: Card) -> str:
     """🔴 3c 기준 전력 — ① Elo·② 라인업 보정. ⚠️ 없으면 **"없음 — 사유"** 다(§1)."""
     b, a = card.base_prob, card.adj_prob
     out: list[str] = []
+    # 🔴 ① **대회 홈/원정 성적**(직전 2시즌) — 기준 전력 줄 맨 앞이다(같은 얘기다)
+    said_rec = _comp_record_line(card)
+    if said_rec:
+        out.append(said_rec)
     if b.probs is not None:
         out.append(f"- Elo: {card.match.home_name} **{b.home_elo:.0f}** · "
                    f"{card.match.away_name} **{b.away_elo:.0f}** · 차 {b.dr:+.0f} "

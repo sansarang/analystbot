@@ -334,6 +334,27 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
     #  🔴 운영 확률은 **얼린 M1**(K0)이 내고 그것도 같은 칸을 읽으므로 **칸을
     #     고친다** — 수축한 수를 싣고 원값·표본·사유를 옆 칸에 남긴다(#3).
     said_std = dict(getattr(got_facts, "standings", None) or {})
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **대회 홈/원정 성적**(사용자 지시 2026-10-13 ①) — 대륙 대회의 S03 을
+    #    **대회 일정 표**로 채운다(표시 전용 · λ 는 득점 실측만 쓴다).
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실측: ACL 카드의 S03 이 *"홈 **승률** 수치 없음"* 이었다 — 대회 유형의
+    #     승률 표가 없어서다. 🔴 그 수는 **대회 일정 한 장**에 있다(직전 2시즌
+    #     스코어 · 중립 단계 제외) — `tools/fit_comp_record.py` 가 판으로 적어 둔다.
+    from app.core import competition as _cp3
+    if _cp3.kind_require(said_lg)[0] == "club_continental":
+        from app.core import comprecord as _cr
+        said_ha, why_ha = _cr.comp_of(said_lg)
+        if said_ha and not said_std.get("home_advantage"):
+            said_std["home_advantage"] = dict(said_ha)
+            state.note(f"s2 ① 대회 홈 우위(표시) — `{said_lg}` "
+                       f"{said_ha.get('win_pct_delta'):+}%p · {why_ha}")
+        said_rec = _cr.said_of(said_lg,
+                               home=str(getattr(ref, "home_name", "") or ""),
+                               away=str(getattr(ref, "away_name", "") or ""))
+        said_std["comp_record"] = said_rec
+        state.note(f"s2 ① 대회 홈/원정 성적 — {said_rec[:120]}")
     if said_std.get("match_total_baseline") is not None:
         from app import rules as _r3
         from app.core import goalbase as _gb

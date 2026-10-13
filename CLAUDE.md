@@ -3,6 +3,7 @@
 | 무엇 | 어디 | 언제부터 |
 |---|---|---|
 | **v6 재구축 지시서 (지금의 정본)** | [docs/fable/inbox/2026-10-06_v6_rebuild.md](docs/fable/inbox/2026-10-06_v6_rebuild.md) | 2026-10-06 — *"이 문서는 이전 지시서 **전부**를 대체한다"* |
+| **수정 지시 — 지연·정보 부족 해소(P0~P5)**(🔴 지금 하는 일) | [docs/fable/inbox/2026-10-13_fix_latency_info.md](docs/fable/inbox/2026-10-13_fix_latency_info.md) | 2026-10-13(밤) — P0 **T−24h/T−3h/XI 3단 실행 · 캐시 · 카드 15분 상한** · P1 리그 오프셋 앞당김(표시만) · P2 대회 이력 칸 · P3 신원 신선도 · P4 현지어·차단 목록 · P5 시장 괴리 표시 |
 | **수정 지시 — 요약 블록 간소화 · 무승부 신중 처리**(🔴 지금 하는 일) | [docs/fable/inbox/2026-10-13_draw_care.md](docs/fable/inbox/2026-10-13_draw_care.md) | 2026-10-13(밤) — 1 요약 네 줄 + 무 표시 · 2 무 보정은 **측정 먼저**(확률 경로 변경은 v2+(d) 통과 전 금지) · ρ 는 **폐기 유지** |
 | **수정 지시 — 결론 규칙 (가)·표준 확률 블록**(🔴 지금 하는 일) | [docs/fable/inbox/2026-10-13_predict_three_fix.md](docs/fable/inbox/2026-10-13_predict_three_fix.md) | 2026-10-13 — 0 보드 없음 결론 **(가)** · 2 표준 확률 블록(계약 PB1~PB6) · 4 두 팀 총골 기준 **표본 수축**(BS1~BS4) |
 | **예측 지시 — ACL 3경기 봇 분석**(🔴 지금 하는 일) | [docs/fable/inbox/2026-10-13_predict_three.md](docs/fable/inbox/2026-10-13_predict_three.md) | 2026-10-13 18:40 KST — 배당·시장 **금지** · 대회 백필 미완이면 **참고용·조건부** · 대회 득점 기준은 **그 대회 자체 실측**(CC1) |
