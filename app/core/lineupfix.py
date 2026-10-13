@@ -26,7 +26,8 @@ logger = logging.getLogger(__name__)
 #: 🔴 후보 신호 — §4 와 **재료 교체판 v2**(사용자 결정 2026-10-13 저녁 2번).
 #   L1·L2·L5 는 **구간 ±**(`player_pm`) 재료, L6·L7·L8 은 **박스 기록**
 #   (`player_box` · 90분당 xG+xA) 재료다. 전부 **차분값**이고 직교화를 지난다.
-SIGNALS: tuple[str, ...] = ("L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8")
+SIGNALS: tuple[str, ...] = ("L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8",
+                            "L9")
 
 #: 🔴 상한 감시 — `|g_k · sd(L_k)|` 가 이보다 크면 그 판은 **무효**다(§5)
 CAP = 0.15
@@ -74,11 +75,26 @@ def raw_v2_of(*, home: dict, away: dict, box: dict) -> tuple[dict, str]:
     """
     value, front = _front(box)
     if not value:
-        return {}, "🔴 **선수 가치 v2 표가 없다** — L6·L7·L8 을 못 쟀다"
+        return {}, "🔴 **선수 가치 v2 표가 없다** — L6~L9 를 못 쟀다"
+    # 🔴🔴 **PL2** — 표에 **없는** 선수는 `0` 이 아니라 **공격 평균**이다.
+    #    ⚠️ 실측 2026-10-13(43경기 감사): 들어온 선수의 **9%** 가 표에 없었고
+    #       빠진 선수는 1% 뿐이라, 0 으로 세면 차이가 **한 방향으로 부풀었다**.
+    said_front = [float(value[k]) for k in front]
+    mid = (sum(said_front) / len(said_front)) if said_front else 0.0
+    unknown: set[str] = set()
 
     def _sum(ids) -> float:
-        return sum(float(value.get(str(p), 0.0)) for p in (ids or [])
-                   if str(p) in front)
+        got = 0.0
+        for p in (ids or []):
+            key = str(p)
+            if key in front:
+                got += float(value[key])
+            elif key in value:
+                continue                  # 🔴 뒷선 — 공격 합에 안 센다(PB3)
+            else:
+                unknown.add(key)
+                got += mid
+        return got
 
     def _side(one: dict) -> dict:
         said = dict(one or {})
@@ -88,20 +104,29 @@ def raw_v2_of(*, home: dict, away: dict, box: dict) -> tuple[dict, str]:
         came = [p for p in xi if p not in set(usual)]
         top = sorted([p for p in usual if p in front],
                      key=lambda p: -float(value.get(p, 0.0)))[:KEY_TOP]
-        return {"attack": _sum(xi),
+        return {"attack": _sum(xi), "usual_sum": _sum(usual),
                 "keyout": float(len([p for p in top if p not in set(xi)])),
                 "abs": _sum(gone) - _sum(came), "n_usual": len(usual)}
 
     h, a = _side(home), _side(away)
     got = {"L6": h["attack"] - a["attack"], "L7": h["keyout"] - a["keyout"],
-           "L8": h["abs"] - a["abs"]}
+           "L8": h["abs"] - a["abs"],
+           # 🔴🔴 **L9 — 오늘의 변화만**(사용자 결정 2026-10-13 밤):
+           #    `(오늘 합 − 그 팀 평소 합)` 의 홈−원정 차. 평소대로 나온 날은 **0**
+           #    이고, 주전이 빠진 날만 움직인다. 🔴 팀 수준은 M1 축0·축1 이 이미
+           #    들고 있으므로 **여기서 다시 넣지 않는다**(L6 이 그 병을 앓았다).
+           "L9": ((h["attack"] - h["usual_sum"])
+                  - (a["attack"] - a["usual_sum"]))}
     thin = [s for s, one in (("home", h), ("away", a)) if not one["n_usual"]]
     if thin:
-        for k in ("L7", "L8"):
+        for k in ("L7", "L8", "L9"):
             got.pop(k, None)
     why = (f"L6 {got.get('L6', 0.0):+.3f} · L7 "
            + (f"{got['L7']:+.0f}" if "L7" in got else "⬜")
            + " · L8 " + (f"{got['L8']:+.3f}" if "L8" in got else "⬜")
+           + " · L9 " + (f"{got['L9']:+.3f}" if "L9" in got else "⬜")
+           + (f" · ⬜ **표에 없는 선수 {len(unknown)}명은 공격 평균 {mid:.3f}"
+              f" 으로 셌다**(0 금지 · PL2)" if unknown else "")
            + " · ⚠️ **뒷선(GK·DF)은 공격 합에 안 센다**(출전 분 비중이라 단위가 "
              "다르다 — 수비 가치는 후속 과제)"
            + (f" · 🔴 평소 XI 가 없다({', '.join(thin)}) → L7·L8 **못 쟀다**"

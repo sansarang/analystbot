@@ -22,13 +22,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
-#: 🔴🔴 비교 판 — **재료 교체판**(사용자 결정 2026-10-13 저녁 3번):
-#   `B · B+L6 · B+L7 · B+L8 · B+L6+L8`
-#   ⚠️ 옛 판(`B+L1…B+L3+L4`)의 결과는 `docs/fable/stages/2026-10-13_lineup_to_m1.md`
-#      에 남아 있다 — 그 재료(구간 ±)는 **반분 상관 0.09/0.06** 으로 탈락했다.
+#: 🔴🔴 비교 판 — **(다) L9 판**(사용자 결정 2026-10-13 밤):
+#   `B · B+L9 · B+L9+L8`(L8 은 PL2 를 고친 판)
+#   ⚠️ 앞선 두 판의 결과는 `docs/fable/stages/2026-10-13_lineup_{to_m1,v2}.md` 에
+#      남아 있다 — L1~L5(구간 ±)는 폭이 안 났고, L6(오늘 합)은 **팀 수준을 다시
+#      넣는 꼴**이어서 선택 적중이 내려갔다.
 PLATES: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("B", ()), ("B+L6", ("L6",)), ("B+L7", ("L7",)), ("B+L8", ("L8",)),
-    ("B+L6+L8", ("L6", "L8")),
+    ("B", ()), ("B+L9", ("L9",)), ("B+L9+L8", ("L9", "L8")),
 )
 
 #: 🔴 판정 규칙 — (d) 가 더해진 판이다(실행 **전에** 커밋했다)
@@ -122,11 +122,20 @@ def tables_of(rows: list[dict], *, lam: float = 0.0) -> dict:
     return out
 
 
-def usual_of(rows: list[dict], row: dict, side: str) -> list[str]:
-    """🔴 평소 XI — 그 경기 **이전** 그 팀 경기의 출전 분 가중 상위 11명."""
+#: 🔴 평소 XI 를 세는 최소 경기 수(이보다 적으면 **지난 시즌으로 보충**한다)
+USUAL_MIN = 5
+
+
+def usual_of(rows: list[dict], row: dict, side: str) -> tuple[list[str], bool]:
+    """🔴🔴 평소 XI — 그 경기 **이전** 그 팀 경기의 출전 분 가중 상위 11명.
+
+    🔴 **이번 시즌 우선**이다(사용자 결정 2026-10-13 밤) — 이번 시즌 경기가
+       `USUAL_MIN` 미만이면 **지난 시즌으로 보충하고 그 사실을 돌려준다**.
+    ⚠️ 돌려주는 둘째 값이 *"보충했다"* 다 — 보고가 그 수를 센다(#3).
+    """
     from app.core.ratings import lineup_strength as ls
     team = row[side]
-    past: list[dict] = []
+    mine: list[dict] = []
     for r in rows:
         if r["utc"] >= row["utc"]:
             continue
@@ -137,25 +146,34 @@ def usual_of(rows: list[dict], row: dict, side: str) -> list[str]:
                     for p, v in dict(r[f"{s}_box"] or {}).items()}
             if not mins:
                 mins = {p: 90.0 for p in r[f"{s}_ids"]}
-            past.append({"utc": r["utc"], "comp": "league", "minutes": mins})
+            mine.append({"utc": r["utc"], "comp": "league", "minutes": mins,
+                         "season": r["season"]})
+    now = [x for x in mine if x["season"] == row["season"]]
+    said = now if len(now) >= USUAL_MIN else mine
+    helped = len(now) < USUAL_MIN
     at = datetime.fromisoformat(str(row["utc"]).replace("Z", "+00:00"))
-    got, _why = ls.usual_xi(past, as_of=at)
-    return got
+    got, _why = ls.usual_xi(said, as_of=at)
+    return got, helped
 
 
 def signals_of(rows: list[dict], tables: dict) -> int:
     """🔴 각 경기에 신호 원값을 붙인다. **표가 없는 경기는 건너뛴다**(0 금지)."""
     from app.core import lineupfix as lf
     got = 0
+    helps = 0
     for r in rows:
         table = tables.get((r["league"], r["month"]))
         if table is None or not getattr(table, "value", None):
             r["raw"] = None
             continue
         side = {}
+        helped = False
         for s in ("home", "away"):
+            said_u, one_help = usual_of(rows, r, s)
+            helped = helped or one_help
             side[s] = {"xi": r[f"{s}_ids"], "bench": r[f"{s}_bench"],
-                       "usual": usual_of(rows, r, s)}
+                       "usual": said_u}
+        r["usual_helped"] = helped
         box = {"value": dict(table.value), "kind": dict(table.kind)}
         raw, _why = lf.raw_v2_of(home=side["home"], away=side["away"],
                                  box=box)
@@ -168,6 +186,9 @@ def signals_of(rows: list[dict], tables: dict) -> int:
                                   box=box)
         r["raw_usual"] = raw_u
         got += 1
+        helps += 1 if r.get("usual_helped") else 0
+    print(f"🔴 평소 XI — 이번 시즌 {USUAL_MIN}경기 미만이라 **지난 시즌으로 "
+          f"보충한 경기 {helps}건**(전체 {got}건)")
     return got
 
 
@@ -443,6 +464,41 @@ def main(argv: list[str]) -> int:
           "(M1 축0 안에서만 움직인 값)이다. 위 표의 Δ 는 **보정이 더하는 폭**이다.")
     print()
 
+    # ══════════════════════════════════════════════════════════════
+    # 🔴🔴 **추가 보고 — L9 분포 · 직교화 전후 상관 · |L9| 상위 10% 방향**
+    # ══════════════════════════════════════════════════════════════
+    said_l9 = [r for r in live if "L9" in r["raw"]]
+    if said_l9:
+        import statistics as st9
+        xs = [float(r["raw"]["L9"]) for r in said_l9]
+        a0 = [float(r["axis0"]) for r in said_l9]
+        print("## 🔴 L9 분포와 직교화")
+        print()
+        print(f"- 평균 **{st9.fmean(xs):+.4f}**(0 에 가까워야 정상) · σ "
+              f"{st9.pstdev(xs):.3f} · |L9| 상위 10% 문턱 "
+              f"{sorted(map(abs, xs))[int(len(xs) * 0.9)]:.3f}")
+        r_raw = (st9.correlation(xs, a0) if len(set(a0)) > 1 else float("nan"))
+        ortho_all = fit_ortho(said_l9, ("L9",))
+        res = [x - (ortho_all["L9"]["a"] + ortho_all["L9"]["b"] * y)
+               for x, y in zip(xs, a0, strict=True)] if ortho_all else []
+        r_ortho = (st9.correlation(res, a0) if res and len(set(a0)) > 1
+                   else float("nan"))
+        print(f"- **축0 차와의 상관** — 직교화 **전 {r_raw:+.3f}** → "
+              f"**후 {r_ortho:+.3f}**(0 이어야 팀 수준이 안 샌다)")
+        # 🔴 |L9| 상위 10% 경기의 방향 적중(B) — 판별은 아래 판정 표가 한다
+        top = sorted(said_l9, key=lambda r: -abs(float(r["raw"]["L9"])))[
+            :max(1, len(said_l9) // 10)]
+        from app.core import probfloor as pf9
+        hits = 0
+        for r in top:
+            mk = pf9.markets_of(pf9.score_grid(lam_home=float(r["lam"][0]),
+                                               lam_away=float(r["lam"][1]),
+                                               rho=0.0))
+            hits += 1 if me.direction_hit([mk["home"], mk["draw"],
+                                           mk["away"]], int(r["hit"])) else 0
+        print(f"- **|L9| 상위 10%({len(top)}경기)** 의 방향 적중 — **B "
+              f"{hits / len(top):.1%}**(판별 판은 아래 표의 ≥3%p 칸을 본다)")
+        print()
     base_s = score(base["probs"], base["hits"])
     print("| 판 | 경기 | 로그 손실 | 방향 적중 | 상위 30% | 20% | 10% | "
           "짝지은 차이(95%) | 맥니마 p | 판정 |")
