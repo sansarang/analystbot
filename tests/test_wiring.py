@@ -704,6 +704,12 @@ TOOL_ONLY: dict[str, str] = {
     # 🔴🔴 **§2 데이터 준비**(통합 지시서 2026-10-13 밤) — 보고 도구가 부른다.
     #    ⚠️ 운영 ③(`facts.season`)에 잇는 것은 **§7·§9 채택분만**이다.
     "app.core.season.require": "tools/season_prep.py",
+    # 🔴🔴 **§3·§4-2 시즌 문맥 후보**(통합 지시서 2026-10-13 밤) — 시험 도구가
+    #    부른다. ⚠️ 둘 다 **판정에서 떨어졌다**(S1 (c) 0.01%p · S2 k=0) →
+    #    운영 ⑯·⑪ 에 **잇지 않는다**(§7 전진 선택: 기준은 B 그대로).
+    "app.core.legacy.form_input.pick": "tools/season_trial.py",
+    "app.core.seasonfix.bend": "tools/seasonfix_trial.py",
+    "app.core.seasonfix.plate_of": "tools/seasonfix_trial.py",
     "app.core.season.games_of": "tools/season_prep.py",
     "app.core.ratings.retention.of": "tools/season_prep.py",
     "app.collect.coach.row_of": "tools/season_prep.py",
