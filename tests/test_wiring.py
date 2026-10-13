@@ -703,6 +703,11 @@ TOOL_ONLY: dict[str, str] = {
     "app.core.lineupfix.plate_of": "tools/lineup_trial2.py",
     # 🔴🔴 **§2 데이터 준비**(통합 지시서 2026-10-13 밤) — 보고 도구가 부른다.
     #    ⚠️ 운영 ③(`facts.season`)에 잇는 것은 **§7·§9 채택분만**이다.
+    # 🔴🔴 **§5-0·§5-1 대회 유형·준비 점검**(지시서 2026-10-13 밤 셋째) —
+    #    점검 도구가 부른다. ⚠️ 파이프라인에 **CP1 문**을 세우는 것은 대회별
+    #    백필이 선 뒤다(그때 이 줄을 지운다).
+    "app.core.competition.kind_require": "tools/comp_ready.py",
+    "app.core.competition.neutral_of": "tools/comp_ready.py",
     "app.core.season.require": "tools/season_prep.py",
     # 🔴🔴 **§3·§4-2 시즌 문맥 후보**(통합 지시서 2026-10-13 밤) — 시험 도구가
     #    부른다. ⚠️ 둘 다 **판정에서 떨어졌다**(S1 (c) 0.01%p · S2 k=0) →

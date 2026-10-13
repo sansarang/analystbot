@@ -22,7 +22,8 @@ logger = logging.getLogger(__name__)
 
 
 def pick(rows: list[dict], *, as_of, league: str, k_min: int,
-         weak: bool = False) -> tuple[list[dict], str]:
+         weak: bool = False, drop_cup: bool = False
+         ) -> tuple[list[dict], str]:
     """🔴🔴 폼용 경기 목록. `(목록, 사유)` — 못 만들면 **빈 목록 + 🔴**.
 
     `rows` 한 줄은 백필·운영이 쓰는 그 꼴이다(`{utc, gf, ga, …}`).
@@ -42,11 +43,43 @@ def pick(rows: list[dict], *, as_of, league: str, k_min: int,
     bad = _se.require(said)
     if bad:
         return [], f"🔴 **폼 목록 못 만들었다** — {bad}"
+    # 🔴🔴 **§1 "리그 경기만"**(지시서 2026-10-13 밤 셋째)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 가리는 문은 **`competition.key_of` 하나**다(사본 금지) — 그 경기의
+    #     대회 표기를 **리그 열쇠**로 바꿔 **분석 대상 리그와 같은지** 본다.
+    #  ⚠️ `level.is_cup` 만으로는 모자랐다(실측 2026-10-13): `Korean FA Cup` 은
+    #     잡지만 **`AFC Champions League` 는 못 잡는다**(컵이 아니라 대륙 대회다).
+    #     🔴 §1 이 말한 것은 *"리그 경기만"* 이므로 **둘 다 빼야** 한다.
+    #  ⚠️ 기본값은 **끈 상태**다 — 판정이 끝나기 전에는 운영이 바뀌지 않는다.
+    cups = 0
+    cup_names: list[str] = []
+    if drop_cup:
+        from app.core import competition as _cp
+        from app.core import level as _lv
+        keep = []
+        for one in said:
+            comp = str(one.get("league_name") or one.get("comp") or "")
+            if not comp:
+                keep.append(one)          # ⬜ 표기가 없으면 **버리지 않는다**
+                continue
+            got_key, _w = _cp.key_of(competition=comp)
+            if got_key == str(league) and not _lv.is_cup(comp):
+                keep.append(one)
+                continue
+            cups += 1
+            if comp not in cup_names:
+                cup_names.append(comp)
+        said = keep
     now = [r for r in said if str(r.get("season_id")) == want]
     old = [r for r in said if str(r.get("season_id")) < want]
+    said_cup = (f" · **리그 밖 {cups}경기를 뺐다**"
+                + (f"({', '.join(cup_names[:3])})" if cup_names else "")
+                if drop_cup else "")
     if len(now) >= int(k_min):
         return now, (f"**이번 시즌만** {len(now)}경기(`{want}` · k_min "
-                     f"{k_min} 이상) · 지난 시즌 {len(old)}경기는 **안 쓴다**")
+                     f"{k_min} 이상) · 지난 시즌 {len(old)}경기는 **안 쓴다**"
+                     + said_cup)
     need = int(k_min) - len(now)
     if weak:
         need = max(1, need // 2)
@@ -56,4 +89,5 @@ def pick(rows: list[dict], *, as_of, league: str, k_min: int,
         f"**{len(fill)}경기로 채웠다**"
         + (" · ⚠️ **가중 축소 판**(보충분을 **절반만** — `form_of` 에 가중 인자가"
            " 없어 이산 근사다)" if weak else "")
+        + said_cup
         + f" · 채운 경기는 `filled` 로 표시한다")

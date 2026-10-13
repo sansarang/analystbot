@@ -333,3 +333,44 @@ def short_key(key: str) -> str:
     said = str(key or "")
     return said.split(":", 1)[1] if said.startswith("league:") else said
 
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **§5-0 대회 유형**(지시서 2026-10-13 밤 셋째) — `kind` 를 고정한다
+# ══════════════════════════════════════════════════════════════════
+#
+#  🔴 **CP1** — `kind` 가 없는 대회는 **분석하지 않는다**. 그 문이 `kind_require`
+#     이고, 부르는 쪽(준비 점검·파이프라인)이 그 사유를 그대로 적는다.
+#  ⚠️ 유형은 **표에만** 있다(`config/competitions.yaml`) — 코드에 대회 이름을
+#     적지 않는다(사본 금지 · #1).
+
+#: 🔴 아는 유형 셋 — 표가 이 밖의 글자를 들면 **미등록**으로 본다
+KINDS: tuple[str, ...] = ("domestic_league", "club_continental",
+                          "national_friendly")
+
+
+def kind_require(key: str) -> tuple[str, str]:
+    """🔴🔴 **CP1** — 그 대회의 `kind`. 없으면 `("", 🔴 대회 유형 미등록 …)`."""
+    one = row_of(str(key or ""))
+    got = str(one.get("kind") or "")
+    if got in KINDS:
+        return got, f"대회 유형 `{got}`(표 `{CONF}`)"
+    return "", (f"🔴 **대회 유형 미등록** — `{key}` 의 `kind` 가 "
+                f"{'없다' if not got else f'모르는 글자다({got!r})'} · "
+                f"`{CONF}` 에 적어야 분석한다(CP1)")
+
+
+def neutral_of(key: str, *, stage: str) -> tuple[bool | None, str]:
+    """🔴 그 단계가 **중립 경기**인가(표의 `format.neutral` 이 든다).
+
+    🔴 **CC3 의 재료** — 중립이면 홈 이점을 **0** 으로 둬야 한다(그 판단은 표에서
+       온다 · 코드에 결승 이름을 적지 않는다). 모르면 `None` 과 🔴 사유다.
+    """
+    box = dict(row_of(str(key or "")).get("format") or {})
+    if not box:
+        return None, (f"🔴 `{key}` 의 **경기 형식 표가 없다** — 중립 여부를 "
+                      f"모른다(지어내지 않는다)")
+    said = str(stage or "").strip().lower()
+    for one in [str(x).lower() for x in (box.get("neutral") or [])]:
+        if one and one in said:
+            return True, f"중립 경기(`{one}` · 표 `{CONF}`)"
+    return False, f"중립 아님(단계 `{stage}` · 표의 중립 목록에 없다)"

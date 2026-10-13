@@ -66,6 +66,7 @@ outlook_gate:
 
 keys:
   league:PL:
+    kind: domestic_league
     names: ["premier league", "epl", "프리미어"]
     sources:
       espn_slugs: ["eng.1"]
@@ -75,6 +76,7 @@ keys:
       football_data_names: ["Premier League"]
     baseline: {elo: football_data, fit: "league:PL"}
   league:PD:
+    kind: domestic_league
     names: ["laliga", "la liga", "라리가"]
     sources:
       espn_slugs: ["esp.1"]
@@ -85,6 +87,7 @@ keys:
       football_data_names: ["Primera Division", "primera división"]
     baseline: {elo: football_data, fit: "league:PD"}
   league:SA:
+    kind: domestic_league
     names: ["세리에 a", "세리에a"]
     sources:
       espn_slugs: ["ita.1"]
@@ -94,6 +97,7 @@ keys:
       football_data_names: ["Serie A"]
     baseline: {elo: football_data, fit: "league:SA"}
   league:BL1:
+    kind: domestic_league
     names: ["bundesliga", "분데스리가"]
     sources:
       espn_slugs: ["ger.1"]
@@ -103,6 +107,7 @@ keys:
       football_data_names: ["Bundesliga"]
     baseline: {elo: football_data, fit: "league:BL1"}
   league:FL1:
+    kind: domestic_league
     names: ["ligue 1", "리그앙", "리그 1"]
     sources:
       espn_slugs: ["fra.1"]
@@ -112,6 +117,7 @@ keys:
       football_data_names: ["Ligue 1"]
     baseline: {elo: football_data, fit: "league:FL1"}
   league:DED:
+    kind: domestic_league
     names: ["eredivisie", "에레디비시"]
     sources:
       espn_slugs: ["ned.1"]
@@ -121,6 +127,7 @@ keys:
       football_data_names: ["Eredivisie"]
     baseline: {elo: football_data, fit: "league:DED"}
   league:PPL:
+    kind: domestic_league
     names: ["liga portugal", "primeira liga", "프리메이라"]
     sources:
       espn_slugs: ["por.1"]
@@ -130,6 +137,7 @@ keys:
       football_data_names: ["Primeira Liga"]
     baseline: {elo: football_data, fit: "league:PPL"}
   league:ELC:
+    kind: domestic_league
     names: ["championship", "챔피언십"]
     sources:
       espn_slugs: ["eng.2"]
@@ -139,6 +147,7 @@ keys:
       football_data_names: ["Championship"]
     baseline: {elo: football_data, fit: "league:ELC"}
   league:BSA:
+    kind: domestic_league
     # 🔴 **이탈리아 세리에A 와 가른다** — fotmob 268 은 `Série A`(악센트)이고
     #    `ccode: BRA` 이며 표에 Flamengo·Palmeiras 가 있다(받아서 확인).
     names: ["brasileir", "브라질", "serie a - brazil", "série a"]
@@ -150,6 +159,7 @@ keys:
       football_data_names: ["Campeonato Brasileiro Série A"]
     baseline: {elo: football_data, fit: "league:BSA"}
   league:KL1:
+    kind: domestic_league
     names: ["k league 1", "k-league 1", "k리그1", "k리그 1"]
     sources:
       # 🔴🔴 **`kor.1` 은 확인하지 못했다** — ESPN 세 경로가 모두 `503` 이다
@@ -173,6 +183,7 @@ keys:
       verified: false
       why: 분할 컷은 fotmob legend 실측(1~6위) · 동률 순서는 가정이다
   league:J1:
+    kind: domestic_league
     names: ["j1 league", "j. league", "j리그1", "j1리그"]
     sources:
       espn_slugs: ["jpn.1"]
@@ -180,6 +191,7 @@ keys:
       fotmob_names: ["J. League"]
     baseline: {elo: fotmob, fit: "league:J1"}
   league:ARG1:
+    kind: domestic_league
     # 🔴 받아서 확인했다(2026-10-10): fotmob `112` → `leagueName: "Liga Profesional"`
     #    · `ccode: ARG`. ⚠️ ESPN 슬러그는 확인하지 않았다(적지 않는다).
     names: ["liga profesional", "아르헨티나", "리가 프로페시오날"]
@@ -189,7 +201,83 @@ keys:
     # ⚠️ **기준 모형이 없다** — 자체 Elo 도 적합도 안 돌렸다(기준 열은 빈다)
     baseline: {}
 
+  # ══════════════════════════════════════════════════════════════════
+  # 🔴🔴 **대회 확장**(지시서 2026-10-13 밤 셋째 §5-0) — `kind` 를 고정한다
+  # ══════════════════════════════════════════════════════════════════
+  #
+  #  🔴 fotmob id 는 **받아서 확인했다**(2026-10-13 · `/leagues/<id>/table/x` 의
+  #     `leagueName`): 42 `Champions League` · 525 `AFC Champions League Elite` ·
+  #     9469 `AFC Champions League Two`. ⚠️ 확인 못 한 칸은 **적지 않았다**.
+  #  🔴 `kind` 가 없는 대회는 **분석하지 않는다**(계약 CP1).
+  league:UCL:
+    kind: club_continental
+    confederation: UEFA
+    names: ["champions league", "uefa champions league", "챔피언스리그",
+            "ucl", "챔스"]
+    sources:
+      fotmob_ids: [42]
+      fotmob_names: ["Champions League"]
+      checked_at: "2026-10-13"
+    format:
+      # 🔴 2024-25 부터 **리그 단계**(단판 8경기) → 플레이오프·16강부터 홈앤어웨이
+      stage_single: ["league phase", "리그 단계"]
+      two_legs: ["knockout playoff", "round of 16", "quarter-final",
+                 "semi-final"]
+      neutral: ["final", "결승"]
+      why: 리그 단계는 단판 · 16강~준결승 홈앤어웨이 · 결승 중립
+    seasons: ["2024/25", "2025/26", "2026/27"]
+    baseline: {}
+  league:ACLE:
+    kind: club_continental
+    confederation: AFC
+    names: ["afc champions league elite", "acl elite", "아시아 챔피언스리그 엘리트",
+            "acle"]
+    sources:
+      fotmob_ids: [525]
+      fotmob_names: ["AFC Champions League Elite"]
+      checked_at: "2026-10-13"
+    format:
+      stage_single: ["league stage", "리그 스테이지"]
+      two_legs: ["round of 16", "quarter-final", "semi-final"]
+      neutral: ["final", "final four", "결승"]
+      why: 2024-25 개편 — 리그 스테이지 단판 · 동/서 분리 · 결승 라운드 중립 가능
+    seasons: ["2024/25", "2025/26", "2026/27"]
+    baseline: {}
+  league:ACL2:
+    kind: club_continental
+    confederation: AFC
+    names: ["afc champions league two", "acl two", "acl2",
+            "아시아 챔피언스리그 투"]
+    sources:
+      fotmob_ids: [9469]
+      fotmob_names: ["AFC Champions League Two"]
+      checked_at: "2026-10-13"
+    format:
+      stage_single: ["group stage", "조별"]
+      two_legs: ["round of 16", "quarter-final", "semi-final", "final"]
+      neutral: []
+      why: 조별 단판 · 녹아웃 홈앤어웨이(결승도 2차전 · 확인 필요)
+    seasons: ["2024/25", "2025/26", "2026/27"]
+    baseline: {}
+  national_friendly:
+    kind: national_friendly
+    confederation: FIFA
+    names: ["friendly", "friendlies", "친선", "국가대표 친선", "a매치 친선"]
+    sources:
+      # ⬜ fotmob 에서 **친선 리그 id 를 확인하지 못했다**(후보 12개를 받아 봤고
+      #    `leagueName` 이 친선인 것은 없었다 · 2026-10-13) → 적지 않는다.
+      fotmob_ids: []
+      why: "⬜ 친선은 대회 id 가 아니라 `comp_kind(national=True, friendly=True)` 로 가린다"
+    format:
+      stage_single: ["friendly"]
+      two_legs: []
+      neutral: ["neutral", "중립"]
+      why: 단판 · 중립지 친선이 흔하다(홈 이점 0)
+    seasons: ["2024", "2025", "2026"]
+    baseline: {elo: eloratings, fit: "national_friendly"}
+
   league:MLS:
+    kind: domestic_league
     names: ["major league soccer", "mls"]
     sources:
       espn_slugs: ["usa.1"]

@@ -3,7 +3,8 @@
 | 무엇 | 어디 | 언제부터 |
 |---|---|---|
 | **v6 재구축 지시서 (지금의 정본)** | [docs/fable/inbox/2026-10-06_v6_rebuild.md](docs/fable/inbox/2026-10-06_v6_rebuild.md) | 2026-10-06 — *"이 문서는 이전 지시서 **전부**를 대체한다"* |
-| **시즌 문맥 + 앙상블**(🔴 지금 하는 일) | [docs/fable/inbox/2026-10-13_season_ensemble.md](docs/fable/inbox/2026-10-13_season_ensemble.md) | 2026-10-13(밤) — 머리 넷이 §9·§10 을 **덮는다**(라인업은 **확률 경로 영구 제외** · 표시·검증만) · 판정 규칙 (a)~(d) · S1~S4 · 앙상블 E0~E4 |
+| **데이터·표본·실전 기록 + 대회 확장 + 검색**(🔴 지금 하는 일) | [docs/fable/inbox/2026-10-13_data_comps_search.md](docs/fable/inbox/2026-10-13_data_comps_search.md) | 2026-10-13(밤 셋째) — **모형 변경 일시 중단**(M1·K0 그대로) · §1 컵 제외 · §2 표본 확장 · §5 대회 다섯 · §6 딥서치 |
+| ~~시즌 문맥 + 앙상블~~(**끝났다 — 전부 기준 유지**) | [docs/fable/inbox/2026-10-13_season_ensemble.md](docs/fable/inbox/2026-10-13_season_ensemble.md) | 2026-10-13(밤) — 머리 넷이 §9·§10 을 **덮는다**(라인업은 **확률 경로 영구 제외** · 표시·검증만) · 판정 규칙 (a)~(d) · S1~S4 · 앙상블 E0~E4 |
 | ~~라인업 → 운영 확률(M1) 연결~~(**끝났다 — 미채택**) | [docs/fable/inbox/2026-10-13_lineup_to_m1.md](docs/fable/inbox/2026-10-13_lineup_to_m1.md) | 2026-10-13 — 네 판(L1·L6·L8·L9) **전부 탈락** → 라인업은 **표시·검증만**(보고서 `stages/2026-10-13_lineup_final.md`) |
 | **엔진 교체 + 오늘 정보 강화 + 불필요 요소 정리** | [docs/fable/inbox/2026-10-12_engine_swap_cleanup.md](docs/fable/inbox/2026-10-12_engine_swap_cleanup.md) | 2026-10-12(셋째) — 같은 날 앞 둘을 **덮는다** · 설계 3층(바닥·오늘·운) · §1 **단계 정리**(⑨⑭⑮⑰⑱⑳㉒㉔ 처분) · LLM 은 사실 추출만 |
 | ~~엔진 교체 + 경기 직전 상태 + 이변 신호~~(위 문서가 덮었다) | [docs/fable/inbox/2026-10-12_engine_swap_upset.md](docs/fable/inbox/2026-10-12_engine_swap_upset.md) | 2026-10-12(둘째) — 같은 날 앞 지시서를 **덮는다**(절 번호 재배치 · §9 이변 신호 · §10 경고 · §11 역배 줄) |
