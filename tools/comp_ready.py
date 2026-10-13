@@ -37,24 +37,11 @@ def replay_count(key: str) -> tuple[int, str]:
        (실측 2026-10-13: ELC 가 그렇게 보였다). 🔴 **`var/judge/replay_*.json`
        전부**를 센다 — 목록을 손으로 들지 않는다(사본 금지 · #1).
     """
-    # 🔴🔴 **같은 경기를 두 번 세지 않는다** — 덤프끼리 겹친다(실측: J1 이
-    #    `replay_444`·`replay_big`·`replay_big2`·`replay_fix` 에 다 들어 있어
-    #    1,049경기로 찍혔다. 실제 서로 다른 경기는 그보다 적다).
-    seen: set[tuple] = set()
-    box = []
-    for path in sorted((ROOT / "var/judge").glob("replay_*.json")):
-        try:
-            rows = json.loads(path.read_text(encoding="utf-8"))
-        except (ValueError, OSError):
-            continue
-        mine = {(str(r.get("day")), str(r.get("home")), str(r.get("away")))
-                for r in rows if isinstance(r, dict)
-                and str(r.get("league")) == key}
-        fresh = mine - seen
-        if fresh:
-            box.append(f"{path.stem} +{len(fresh)}")
-        seen |= mine
-    return len(seen), " · ".join(box) or "없다"
+    # 🔴 세는 곳은 `replays` 하나다(덤프 목록·겹침 규칙을 두 곳에 두지 않는다)
+    from replays import load as _replays
+    rows, why = _replays(league=key)
+    said = why.split("— ", 1)[-1] if "— " in why else why
+    return len(rows), said
 
 
 def main(argv: list[str]) -> int:

@@ -37,10 +37,6 @@ def box_of(comp: str) -> Path:
     return ROOT / f"var/judge/offsets_{comp.replace(':', '_')}.json"
 
 
-#: 🔴 국내 리그 Elo 를 굴릴 재료 — **이미 재생해 둔 덤프**(사본 금지)
-DOMESTIC = ("replay_big2", "replay_mls", "replay_elc", "replay_sa",
-            "replay_pl")
-
 K_ELO = 20.0
 
 
@@ -161,25 +157,23 @@ async def _domestic_of(net, team_id: object, seen: dict) -> tuple[str, str]:
 
 def domestic_elo() -> tuple[dict, str]:
     """🔴 국내 리그 **Elo**(그 리그 재생 덤프로 굴린다 · 리그 안에서만 비교)."""
+    # 🔴 덤프 목록은 `replays` 하나가 든다(손으로 들지 않는다 · #1)
+    from replays import load as _replays
+    rows, why = _replays()
     elo: dict[str, float] = {}
     n = 0
-    for name in DOMESTIC:
-        path = ROOT / f"var/judge/{name}.json"
-        if not path.exists():
+    for r in sorted(rows, key=lambda x: str(x.get("day"))):
+        if r.get("hg") is None or r.get("ag") is None:
             continue
-        rows = json.loads(path.read_text(encoding="utf-8"))
-        for r in sorted(rows, key=lambda x: str(x.get("day"))):
-            if r.get("hg") is None or r.get("ag") is None:
-                continue
-            home, away = str(r.get("home")), str(r.get("away"))
-            dr = float(elo.get(home, 1500.0)) - float(elo.get(away, 1500.0))
-            exp = 1.0 / (1.0 + 10 ** (-dr / 400.0))
-            got = (1.0 if int(r["hg"]) > int(r["ag"])
-                   else (0.5 if int(r["hg"]) == int(r["ag"]) else 0.0))
-            elo[home] = float(elo.get(home, 1500.0)) + K_ELO * (got - exp)
-            elo[away] = float(elo.get(away, 1500.0)) - K_ELO * (got - exp)
-            n += 1
-    return elo, f"국내 재생 {n}경기로 굴린 Elo · 팀 {len(elo)}개"
+        home, away = str(r.get("home")), str(r.get("away"))
+        dr = float(elo.get(home, 1500.0)) - float(elo.get(away, 1500.0))
+        exp = 1.0 / (1.0 + 10 ** (-dr / 400.0))
+        got = (1.0 if int(r["hg"]) > int(r["ag"])
+               else (0.5 if int(r["hg"]) == int(r["ag"]) else 0.0))
+        elo[home] = float(elo.get(home, 1500.0)) + K_ELO * (got - exp)
+        elo[away] = float(elo.get(away, 1500.0)) - K_ELO * (got - exp)
+        n += 1
+    return elo, f"{why} → **국내 Elo** {n}경기로 굴렸다 · 팀 {len(elo)}개"
 
 
 def fit(comp: str, *, as_of: str) -> int:

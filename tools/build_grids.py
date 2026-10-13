@@ -34,18 +34,14 @@ def rows_of() -> tuple[list[dict], str]:
     from forward_terms import _ctx_rows
     from app.core import context as _ctx
     from app.core import season as se
-    # 🔴🔴 **국내 리그 재생 전부**를 읽는다(2,582경기 · 2026-10-13 밤 넷째 5번).
-    #    ⚠️ `replay_big2` 만 보던 자리다 — 표본이 **2,000 문턱**을 넘었으므로
-    #    앙상블·판정을 **같은 규칙으로 다시** 돌린다.
-    back: list[dict] = []
-    for name in ("replay_big2", "replay_mls", "replay_elc", "replay_sa",
-                 "replay_pl"):
-        path = ROOT / f"var/judge/{name}.json"
-        if not path.exists():
-            continue
-        said = json.loads(path.read_text(encoding="utf-8"))
-        back += said
-        print(f"   · {name} {len(said)}경기", flush=True)
+    from replays import load as _replays
+    # 🔴🔴 **재생 덤프 전부**를 읽는다 — 목록을 손으로 들지 않는다(#1 · `replays`).
+    #    ⚠️ 종전에는 덤프 이름 **다섯을 손으로** 적어 뒀다. 새 리그를 받으면 여기
+    #       고치는 것을 잊고 그 리그가 **조용히 빠진다**(실측: 준비 점검표가 같은
+    #       병으로 챔피언십 500경기를 *"재생 0"* 이라 적었다).
+    #    🔴 겹치는 덤프는 `(리그·날짜·홈·원정)` 으로 **한 번만** 센다.
+    back, why_back = _replays()
+    print(f"   · {why_back}", flush=True)
     ids = {}
     for r in json.loads((ROOT / "var/judge/lineup_rows2.json").read_text(
             encoding="utf-8")):
