@@ -172,11 +172,11 @@
 - ⬜ 경우의 수를 못 센다 — **순위표가 없다**(`unknown`) · 형식 `friendly`
 
 **4. 뒤집는 변수**
-- `R1` [absence] Kim Min-jae is unlikely to play in Tuesday's friendly against Uzbekistan after missing team training for a second consecutive day. — 승패 **away** · 득점 - · hard · 출처 3곳 · 대상 `Kim Min-jae`
-- `R2` [individual_title] Son Heung-min scored his 59th goal, surpassing Cha Bum-keun to rank No. 1 in the most A-match goals in Korean soccer history. — 승패 **home** · 득점 ↑ · hard · 출처 2곳 · 대상 `Son Heung-min`
-- `R3` [team_stats] The Korean national team started under interim coach Moreno and made a fresh start with a 3-0 victory in its first match against Ecuador, thanks to consecutive goals from Oh Hyun-kyu, Son Heung-min and Lee Dong-kyung. — 승패 **home** · 득점 - · soft · 출처 1곳 · 대상 `3-0 victory`
-- `R5` [stakes] 한국은 우즈베키스탄전에서 Son Heung-min이 한 골만 넣으면 남자 대표팀 최다 득점 단독 1위 기록을 달성할 수 있다. — 승패 **home** · 득점 - · soft · 출처 1곳 · 대상 `Son Heung-min`
-- `R6` [regression] 한국은 9월 두 경기에서 4-4-2로 1-1을 기록했으며, 로베르토 모레노 감독이 이번 두 경기에서 전술·선수 구성 또는 둘 다의 변화를 줄지 주목된다. — 승패 **both** · 득점 - · soft · 출처 1곳 · 대상 `formation`
+- `R1` [absence] Kim Min-jae is unlikely to play in Tuesday's friendly against Uzbekistan after missing team training for a second consecutive day. — 승패 **away** · 득점 - · hard · 출처 3곳 · 대상 `Kim Min-jae` · 상태 **의심** · 원천 C등급 3곳
+- `R2` [individual_title] Son Heung-min scored his 59th goal, surpassing Cha Bum-keun to rank No. 1 in the most A-match goals in Korean soccer history. — 승패 **home** · 득점 ↑ · hard · 출처 2곳 · 대상 `Son Heung-min` · 원천 C등급 2곳
+- `R3` [team_stats] The Korean national team started under interim coach Moreno and made a fresh start with a 3-0 victory in its first match against Ecuador, thanks to consecutive goals from Oh Hyun-kyu, Son Heung-min and Lee Dong-kyung. — 승패 **home** · 득점 - · soft · 출처 1곳 · 대상 `3-0 victory` · 원천 C등급 1곳
+- `R5` [stakes] 한국은 우즈베키스탄전에서 Son Heung-min이 한 골만 넣으면 남자 대표팀 최다 득점 단독 1위 기록을 달성할 수 있다. — 승패 **home** · 득점 - · soft · 출처 1곳 · 대상 `Son Heung-min` · 원천 C등급 1곳
+- `R6` [regression] 한국은 9월 두 경기에서 4-4-2로 1-1을 기록했으며, 로베르토 모레노 감독이 이번 두 경기에서 전술·선수 구성 또는 둘 다의 변화를 줄지 주목된다. — 승패 **both** · 득점 - · soft · 출처 1곳 · 대상 `formation` · 원천 C등급 1곳
 - `S01-home` [recent_pattern] 최근 5경기 L L W L D · 득점 평균 0.8(보정 0.25) · 기준 팀당 1.2662골(대회 national_friendly) 대비 득점 적다 · 실점 평균 1.2(보통) — 승패 **home** · 득점 ↓ · soft · 출처 구조 사실 · 대상 `recent` · [규칙 S01]
 - `S01-away` [recent_pattern] 최근 5경기 L L L W W · 득점 평균 1.8(보정 1.25) · 기준 팀당 1.2662골(대회 national_friendly) 대비 득점 보통 · 실점 평균 2.6(많다) — 승패 **away** · 득점 - · soft · 출처 구조 사실 · 대상 `recent` · [규칙 S01]
 - `S03` [home_field] South Korea 홈 경기 — 홈 **승률** 수치 없음(대회 유형 `national_friendly` 의 승률 표가 없다 · 다른 대회 숫자를 빌리지 않는다) · ⚠️ λ 홈 배율은 **득점 실측**을 쓴다(홈 팀 평균 1.6177 · 표본 5274) — 승패 **home** · 득점 - · soft · 출처 구조 사실 · 대상 `home_field` · [규칙 S03]

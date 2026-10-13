@@ -265,6 +265,28 @@ def run(ref: MatchRef, facts: Facts, docs: list[Doc],
             usable = False
             state.note(f"s5 R{i} 결장 귀속 미확정 → **근거 불가**"
                        f"({str(row['_basis_off'])[:70]})")
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **§6-5 — 상태·원천 등급·충돌 · EX1·EX2**(2026-10-13 밤 셋째)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  🔴 세는 곳은 `search.facts` 하나다(사본 금지).
+        #  🔴 **EX1** 근거 문장·출처 없는 사실은 버린다 · **EX2** 근거 문장에
+        #     **경기 결과**(스코어 + 결과 낱말)가 있으면 버린다.
+        from app.core.search import facts as _fx
+        said_urls = [str(d.url) for d in mine]
+        ok_ex, why_ex = _fx.keep(quote=str(row.get("quote") or ""),
+                                 urls=said_urls)
+        if not ok_ex:
+            state.drop(f"s5/{row['type']}/R{i}",
+                       (DropReason.PREMATURE_RESULT if "EX2" in why_ex
+                        else DropReason.QUOTE_NOT_FOUND), why_ex[:200])
+            continue
+        said_lg = str(getattr(ref, "league", "") or "")
+        said_grade, said_n, why_grade = _fx.grades_of(said_urls,
+                                                      league=said_lg)
+        said_conf, why_conf, said_states = _fx.conflict_of(
+            [str(x) for x in (row.get("quotes")
+                              or [row.get("quote") or ""])])
         out.append(Variable(
             id=f"R{i}", type=row["type"], subject=row["subject"],
             favors=row["favors"], goals=row.get("goals", "none"),
@@ -278,7 +300,12 @@ def run(ref: MatchRef, facts: Facts, docs: list[Doc],
             # 🔴🔴 **근거로 쓸 수 있나** — 등급 0(단일 aggregator·충돌)은 못 쓴다.
             #    ⚠️ 옛 경로가 `hardness == "none"` 으로 가른 그 선이다
             #       (`analyze.split_basis`) — 뜻을 옮겨 적었다.
-            usable_as_basis=usable))
+            usable_as_basis=usable,
+            # 🔴 §6-5 네 칸 — 못 가린 칸은 **빈 글자**다(0 으로 메우지 않는다)
+            state=(said_states[0] if said_states else ""),
+            grade=said_grade, n_sources=int(said_n),
+            conflict=(why_conf if said_conf else "")))
+        state.note(f"s5 R{i} — {why_grade} · {why_conf}")
         if level < 1:
             state.note(f"s5 R{i} 는 **근거로 못 쓴다**(등급 {level} · 출처 "
                        f"{n_src}곳 · {tier}) — 맥락으로만 보낸다")
@@ -818,6 +845,10 @@ def _merge(rows: list[dict], *, state: RunState,
                 keep["doc_ids"].append(d)
         # 🔴 **모델이 단 유형을 모아 둔다** — 묶인 뒤 포지션·다수결로 하나를 고른다
         keep.setdefault("kinds", [keep["type"]]).append(row["type"])
+        # 🔴🔴 **§6-5** — 원천마다의 **근거 문장을 모아 둔다**(상태 충돌을 그것으로
+        #    가린다: 한 원천은 *"결장"*, 다른 원천은 *"복귀"* 라고 할 수 있다).
+        keep.setdefault("quotes", [str(keep.get("quote") or "")]).append(
+            str(row.get("quote") or ""))
         # 🔴 귀속을 **가린 쪽이 이긴다** — 한 기사가 팀을 못 말했어도 다른 기사가
         #    말했으면 그 사실은 가려진 것이다(지시 2).
         if not row.get("_basis_off"):

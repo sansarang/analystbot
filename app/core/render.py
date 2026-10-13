@@ -935,8 +935,17 @@ def _var_line(v: Variable) -> str:
     goals = {"up": "↑", "down": "↓"}.get(v.goals, "-")
     src = (f"출처 {len(v.doc_ids)}곳" if v.doc_ids else "출처 구조 사실")
     who = f" · 대상 `{v.target}`" if v.target else ""
+    # 🔴🔴 **§6-5** — 상태·원천 등급 최고값·원천 수·충돌을 그 줄에 적는다
+    #    (못 가린 칸은 **적지 않는다** — 빈칸을 0 으로 메우지 않는다 · #3)
+    said = ""
+    if getattr(v, "state", ""):
+        said += f" · 상태 **{v.state}**"
+    if getattr(v, "grade", ""):
+        said += f" · 원천 {v.grade}등급 {int(getattr(v, 'n_sources', 0))}곳"
+    if getattr(v, "conflict", ""):
+        said += f" · {v.conflict}"
     return (f"- `{v.id}` [{v.type}] {v.claim} — 승패 **{v.favors}** · "
-            f"득점 {goals} · {v.hardness} · {src}{who}{rule}")
+            f"득점 {goals} · {v.hardness} · {src}{who}{rule}{said}")
 
 
 def _b5(card: Card) -> str:
