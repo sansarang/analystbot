@@ -12,6 +12,7 @@
 
 **1. 자료 한계 고백**
 - 버린 것: `body_missing` 6건 · `conflict` 1건 · `duplicate` 5건 · `identity_mismatch` 63건 · `sport_mismatch` 5건 · `stakes_vague` 1건 · `stale` 2건 · `team_tier_mismatch` 4건 · `type_content_mismatch` 1건 · `type_off_catalog` 3건
+- 🔎 **검색** — 질의 20 · 결과 199 · 날짜 통과 131 · 문서 8 · 잃음 — ④ 신원 67 · ① 원천 8 · ③ 본문 6 · — 중복 5 · ⑤ 추출 3 · ⬜ 원천 등급·사실 종류별 수는 **아직 못 적는다**(카드가 문서 URL 을 안 들고 있다 · §6-5)
 - 문서 8건 · 변수 11개 · 시나리오 0개
 - 못 받은 칸 — 오늘 XI 없음(상태 none — IR02·IR03 이 안 돈다) · 감독 미확보 · 순위표 없음
 - 🔴 충돌: **채택 구조 사실**(공식 어댑터 6승 3무 0패 · 표본 9경기) / **버림 기사**(11승 4무 1패) — 공식 > 출처 수 > 등급

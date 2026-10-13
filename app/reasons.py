@@ -401,3 +401,51 @@ def say(reason: Reason, *, detail: str = "") -> str:
     base = SAY.get(reason) or f"사유 `{reason.value}`"
     out = f"{base} (`{reason.value}` · 고칠 곳 **{reason.fix_where}**)"
     return f"{out} — {detail}" if str(detail or "").strip() else out
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **§6-7 손실 깔때기 — 사유를 "단계"로 묶는다**(지시서 2026-10-13 밤 셋째)
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 잃는 단계(원천/질의/본문/신원/추출)별 **손실 깔때기**.
+#  🔴 묶음은 **여기 하나**다 — 카드(`render`)와 측정 도구(`tools/search_funnel`)가
+#     같은 표를 읽는다(사본 금지 · #1). ⚠️ 모르는 사유는 **⬜ 미분류**로 센다.
+#  🔴 기준선(2026-10-13 · 카드 49장 · 버린 문서 10,257건): ④ 신원 52.9% ·
+#     ② 질의·날짜 34.1% · ① 원천 7.2% · ③ 본문 3.6% · ⑤ 추출 1.7%.
+
+STAGE_OF: dict[str, str] = {
+    "type_off_catalog": "① 원천",
+    "domain_denied": "① 원천",
+    "sport_mismatch": "① 원천",
+    "tip_source": "① 원천",
+    "stale": "② 질의·날짜",
+    "date_missing": "② 질의·날짜",
+    "stale_sample": "② 질의·날짜",
+    "body_missing": "③ 본문",
+    "size_cut": "③ 본문",
+    "identity_mismatch": "④ 신원",
+    "team_tier_mismatch": "④ 신원",
+    "team_reattached": "④ 신원",
+    "team_unresolved": "④ 신원",
+    "off_match": "④ 신원",
+    "side_mismatch": "④ 신원",
+    "llm_schema": "⑤ 추출",
+    "llm_truncated": "⑤ 추출",
+    "llm_unavailable": "⑤ 추출",
+    "type_content_mismatch": "⑤ 추출",
+    "type_off_catalog_fact": "⑤ 추출",
+    "stakes_vague": "⑤ 추출",
+    "premature_result": "⑤ 추출",
+    "post_match": "⑤ 추출",
+    "quote_not_found": "⑤ 추출",
+    "quote_mismatch": "⑤ 추출",
+    "conflict": "⑤ 추출",
+    "no_info": "⑤ 추출",
+    "duplicate": "— 중복",
+}
+
+
+def stage_of(reason: str) -> str:
+    """🔴 그 사유가 **어느 단계의 손실**인가. 모르면 `⬜ 미분류(<사유>)`."""
+    said = str(reason or "").strip()
+    return STAGE_OF.get(said, f"⬜ 미분류({said or '?'})")

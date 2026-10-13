@@ -409,6 +409,32 @@ def _b1(card: Card) -> str:
     if by:
         out.append("버린 것: " + " · ".join(f"`{k}` {v}건"
                                         for k, v in sorted(by.items())))
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **§6-8 검색 줄**(지시서 2026-10-13 밤 셋째) — 센 수와 **잃은 단계**
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > "검색: 질의 24 · 문서 9 · … · 잃음 — 본문 실패 3·신원 2"
+    #  🔴 단계 묶음은 `reasons.stage_of` 하나다(사본 금지). ⚠️ 못 잰 칸은 **이름으로
+    #     남긴다**(0 으로 메우지 않는다 · #3).
+    #  ⬜ **원천 등급·사실 종류별 수는 아직 못 적는다** — 카드가 문서 URL 을 들고
+    #     있지 않다(그 칸을 채우는 것은 §6-5 의 일이다).
+    said_f = dict(card.funnel.counts or {})
+    said_stage: dict[str, int] = {}
+    for drop in list(card.funnel.drops or []):
+        key = _reason_stage(drop)
+        said_stage[key] = said_stage.get(key, 0) + 1
+    out.append(
+        "🔎 **검색** — "
+        + " · ".join(
+            f"{nm} {said_f.get(k) if said_f.get(k) is not None else '못 쟀다'}"
+            for nm, k in (("질의", "queries"), ("결과", "hits"),
+                          ("날짜 통과", "kept_date"), ("문서", "docs")))
+        + (" · 잃음 — " + " · ".join(f"{k} {v}" for k, v in
+                                     sorted(said_stage.items(),
+                                            key=lambda x: -x[1])[:5])
+           if said_stage else " · 잃음 0건")
+        + " · ⬜ 원천 등급·사실 종류별 수는 **아직 못 적는다**(카드가 문서 URL 을"
+          " 안 들고 있다 · §6-5)")
     docs_n = card.funnel.counts.get("docs")
     out.append(f"문서 {docs_n if docs_n is not None else '못 쟀다'}건 · 변수 "
                f"{len(card.variables)}개 · 시나리오 "
@@ -1070,6 +1096,13 @@ def _l9_band(l9: object) -> str:
     """🔴 `|L9|` 구간 — 가르는 곳은 `lineupfix.band_of` 하나다(사본 금지)."""
     from app.core import lineupfix as _lf
     return _lf.band_of(l9) or "못 쟀다"
+
+
+def _reason_stage(drop) -> str:
+    """🔴 그 손실의 **단계** — 묶음 표는 `reasons.stage_of` 하나다(사본 금지)."""
+    from app import reasons as _rs
+    said = getattr(drop, "reason", None)
+    return _rs.stage_of(getattr(said, "value", None) or str(said or ""))
 
 
 def _b3c(card: Card) -> str:

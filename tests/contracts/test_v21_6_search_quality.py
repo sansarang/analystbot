@@ -75,3 +75,27 @@ def test_new_rule_needs_two_signals() -> None:
     bad, hits2 = ia.new_rule("Transfermarkt — Squad", home="Shonan Bellmare",
                              away="Albirex Niigata")
     assert not bad and len(hits2) < 2, hits2
+
+
+def test_stage_table_is_one_place() -> None:
+    """🔴🔴 §6-7 단계 묶음은 **`reasons.stage_of` 하나**다(사본 금지 · #1).
+
+    ⚠️ 실사고 2026-10-13: 측정 도구가 그 표를 **베껴** 들고 있었다 — 그러면
+       카드가 적는 단계와 보고가 적는 단계가 **갈린다**.
+    """
+    from app import reasons as rs
+    assert rs.stage_of("identity_mismatch") == "④ 신원"
+    assert rs.stage_of("stale") == "② 질의·날짜"
+    assert rs.stage_of("body_missing") == "③ 본문"
+    assert "미분류" in rs.stage_of("없는사유")
+    said = (ROOT / "tools/search_funnel.py").read_text(encoding="utf-8")
+    assert "stage_of" in said
+    # 🔴 도구가 자기 표를 다시 들고 있지 않다
+    assert "\"identity_mismatch\": \"④" not in said
+
+
+def test_card_prints_the_search_line() -> None:
+    """🔴 **§6-8** — 카드가 질의·결과·문서와 **잃은 단계**를 적는다."""
+    said = (ROOT / "app/core/render.py").read_text(encoding="utf-8")
+    assert "🔎 **검색**" in said and "잃음" in said
+    assert "stage_of" in said or "_reason_stage" in said

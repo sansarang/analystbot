@@ -24,24 +24,8 @@ DROPS = re.compile(r"- 버린 것: (.+)$")
 ONE = re.compile(r"`([a-z_]+)` (\d+)건")
 DOCS = re.compile(r"문서 (\d+)건 · 변수 (\d+)개")
 
-#: 🔴 사유 → 단계(지시서의 다섯 묶음)
-STAGE = {
-    "type_off_catalog": "① 원천(도메인 등급)",
-    "sport_mismatch": "① 원천(종목 다름)",
-    "identity_mismatch": "④ 신원",
-    "team_tier_mismatch": "④ 신원(등급)",
-    "team_reattached": "④ 신원(재부착)",
-    "off_match": "④ 신원(다른 경기)",
-    "stale": "② 질의·날짜(오래됨)",
-    "body_missing": "③ 본문",
-    "llm_schema": "⑤ 추출(스키마)",
-    "llm_truncated": "⑤ 추출(잘림)",
-    "type_content_mismatch": "⑤ 추출(유형 불일치)",
-    "stakes_vague": "⑤ 추출(모호)",
-    "premature_result": "⑤ 추출(결과 유출 차단)",
-    "conflict": "⑤ 추출(충돌)",
-    "duplicate": "— 중복",
-}
+# 🔴 사유 → 단계 표는 **`app/reasons.py` 하나**다(사본 금지 · #1) —
+#    종전에 이 파일이 그 표를 **베껴** 들고 있었다(그러면 운영 카드와 갈린다).
 
 
 def main(argv: list[str]) -> int:
@@ -69,9 +53,10 @@ def main(argv: list[str]) -> int:
     total: Counter = Counter()
     for one in per_card:
         total.update(one["drops"])
+    from app import reasons as _rs
     by_stage: Counter = Counter()
     for name, n in total.items():
-        by_stage[STAGE.get(name, f"⬜ 미분류({name})")] += n
+        by_stage[_rs.stage_of(name)] += n
     print("| 단계 | 버린 문서 | 비율 |")
     print("|---|---|---|")
     tot = sum(by_stage.values()) or 1
