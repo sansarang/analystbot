@@ -830,22 +830,27 @@ async def _fetch(sub: Any, ref: MatchRef, kept: list[tuple[Any, str]], *,
         #     그 사이에 다른 하위가 끼어들 수 없다.
         claimed.add(url)
         sub.budget.fetch_used += 1
-        try:
-            async with lead.gate("fetch"):
-                raw = await net.get(url)
-        except Exception as exc:                            # noqa: BLE001
-            state.drop(f"s3/{name}/{url[:40]}", DropReason.BODY_MISSING,
-                       f"열기 실패: {exc}")
-            continue
-        if not getattr(raw, "ok", False):
-            state.drop(f"s3/{name}/{url[:40]}", DropReason.BODY_MISSING,
-                       f"열기 실패: 상태 {getattr(raw, 'status', '?')}")
-            continue
-        body, when = readtext.extract(getattr(raw, "text", "") or "", url=url)
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **§6-3 본문 확보 — 칸 넷**(지시서 2026-10-13 밤 셋째)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  원문 → **AMP** → **RSS** → **대체 경로**. 🔴 칸마다 사유를 적는다
+        #  (**FT1**: 실패를 조용히 버리면 계약 실패). ⚠️ 종전에는 원문 하나로
+        #  끝냈고, 4xx·자바스크립트 렌더 문서가 **통째로 사라졌다**.
+        from app.core.search import fetch as _ft
+        async with lead.gate("fetch"):
+            body, when, said_rungs = await _ft.body_of(
+                net, url, league=str(getattr(ref, "league", "") or ""),
+                extract=readtext.extract)
         if not str(body or "").strip():
             state.drop(f"s3/{name}/{url[:40]}", DropReason.BODY_MISSING,
-                       "본문을 못 뽑았다")
+                       _ft.why_of(said_rungs)[:300])
             continue
+        # 🔴 **어느 칸에서 왔나**를 남긴다(원문이 아니면 그 사실이 중요하다)
+        said_won = next((r for r in said_rungs if r.get("ok")), {})
+        if str(said_won.get("rung") or "원문") != "원문":
+            state.note(f"s3/{name} 본문을 **{said_won.get('rung')}** 칸에서 "
+                       f"받았다 — {said_won.get('why')}")
         # 🔴 **종목 검사**(사용자 지시 2026-10-06 ②) — 받은 뒤 본문으로 본다
         #    ⚠️ 제목·스니펫만으로는 모자랐다(테니스 기사가 통과했다).
         ok_s, said_s = sport_ok(ref.sport, str(getattr(h, "title", "") or ""),
