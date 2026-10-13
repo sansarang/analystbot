@@ -198,6 +198,7 @@ def main(argv: list[str]) -> int:
                 meta=np.array([r["hg"], r["ag"], r["hit"]]))
             made.append({"id": r["id"], "league": kind, "season": s,
                          "day": r["day"], "hit": r["hit"],
+                         "home": r["home"], "away": r["away"],
                          "floor_fit": said_fit,
                          "n_before": seen_before.get((kind, s), 0)})
             seen_before[(kind, s)] = seen_before.get((kind, s), 0) + 1

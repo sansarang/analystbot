@@ -92,7 +92,7 @@ def names_of(raw: object) -> list[str]:
 
 
 def xi_of(team_key: str, raw: object, *, source_url: str = "",
-          missing: list[Missing] | None = None) -> XI:
+          missing: list[Missing] | None = None, league: str = "") -> XI:
     """🔴 어댑터의 XI 모양 → `schema.XI`. ⚠️ 모르면 `state="none"`(지어내지 않는다).
 
     🔴 축구 완성 지시서 §2:
@@ -117,15 +117,35 @@ def xi_of(team_key: str, raw: object, *, source_url: str = "",
     else:
         # ⚠️ 표식이 없으면 **확정이라고 적지 않는다**(fail-closed · §2 금지 항목)
         state = "predicted" if players else "none"
-    # 🔴 **결장자가 예상 명단에 있으면 뺀다** — 그 사실을 사유로 남긴다
-    gone = {str(m.name).strip().lower() for m in (missing or [])}
+    # 🔴🔴 **결장자를 예상 명단에서 뺄지는 `absence.removable` 이 정한다**
+    #    (사용자 지시 2026-10-13 밤 다섯째 2번 · 사본 금지).
+    #    ⚠️ 종전은 *"결장 명단에 이름이 있으면 그냥 뺐다"* 였고, 그 명단의 원천은
+    #       fotmob 경기 페이지 하나(**B**)다 — 그 칸은 *"의심"* 수준의 이름도
+    #       싣는다. 사람을 빼면 예상 XI 가 10명이 되거나 빈 자리를 우리가 지어내야
+    #       하므로 **틀린 XI** 가 된다.
+    from app.core import absence as _ab
+    box_miss: dict[str, list] = {}
+    for m in (missing or []):
+        box_miss.setdefault(str(m.name).strip().lower(), []).append(m)
+    gone: set[str] = set()
+    doubt: dict[str, str] = {}
+    for key, said_rows in box_miss.items():
+        ok, why_miss = _ab.removable(said_rows, league=str(league or ""))
+        if ok:
+            gone.add(key)
+        else:
+            doubt[key] = why_miss
     conflicts: list[str] = []
-    if gone and state != "confirmed":
+    if state != "confirmed":
         keep_rows, keep_names = [], []
         for name in players:
-            if str(name).strip().lower() in gone:
+            said_key = str(name).strip().lower()
+            if said_key in gone:
                 conflicts.append(f"⚠️ 제외: {name}(결장 명단)")
                 continue
+            if said_key in doubt:
+                # 🔴 **빼지 않는다** — 표시만 남긴다
+                conflicts.append(f"⚠️ 결장 의심(B 단독): {name}")
             keep_names.append(name)
         for r in rows:
             if str(r.get("name") or "").strip().lower() in gone:

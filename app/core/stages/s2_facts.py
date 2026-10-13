@@ -130,10 +130,15 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
                 got_coach = adapt.coach_of(val.get("coach"))
                 if got_coach is not None:
                     coach[key] = got_coach
-    # 🔴 XI 는 **결장 명단을 보고** 만든다(예상 명단에 결장자가 있으면 뺀다 · §2)
+    # 🔴 XI 는 **결장 명단을 보고** 만든다 — 🔴🔴 뺄지는 `absence.removable` 이
+    #    정한다(B 단독은 **안 뺀다** · 지시 2026-10-13 밤 다섯째 2번).
+    #    ⚠️ 이 자리에서는 대회 열쇠(`league:…`)가 **아직 안 만들어졌다**(아래
+    #       `_kind_of` 가 만든다) — 그래서 `ref` 의 리그 글자를 넘긴다. 등급 표가
+    #       그 리그를 모르면 **공통 표**로 떨어진다(`sources.table`).
+    said_league = str(getattr(ref, "league", "") or "")
     for key, val in raw_xi.items():
         xi[key] = adapt.xi_of(key, val, source_url=str(val.get("source_url") or ""),
-                              missing=missing.get(key))
+                              missing=missing.get(key), league=said_league)
         if xi[key].conflicts:
             state.note(f"s2 예상 명단 충돌 — {', '.join(xi[key].conflicts)}")
     # 🔴 **소집 명단**(선발+교체 전원) — ①-b 예외와 ② 가 이 표를 쓴다

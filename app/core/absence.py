@@ -252,3 +252,64 @@ def said_of(got: dict) -> str:
     """🔴 카드·보고가 적는 **칸별 한 줄**."""
     return " / ".join(f"{r['rung']} {r['got']}건 — {r['why']}"
                       for r in (got.get("rungs") or []))
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **예상 XI 에서 뺄 수 있나** — 사용자 지시 2026-10-13 밤 다섯째 2번
+# ══════════════════════════════════════════════════════════════════
+#
+#  > fotmob 결장(B) 단독 → 예상 XI 에서 빼지 않는다. "결장 의심(B 단독)" 표시만.
+#  > 빼는 조건: S등급(공식 징계·구단 발표) 하나 또는 B + A/C 원천 교차 확인.
+#
+#  🔴 **등급은 원천이 정한다**(사본 금지):
+#     · `discipline` 연맹 징계 공시 → **S**
+#     · `article`    기사 → 그 도메인 등급(`search.sources.grade_of`)
+#     · `page`       fotmob 경기 페이지 → **B**
+#     · `roster`     명단 대조 → **구조 사실**(아래 주석)
+#  🔴 **이 함수는 명단·표시만 바꾼다** — 확률 경로는 이것을 부르지 않는다(XA3).
+
+#: 🔴 사다리 칸 → 등급. ⚠️ `roster` 는 등급이 아니라 **구조 사실**이다.
+GRADE_OF: dict[str, str] = {"discipline": "S", "page": "B"}
+
+
+def grade_of_row(row, *, league: str = "") -> str:
+    """🔴 결장 한 줄의 **등급 글자**. `article` 만 도메인 표를 본다."""
+    said = str(getattr(row, "source", "") or "page")
+    if said == "article":
+        from app.core.search import sources as _sr
+        got, _w = _sr.grade_of(str(getattr(row, "source_url", "") or ""),
+                               league=str(league or ""))
+        return str(got).upper()
+    return GRADE_OF.get(said, said)
+
+
+def removable(rows, *, league: str = "") -> tuple[bool, str]:
+    """🔴🔴 그 선수를 **예상 XI 에서 뺄 수 있나** — `(뺀다, 사유)`.
+
+    🔴 뺀다 —
+      · **S** 가 하나라도 있다(연맹 징계 공시 · 구단 발표 등급 S 도메인)
+      · **B + A/C 교차**(fotmob 칸 + 다른 등급의 원천)
+      · **명단 대조**(`roster`) — *"오늘 선발+벤치에 그 이름이 없다"* 는 구조
+        사실이다. 명단이 공개된 판에서 그 선수는 **선발이 불가능**하다.
+        ⚠️ 지시가 바꾼 것은 fotmob `unavailable` 칸 하나다(그 칸은 *"의심"*
+        수준의 이름도 싣는다).
+    🔴 못 뺀다 — **B 단독**. 카드는 `결장 의심(B 단독)` 으로만 적는다.
+    """
+    said = list(rows or [])
+    if not said:
+        return False, "⬜ 결장 줄이 없다"
+    grades = [grade_of_row(r, league=league) for r in said]
+    kinds = {str(getattr(r, "source", "") or "page") for r in said}
+    if "roster" in kinds:
+        return True, "명단 대조 — 오늘 출전 명단(선발+벤치)에 없다(구조 사실)"
+    if "S" in grades:
+        return True, f"**S등급** 원천이 있다({sorted(set(grades))})"
+    cross = [g for g in grades if g in ("A", "C")]
+    if "B" in grades and cross:
+        return True, (f"**B + {sorted(set(cross))} 교차 확인** — 두 등급이 "
+                      f"같은 결장을 말한다")
+    if grades == ["B"] * len(grades):
+        return False, ("🔴 **B 단독**(fotmob 경기 페이지 하나) — 예상 XI 에서 "
+                       "빼지 않는다 · `결장 의심(B 단독)` 으로만 적는다")
+    return False, (f"🔴 등급 {sorted(set(grades))} 만이다 — S 하나도 "
+                   f"B+A/C 교차도 아니다")

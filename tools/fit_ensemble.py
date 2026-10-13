@@ -43,6 +43,9 @@ def load() -> tuple[list[dict], str]:
         encoding="utf-8"))
     out: list[dict] = []
     seen: dict[tuple[str, str], int] = {}
+    #: 🔴 **E5 의 재료** — *"이번 시즌 8경기 이하"* 는 **팀**이 치른 경기 수다
+    #   (리그 전체 경기 수가 아니다 — 같은 라운드라도 팀마다 다를 수 있다).
+    seen_team: dict[tuple[str, str], int] = {}
     for one in sorted(box["rows"], key=lambda r: str(r["day"])):
         path = (ROOT / "data/grids" / str(one["league"]).replace(":", "_")
                 / str(one["season"]).replace("/", "-") / f"{one['id']}.npz")
@@ -57,12 +60,21 @@ def load() -> tuple[list[dict], str]:
                            for a in range(arr.shape[1]) if arr[h][a] > 0}
         key = (str(one["league"]), str(one["season"]))
         meta = said["meta"]
+        home, away = str(one.get("home") or ""), str(one.get("away") or "")
+        kh, ka = (str(one["season"]), home), (str(one["season"]), away)
         out.append({"grids": grids, "hit": int(one["hit"]),
                     "hg": int(meta[0]), "ag": int(meta[1]),
                     "league": str(one["league"]),
                     "season": str(one["season"]), "day": str(one["day"]),
-                    "n_before": seen.get(key, 0)})
+                    "floor_fit": str(one.get("floor_fit") or "?"),
+                    # 🔴 두 팀 중 **적게 치른 쪽**으로 센다(둘 다 시즌 초여야
+                    #    "시즌 초"다)
+                    "n_before": min(seen_team.get(kh, 0),
+                                    seen_team.get(ka, 0)),
+                    "n_league": seen.get(key, 0)})
         seen[key] = seen.get(key, 0) + 1
+        seen_team[kh] = seen_team.get(kh, 0) + 1
+        seen_team[ka] = seen_team.get(ka, 0) + 1
     return out, (f"격자를 읽은 경기 **{len(out)}건** · 목록 해시 "
                  f"`{str(box['hash'])[:16]}…`(EN9)")
 
@@ -187,6 +199,10 @@ def main(argv: list[str]) -> int:
         hits += [r["hit"] for r in test]
         cand.setdefault("E0", []).extend(probs(test, {"M1": 1.0}))
         cand.setdefault("E1", []).extend(probs(test, {"M1": 0.5, "M3": 0.5}))
+        # 🔴 **E5** — 경기마다 `n_before` 로 갈린다(시즌 초는 E0, 그 뒤는 E1)
+        for r in test:
+            cand.setdefault("E5", []).extend(
+                probs([r], w_of("E5", n_before=r["n_before"], w2={})))
         w2, _l2 = pick_w(train)
         picks.setdefault("E2", []).append(f"{s} → M1 {w2['M1']:.2f}")
         cand.setdefault("E2", []).extend(probs(test, w2))
@@ -232,7 +248,7 @@ def main(argv: list[str]) -> int:
           " | 맥니마 p | 판정 |")
     print("|---|---|---|---|---|---|---|---|")
     picked: list[dict] = []
-    for name in ("E0", "E1", "E2", "E3", "E4"):
+    for name in NAMES:
         got = score(cand[name], hits)
         cells = " / ".join(f"{got['bands'][f]:.2%}" for f in (0.30, 0.20, 0.10))
         if name == "E0":
@@ -259,16 +275,47 @@ def main(argv: list[str]) -> int:
               + ("✅ **채택**" if ok else "🔴 탈락") + f" {said} |")
     print()
     # ── 🔴 8-5 추가 지표 — 방향 뒤집힘 · 하위 그룹 · 보호 줄
-    flip = [i for i, (p1, p2) in enumerate(zip(cand["E0"], cand["E2"],
-                                               strict=True))
-            if max(range(3), key=lambda k: p1[k])
-            != max(range(3), key=lambda k: p2[k])]
-    print(f"- **방향 뒤집힘**(E0 vs E2) — **{len(flip)}경기**"
-          + (f" · 그 경기에서 E0 {sum(1 for i in flip if me.direction_hit(cand['E0'][i], hits[i]))}"
-             f" / E2 {sum(1 for i in flip if me.direction_hit(cand['E2'][i], hits[i]))} 적중"
-             if flip else ""))
-    early = [i for i, r in enumerate(order) if r["n_before"] <= 6 * 9]
-    del early
+    for other in ("E1", "E5", "E2"):
+        flip = [i for i, (p1, p2) in enumerate(zip(cand["E0"], cand[other],
+                                                   strict=True))
+                if max(range(3), key=lambda k: p1[k])
+                != max(range(3), key=lambda k: p2[k])]
+        if not flip:
+            print(f"- **방향 뒤집힘**(E0 vs {other}) — **0경기**")
+            continue
+        n0 = sum(1 for i in flip
+                 if me.direction_hit(cand["E0"][i], hits[i]))
+        n1 = sum(1 for i in flip
+                 if me.direction_hit(cand[other][i], hits[i]))
+        # 🔴 뒤집힌 경기만의 **맥니마**(둘 중 하나만 맞은 경기로 센다)
+        pv_f = jm.binom_two_sided(n1, n0)
+        print(f"- **방향 뒤집힘**(E0 vs {other}) — **{len(flip)}경기** · "
+              f"E0 **{n0}** / {other} **{n1}** 적중 · 맥니마 p **{pv_f:.4f}**")
+    print()
+    # 🔴🔴 **시즌 초 / 이후 따로**(지시 2026-10-13 밤 다섯째 1번)
+    print("| 구간 | 경기 | "
+          + " | ".join(f"{n} 손실/방향" for n in NAMES) + " |")
+    print("|---|---|" + "---|" * len(NAMES))
+    for label, idx in (
+            (f"시즌 초(팀 ≤{EARLY_GAMES}경기)",
+             [i for i, r in enumerate(order) if r["n_before"] <= EARLY_GAMES]),
+            (f"그 뒤(팀 >{EARLY_GAMES}경기)",
+             [i for i, r in enumerate(order) if r["n_before"] > EARLY_GAMES])):
+        if not idx:
+            print(f"| {label} | 0 | " + " — |" * len(NAMES))
+            continue
+        cells = []
+        for name in NAMES:
+            got = score([cand[name][i] for i in idx], [hits[i] for i in idx])
+            cells.append(f"{got['ll']:.4f} / {got['dir']:.2%}")
+        print(f"| {label} | {len(idx)} | " + " | ".join(cells) + " |")
+    print()
+    # 🔴 **EN10 확인** — 바닥 계수의 출처를 센다(운영 판이 **0건**이어야 한다)
+    box_fit: dict[str, int] = {}
+    for r in order:
+        box_fit[r["floor_fit"]] = box_fit.get(r["floor_fit"], 0) + 1
+    print("- **바닥 계수 출처**(EN10) — "
+          + " · ".join(f"{k} {v}건" for k, v in sorted(box_fit.items())))
     print()
     print("## 🔴 하위 그룹")
     print()
@@ -276,7 +323,7 @@ def main(argv: list[str]) -> int:
     print("|---|---|---|---|---|---|")
     groups = {
         "시즌 초 6라운드 이내": [i for i, r in enumerate(order)
-                                if r["n_before"] <= 6 * 9],
+                                if r["n_league"] <= 6 * 9],
         "강팀 승 50~65%": [i for i, p in enumerate(cand["E0"])
                            if 0.50 <= max(p[0], p[2]) <= 0.65],
     }
