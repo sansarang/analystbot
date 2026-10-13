@@ -272,7 +272,28 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #     **선발이면서** 결장·교체·무기 꺼짐에 동시에 들어갔고, 카드는 그 상태로
     #     확률 51% 를 **냈다**. 🔴 서로 모순인 입력으로 만든 수는 내지 않는다.
     from app.core import lineupgate as _gate
-    said_gate = _gate_of(ref, facts, turn, state=st)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **XI 가 **아예 없으면** 검문을 건너뛴다**(P0 · 수정 지시 2026-10-13 밤)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 사전 실행: T−24h **기본 카드(XI 없이)** → T−3h 갱신 → 확정 XI 뜨면 ⑲.
+    #
+    #  ⚠️ 실측 2026-10-13(페르시브–비엣텔 · T−23h): 경기 페이지에 라인업이
+    #     **아직 없어서** 검문이 *"누구인지도 못 짚었다"* 로 걸렸고 **확률이
+    #     통째로 안 나왔다**. 그러면 T−24h 기본 카드가 **불가능**하다.
+    #  🔴 검문이 막으려는 것은 *"서로 모순인 XI 입력으로 만든 수"* 다 — XI 가
+    #     **없는 것은 모순이 아니다**. 그때는 팀 수준 입력으로 바닥을 만들고,
+    #     등급 상한은 이미 `xi_state_cap`(라인업 상태)이 내린다.
+    said_xi_rows = sum(
+        len(list(getattr((facts.xi or {}).get(str(getattr(ref, s, ""))),
+                         "lineup", None) or []))
+        for s in ("home", "away"))
+    said_gate = (_gate.Gate(ok=True, names=[], why="")
+                 if said_xi_rows == 0
+                 else _gate_of(ref, facts, turn, state=st))
+    if said_xi_rows == 0:
+        st.note("③ 라인업 신원 검문 **건너뜀** — 어느 쪽도 XI 가 없다(T−24h 기본 "
+                "카드) · 모순이 아니라 **없는 것**이다 → 팀 수준 입력으로 간다")
     if not said_gate.ok:
         st.note(f"🔴🔴 **라인업 신원 미확정** — {said_gate.why}")
         return _gate_card(ref, facts, variables, said_gate, state=st,
