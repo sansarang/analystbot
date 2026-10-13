@@ -42,7 +42,8 @@ _MAP: dict[str, tuple[str, str]] = {
 def run(ref: MatchRef, facts: Facts, variables: list[Variable],
         *, state: RunState, board: Board | None = None,
         board_source: str = "", dist: dict | None = None,
-        now: Any = None, top: float | None = None) -> Judgement:
+        now: Any = None, top: float | None = None,
+        fold_why: str = "") -> Judgement:
     """🔴 마켓마다 대입하고 등급을 매긴다. ⚠️ 등급이 없어도 **카드는 나온다**.
 
     ══════════════════════════════════════════════════════════════════
@@ -115,7 +116,8 @@ def run(ref: MatchRef, facts: Facts, variables: list[Variable],
                      conclusion=_conclusion(evals, started=started,
                                             enough=enough, thin_why=thin_why,
                                             source=src, top=top,
-                                            kind=_kind_for(ref, facts)),
+                                            kind=_kind_for(ref, facts),
+                                            fold_why=fold_why),
                      triggers=_triggers(variables, ref),
                      started=started, started_why=started_why, notes=notes)
 
@@ -403,7 +405,7 @@ def _kind_for(ref, facts) -> str:
 
 def _conclusion(evals: list[MarketEval], *, started: bool, enough: bool,
                 thin_why: str, source: str = "", top: float | None = None,
-                kind: str = "") -> str:
+                kind: str = "", fold_why: str = "") -> str:
     """🔴 결론 — **죽는 시나리오를 함께** 적는다(`✗` 와 `△` 둘 다 · §2-1).
 
     🔴🔴 **보드가 없으면 규칙 (가)로 판정한다**(사용자 결정 2026-10-13 ·
@@ -414,7 +416,7 @@ def _conclusion(evals: list[MarketEval], *, started: bool, enough: bool,
     if source == "none":
         from app.core import conclude as _cc
         best = max(evals, key=lambda e: e.survival, default=None)
-        said = (_cc.line(top, kind=kind)
+        said = (_cc.line(top, kind=kind, fold_why=fold_why)
                 + (f" · 참고로 가장 두꺼운 줄 {best.line.market} "
                    f"{best.line.side} {best.survival:.3f}" if best else ""))
         # 🔴🔴 **이미 시작한 경기는 등급이 없다**(그 규칙이 (가)보다 위다) —

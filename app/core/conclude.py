@@ -42,8 +42,13 @@ def cap_of(kind: str) -> tuple[str, str]:
                       f"→ 등급 상한 **조건부**(§5-6)")
 
 
-def of(top: float | None, *, kind: str) -> tuple[str, str]:
-    """🔴🔴 규칙 (가) — `(간다|조건부|접는다, 사유)`. 확률이 없으면 `("", 사유)`."""
+def of(top: float | None, *, kind: str,
+       fold_why: str = "") -> tuple[str, str]:
+    """🔴🔴 규칙 (가) — `(간다|조건부|접는다, 사유)`. 확률이 없으면 `("", 사유)`.
+
+    🔴 `fold_why` 가 오면 **상한이 접는다**다(P5 시장 괴리 + ⬜ 입력) — 규칙 (가)가
+       `간다`·`조건부`를 내도 **접는다**로 내린다. 그 사유를 함께 적는다.
+    """
     from app.core import bands
     if top is None:
         return "", "⬜ **결론 없음** — 확률이 없다(구간을 못 잰다)"
@@ -53,6 +58,9 @@ def of(top: float | None, *, kind: str) -> tuple[str, str]:
         return "접는다", (f"🔴 **접는다** — 최고 확률 {float(top):.1%} 가 "
                           f"**확신 구간 밖**이다(상위 30% 문턱 "
                           f"{bands.CUTS[-1][1]:.1%}) · {why_cap}")
+    if fold_why:
+        return "접는다", (f"🔻 **접는다**(상한) — 확신 구간 **{said_band}**"
+                          f"(최고 {float(top):.1%})인데 {fold_why} · {why_cap}")
     if cap:
         return "조건부", (f"**조건부** — 확신 구간 **{said_band}**"
                           f"(최고 {float(top):.1%}) · {why_cap}")
@@ -60,9 +68,9 @@ def of(top: float | None, *, kind: str) -> tuple[str, str]:
                     f"(최고 {float(top):.1%}) · {why_cap}")
 
 
-def line(top: float | None, *, kind: str) -> str:
+def line(top: float | None, *, kind: str, fold_why: str = "") -> str:
     """🔴 카드 결론 줄 한 줄(규칙 (가)를 글자로)."""
-    pick, why = of(top, kind=kind)
+    pick, why = of(top, kind=kind, fold_why=fold_why)
     head = {"간다": "✅", "조건부": "🟡", "접는다": "🔻"}.get(pick, "⬜")
     # ⚠️ 글자에 **그 두 낱말을 적지 않는다** — 계약 CL7 이 이 모듈에서 그 글자
     #    **0건**을 센다(규칙이 시장을 읽지 않는다는 뜻이고, 설명이 그 낱말을

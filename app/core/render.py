@@ -1853,11 +1853,45 @@ def prob_summary(card: Card) -> str:
         out.append(f"- **역배** — ⬜ 격자가 없다 — {why}")
     # ── ⑤ 무 구간 실측(표시 전용 · 확률 불변)
     out.append(f"- **무 신뢰** — {_db.said_of(mk.get('draw') if mk else None)}")
+    # ── ⑥ **보드(사용자 캡처 · 표시만)** — 마진 제거 확률 나란히 · 괴리
+    said_board = _board_line(card, mk)
+    if said_board:
+        out.append(said_board)
     if not mk:
         out.append(f"🔴 **칸이 비었다** — {why}")
     said = "\n".join(out)
     check(said)
     return said
+
+
+def _board_line(card: Card, mk: dict) -> str:
+    """🔴🔴 **보드 줄**(P5 · 표시만) — 마진 제거 확률과 괴리. 없으면 빈 글자.
+
+    🔴 수는 `core/divergence` 하나가 만든다(사본 금지) · 등급·결론은 **우리
+       확률만** 쓴다(시장은 상한 하나만 건다 · 그 상한은 ⑯·⑱ 밖이다).
+    """
+    from app.core import divergence as _dv
+    said = dict(getattr(card, "user_market", None) and
+                getattr(card.user_market, "quotes", None) and {} or {})
+    del said
+    prices: list[float] = []
+    try:
+        box = {str(k): float(v) for k, v in
+               dict(card.user_market.probs or {}).items()}
+    except AttributeError:
+        return ""
+    if not box or not mk:
+        return ""
+    from app.core.odds import key_of
+    for market, side in (("win", "home"), ("win", "draw"), ("win", "away")):
+        got = box.get(key_of(market, side))
+        prices.append((1.0 / float(got)) if got else 0.0)
+    if min(prices) <= 0:
+        return ""
+    said_line, _fold = _dv.said_of(
+        [float(mk["home"]), float(mk["draw"]), float(mk["away"])],
+        prices, gaps=[])
+    return f"- **보드(사용자 캡처 · 표시만)** — {said_line}"
 
 
 def check(said: str) -> None:

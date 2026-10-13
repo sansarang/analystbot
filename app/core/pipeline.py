@@ -529,8 +529,21 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     layers["break_rerun"] = break_rerun
     layers["varset"] = varset
     # 🔴 F5 — **생존은 시뮬 분포에서** 센다(시나리오는 표시용이다)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **P5 시장 괴리**(예측 지시 2026-10-13 23:10 KST) — **표시 + 상한**
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 차이 ≥10%p 줄은 🔴 시장 괴리 + 그 경기에서 **⬜ 인 입력 목록** ·
+    #  > ⬜ 걸린 괴리 줄은 **결론 상한 "접는다"**.
+    #
+    #  🔴 시장 확률은 **등급 계산에 안 들어간다**(네 층 §7) — 들어가는 것은
+    #     *"접는다 상한"* 하나이고 그것은 **우리가 모르는 정보**를 경계하는 장치다.
+    said_div, said_fold = _divergence_of(ref, facts, prob, got_board, layers)
+    if said_div:
+        st.note(f"P5 시장 괴리 — {said_div[:160]}")
     said = s7_judge.run(ref, facts, variables, state=st, board=got_board,
                         board_source=board_src, now=now,
+                        fold_why=said_fold,
                         # 🔴🔴 **보드 없음 결론 규칙 (가)의 재료**(사용자 결정
                         #    2026-10-13) — 우리 확률의 **최고값**이다. ⚠️ 판정
                         #    쪽에서 격자를 다시 세지 않는다(계약 M1-3).
@@ -1171,6 +1184,43 @@ def _layers(ref: MatchRef, facts: Facts, variables: list[Variable],
             "user_market": user_mk, "ours": ours, "compare": verdict,
             "compare_lines": [*lines, (f"시장 열 — {label}" if label else "")],
             "tilt": tilt, "market_why": reasons}
+
+
+def _divergence_of(ref, facts, prob, board, layers) -> tuple[str, str]:
+    """🔴🔴 **P5** — 보드가 있으면 괴리 줄과 **상한 사유**를 만든다.
+
+    🔴 ⬜ 입력 목록은 **카드가 이미 아는 사유**에서 읽는다(사본 금지):
+       기준(Elo)·리그 오프셋·대회 이력·축1~3·XI 판.
+    """
+    from app.core import divergence as _dv
+    if prob is None or not prob.ok() or board is None:
+        return "", ""
+    prices: list[float] = []
+    for market, side in (("win", "home"), ("draw", ""), ("win", "away")):
+        got = [float(x.price) for x in (board.lines or [])
+               if str(x.market) == market and str(x.side or "") == side
+               and x.price]
+        prices.append(got[0] if got else 0.0)
+    if min(prices) <= 0:
+        return "", ""
+    # 🔴 ⬜ 인 입력들 — 그 경기에서 **못 센 칸**만 이름으로 모은다
+    box = dict(getattr(facts, "standings", None) or {})
+    gaps: list[str] = []
+    said_base = dict(layers or {}).get("base")
+    if said_base is None or getattr(said_base, "probs", None) is None:
+        gaps.append("Elo 기준")
+    if "⬜" in str(box.get("league_gap") or "") or not box.get("league_gap"):
+        gaps.append("리그 오프셋")
+    said_hist = str(box.get("comp_history") or "")
+    if "⬜" in said_hist or "🟡" in said_hist or not said_hist:
+        gaps.append("대회 이력")
+    said_edge = dict(getattr(prob, "share", None) or {})
+    if any(abs(float(said_edge.get(k) or 0.0)) < 1e-9
+           for k in ("axis1", "axis2", "axis3")):
+        gaps.append("축1~3 일부")
+    if not (facts.xi or {}):
+        gaps.append("XI 판")
+    return _dv.said_of([prob.home, prob.draw, prob.away], prices, gaps=gaps)
 
 
 def _direction(said: Judgement, layers: dict, ref: MatchRef) -> Judgement:
