@@ -105,8 +105,11 @@ def main(argv: list[str]) -> int:
             print(f"| {league} | 🔴 재료 없음 | — | — | — | — | — |")
             continue
         seasons = sorted({r["season"] for r in rows})
-        lam, lam_why = pm.pick_lam(rows, as_of=as_of,
-                                   lams=(1.0, 10.0, 50.0, 200.0))
+        # 🔴 격자는 **끝에서 멈추면 안 된다** — 실측(첫 돌림): 두 리그 다 λ 200
+        #    (격자의 끝)을 골랐다 = 교차가 **더 센 벌**을 원한다는 뜻이다.
+        lam, lam_why = pm.pick_lam(
+            rows, as_of=as_of,
+            lams=(50.0, 200.0, 800.0, 3200.0, 12800.0))
         table = pm.fit(rows, as_of=as_of, lam=lam)
         # 🔴 안정성 — 각 시즌을 **반으로** 갈라 두 추정의 상관
         half = len(rows) // 2

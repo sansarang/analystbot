@@ -71,8 +71,9 @@ def load() -> tuple[list[dict], str]:
             gone["골 분이 없다"] += 1
             continue
         one = dict(box.get(k) or {})
-        fine = any(tuple(v) != (0, 90)
-                   for v in dict(one.get("home") or {}).values())
+        # 🔴 통로는 §1 백필이 경기마다 적어 둔다(정확한 시각 · 뛴 분 · 거친 판)
+        src = str(one.get("src") or "")
+        fine = (src == "정확한 시각")
         out.append({
             "utc": r["utc"], "league": str(r["league"]),
             "season": seasons.get(k, ""), "month": month_of(r["utc"]),
@@ -87,7 +88,7 @@ def load() -> tuple[list[dict], str]:
             "home_box": dict(one.get("home") or {}),
             "away_box": dict(one.get("away") or {}),
             "goals": goals, "pos": dict(said.get("pos") or {}),
-            "fine": bool(fine)})
+            "fine": bool(fine), "src": src})
     why = (f"이은 경기 **{len(out)}건** · 버린 것 — "
            + " · ".join(f"{k} {v}건" for k, v in gone.items()))
     return out, why
@@ -146,6 +147,13 @@ def signals_of(rows: list[dict], tables: dict) -> int:
         raw, _why = lf.raw_of(home=side["home"], away=side["away"],
                               value=table.value)
         r["raw"] = raw
+        r["usual"] = {s: list(side[s]["usual"]) for s in ("home", "away")}
+        # 🔴 §7 — **평소 XI 로 뒀을 때**의 신호(확정 XI 와 나란히 볼 짝)
+        said_u = {s: {**side[s], "xi": (side[s]["usual"] or side[s]["xi"])}
+                  for s in ("home", "away")}
+        raw_u, _w2 = lf.raw_of(home=said_u["home"], away=said_u["away"],
+                               value=table.value)
+        r["raw_usual"] = raw_u
         got += 1
     return got
 
@@ -239,7 +247,10 @@ def main(argv: list[str]) -> int:
         return 1
     rows.sort(key=lambda r: r["utc"])
     at = datetime.now(timezone.utc)
-    lam0, lam_why = pm.pick_lam(rows, as_of=at, lams=(10.0, 50.0, 200.0))
+    # 🔴 격자는 §2 실측에서 온다 — 시즌 교차가 **센 벌**을 골랐다(J1 3200 ·
+    #    K1 12800 이고 그 뒤로 평평하다 = 선수 ± 가 거의 **아무 말도 안 한다**).
+    lam0, lam_why = pm.pick_lam(rows, as_of=at,
+                                lams=(800.0, 3200.0, 12800.0))
     print(f"🔴 선수 ± 벌 — {lam_why}")
     tables = tables_of(rows, lam=lam0)
     n_sig = signals_of(rows, tables)
@@ -303,30 +314,168 @@ def main(argv: list[str]) -> int:
               + (f"{sorted(got_plate.get('adopted') or [])} · {why_plate}"
                  if got_plate else why_plate))
     print()
+    def score(probs: list[list[float]], hits: list[int]) -> dict:
+        """🔴 한 판의 지표 — 줄마다 세고 **구간 적중**은 `metrics.bands` 하나다."""
+        lls = [me.logloss(pi, hi) for pi, hi in zip(probs, hits, strict=True)]
+        dirs = [bool(me.direction_hit(pi, hi))
+                for pi, hi in zip(probs, hits, strict=True)]
+        said = me.bands([{"p": pi, "hit": hi}
+                         for pi, hi in zip(probs, hits, strict=True)],
+                        keys=("p",))
+        return {"ll": sum(lls) / len(lls), "lls": lls,
+                "dir": sum(dirs) / len(dirs), "dirs": dirs,
+                "bands": {f: said[f]["p"]["rate"] for f in said}}
+
+    def verdict(cand: dict, base0: dict) -> tuple[str, str, str, bool]:
+        """🔴 판정 — 규칙은 **실행 전에 커밋한** `rule="lineup"` 하나다."""
+        diff = me.paired(cand["lls"], base0["lls"])
+        b = sum(1 for x, y in zip(cand["dirs"], base0["dirs"], strict=True)
+                if x and not y)
+        c = sum(1 for x, y in zip(cand["dirs"], base0["dirs"], strict=True)
+                if y and not x)
+        pv = jm.binom_two_sided(b, c)
+        ok, _box, why = jm.passes(diff=diff, dir_rate=cand["dir"],
+                                  base_dir=base0["dir"], p_value=pv,
+                                  bands=cand["bands"],
+                                  base_bands=base0["bands"], rule="lineup")
+        # 🔴 **통과는 불리언이 말한다** — 사유 글자에 ✅ 가 있는지로 세면 조건
+        #    하나만 통과한 판도 "채택"으로 둔다(실사고 2026-10-13: 그렇게 세어
+        #    탈락한 판 다섯이 통과 목록에 들어갔다).
+        return (f"{diff['mean']:+.4f} ({diff['lo']:+.4f}~{diff['hi']:+.4f})",
+                f"{pv:.4f}", ("✅ **채택 후보**" if ok else "🔴 탈락") + f" {why}",
+                bool(ok))
+
+    base_s = score(base["probs"], base["hits"])
     print("| 판 | 경기 | 로그 손실 | 방향 적중 | 상위 30% | 20% | 10% | "
           "짝지은 차이(95%) | 맥니마 p | 판정 |")
     print("|---|---|---|---|---|---|---|---|---|---|")
+    picks: list[dict] = []
     for name, _keys in PLATES:
         one = out.get(name) or {}
         if "probs" not in one:
             print(f"| {name} | — | — | — | — | — | — | — | — | "
                   f"{one.get('why', '🔴')} |")
             continue
-        p, h = one["probs"], one["hits"]
-        ll = me.logloss_mean(p, h) if hasattr(me, "logloss_mean") else None
-        if ll is None:
-            ll = sum(me.logloss(pi, hi) for pi, hi in zip(p, h, strict=True)) \
-                / len(h)
-        dirn = me.direction_hit(p, h)
-        tops = [me.bands(p, h, top=q) if hasattr(me, "bands") else None
-                for q in (0.30, 0.20, 0.10)]
-        said = jm.passes(base=(base["probs"], base["hits"]),
-                         cand=(p, h), rule="v2") if name != "B" else None
-        print(f"| {name} | {len(h)} | {ll:.4f} | {dirn:.1%} | "
-              + " | ".join(("—" if t is None else f"{t:.1%}") for t in tops)
-              + " | " + (said["diff"] if said else "—")
-              + " | " + (said["mcnemar"] if said else "—")
-              + " | " + (said["verdict"] if said else "**기준**") + " |")
+        got = score(one["probs"], one["hits"])
+        cells = " | ".join(f"{got['bands'][f]:.1%}" for f in (0.30, 0.20, 0.10))
+        if name == "B":
+            print(f"| {name} | {len(one['hits'])} | {got['ll']:.4f} | "
+                  f"{got['dir']:.1%} | {cells} | — | — | **기준** |")
+            continue
+        d, pv, said, ok = verdict(got, base_s)
+        picks.append({"name": name, "ll": got["ll"], "ok": ok,
+                      "keys": _keys})
+        print(f"| {name} | {len(one['hits'])} | {got['ll']:.4f} | "
+              f"{got['dir']:.1%} | {cells} | {d} | {pv} | {said} |")
+    print()
+    # 🔴🔴 **교체 시각 확보 경기 / 거친 판을 따로** 본다(§6 요구)
+    print("## 🔴 하위 표본 — **교체 시각 확보**(J리그 정확한 시각) vs 그 밖(뛴 분)")
+    print()
+    print("| 판 | 시각 확보 경기 | 로그 손실 | 방향 | 그 밖 경기 | 로그 손실 | 방향 |")
+    print("|---|---|---|---|---|---|---|")
+    for name, _keys in PLATES:
+        one = out.get(name) or {}
+        if "probs" not in one:
+            continue
+        cells = []
+        for want in (True, False):
+            pr = [p for p, f in zip(one["probs"], one["fine"], strict=True)
+                  if f is want]
+            hh = [h for h, f in zip(one["hits"], one["fine"], strict=True)
+                  if f is want]
+            if not pr:
+                cells += ["0", "—", "—"]
+                continue
+            g2 = score(pr, hh)
+            cells += [str(len(hh)), f"{g2['ll']:.4f}", f"{g2['dir']:.1%}"]
+        print(f"| {name} | " + " | ".join(cells) + " |")
+    print()
+    # ══════════════════════════════════════════════════════════════
+    # 🔴🔴 **§7 — 라인업이 실제로 움직이는 폭**(평소 XI → 확정 XI)
+    # ══════════════════════════════════════════════════════════════
+    print("## 🔴🔴 §7 평소 XI → 확정 XI 확률 차 분포")
+    print()
+    print("🔴 *예상 XI* 자리에 **평소 XI**(그 경기 **앞** 경기의 출전 분 가중 상위"
+          " 11명)를 둔다 — 과거의 *그때 예상 XI* 는 어디에도 저장돼 있지 않다(#4).")
+    print()
+    print("| 판 | 쌍 | 평균 |Δ| | σ | 상위 10% | ≥3%p 경기 | 그 경기 방향(B / 판) |")
+    print("|---|---|---|---|---|---|---|")
+    import statistics as stt
+
+    from app.core import probfloor as pf0
+    for name, keys in PLATES:
+        one = out.get(name) or {}
+        if "probs" not in one or not keys:
+            continue
+        deltas: list[float] = []
+        wide: list[tuple[list[float], list[float], int]] = []
+        for s in seasons:
+            train = [r for r in live if r["season"] != s]
+            test = [r for r in live if r["season"] == s]
+            if len(train) < 100 or not test:
+                continue
+            ortho = fit_ortho(train, keys)
+            if len(ortho) < len([k for k in keys if k != "L5"]):
+                continue
+            best = None
+            for ridge in GS:
+                g = fit_g(train, keys, ridge=ridge, ortho=ortho)
+                val = _nll(g, train, keys, 0.0, ortho) / max(1, len(train))
+                if best is None or val < best[0]:
+                    best = (val, g, ridge)
+            g = best[1]
+            for r in test:
+                if not r.get("raw") or not r.get("raw_usual"):
+                    continue
+                pair = []
+                for which in ("raw", "raw_usual"):
+                    said, _w = lf.ortho(
+                        {k: r[which][k] for k in keys if k in r[which]},
+                        axis0=r["axis0"], plate={"ortho": ortho})
+                    move = sum(float(g.get(k) or 0.0) * float(v)
+                               for k, v in said.items() if k != "L5")
+                    lh = float(r["lam"][0]) * math.exp(move)
+                    la = float(r["lam"][1]) * math.exp(-move)
+                    mk = pf0.markets_of(pf0.score_grid(lam_home=lh,
+                                                       lam_away=la, rho=0.0))
+                    pair.append([mk["home"], mk["draw"], mk["away"]])
+                d = abs(pair[0][0] - pair[1][0])
+                deltas.append(d)
+                if d >= 0.03:
+                    base_p = pf0.markets_of(pf0.score_grid(
+                        lam_home=float(r["lam"][0]),
+                        lam_away=float(r["lam"][1]), rho=0.0))
+                    wide.append(([base_p["home"], base_p["draw"],
+                                  base_p["away"]], pair[0], int(r["hit"])))
+        if not deltas:
+            print(f"| {name} | 0 | — | — | — | — | — |")
+            continue
+        top = sorted(deltas)[int(len(deltas) * 0.9):]
+        said_w = "—"
+        if wide:
+            b_hit = sum(1 for bp, _cp, h in wide
+                        if me.direction_hit(bp, h)) / len(wide)
+            c_hit = sum(1 for _bp, cp, h in wide
+                        if me.direction_hit(cp, h)) / len(wide)
+            said_w = f"{b_hit:.1%} / {c_hit:.1%}"
+        print(f"| {name} | {len(deltas)} | **{stt.fmean(deltas) * 100:.2f}%p** "
+              f"| {stt.pstdev(deltas) * 100:.2f}%p | "
+              f"{(stt.fmean(top) if top else 0.0) * 100:.2f}%p | "
+              f"{len(wide)}건 | {said_w} |")
+    print()
+    print("⚠️ **전(B)** 은 보정이 0 이므로 이 표에서 Δ 가 **구조적으로 0** 이다 —"
+          " 지금 운영에서 평소→확정 XI 가 만드는 폭은 진단에서 잰 **0.2~0.7%p**"
+          "(M1 축0 안에서만 움직인 값)이다. 위 표의 Δ 는 **보정이 더하는 폭**이다.")
+    print()
+    said_ok = [x for x in picks if x["ok"]]
+    if said_ok:
+        best = min(said_ok, key=lambda x: (x["ll"], len(x["keys"])))
+        print(f"🔴🔴 **판정 — 채택: {best['name']}**(통과한 판 "
+              f"{[x['name'] for x in said_ok]} 중 로그 손실 최저 · 겹치면 "
+              f"단순한 쪽)")
+    else:
+        print("🔴🔴 **판정 — B 유지**(라인업 보정 판 가운데 (a)(b)(c) 를 **셋 다** "
+              "통과한 것이 없다)")
     print()
     for name, _keys in PLATES:
         one = out.get(name) or {}

@@ -175,6 +175,7 @@ async def main(argv: list[str]) -> int:
                 print(f"   … {league} {i}/{len(said)}", flush=True)
             key = f"{r['utc']}|{r['home']}|{r['away']}"
             box: dict[str, dict] = {}
+            src = ""
             # ① J리그 **정확한 시각**
             if flat and window[0] <= jst_day(r) <= window[1]:
                 box, why = await one_match(net, flat=flat, row=r, names=names)
@@ -184,6 +185,7 @@ async def main(argv: list[str]) -> int:
                     fails.append(max(0.0, 1.0 - int(stat.get("이음") or 0)
                                      / max(1, span)))
                     kind["정확한 시각"] += 1
+                    src = "정확한 시각"
             # ② fotmob **뛴 분**
             if not box:
                 pstat = dict((ev.get(key) or {}).get("pstat") or {})
@@ -200,6 +202,7 @@ async def main(argv: list[str]) -> int:
                     if ok:
                         box = got
                         kind["뛴 분"] += 1
+                        src = "뛴 분"
             # ③ **거친 판**(선발 90분 · 안 뛴 벤치는 칸이 없다 · MN2)
             if not box:
                 box = {side: mn.intervals(
@@ -207,8 +210,12 @@ async def main(argv: list[str]) -> int:
                     bench=[str(x) for x in r[f"{side}_bench"]])[0]
                     for side in ("home", "away")}
                 kind["거친 판"] += 1
-            dump[key] = {side: {k: list(v) for k, v in box[side].items()}
-                         for side in ("home", "away")}
+                src = "거친 판"
+            # 🔴 **어느 통로였는지 경기마다 적는다**(#3 · 하위 표본을 가르려면
+            #    "분이 있다"가 아니라 **어떤 분인지**를 알아야 한다)
+            dump[key] = {"src": src,
+                         **{side: {k: list(v) for k, v in box[side].items()}
+                            for side in ("home", "away")}}
         n = max(1, len(said))
         fail = (sum(fails) / len(fails)) if fails else None
         lines.append(
