@@ -91,3 +91,16 @@ def test_cl8_cap_opens_when_the_backfill_lands() -> None:
     from app.core import conclude
     said = inspect.getsource(conclude.cap_of)
     assert "base_model" in said and "상한 없음" in said
+
+
+def test_cl9_started_match_has_no_grade() -> None:
+    """🔴🔴 **CL9** — 이미 시작한 경기는 **등급 없음**이 (가)보다 위다.
+
+    🔴 그래도 (가)가 낸 글자를 **함께** 적는다(*"킥오프 전 기준이면"*) — 사후
+       설명을 예측으로 읽히지 않게 머리에 그 사실을 박는다.
+    """
+    from app.core.stages.s7_judge import _conclusion
+    got = _conclusion([], started=True, enough=True, thin_why="",
+                      source="none", top=0.60, kind="league:KL1")
+    assert "이미 시작한 경기" in got and "킥오프 전 기준이면" in got, got
+    assert "간다" in got, got

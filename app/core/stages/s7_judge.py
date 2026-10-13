@@ -414,9 +414,18 @@ def _conclusion(evals: list[MarketEval], *, started: bool, enough: bool,
     if source == "none":
         from app.core import conclude as _cc
         best = max(evals, key=lambda e: e.survival, default=None)
-        return (_cc.line(top, kind=kind)
+        said = (_cc.line(top, kind=kind)
                 + (f" · 참고로 가장 두꺼운 줄 {best.line.market} "
                    f"{best.line.side} {best.survival:.3f}" if best else ""))
+        # 🔴🔴 **이미 시작한 경기는 등급이 없다**(그 규칙이 (가)보다 위다) —
+        #    ⚠️ 그래도 (가)가 낸 글자를 **함께** 적는다: 그것이 *"킥오프 전
+        #    기준이면 무엇이었나"* 를 말하고, 사후 설명을 예측으로 **읽히지
+        #    않게** 머리에 그 사실을 박는다(#3·#4).
+        if started:
+            return ("🔴 **이미 시작한 경기다 — 등급 없음.** 분석은 그대로 낸다"
+                    "(예측이 아니라 사후 설명이 되기 때문이다) · ⏪ **킥오프 전 "
+                    "기준이면** — " + said)
+        return said
     if started:
         return ("🔴 **이미 시작한 경기다 — 등급 없음.** 분석은 그대로 낸다"
                 "(예측이 아니라 사후 설명이 되기 때문이다)")

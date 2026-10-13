@@ -324,9 +324,34 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
     #  🔴 목록은 **폼·축1 과 같은 것**이다(`_history` + `games_of`) — 사본 금지.
     #  ⚠️ 확률에는 아직 **안 들어간다**(§9 전진 선택이 채택해야 들어간다 · S1).
     said_ctx = await _context_of(net, ref, state=state)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **두 팀 총골 기준을 표본으로 수축한다**(수정 지시 2026-10-13 4번)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실사고: 상하이–대전 λ 가 2.818/2.170(총골 **4.99**)이었다 — 대회 실측
+    #     2.8213 의 1.77배다. 까닭은 λ 바닥이 **ACL 리그 단계 2경기**로 센 두 팀
+    #     총골 **5.5** 였다는 것이다(대회 기준은 한 번도 안 쓰였다).
+    #  🔴 운영 확률은 **얼린 M1**(K0)이 내고 그것도 같은 칸을 읽으므로 **칸을
+    #     고친다** — 수축한 수를 싣고 원값·표본·사유를 옆 칸에 남긴다(#3).
+    said_std = dict(getattr(got_facts, "standings", None) or {})
+    if said_std.get("match_total_baseline") is not None:
+        from app import rules as _r3
+        from app.core import goalbase as _gb
+        said_comp = dict(_r3.goal_baseline(said_lg) or {}).get(
+            "goals_per_match")
+        got_base, why_base = _gb.shrink(
+            said_std.get("match_total_baseline"),
+            played=said_std.get("match_total_played"),
+            comp_total=(float(said_comp) if said_comp is not None else None))
+        if got_base is not None:
+            said_std["match_total_raw"] = said_std["match_total_baseline"]
+            said_std["match_total_baseline"] = round(float(got_base), 3)
+            said_std["match_total_why"] = why_base
+            state.note(f"s2 §3 총골 기준(`{said_lg}`) — {why_base}")
+            logger.info("[s2] §3 총골 기준 — %s", why_base)
     return got_facts.model_copy(update={
         "state_rates": state_tab, "state_rates_why": state_why,
-        "context": said_ctx})
+        "standings": said_std, "context": said_ctx})
 
 
 async def _context_of(net, ref, *, state) -> dict:

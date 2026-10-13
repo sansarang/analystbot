@@ -42,50 +42,61 @@ class _Ref:
 
 
 def test_bs1_played_is_carried() -> None:
-    """🔴 **BS1** — s2 가 표본 칸을 싣는다."""
+    """🔴 **BS1** — s2 가 표본 칸과 **수축 결과**를 싣는다."""
     said = __import__("pathlib").Path(
         "app/core/stages/s2_facts.py").read_text(encoding="utf-8")
     assert 'std["match_total_played"]' in said
+    for key in ("match_total_raw", "match_total_why", "goalbase"):
+        assert key in said, key
 
 
 def test_bs2_small_sample_shrinks() -> None:
-    """🔴🔴 **BS2** — 표본 2경기면 대회 실측(2.8213)으로 **크게** 수축한다."""
-    from app.core import probmodel as pm
-    got, why = pm.league_mean(
-        _Facts({"match_total_baseline": 5.5, "match_total_played": 2}),
-        ref=_Ref())
-    assert got is not None
-    # 🔴 수축 전 한 팀 몫은 2.75 였다 — 그보다 **훨씬 낮아야** 한다
-    assert got < 2.0, (got, why)
-    assert "수축" in why and "ACLE" in why, why
+    """🔴🔴 **BS2** — 표본 2경기면 대회 실측으로 **크게** 수축한다."""
+    from app.core import goalbase as gb
+    got, why = gb.shrink(5.5, played=2, comp_total=2.8213)
+    assert got is not None and got < 4.0, (got, why)
+    assert "수축" in why, why
 
 
 def test_bs3_full_sample_unchanged() -> None:
     """🔴 **BS3** — 표본 8경기면 두 팀 수 그대로(회귀 방지)."""
+    from app.core import goalbase as gb
+    got, why = gb.shrink(3.0, played=8, comp_total=2.8213)
+    assert got == 3.0 and "그대로" in why, (got, why)
+
+
+def test_bs4_unknown_sample_does_not_shrink() -> None:
+    """🔴 **BS4** — 표본·대회 실측을 모르면 **수축하지 않는다**(사유를 적는다)."""
+    from app.core import goalbase as gb
+    got, why = gb.shrink(5.5, played=None, comp_total=2.8213)
+    assert got == 5.5 and "표본 칸이 없다" in why
+    got2, why2 = gb.shrink(5.5, played=2, comp_total=None)
+    assert got2 == 5.5 and "수축 못 했다" in why2
+
+
+def test_bs5_league_mean_quotes_the_reason() -> None:
+    """🔴 **BS5** — ⑯ 은 **다시 수축하지 않고** 그 사유를 인용한다."""
+    import inspect
+
     from app.core import probmodel as pm
-    got, why = pm.league_mean(
-        _Facts({"match_total_baseline": 3.0, "match_total_played": 8}),
-        ref=_Ref())
-    assert got == 1.5, (got, why)
-    assert "그대로" in why
-
-
-def test_bs4_no_competition_plate_says_so() -> None:
-    """🔴 **BS4** — 대회 실측이 없으면 수축하지 않고 그 사실을 적는다."""
-    from app.core import probmodel as pm
-
-    class _R2(_Ref):
-        league = "league:nowhere"
-        competition = "⬜ 모르는 대회 2026"
-        competition_short = ""
-        league_id = "999999"
-    got, why = pm.league_mean(
-        _Facts({"match_total_baseline": 5.5, "match_total_played": 2}),
-        ref=_R2())
-    assert got == 2.75, (got, why)
-    assert "수축 못 했다" in why
+    # ⚠️ **D46** — 독스트링·주석을 뺀 **코드만** 본다(주석이 *"수축은 ③ 에서
+    #    한다"* 고 설명하는 것은 호출이 아니다).
+    import ast
+    tree = ast.parse(inspect.getsource(pm.league_mean))
+    for node in ast.walk(tree):
+        body = getattr(node, "body", None)
+        if (isinstance(body, list) and body
+                and isinstance(body[0], ast.Expr)
+                and isinstance(body[0].value, ast.Constant)
+                and isinstance(body[0].value.value, str)):
+            node.body = body[1:] or [ast.Pass()]
+    said = ast.unparse(tree)
+    assert "match_total_why" in said
+    assert "goalbase" not in said, "🔴 수축을 두 곳에서 하면 두 번 걸린다"
+    assert "shrink" not in said
 
 
 def test_threshold_is_the_existing_one() -> None:
+    from app.core import goalbase as gb
     from app.core import probmodel as pm
-    assert pm.BASE_FULL == pm.TEAM_HOME_FULL == 8
+    assert gb.FULL == pm.TEAM_HOME_FULL == 8

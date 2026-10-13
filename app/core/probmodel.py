@@ -114,40 +114,14 @@ def league_mean(facts, *, ref=None) -> tuple[float | None, str]:
     got = box_std.get("match_total_baseline")
     kind = _kind(ref, facts)
     if got is not None:
-        # ══════════════════════════════════════════════════════════════
-        # 🔴🔴 **표본으로 수축한다**(수정 지시 2026-10-13 4번)
-        # ══════════════════════════════════════════════════════════════
-        #
-        #  ⚠️ 실사고 2026-10-13(상하이–대전): **ACL 리그 단계 2경기**로 센 두 팀
-        #     총골 **5.5** 가 λ 바닥이 됐다 — 대회 실측 2.8213 의 **1.95배**이고
-        #     총골 기대가 4.99 로 나왔다. 좁은 출처가 먼저인 것은 맞지만
-        #     **표본 2경기는 잡음**이다.
-        #  🔴 새 계수를 만들지 않는다 — `team_home_mul` 과 **같은 수축**이다:
-        #     가중 `w = min(1, 표본/BASE_FULL)` 로 **대회 실측 평균**과 섞는다.
-        #     표본이 충분하면(≥8경기) 종전과 **같은 수**다.
-        said_comp = rules.goal_share(kind)
-        said_n = box_std.get("match_total_played")
-        mine = float(got) / 2.0
-        if said_comp is None:
-            return mine, (f"두 팀 경기당 총골 {float(got):g}"
-                          f"(표본 {said_n if said_n is not None else '?'}경기)"
-                          f" · ⬜ 대회 실측 평균이 없어 **수축 못 했다**")
-        if said_n is None:
-            # 🔴 **표본을 모르면 수축하지 않는다** — 모르는 것을 작다고 보면
-            #    옛 카드·계약의 수가 조용히 바뀐다(실측: 계약 둘이 빨개졌다).
-            return mine, (f"두 팀 경기당 총골 {float(got):g} · ⬜ **표본 칸이 "
-                          f"없다**(`match_total_played`) — 수축 못 했다")
-        n_played = int(said_n or 0)
-        w = min(1.0, n_played / BASE_FULL) if n_played else 0.0
-        mix = w * mine + (1.0 - w) * float(said_comp)
-        if w >= 1.0:
-            return mine, (f"두 팀 경기당 총골 {float(got):g}"
-                          f"(표본 {n_played}경기 ≥ {BASE_FULL} → 그대로)")
-        return mix, (f"두 팀 경기당 총골 {float(got):g}(표본 "
-                     f"{n_played or 0}경기) **수축 {w:.0%}** ↔ 대회 "
-                     f"`{kind}` 실측 {float(said_comp) * 2:g}골 "
-                     f"{1 - w:.0%} → 한 팀 몫 {mix:.3f}"
-                     f"(두 팀 총골 {mix * 2:.3f})")
+        # 🔴🔴 **수축은 ③ 에서 이미 했다**(`core/goalbase.shrink` · 한 곳) —
+        #    여기서 다시 하지 않는다(두 번 수축하면 수가 또 틀린다).
+        #    ⚠️ 운영 확률은 **얼린 M1** 이 내고 그것도 같은 칸을 읽는다 — 그래서
+        #       칸을 고치는 것이 유일한 길이다(K0).
+        return float(got) / 2.0, (f"두 팀 경기당 총골 {float(got):g}"
+                                  + (f" · {box_std['match_total_why']}"
+                                     if box_std.get("match_total_why")
+                                     else ""))
     said = rules.goal_share(kind)
     if said is not None:
         box = rules.goal_baseline(kind)
