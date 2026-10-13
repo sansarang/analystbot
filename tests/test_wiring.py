@@ -709,6 +709,11 @@ TOOL_ONLY: dict[str, str] = {
     # 🔴🔴 **§6-1·§6-2 원천 표·질의 생성**(지시서 2026-10-13 밤 셋째) — 지금은
     #    **탐침 도구**가 부른다(새 질의가 더 찾아오나를 센다). ⚠️ 운영 ⑤ 검색에
     #    잇는 것은 그 측정 뒤다(§6-9 순서).
+    # 🔴🔴 **§6-6 전용 통로**(지시서 2026-10-13 밤 셋째) — **L2(현재 값)** 이라
+    #    백필이 못 쓴다. ⚠️ 운영 ⑧ 결장 사다리에 잇는 것은 **일본어 이름 → id**
+    #    문이 선 뒤다(§1 의 등번호 문과 같은 자리).
+    "app.collect.jl_official.suspensions": "tools/jl_official_probe.py",
+    "app.collect.jl_official.for_match": "tools/jl_official_probe.py",
     "app.core.search.query.build": "tools/query_probe.py",
     "app.core.search.sources.grade_of": "tools/query_probe.py",
     "app.core.search.sources.hard_ok": "tools/search_funnel.py",
