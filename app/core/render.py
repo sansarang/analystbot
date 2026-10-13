@@ -1707,7 +1707,12 @@ def prob_block(card: Card) -> str:
             grid[(int(h), int(a))] = float(val)
         elif isinstance(key, (tuple, list)) and len(key) == 2:
             grid[(int(key[0]), int(key[1]))] = float(val)
-    why_gap = str(pull("why") or pull("gap") or "사유 없음")
+    # 🔴 사유는 **세 곳을 차례로** 본다 — ⑯ 의 사유 · 못 돈 까닭 · 그리고
+    #    **카드 결론**(신원 검문 같은 앞단 중단은 그 줄에 적혀 있다).
+    #    ⚠️ 종전엔 `사유 없음` 으로 떨어졌다(조용한 0 · #3).
+    why_gap = str(pull("why") or pull("gap")
+                  or getattr(card, "stance", "")
+                  or card.conclusion or "사유 없음")
     mk = _pf.markets_of(grid) if grid else {}
     # ⚠️ 머리글에 **그 두 낱말을 적지 않는다** — 계약 PB5 가 이 블록에서
     #    시장·배당 글자 **0건**을 센다(설명이 금지어를 담으면 그 계약이 무의미해진다).
