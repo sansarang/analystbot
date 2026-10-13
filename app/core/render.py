@@ -1066,6 +1066,12 @@ def _b10(card: Card) -> str:
 # ══════════════════════════════════════════════════════════════════
 
 
+def _l9_band(l9: object) -> str:
+    """🔴 `|L9|` 구간 — 가르는 곳은 `lineupfix.band_of` 하나다(사본 금지)."""
+    from app.core import lineupfix as _lf
+    return _lf.band_of(l9) or "못 쟀다"
+
+
 def _b3c(card: Card) -> str:
     """🔴 3c 기준 전력 — ① Elo·② 라인업 보정. ⚠️ 없으면 **"없음 — 사유"** 다(§1)."""
     b, a = card.base_prob, card.adj_prob
@@ -1130,7 +1136,8 @@ def _b3c(card: Card) -> str:
             f"- **평소 대비 공격 기여**(선수 가치 v2): "
             f"{card.match.home_name} **{view.get('home_pct', 0.0):+.0f}%** · "
             f"{card.match.away_name} **{view.get('away_pct', 0.0):+.0f}%** · "
-            f"L9 **{view.get('L9', 0.0):+.3f}** — ⚠️ **확률은 안 움직인다**"
+            f"L9 **{view.get('L9', 0.0):+.3f}** · |L9| 구간 "
+            f"**{_l9_band(view.get('L9'))}** — ⚠️ **확률은 안 움직인다**"
             f"(판정 탈락 · 표시·검증용)")
         if getattr(a, "lineup_view_why", ""):
             out.append(f"    {a.lineup_view_why}")

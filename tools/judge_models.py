@@ -263,9 +263,22 @@ BANDS = (0.30, 0.20, 0.10)
 #: 🔴 (d) 의 문턱 — 평소→확정 XI 확률 변화 **평균**(사용자 결정 2026-10-13 저녁)
 MOVE_MEAN = 0.010
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **의미 크기 문턱**(통합 지시서 2026-10-13 밤 §1 (d))
+# ══════════════════════════════════════════════════════════════════
+#
+#  > (d) 의미 크기 — **하나 이상**: 로그 손실 개선 ≥ 0.002 · 방향 +0.5%p ·
+#  >     상위 20% +1.0%p
+#  ⚠️ 라인업 지시서의 (d)(**움직이는 폭** ≥ 1.0%p)와 **다른 것**이다 → 규칙
+#     이름을 가른다(`rule="season"` vs `rule="lineup2"`).
+SIZE_LL = 0.002
+SIZE_DIR = 0.005
+SIZE_TOP20 = 0.010
+
 
 def passes(*, diff: dict, dir_rate: float, base_dir: float, p_value: float,
            bands: dict, base_bands: dict, move: dict | None = None,
+           size: dict | None = None,
            rule: str = "v1") -> tuple[bool, dict, str]:
     """🔴🔴 §7 — 도전 모형이 **(a)(b)(c) 셋 다** 통과하나. `(통과, 칸, 사유)`.
 
@@ -274,6 +287,28 @@ def passes(*, diff: dict, dir_rate: float, base_dir: float, p_value: float,
     """
     # 🔴 `rule="v1"` — 이번 시험의 규칙(구간 **상한** < +0.005)
     #    `rule="v2"` — 다음 시험부터(사용자 결정): 점추정이 낮고 **구간 하한 < 0**
+    # 🔴🔴 `rule="season"` — **통합 지시서 2026-10-13(밤) §1**: (a)(b)(c) 에
+    #    **(d) 의미 크기**(셋 중 하나)를 더한다. (a)~(c) 통과·(d) 미달이면
+    #    **"효과 미미 — 기준 유지"** 다(채택이 아니다).
+    if str(rule) == "season":
+        ok, box, said = passes(diff=diff, dir_rate=dir_rate,
+                               base_dir=base_dir, p_value=p_value,
+                               bands=bands, base_bands=base_bands,
+                               rule="lineup")
+        one = dict(size or {})
+        hits = {"로그 손실": float(one.get("ll", 0.0)) >= SIZE_LL,
+                "방향": float(one.get("dir", 0.0)) >= SIZE_DIR,
+                "상위 20%": float(one.get("top20", 0.0)) >= SIZE_TOP20}
+        d = any(hits.values())
+        box = {**box, "d": d}
+        said += (" · (d) 의미 크기 — 로그 손실 개선 "
+                 f"{float(one.get('ll', 0.0)):+.4f}(≥{SIZE_LL}) · 방향 "
+                 f"{float(one.get('dir', 0.0)) * 100:+.2f}%p(≥"
+                 f"{SIZE_DIR * 100:.1f}) · 상위 20% "
+                 f"{float(one.get('top20', 0.0)) * 100:+.2f}%p(≥"
+                 f"{SIZE_TOP20 * 100:.1f}) → {'✅' if d else '🔴'}"
+                 + ("" if d else " **효과 미미 — 기준 유지**"))
+        return (ok and d), box, said
     # 🔴🔴 `rule="lineup2"` — **사용자 결정 2026-10-13(저녁)**: 규칙 보완.
     #    > 채택에 **(d) 추가** — 평소→확정 XI 확률 변화 **평균 ≥ 1.0%p** 이고,
     #    > 변화 **≥ 3%p 경기의 방향 적중률 ≥ B**.

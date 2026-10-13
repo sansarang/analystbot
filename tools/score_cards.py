@@ -51,6 +51,18 @@ SHADOW = re.compile(r"그림자 확률\*\*.*?홈 (\d+)% · 무 (\d+)% · 원정 
 FLOOR = re.compile(r"바닥\(Elo\) — 홈 (\d+)% · 무 (\d+)% · 원정 (\d+)%")
 #: 🔴 정보 품질 — `📏 InfoQ **2/5** — …`
 INFOQ = re.compile(r"InfoQ \*\*(\d)/(\d)\*\*")
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **|L9| 구간** — 선택 신호 기록(통합 지시서 2026-10-13 밤 머리 §0)
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 운영 카드마다 |L9| 구간(상위 10% 여부)을 저장 → **30경기마다** |L9| 상위 10%
+#  > 경기의 **방향 적중률(운영 판)** 따로 보고. 백필 62경기에서 **51.6%**
+#  > (전체 45.7%)였다 — 실전에서 유지되면 **판정 문턱 후보**로 올린다.
+#
+#  🔴 **확률 불변** — 카드가 적은 구간을 **읽기만** 한다(그 수가 확률을 만든 적 없다).
+#: 🔴 `… · |L9| 구간 **상위 10%** — ⚠️ 확률은 안 움직인다…`
+L9_BAND = re.compile(r"\|L9\| 구간 \*\*(상위 10%|그 밖|못 쟀다)\*\*")
+
 #: 🔴 이변 경고 — `⚠️ 이변 경고 S +0.800 → 🟡 …`
 UPSET = re.compile(r"이변 경고 S \*\*([+-][\d.]+)\*\* → (🟡|🔴)")
 
@@ -77,6 +89,8 @@ def read_card(path: Path) -> dict | None:
     if not got:
         return None
     out["ours"] = _pct(*got.groups())
+    said_l9 = L9_BAND.search(text)
+    out["l9_band"] = said_l9.group(1) if said_l9 else ""
     said = XGB.search(text)
     if said:
         out["xg"] = _pct(*said.groups())
@@ -258,6 +272,33 @@ async def main() -> None:
                      else f"🔴 **{REPORT_EVERY}경기 미만**") + " |")
     else:
         print("⬜ **InfoQ 를 적은 카드가 없다** — 그 열은 이번 지시로 생겼다"
+              "(앞으로 쌓인다)")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **|L9| 상위 10% 구간의 방향 적중률**(머리 §0 · 확률 불변)
+    # ══════════════════════════════════════════════════════════════════
+    said_l9 = [r for r in scored if r.get("l9_band")]
+    print()
+    if said_l9:
+        print("| |L9| 구간 | n | 방향 적중률(운영) | 95% | ⚠️ |")
+        print("|---|---|---|---|---|")
+        for name in ("상위 10%", "그 밖", "못 쟀다"):
+            box = [r for r in said_l9 if r["l9_band"] == name]
+            if not box:
+                print(f"| {name} | 0 | — | — | — |")
+                continue
+            hits = sum(1 for r in box
+                       if _me.direction_hit(r["ours"], r["hit"]))
+            w_lo, w_hi = _me.wilson(hits, len(box))
+            print(f"| {name} | {len(box)} | **{hits / len(box):.1%}** | "
+                  f"{w_lo:.1%}~{w_hi:.1%} | "
+                  + ("" if len(box) >= REPORT_EVERY
+                     else f"🔴 **{REPORT_EVERY}경기 미만 — 참고**") + " |")
+        print()
+        print("🔴 백필(630경기 · 2026-10-13)에서는 상위 10% 62경기가 **51.6%**, "
+              "전체가 **45.7%** 였다 — 실전에서 유지되면 **판정 문턱 후보**다.")
+        print("⚠️ 이 구간은 **확률을 만든 적이 없다**(표시·검증용 · 잠금 계약).")
+    else:
+        print("⬜ **|L9| 구간을 적은 카드가 없다** — 그 줄은 이번 지시로 생겼다"
               "(앞으로 쌓인다)")
     said_up = [r for r in scored if r.get("upset")]
     print()
