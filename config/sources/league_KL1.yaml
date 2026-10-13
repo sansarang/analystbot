@@ -1,0 +1,35 @@
+# 🔴🔴 **§6-1 원천 표 — K리그1**(지시서 2026-10-13 밤 셋째)
+#
+#  🔴 등급·규율은 J1 표와 같다(`config/sources/league_J1.yaml` 머리 참고).
+#  🔴 `robots_checked` = 받아서 확인한 날(2026-10-13).
+#  ⚠️ **kleague.com 은 robots 는 허용이지만 `/match` 가 빈 응답**이다(실측
+#     2026-10-13 · len 0) → 경기 기록 통로로 **쓰지 못한다**. 그 사실을 적는다.
+
+league: "league:KL1"
+lang: ["ko", "en"]
+per_match_query_cap: 24
+
+S:
+  - domain: kleague.com
+    lang: ko
+    robots_checked: "2026-10-13"
+    what: ["공식 일정·결과", "징계 공시"]
+    extract: html
+    note: "🔴 `/match` 빈 응답(실측) — 일정·공시만 · 경기 기록은 못 받는다"
+  - domain: ⬜구단공식
+    lang: ko
+    robots_checked: ""
+    what: ["라인업 발표", "부상 발표"]
+    note: "⬜ **미조사** — 12개 구단 도메인(§6-6)"
+
+A:
+  - {domain: yna.co.kr, lang: ko, robots_checked: "2026-10-13", what: [결장, 감독, 소집]}
+  - {domain: spotvnews.co.kr, lang: ko, robots_checked: "2026-10-13", what: [결장, 예상 선발]}
+  - {domain: xportsnews.com, lang: ko, robots_checked: "2026-10-13", what: [결장, 감독]}
+  - {domain: osen.co.kr, lang: ko, robots_checked: "2026-10-13", what: [결장]}
+  - {domain: sportschosun.com, lang: ko, robots_checked: "2026-10-13", what: [결장, 감독]}
+
+B:
+  - {domain: fotmob.com, lang: en, robots_checked: "2026-10-13", what: [라인업, 부상 목록]}
+
+C: []

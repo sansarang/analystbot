@@ -1,0 +1,11 @@
+# 🔴🔴 **§6-2 사실 종류별 질의 낱말 — 영어**(지시서 2026-10-13 밤 셋째)
+lang: en
+absence: ["injury", "out", "ruled out", "doubtful", "suspended", "ban",
+          "sidelined"]
+return: ["returns", "back in training", "fit again", "available again"]
+expected_xi: ["predicted lineup", "expected lineup", "starting XI",
+              "probable lineup"]
+presser: ["press conference", "pre-match", "manager said"]
+rotation: ["rotation", "rested", "rotated", "benched"]
+coach: ["appointed", "new manager", "new head coach", "sacked"]
+national: ["squad announced", "call-up", "withdraws", "named squad"]

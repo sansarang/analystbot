@@ -706,6 +706,13 @@ TOOL_ONLY: dict[str, str] = {
     # 🔴🔴 **§5-0·§5-1 대회 유형·준비 점검**(지시서 2026-10-13 밤 셋째) —
     #    점검 도구가 부른다. ⚠️ 파이프라인에 **CP1 문**을 세우는 것은 대회별
     #    백필이 선 뒤다(그때 이 줄을 지운다).
+    # 🔴🔴 **§6-1·§6-2 원천 표·질의 생성**(지시서 2026-10-13 밤 셋째) — 지금은
+    #    **탐침 도구**가 부른다(새 질의가 더 찾아오나를 센다). ⚠️ 운영 ⑤ 검색에
+    #    잇는 것은 그 측정 뒤다(§6-9 순서).
+    "app.core.search.query.build": "tools/query_probe.py",
+    "app.core.search.sources.grade_of": "tools/query_probe.py",
+    "app.core.search.sources.hard_ok": "tools/search_funnel.py",
+    "app.core.search.sources.rows_of": "tools/comp_ready.py",
     "app.core.competition.kind_require": "tools/comp_ready.py",
     "app.core.competition.neutral_of": "tools/comp_ready.py",
     "app.core.season.require": "tools/season_prep.py",

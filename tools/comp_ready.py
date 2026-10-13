@@ -41,6 +41,7 @@ def replay_count(key: str) -> int:
 def main(argv: list[str]) -> int:
     from app import rules
     from app.core import competition as cp
+    from app.core.search import sources as _sr
     rows = cp.rows()
     lineup = _yaml("config/lineup_sources.yaml")
     disc = _yaml("config/league_discipline.yaml")
@@ -94,8 +95,10 @@ def main(argv: list[str]) -> int:
             ("✅" if str(key) in dict(dict(disc).get("leagues") or {})
              else "🔴 **결장(징계) 원천 없다** — `league_discipline.yaml` 의 "
                   "`leagues` 가 비었다"),
-            ("✅ " + src_path.name if src_path.exists()
-             else "🔴 **검색 원천 표 없다**(§6-1)"),
+            (("✅ " + " · ".join(
+                f"{g} {len(_sr.rows_of(key, g))}"
+                for g in ("S", "A", "B")))
+             if src_path.exists() else "🔴 **검색 원천 표 없다**(§6-1)"),
         ]
         print("| " + " | ".join(cells) + " |")
     print()

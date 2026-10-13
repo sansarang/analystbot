@@ -77,7 +77,7 @@ keys:
     baseline: {elo: football_data, fit: "league:PL"}
   league:PD:
     kind: domestic_league
-    names: ["laliga", "la liga", "라리가"]
+    names: ["laliga", "la liga", "라리가", "primera", "la liga", "라 리가"]
     sources:
       espn_slugs: ["esp.1"]
       fotmob_ids: [87]

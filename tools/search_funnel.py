@@ -93,6 +93,15 @@ def main(argv: list[str]) -> int:
         print(f"🔴 카드당 평균 — 문서 "
               f"{sum(c['docs'] for c in docs) / len(docs):.1f}건 · 변수 "
               f"{sum(c['vars'] or 0 for c in docs) / len(docs):.1f}개")
+    # 🔴 **SR2** — 남은 문서의 등급만으로 hard 사실을 세울 수 있나(표가 있는
+    #    리그에서만 물을 수 있다 · 없는 리그는 전부 C 다)
+    from app.core.search import sources as _sr
+    print()
+    for league in ("league:J1", "league:KL1"):
+        ok, why = _sr.hard_ok(["C", "C"], league=league)
+        ok2, why2 = _sr.hard_ok(["A"], league=league)
+        print(f"- `{league}` SR2 — C만: {'통과' if ok else '막힘'}({why[:48]}) ·"
+              f" A 있음: {'통과' if ok2 else '막힘'}")
     print()
     print("⚠️ 이 표는 **버린 문서 수**다 — 검색이 **애초에 못 찾은 것**(질의가"
           " 안 닿은 기사)은 여기 **안 보인다**. 그쪽은 §6-7 의 재현율이 센다"
