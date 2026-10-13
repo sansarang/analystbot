@@ -303,25 +303,40 @@ def main(argv: list[str]) -> int:
     import yaml
     w_all, ll_all = pick_w(rows)
     at = str(argv[1]) if len(argv) > 1 else "2026-10-13"
-    box = {"후보": "E2", "w": {k: float(v) for k, v in w_all.items()},
+    said_ok0 = [x for x in picked if x["ok"]]
+    best0 = (min(said_ok0, key=lambda x: (x["ll"], x["name"]))["name"]
+             if said_ok0 else "")
+    box = {"후보": (best0 or "E2"),
+           "w": ({"M1": 0.5, "M3": 0.5} if best0 == "E1"
+                 else {k: float(v) for k, v in w_all.items()}),
            "v": None, "n": len(rows),
            "기간": f"{min(r['day'] for r in rows)}~"
                    f"{max(r['day'] for r in rows)}",
            "로그 손실": round(float(ll_all), 6),
            "구간": [float(lo), float(hi)],
-           "adopted": False,
-           "shadow": True,
-           "왜": ("🔴 **E0 유지** — (a)~(d) 를 전부 통과한 후보가 없다. 이 판은 "
-                  "**그림자 기록용**이다(§11) · 운영 확률은 **M1 단독**이다."),
+           "adopted": bool(best0),
+           "shadow": not bool(best0),
+           # 🔴 **배선은 아직 아니다** — 운영 확률은 ⑯ **안에서 격자로** 섞어야
+           #    한다(C2: 모든 시장 줄이 **한 분포**에서 나와야 한다). 승무패만
+           #    섞으면 오버·핸디캡이 그 확률과 **어긋난다**.
+           "wired": False,
+           "왜": (f"🔴 **{best0} 채택**((a)~(d) 통과) — ⚠️ 운영 배선은 ⑯ 안에서"
+                  " **격자로** 해야 한다(C2) · 그때까지 운영 확률은 **M1 단독**"
+                  " 이고 이 판은 **그림자**로만 쓰인다."
+                  if best0 else
+                  "🔴 **E0 유지** — (a)~(d) 를 전부 통과한 후보가 없다."),
            "불안정": bool((hi - lo) > WIDE)}
     said_path = ROOT / "data/ensemble/all" / f"{at}.yaml"
     said_path.parent.mkdir(parents=True, exist_ok=True)
     said_path.write_text(yaml.safe_dump(box, allow_unicode=True,
                                         sort_keys=False), encoding="utf-8")
     print()
-    print(f"🔴 **그림자 판**을 적었다 — `{said_path.relative_to(ROOT)}`"
-          f"(E2 w(M1) {w_all['M1']:.2f} · 전 표본 로그 손실 {ll_all:.4f} · "
-          f"`adopted: false`)")
+    # 🔴 **적은 값을 그대로 말한다** — 전에는 `adopted: false` 를 **글자로 박아**
+    #    두어 판이 채택이어도 "false" 라고 적혔다(2026-10-13 · 내 결함).
+    print(f"🔴 **판을 적었다** — `{said_path.relative_to(ROOT)}` · 후보 "
+          f"**{box['후보']}** · w {box['w']} · n {box['n']} · 로그 손실 "
+          f"{ll_all:.4f} · `adopted: {str(box['adopted']).lower()}` · "
+          f"`wired: false`")
     # 🔴 **EN2** — 운영이 그 판을 어떻게 보는가(엄격히 이전이라 오늘은 **없다**)
     from datetime import datetime, timezone
     from app.core import ensemble as en2
