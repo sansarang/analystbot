@@ -252,6 +252,13 @@ async def main() -> None:
     print("|---|---|---|---|---|---|")
     got_l: dict[str, list[float]] = {}
     for name, box in models.items():
+        # 🔴 **빈 모형은 그 사실을 적는다**(0 으로 나누지 않는다 · #3).
+        #  ⚠️ 실사고 2026-10-13(MLS 재생): 한 모형이 0건이어서 보고가 **터졌다**
+        #     (덤프는 이미 적힌 뒤였다 — 그래서 자료는 남았다).
+        if not box:
+            print(f"| {name} | 0 | ⬜ **못 쟀다** | — | — | — |")
+            got_l[name] = []
+            continue
         b = [brier(p, hit) for p, hit in box]
         ll = [logloss(p, hit) for p, hit in box]
         rp = [rps(p, hit) for p, hit in box]
