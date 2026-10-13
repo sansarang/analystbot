@@ -1870,6 +1870,12 @@ def _board_line(card: Card, mk: dict) -> str:
     🔴 수는 `core/divergence` 하나가 만든다(사본 금지) · 등급·결론은 **우리
        확률만** 쓴다(시장은 상한 하나만 건다 · 그 상한은 ⑯·⑱ 밖이다).
     """
+    # 🔴🔴 **파이프라인이 센 글자를 그대로 쓴다**(사본 금지 · 실사고
+    #    2026-10-14: 아래 되뒤집기 길이 공정 확률을 "원 배당"이라 적고
+    #    마진 0.0% · ⬜ 목록을 비워 `접는다` 를 `조건부` 로 바꿨다)
+    said_pipe = str(getattr(card, "divergence", "") or "")
+    if said_pipe:
+        return f"- **보드(사용자 캡처 · 표시만)** — {said_pipe}"
     from app.core import divergence as _dv
     said = dict(getattr(card, "user_market", None) and
                 getattr(card.user_market, "quotes", None) and {} or {})

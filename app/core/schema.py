@@ -1279,6 +1279,11 @@ class Card(Frozen):
     #: 🔴 피드에서 받은 시장 · 🔴 사용자 보드 시장 — **섞지 않는다**(§2-6 불변식)
     market: MarketProb = Field(default_factory=MarketProb)
     user_market: MarketProb = Field(default_factory=MarketProb)
+    #: 🔴🔴 **P5 시장 괴리 줄**(표시만) — `core/divergence.said_of` 가 만든 글자
+    #:    하나를 그대로 들고 온다. ⚠️ 실사고 2026-10-14: 렌더러가 **공정 확률을
+    #:    되뒤집어** 원 배당이라 적고(마진 0.0%) ⬜ 목록도 `gaps=[]` 로 비워,
+    #:    파이프라인은 `접는다` 인데 카드는 `조건부 허용` 이라 적었다.
+    divergence: str = ""
     #: 🔴 ③ 우리 확률(시나리오 무게 비율) — 블록 9 방향 판정과 **같은 숫자**다
     our_prob: ProbTriple | None = None
     #: 🔴 §6 판정 글자(`세 열 일치`·`우리만 튄다`·…)와 그 설명 줄들

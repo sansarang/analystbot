@@ -57,19 +57,20 @@ async def run_card(name: str, board: str, *, tag: str) -> None:
     """🔴 **실제 핸들러**로 카드를 낸다(보드는 질문 아래 줄)."""
     import app.bot.main as _bm
     from app import cassette
+    from app.db import get_pool
+    from app.config import get_settings
     os.environ[cassette.MATCH_ENV] = name
-    said = f"/자세히 {name}"
-    if board:
-        said += f"\n보드: {board}"
-
-    class _Msg:
-        text = said
-
-        async def answer(self, text: str, **kw) -> None:
-            print(text)
     print(f"\n▶ {tag} — {datetime.now(KST):%H:%M:%S} KST 실행", flush=True)
     try:
-        await _bm.cmd_deep(_Msg())
+        # 🔴🔴 **보드를 `_v6_card` 에 직접 넘긴다** — ⚠️ `cmd_deep` 은 질문 아래
+        #    줄을 **안 읽는다**(그것을 읽는 것은 `cmd_analyze` 다). 실측
+        #    2026-10-14 00:30: 그래서 퇴로 카드에 **보드 줄이 없었다**.
+        pool = await get_pool(get_settings().database_url)
+        said_body = await _bm._v6_card(pool, said=name, again=True, deep=True,
+                                        board_text=(f"보드: {board}"
+                                                    if board else ""))
+        for chunk in _bm._split(said_body):
+            print(chunk)
     except Exception as exc:                                # noqa: BLE001
         print(f"🔴 카드가 터졌다: {exc!r:.300}")
     print(f"◀ {tag} — 끝 {datetime.now(KST):%H:%M:%S} KST", flush=True)

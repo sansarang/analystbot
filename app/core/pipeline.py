@@ -541,6 +541,9 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     said_div, said_fold = _divergence_of(ref, facts, prob, got_board, layers)
     if said_div:
         st.note(f"P5 시장 괴리 — {said_div[:160]}")
+    # 🔴 카드 줄도 **이 글자**를 쓴다(렌더러가 다시 세지 않는다)
+    if said_div:
+        layers["divergence"] = said_div
     said = s7_judge.run(ref, facts, variables, state=st, board=got_board,
                         board_source=board_src, now=now,
                         fold_why=said_fold,
@@ -980,6 +983,7 @@ def card_of(ref: MatchRef, facts: Facts, variables: list[Variable],
         adj_prob=box.get("adj") or AdjProb(why="② 를 안 돌렸다"),
         market=box.get("market") or MarketProb(why="④ 를 안 돌렸다"),
         user_market=box.get("user_market") or MarketProb(),
+        divergence=str(box.get("divergence") or ""),
         our_prob=box.get("ours"),
         compare=str(box.get("compare") or ""),
         compare_lines=[str(x) for x in (box.get("compare_lines") or [])],
