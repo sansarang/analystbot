@@ -58,19 +58,34 @@ def test_sm2_three_tables_with_the_right_columns() -> None:
     bars = [ln for ln in said.splitlines() if set(ln) <= set("|- ")
             and ln.startswith("|")]
     assert len(bars) == 3, bars
-    for one in ("| 승무패 |", "| 핸디 |", "| 총골 |"):
+    for one in ("| 승무패 |", "| 핸디(홈) |", "| 오버(두 팀 합계) |"):
         assert one in said, one
-    ah = [ln for ln in said.splitlines() if ln.startswith("| 홈 |")][0]
-    assert len(ah.strip().strip("|").split("|")) == 1 + len(render.AH_LINES)
-    ou = [ln for ln in said.splitlines() if ln.startswith("| 오버 |")][0]
-    assert len(ou.strip().strip("|").split("|")) == 1 + len(render.OU_LINES)
+    # 🔴🔴 **간소화**(수정 지시 2026-10-13 밤 1번) — 원정 핸디 줄·언더 줄은
+    #    **없다**(원정 = 100 − 홈 반대 줄 · 언더 = 100 − 오버).
+    # ⚠️ **줄 머리로** 센다 — `| 원정 |` 은 승무패 표의 **머리글**에도 있다
+    #    (내 계약이 그 함정을 밟았다).
+    rows_all = said.splitlines()
+    assert not [ln for ln in rows_all if ln.startswith("| 원정 |")], said
+    assert not [ln for ln in rows_all if ln.startswith("| 언더 |")], said
+    assert "원정 = 100 − 홈 반대 줄" in said and "언더 = 100 − 오버" in said
+    rows = [ln for ln in said.splitlines() if ln.startswith("| 확률 |")]
+    assert len(rows) == 3, rows
+    assert len(rows[1].strip().strip("|").split("|")) == 1 + len(
+        render.AH_LINES)
+    assert len(rows[2].strip().strip("|").split("|")) == 1 + len(
+        render.OU_LINES)
+    # 🔴 역배 한 줄 · 무 신뢰 한 줄
+    assert "- **역배** —" in said and "- **무 신뢰** —" in said
 
 
 def test_sm3_lines_fit_the_width() -> None:
     from app.core import render
     said = render.prob_summary(_card(True))
+    # 🔴 **표 줄만** 센다(`render.check` 과 같은 범위) — 설명 줄은 접혀도
+    #    칸이 깨지지 않는다.
     for ln in said.splitlines():
-        assert len(ln) <= render.CUT_WIDTH, (len(ln), ln)
+        if ln.startswith("|"):
+            assert len(ln) <= render.CUT_WIDTH, (len(ln), ln)
 
 
 def test_sm4_truncation_is_an_output_failure() -> None:
@@ -90,7 +105,7 @@ def test_sm5_empty_grid_still_draws_the_tables() -> None:
     bars = [ln for ln in said.splitlines() if set(ln) <= set("|- ")
             and ln.startswith("|")]
     assert len(bars) == 3, bars
-    assert said.count("⬜") >= 16 and "칸이 비었다" in said
+    assert said.count("⬜") >= 14 and "칸이 비었다" in said
 
 
 def test_sm6_same_numbers_as_the_standard_block() -> None:

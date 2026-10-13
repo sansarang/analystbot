@@ -1104,11 +1104,47 @@ def _b9(card: Card) -> str:
     return card.direction or "- 🔴 방향 줄이 비었다 — 이것은 결함이다(§2-2)"
 
 
+#: 🔴 **무에 걸린 줄**(2-④ 셋째 조항) — 결론이 이 줄이면 방아쇠에 한 줄 더
+DRAW_LINES: tuple[str, ...] = ("unbeaten", "미승", "dnb", "+0.5", "draw", "무")
+
+
+def _draw_trigger(card: Card) -> str:
+    """🔴🔴 **무 구간 편차** 방아쇠 한 줄(2-④) — 편차 ≥ 3%p + 무에 걸린 줄.
+
+    🔴 *"결론이 무에 걸린 줄(강팀 미승·DNB·+0.5)이면 방아쇠에 `무 구간 편차`
+       한 줄"*. ⚠️ 확률은 안 바뀐다 — **표시**다.
+    """
+    from app.core import drawband as _db
+    box = dict(getattr(card, "matchup", None) or {})
+    sim = dict(box.get("sim") or {})
+    said_draw = sim.get("draw")
+    if said_draw is None:
+        said_draw = getattr(box.get("prob"), "draw", None)
+    said = _db.flag(said_draw)
+    if not said:
+        return ""
+    # 🔴 결론·가장 두꺼운 줄이 **무에 걸렸나**
+    where = str(card.conclusion or "") + " " + " ".join(
+        f"{e.line.market} {e.line.side} {e.line.point}" for e in
+        (card.evals or []))
+    if not any(x in where.lower() for x in DRAW_LINES):
+        return ""
+    got, _why = _db.of(said_draw)
+    return (f"- **무 구간 편차** — 이 경기의 무({float(said_draw):.1%})가 속한 "
+            f"구간은 백필에서 예측 {float(got.get('pred') or 0):.1%} → 실측 "
+            f"{float(got.get('real') or 0):.1%}({int(got.get('n') or 0)}경기)"
+            f"다. 결론이 **무에 걸린 줄**(강팀 미승·DNB·+0.5)이므로 그 편차를 "
+            f"함께 읽는다 · ⚠️ 확률은 **안 바꿨다**(D1·D2 둘 다 탈락 · 2-③)")
+
+
 def _b10(card: Card) -> str:
     """블록 10 방아쇠 — 🔴 **사람이 읽는 문장**이다(§5: 내부 표기 금지)."""
+    said_draw = _draw_trigger(card)
     if not card.triggers:
-        return "- ⬜ 방아쇠가 없다 — 조건 표에 걸린 변수 유형이 없었다"
-    return "\n".join(f"- {x}" for x in card.triggers)
+        return ((said_draw + "\n") if said_draw else "") + (
+            "- ⬜ 방아쇠가 없다 — 조건 표에 걸린 변수 유형이 없었다")
+    return "\n".join([f"- {x}" for x in card.triggers]
+                      + ([said_draw] if said_draw else []))
 
 # ══════════════════════════════════════════════════════════════════
 # 🔴🔴 **블록 3c·7b** — 네 층 지시서 §8
@@ -1706,7 +1742,14 @@ def _pct(x: object) -> str:
 
 
 def prob_summary(card: Card) -> str:
-    """🔴🔴 **확률 요약**(맨 위 고정) — 표 셋. 잘린 칸이 있으면 `CardCut`."""
+    """🔴🔴 **확률 요약**(맨 위 고정) — 네 줄 + 무 표시. 잘리면 `CardCut`.
+
+    🔴 **간소화**(수정 지시 2026-10-13 밤 1번): 표 셋을 **네 줄**로 줄였다 —
+       승무패 · **핸디 홈 한 줄** · **오버 한 줄** · 역배. 원정 핸디·언더는
+       **지웠다**(원정 +x = 100 − 홈 −x · 언더 = 100 − 오버 — 표 밑에 적는다).
+    🔴 블록 끝에 **무 구간 실측** 한 줄(2-④ · `drawband` · 확률 불변).
+    """
+    from app.core import drawband as _db
     from app.core import probfloor as _pf
     box = dict(getattr(card, "matchup", None) or {})
     sim = dict(box.get("sim") or {})
@@ -1723,27 +1766,42 @@ def prob_summary(card: Card) -> str:
     mk = _pf.markets_of(grid) if grid else {}
     why = str(pull("why") or pull("gap") or getattr(card, "stance", "")
               or card.conclusion or "사유 없음")
+    # 🔴 무와 엮인 줄에 붙는 꼬리표(편차 ≥ 3%p 일 때만 · 2-④)
+    said_flag = _db.flag(mk.get("draw")) if mk else ""
     out = ["**📈 확률 요약**(맨 위 고정 · 같은 격자 하나에서 · **봇 확률만**)", ""]
-    # ── 표 ① 승무패
+    # ── ① 승무패
     out += ["| 승무패 | 홈 | 무 | 원정 |", "|---|---|---|---|",
             "| 확률 | " + " | ".join(_pct(mk.get(k)) for k in
                                      ("home", "draw", "away")) + " |", ""]
-    # ── 표 ② 핸디(양쪽 여섯 줄)
+    # ── ② 핸디 — **홈 기준 한 줄만**
     head = " | ".join(f"{x:+.1f}" for x in AH_LINES)
-    out += [f"| 핸디 | {head} |", "|---|" + "---|" * len(AH_LINES)]
-    for side, nm in (("home", "홈"), ("away", "원정")):
-        said = " | ".join(_pct(dict(mk.get("ah") or {}).get(
-            f"{side}{x:+.1f}")) for x in AH_LINES)
-        out.append(f"| {nm} | {said} |")
-    out.append("")
-    # ── 표 ③ 오버/언더
-    out += ["| 총골 | " + " | ".join(f"{x}" for x in OU_LINES) + " |",
-            "|---|" + "---|" * len(OU_LINES)]
-    said_over = [dict(mk.get("over") or {}).get(x) for x in OU_LINES]
-    out.append("| 오버 | " + " | ".join(_pct(v) for v in said_over) + " |")
-    out.append("| 언더 | " + " | ".join(
-        _pct(1.0 - float(v)) if v is not None else "⬜"
-        for v in said_over) + " |")
+    out += [f"| 핸디(홈) | {head} |", "|---|" + "---|" * len(AH_LINES),
+            "| 확률 | " + " | ".join(_pct(dict(mk.get("ah") or {}).get(
+                f"home{x:+.1f}")) for x in AH_LINES) + " |",
+            "원정 = 100 − 홈 반대 줄(예: 원정 +1.5 = 100 − 홈 −1.5)"
+            + (said_flag if said_flag else ""), ""]
+    # ── ③ 오버 — **한 줄만**
+    out += ["| 오버(두 팀 합계) | " + " | ".join(f"{x}" for x in OU_LINES)
+            + " |", "|---|" + "---|" * len(OU_LINES),
+            "| 확률 | " + " | ".join(_pct(dict(mk.get("over") or {}).get(x))
+                                     for x in OU_LINES) + " |",
+            "언더 = 100 − 오버" + (said_flag if said_flag else ""), ""]
+    # ── ④ 역배 한 줄
+    if mk:
+        fav_home = float(mk["home"]) >= float(mk["away"])
+        dog = float(mk["away"] if fav_home else mk["home"])
+        no_win = 1.0 - float(mk["home"] if fav_home else mk["away"])
+        who_dog = (card.match.away_name if fav_home
+                   else card.match.home_name)
+        who_fav = (card.match.home_name if fav_home
+                   else card.match.away_name)
+        out.append(f"- **역배** — 약팀 **{who_dog}** 승 **{dog:.1%}** · 강팀 "
+                   f"**{who_fav}** 미승 **{no_win:.1%}**(= 무 + 약팀 승)"
+                   + said_flag)
+    else:
+        out.append(f"- **역배** — ⬜ 격자가 없다 — {why}")
+    # ── ⑤ 무 구간 실측(표시 전용 · 확률 불변)
+    out.append(f"- **무 신뢰** — {_db.said_of(mk.get('draw') if mk else None)}")
     if not mk:
         out.append(f"🔴 **칸이 비었다** — {why}")
     said = "\n".join(out)
