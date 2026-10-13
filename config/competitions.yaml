@@ -209,6 +209,28 @@ keys:
   #     `leagueName`): 42 `Champions League` · 525 `AFC Champions League Elite` ·
   #     9469 `AFC Champions League Two`. ⚠️ 확인 못 한 칸은 **적지 않았다**.
   #  🔴 `kind` 가 없는 대회는 **분석하지 않는다**(계약 CP1).
+  # 🔴🔴 **J리그 컵**(받아서 확인 2026-10-13) — 운영 실행이 이 경기를
+  #    `league:fotmob224` 로 자동 등록했고, **카드 머리가 `League Cup`** 이라고
+  #    적었다(경기 페이지의 대회 이름). 58팀 · **순위표가 없는 대회**다.
+  #  ⚠️ fotmob 의 `/leagues/224/table` 은 `leagueName` 을 **안 준다** — 그래서
+  #     이름은 **경기 페이지에서** 받은 글자를 쓴다(지어내지 않았다).
+  #  🔴 `kind: domestic_cup` — §1 의 폼 창에서 **빠진다**(리그 경기만 쓴다).
+  league:JLC:
+    kind: domestic_cup
+    confederation: AFC
+    names: ["league cup", "ybc levain", "르방컵", "리그컵", "j리그컵"]
+    sources:
+      fotmob_ids: [224]
+      fotmob_names: ["League Cup"]
+      checked_at: "2026-10-13"
+      why: "fotmob 순위표에 이름이 없다 — 경기 페이지 머리에서 받았다"
+    format:
+      stage_single: ["group", "조별"]
+      two_legs: ["semi-final", "준결승"]
+      neutral: ["final", "결승"]
+      why: "⬜ 단계 규칙은 **미확인**이다(그 대회 페이지가 순위표를 안 준다)"
+    seasons: ["2026"]
+    baseline: {}
   league:UCL:
     kind: club_continental
     confederation: UEFA

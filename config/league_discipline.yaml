@@ -33,6 +33,15 @@ leagues:
     checked_at: "2026-10-13"
     parser: "app.collect.jl_official.suspensions"
     note: "출장정지 선수 공지 — 대상 경기(라운드·날짜)까지 적혀 있다"
+  # 🔴 **J리그 컵도 같은 공시**다(실측: 공시의 `出場停止試合` 칸에 리그·컵 라운드가
+  #    함께 적힌다 · 운영이 컵 경기를 분석하면서 드러났다 · 2026-10-13)
+  "league:JLC":
+    url: "https://data.j-league.or.jp/SFIN03/"
+    kind: suspension
+    lang: ja
+    checked_at: "2026-10-13"
+    parser: "app.collect.jl_official.suspensions"
+    note: "J리그 컵 — 공시는 리그를 가리지 않는다"
   "league:J2":
     url: "https://data.j-league.or.jp/SFIN03/"
     kind: suspension

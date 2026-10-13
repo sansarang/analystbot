@@ -11,7 +11,8 @@
 """
 from __future__ import annotations
 
-KINDS = {"domestic_league", "club_continental", "national_friendly"}
+KINDS = {"domestic_league", "domestic_cup", "club_continental",
+         "national_friendly"}
 
 
 def test_every_row_has_a_kind() -> None:
@@ -33,6 +34,27 @@ def test_the_five_new_competitions_are_registered() -> None:
         assert one, f"🔴 `{key}` 가 표에 없다"
         assert one.get("kind") == kind, (key, one.get("kind"))
         assert list((one.get("sources") or {}).get("fotmob_ids") or []) == ids
+
+
+def test_the_league_cup_is_registered() -> None:
+    """🔴 운영이 **실제로 분석한 대회**가 표에 있다(실측 2026-10-13 · `League Cup`).
+
+    ⚠️ 그 경기는 `league:fotmob224` 로 **자동 등록**됐고 카드 머리가 `League Cup`
+       이라고 적었다 — 유형이 없으면 CP1 이 막는다.
+    """
+    from app.core import competition as cp
+    one = dict(cp.rows().get("league:JLC") or {})
+    assert one.get("kind") == "domestic_cup", one
+    assert list((one.get("sources") or {}).get("fotmob_ids") or []) == [224]
+    # 🔴 운영은 **fotmob 리그 id** 를 들고 온다 → 그 길로 손 표가 먼저 잡힌다
+    got, _why = cp.key_of(league_id=224)
+    assert got == "league:JLC", got
+    # ⚠️ **이름만**(`League Cup`)으로는 손 표가 안 잡는다 — 나라마다 같은 이름이
+    #    있어 그 매칭은 **일부러 좁다**(자동 등록 기록으로 떨어진다 · 실측).
+    said, why2 = cp.key_of(competition="League Cup")
+    assert said in ("league:JLC", "league:fotmob224"), (said, why2)
+    # 🔴 고유한 이름은 잡는다
+    assert cp.key_of(competition="YBC Levain")[0] == "league:JLC"
 
 
 def test_cp1_unknown_competition_is_refused() -> None:

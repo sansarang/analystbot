@@ -160,7 +160,12 @@ def test_대회로_들어와도_팀으로_리그를_되묻는다():
         pytest.skip("리그 명단 캐시가 없다 — 통신 없이 검사할 수 없다")
     langs, why = queries.langs_for("League Cup", "Kashiwa Reysol")
     assert "ja" in langs, (langs, why)
-    assert "되물은" in why
+    # 🔴 **문이 둘이다** — ① 색인에 팀으로 **되묻는** 길 ② 그 대회가 **자동
+    #    등록**돼 있으면 그 기록의 ccode 로 언어를 얻는 길.
+    #  ⚠️ 실측 2026-10-13: 운영 실행이 `league:fotmob224`(JPN · 순위표 없는 일본
+    #     대회)를 자동 등록한 뒤 이 검사가 ②로 들어와 빨개졌다 — **얻은 언어는
+    #     같다**(`ja`). 🔴 지키려는 것은 *"영어만 가지 않는다"* 이므로 둘 다 받는다.
+    assert ("되물은" in why or "자동 등록" in why), why
 
 
 def test_캐시_조회는_통신하지_않는다():

@@ -344,8 +344,11 @@ def short_key(key: str) -> str:
 #     적지 않는다(사본 금지 · #1).
 
 #: 🔴 아는 유형 셋 — 표가 이 밖의 글자를 들면 **미등록**으로 본다
-KINDS: tuple[str, ...] = ("domestic_league", "club_continental",
-                          "national_friendly")
+#   ⚠️ **`domestic_cup` 을 더했다**(2026-10-13) — 운영 실행이 J리그 컵 경기를
+#      분석했고(카드 머리 `League Cup`) 그 대회에 유형이 없으면 **CP1 이 막는다**.
+#      🔴 컵은 §1 의 폼 창에서 **빠진다**(리그 경기만 쓴다).
+KINDS: tuple[str, ...] = ("domestic_league", "domestic_cup",
+                          "club_continental", "national_friendly")
 
 
 def kind_require(key: str) -> tuple[str, str]:

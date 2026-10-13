@@ -61,3 +61,21 @@ def test_new_queries_are_wired_into_s3() -> None:
     assert "search.query" in said or "_table_queries" in said
     i = said.index("queries=[")
     assert "said_table" in said[i:i + 200], said[i:i + 160]
+
+
+def test_kind_of_passes_the_league_id() -> None:
+    """🔴🔴 **번호가 글자를 이긴다** — 임시 `Facts` 에 `league_id` 를 넣는다.
+
+    ⚠️ 실측 2026-10-13: 그 칸이 비어 J리그 컵 경기가 손 표(`league:JLC`)가 아니라
+       자동 등록 `league:fotmob224` 로 떨어졌고, **그 리그의 원천 표·징계 공시가
+       안 붙었다**(사다리 칸 3 이 "통로 없음"으로 적혔다).
+    """
+    from pathlib import Path
+    said = (Path(__file__).resolve().parents[2]
+            / "app/core/stages/s2_facts.py").read_text(encoding="utf-8")
+    i = said.index("def _kind_of(")
+    box = said[i:i + 1200]
+    assert "league_id=" in box, box[:400]
+    # 🔴 번호가 있으면 손 표가 먼저다(그 규칙은 `competition.key_of` 가 든다)
+    from app.core import competition as cp
+    assert cp.key_of(league_id=224)[0] == "league:JLC"

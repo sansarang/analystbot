@@ -359,6 +359,21 @@ async def _discipline_rows(net, ref, *, league: str, state) -> dict:
     from app import rules as _rules
     from app.core.schema import Missing
     box = _rules.discipline_of(str(league or ""))
+    said_jpn = ""
+    if not box:
+        # 🔴🔴 **일본 클럽 경기면 공시를 붙인다**(실측 2026-10-13).
+        #  ⚠️ 운영에서 리그 열쇠가 `league:fotmob224`(순위표 없는 일본 대회 ·
+        #     58팀)로 떨어졌고, 그래서 J1 표의 주소가 **안 붙었다**. 🔴 그 대회가
+        #     J1 인지 컵인지 **fotmob 이 이름을 안 준다**(`leagueName`·`title` 둘
+        #     다 ⬜) → **단정하지 않는다**(#4). 대신 **공시 자체가 리그를 가리지
+        #     않는다**는 실측을 쓴다(한 표에 J1·J2·U-21 이 함께 실린다).
+        from app.core import autoleague as _al
+        said_cc = str(dict(_al.load(str(league or "")) or {}).get("ccode")
+                      or "")
+        if said_cc == "JPN":
+            box = dict(_rules.discipline_of("league:J1") or {})
+            said_jpn = (f" · ⚠️ 리그 열쇠가 `{league}`(일본 · ccode JPN)라 **J1 "
+                        f"공시를 빌려 붙였다**(공시는 리그를 가리지 않는다)")
     if not box or "data.j-league.or.jp" not in str(box.get("url") or ""):
         return {"asked": False, "n": 0, "why": "", "add": {}}
     if _cas.mode() == _cas.REPLAY:
@@ -395,9 +410,10 @@ async def _discipline_rows(net, ref, *, league: str, state) -> dict:
                      f"{str(one['match'])[:40]}")))
             n += 1
     return {"asked": True, "n": n, "add": add,
-            "why": (f"출장정지 공시 **{n}명**(공시 {len(rows)}줄 · 대상 "
-                    f"{day} · 주소 {_jo.SUSPEND})" if n
-                    else f"⬜ 공시 {len(rows)}줄에 **이 경기({day}) 선수가 없다**")}
+            "why": ((f"출장정지 공시 **{n}명**(공시 {len(rows)}줄 · 대상 "
+                     f"{day} · 주소 {_jo.SUSPEND})" if n
+                     else f"⬜ 공시 {len(rows)}줄에 **이 경기({day}) 선수가 "
+                          f"없다**") + said_jpn)}
 
 
 def _load_of(seq: list, kickoff) -> int | None:
@@ -428,8 +444,15 @@ def _kind_of(ref, box: dict) -> str:
     from app.core import probmodel as _pm
     from app.core.schema import Facts
     try:
-        return str(_pm._kind(ref, Facts(standings=dict(
-            box.get("standings") or {}))) or "")
+        # 🔴🔴 **번호를 함께 넘긴다**(실측 2026-10-13) — `comp_kind` 는
+        #    *"번호가 있으면 번호가 글자를 이긴다"* 인데, 여기서 만든 **임시
+        #    Facts 에 `league_id` 가 없어** 그 규칙이 돌지 못했다. 그래서 J리그
+        #    컵 경기가 손 표(`league:JLC`)가 아니라 **자동 등록
+        #    `league:fotmob224`** 로 떨어졌고, 그 리그의 원천 표·징계 공시가
+        #    **안 붙었다**(결장 사다리 칸 3 이 "통로 없음"이라고 적었다).
+        return str(_pm._kind(ref, Facts(
+            standings=dict(box.get("standings") or {}),
+            league_id=str(box.get("league_id") or ""))) or "")
     except Exception:                                       # noqa: BLE001
         return ""
 
