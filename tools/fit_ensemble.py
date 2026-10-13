@@ -22,6 +22,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
+#: 🔴🔴 **후보 목록**(지시 2026-10-13 밤 다섯째 · 실행 전 커밋) — 단순함 순서는
+#   `E0 > E1 > **E5** > E2 > E4 > E3` 다(E5 는 E1 다음).
+NAMES: tuple[str, ...] = ("E0", "E1", "E5", "E2", "E4", "E3")
+
+#: 🔴 **E5** — 이번 시즌 이 경기 수 **이하**면 E0, 그 뒤는 E1
+EARLY_GAMES = 8
+
 STEP = 0.05
 BOOT = 200
 WIDE = 0.4
@@ -58,6 +65,18 @@ def load() -> tuple[list[dict], str]:
         seen[key] = seen.get(key, 0) + 1
     return out, (f"격자를 읽은 경기 **{len(out)}건** · 목록 해시 "
                  f"`{str(box['hash'])[:16]}…`(EN9)")
+
+
+def w_of(name: str, *, n_before: int, w2: dict) -> dict:
+    """🔴 그 후보의 가중치. **E5** 는 시즌 초(≤8경기)엔 E0, 그 뒤엔 E1 이다."""
+    if name == "E0":
+        return {"M1": 1.0}
+    if name == "E1":
+        return {"M1": 0.5, "M3": 0.5}
+    if name == "E5":
+        return ({"M1": 1.0} if int(n_before) <= EARLY_GAMES
+                else {"M1": 0.5, "M3": 0.5})
+    return dict(w2 or {"M1": 1.0})
 
 
 def marks(rows: list[dict]) -> None:

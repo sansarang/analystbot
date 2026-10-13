@@ -95,7 +95,9 @@ def main(argv: list[str]) -> int:
     from app import rules
     from app.core import base as _base
     from app.core import ensemble as en
-    from app.core import probfloor as pf
+    # 🔴 격자 만들기는 `score_grid`·`compute` 만 쓴다 — **`floor_of` 는 안 쓴다**
+    #    (그 함수가 운영 판을 읽는 문이다 · EN10).
+    from app.core import probfloor as _pf2
     from app.core import probmodel as pm
     from compare_paths import _fit, m0_of
     from forward_terms import probs_of as _unused
@@ -112,6 +114,8 @@ def main(argv: list[str]) -> int:
     seasons = sorted({r["season"] for r in rows})
     kept = 0
     gone: dict[str, int] = {}
+    #: 🔴 **E5 의 재료** — 그 리그·시즌에서 **앞서 센 경기 수**(시즌 초 판별)
+    seen_before: dict[tuple, int] = {}
     made: list[dict] = []
     for s in seasons:
         train = [r for r in rows if r["season"] != s]
@@ -128,50 +132,50 @@ def main(argv: list[str]) -> int:
                    if r["league"] == kind]
             if len(box) >= 100:
                 by_kind[kind] = _fit_rows(box)
+        # 🔴 **묶음(pooled) 교차 적합** — 평가 시즌을 뺀 **모든 리그** 줄로.
+        #    ⚠️ 리그마다 계수가 조금 다르지만, **운영 판보다 낙관이 덜하다**
+        #       (그 판은 평가 시즌을 봤다). 어느 쪽을 썼는지 색인이 적는다.
+        pooled = _fit_rows([(r["dr"], 2 - r["hit"]) for r in train])
         for r in test:
             kind = r["league"]
             co = by_kind.get(kind)
-            said_fallback = False
+            said_fit = "리그 교차"
             if not co:
-                # 🔴🔴 **퇴로 — 운영 판**(`config/base_model.yaml`)을 쓴다.
-                #  ⚠️ 실측 2026-10-13: 리그마다 **다른 시즌 표본이 100경기 미만**
-                #     이어서(예: 2026/27 이 58경기) 교차 적합이 **1,380경기에서
-                #     바닥을 못 만들었다**. 🔴 그때는 **운영이 쓰는 그 판**으로
-                #     간다 — 그 판은 **전 표본 적합**이라 평가 시즌이 섞인다
-                #     (그 사실을 보고가 센다 · 누설이 아니라 **낙관**이다).
-                said_fallback = True
+                # 🔴🔴 **EN10 — 운영 판을 쓰지 않는다**(지시 2026-10-13 밤 다섯째).
+                #  ⚠️ 앞 판정에서 **1,380경기**가 `base_model.yaml`(전 표본 적합)
+                #     로 만들어졌고, 그 판은 **평가 시즌을 이미 봤다** → 낙관.
+                #  🔴 퇴로는 **여러 리그 묶음 적합**이다 — 평가 시즌을 **뺀**
+                #     훈련 줄 전부(모든 리그)로 적합한다. 그러면 그 계수는
+                #     *"평가 시즌을 한 번도 안 본"* 수다.
+                co = pooled
+                said_fit = "묶음 교차"
+            if not co:
+                gone["🔴 바닥 계수를 못 만들었다(훈련 표본 0)"] = gone.get(
+                    "🔴 바닥 계수를 못 만들었다(훈련 표본 0)", 0) + 1
+                continue
+            # 🔴 리그 평균·홈 배율 — 표에서 온다(백필과 **같은 수**)
             mean = float(rules.goal_share(kind) or 1.3)
             box_base = rules.goal_baseline(kind)
-            mul_a, _w = pm.away_mul(home_share=box_base.get("home_share"),
-                                    per_team=mean)
+            mul_a, _wa = pm.away_mul(home_share=box_base.get("home_share"),
+                                     per_team=mean)
             mul_h = (float(box_base.get("home_share")) / mean
                      if box_base.get("home_share") else 1.0)
-            if said_fallback:
-                got_f, why_f = pf.floor_of(kind=kind, dr=float(r["dr"]))
-                if got_f is None:
-                    gone[f"Elo 바닥 없음({why_f[:24]})"] = gone.get(
-                        f"Elo 바닥 없음({why_f[:24]})", 0) + 1
-                    continue
-                from app.core.schema import ProbTriple as _PT3
-                floor = _PT3(home=got_f[0], draw=got_f[1], away=got_f[2])
-                gone["⚠️ 운영 판으로 바닥(교차 표본 부족)"] = gone.get(
-                    "⚠️ 운영 판으로 바닥(교차 표본 부족)", 0) + 1
-            else:
-                floor = _base.triple_from(c1=co["c1"], c2=co["c2"],
-                                          b_dr=co["b_dr"], dr=r["dr"])
+            floor = _base.triple_from(c1=co["c1"], c2=co["c2"],
+                                      b_dr=co["b_dr"], dr=r["dr"])
+            gone[f"⚠️ 바닥 {said_fit}"] = gone.get(f"⚠️ 바닥 {said_fit}", 0) + 1
             move = m0_of(floor, mean, mul_h, mul_a)
             if move is None:
                 gone["바닥 λ 못 풀었다"] = gone.get("바닥 λ 못 풀었다", 0) + 1
                 continue
             import math
-            g_elo = pf.score_grid(lam_home=mean * mul_h * math.exp(move),
-                                  lam_away=mean * mul_a * math.exp(-move),
-                                  rho=0.0)
-            lam3, _w3 = pf.compute(r["cov"], coef=coef, adopted=set())
-            g_m3 = pf.score_grid(lam_home=lam3["home"], lam_away=lam3["away"],
-                                 rho=0.0)
-            g_m1 = pf.score_grid(lam_home=r["lam"][0], lam_away=r["lam"][1],
-                                 rho=0.0)
+            g_elo = _pf2.score_grid(
+                lam_home=mean * mul_h * math.exp(move),
+                lam_away=mean * mul_a * math.exp(-move), rho=0.0)
+            lam3, _w3 = _pf2.compute(r["cov"], coef=coef, adopted=set())
+            g_m3 = _pf2.score_grid(lam_home=lam3["home"],
+                                   lam_away=lam3["away"], rho=0.0)
+            g_m1 = _pf2.score_grid(lam_home=r["lam"][0],
+                                   lam_away=r["lam"][1], rho=0.0)
             box: dict[str, dict] = {}
             bad = ""
             for name, grid in (("M1", g_m1), ("M3", g_m3), ("Elo", g_elo)):
@@ -193,7 +197,10 @@ def main(argv: list[str]) -> int:
                    for name in ("M1", "M3", "Elo")},
                 meta=np.array([r["hg"], r["ag"], r["hit"]]))
             made.append({"id": r["id"], "league": kind, "season": s,
-                         "day": r["day"], "hit": r["hit"]})
+                         "day": r["day"], "hit": r["hit"],
+                         "floor_fit": said_fit,
+                         "n_before": seen_before.get((kind, s), 0)})
+            seen_before[(kind, s)] = seen_before.get((kind, s), 0) + 1
             kept += 1
     (ROOT / "var/judge/grids_index.json").write_text(
         json.dumps({"hash": said_hash, "rows": made}, ensure_ascii=False),

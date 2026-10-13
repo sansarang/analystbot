@@ -3,7 +3,8 @@
 | 무엇 | 어디 | 언제부터 |
 |---|---|---|
 | **v6 재구축 지시서 (지금의 정본)** | [docs/fable/inbox/2026-10-06_v6_rebuild.md](docs/fable/inbox/2026-10-06_v6_rebuild.md) | 2026-10-06 — *"이 문서는 이전 지시서 **전부**를 대체한다"* |
-| **MLS Elo · 검색 정답 재정의 · 배선 · 라인업 전후**(🔴 지금 하는 일) | [docs/fable/inbox/2026-10-14_mls_search_wiring.md](docs/fable/inbox/2026-10-14_mls_search_wiring.md) | 2026-10-13(밤 넷째) — 1 MLS Elo 복구 · 2 정답 둘로(부상·징계 / 로테이션) · 3 운영 ⑤⑦ 배선 · 4 예상/확정 XI 두 판 · 5 세리에A·PL→UCL→ACL→친선 |
+| **앙상블 누설 제거 재판정 · 예상 XI 결장 규칙**(🔴 지금 하는 일) | [docs/fable/inbox/2026-10-14b_ensemble_xi_rules.md](docs/fable/inbox/2026-10-14b_ensemble_xi_rules.md) | 2026-10-13(밤 다섯째) — 1 **EN10**(운영 판 0건)·**E5** 후보 · 2 B 단독은 예상 XI 에서 **안 뺀다** · 4 MLS 교차 300경기 |
+| **MLS Elo · 검색 정답 재정의 · 배선 · 라인업 전후** | [docs/fable/inbox/2026-10-14_mls_search_wiring.md](docs/fable/inbox/2026-10-14_mls_search_wiring.md) | 2026-10-13(밤 넷째) — 1 MLS Elo 복구 · 2 정답 둘로(부상·징계 / 로테이션) · 3 운영 ⑤⑦ 배선 · 4 예상/확정 XI 두 판 · 5 세리에A·PL→UCL→ACL→친선 |
 | **데이터·표본·실전 기록 + 대회 확장 + 검색** | [docs/fable/inbox/2026-10-13_data_comps_search.md](docs/fable/inbox/2026-10-13_data_comps_search.md) | 2026-10-13(밤 셋째) — **모형 변경 일시 중단**(M1·K0 그대로) · §1 컵 제외 · §2 표본 확장 · §5 대회 다섯 · §6 딥서치 |
 | ~~시즌 문맥 + 앙상블~~(**끝났다 — 전부 기준 유지**) | [docs/fable/inbox/2026-10-13_season_ensemble.md](docs/fable/inbox/2026-10-13_season_ensemble.md) | 2026-10-13(밤) — 머리 넷이 §9·§10 을 **덮는다**(라인업은 **확률 경로 영구 제외** · 표시·검증만) · 판정 규칙 (a)~(d) · S1~S4 · 앙상블 E0~E4 |
 | ~~라인업 → 운영 확률(M1) 연결~~(**끝났다 — 미채택**) | [docs/fable/inbox/2026-10-13_lineup_to_m1.md](docs/fable/inbox/2026-10-13_lineup_to_m1.md) | 2026-10-13 — 네 판(L1·L6·L8·L9) **전부 탈락** → 라인업은 **표시·검증만**(보고서 `stages/2026-10-13_lineup_final.md`) |
