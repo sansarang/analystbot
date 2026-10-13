@@ -689,10 +689,43 @@ def value_sum(team: dict) -> tuple[int | None, int]:
 
 
 def _coach(team: dict) -> str | None:
+    """🔴🔴 그 **경기의** 감독 — `lineup.*.coach` 의 `isCoach` 줄만 쓴다.
+
+    > 6. 감독은 **경기 페이지 `isCoach` 를 우선 원천**으로 한다(팀 페이지 이력
+    >    행 금지). 둘이 다르면 경기 페이지 채택 + 🟡 기록.
+    >    — 사용자 지시 2026-10-13(밤) 6번
+
+    🔴 왜 — 실사고 2026-10-13(베이징 궈안): 사용자가 fotmob **팀 페이지**에서
+       `Ramiro Amarelle` 를 봤고 카드는 `Nick Montgomery` 였다. 받아서 확인해 보니
+       팀 페이지의 그 줄은 `coachHistory` 의 **마지막 행**(2025 시즌 슈퍼리그
+       성적표)이고, 경기 페이지는 `isCoach: true`·`primaryTeamId 4177`(그 팀)로
+       **오늘 그 경기 감독**을 말한다. 🔴 그래서 경기 페이지가 **정본**이다.
+    ⚠️ `isCoach` 가 **거짓인 줄은 안 쓴다** — 그 칸이 있으면 그것을 믿는다.
+    """
     c = team.get("coach")
     if isinstance(c, dict):
+        if c.get("isCoach") is False:
+            return None
         return str(c.get("name") or "").strip() or None
     return str(c).strip() or None if c else None
+
+
+def coach_history_last(team_page: dict, team_id: object) -> tuple[str, str]:
+    """🔴 팀 페이지 `coachHistory` 의 **마지막 행**(이름, 사유) — **대조용**이다.
+
+    🔴 이것을 감독 칸으로 쓰지 않는다(지시 6번: *"팀 페이지 이력 행 금지"*) —
+       경기 페이지와 **다를 때 🟡 를 적기 위해** 읽는다.
+    """
+    box = (((team_page.get("props") or {}).get("pageProps") or {})
+           .get("fallback") or {}).get(f"team-{team_id}") or {}
+    rows = list((box.get("history") or {}).get("coachHistory") or [])
+    if not rows:
+        return "", "⬜ 팀 페이지에 감독 이력이 없다"
+    one = dict(rows[-1])
+    return str(one.get("name") or ""), (
+        f"팀 페이지 이력 **마지막 행** — {one.get('season')} 시즌 "
+        f"`{one.get('leagueName')}` {one.get('win')}승 {one.get('draw')}무 "
+        f"{one.get('loss')}패 ⚠️ **현재 감독 칸이 아니다**")
 
 
 def parse_match(got, q: Question, *, day: date | None = None) -> list[Fact]:

@@ -250,7 +250,8 @@ def domestic_elo() -> tuple[dict, str]:
                  + ")")
 
 
-def fit(comp: str, *, as_of: str) -> int:
+def fit(comp: str, *, as_of: str, ridge_k: float | None = None,
+        write: bool = True, quiet: bool = False) -> dict:
     """🔴🔴 브래들리–테리로 **리그 오프셋 + 대회 홈 이점**을 적합한다."""
     import numpy as np
     from scipy.optimize import minimize
@@ -279,7 +280,7 @@ def fit(comp: str, *, as_of: str) -> int:
     if not rows:
         print(f"🔴 모은 경기가 없다 — 먼저 `--collect --fast` 를 돌린다"
               f"({box_of(comp).name})")
-        return 2
+        return {}
     print(f"- 섞은 대회 — {' · '.join(said_from)}")
     elo, why_elo = domestic_elo()
     print(f"# 🔴🔴 {comp} 리그 오프셋 · 대회 홈 이점")
@@ -316,7 +317,7 @@ def fit(comp: str, *, as_of: str) -> int:
              if gone else "없다"))
     if len(use) < 10:
         print(f"🔴 **적합 못 한다** — 리그 간 맞대결이 {len(use)}건이다")
-        return 0
+        return {}
     keys = sorted({x["lh"] for x in use} | {x["la"] for x in use})
     idx = {k: i for i, k in enumerate(keys)}
     cnt = {k: sum(1 for x in use if k in (x["lh"], x["la"])) for k in keys}
@@ -330,7 +331,8 @@ def fit(comp: str, *, as_of: str) -> int:
     #     — 그 한 줄이 평균 0 식별을 끌어가 나머지 전부가 +600 쪽으로 밀렸다.
     #  🔴 벌은 `K/(n+K)` 가중 L2 다(K = `MIN_GAMES`) — 표본이 많으면 벌이 작고,
     #     적으면 0 에 붙는다. **새 계수를 만들지 않는다**(문턱 20 을 그대로 쓴다).
-    ridge = np.array([off.MIN_GAMES / (cnt[k] + off.MIN_GAMES) for k in keys])
+    said_k = float(ridge_k if ridge_k is not None else off.MIN_GAMES)
+    ridge = np.array([said_k / (cnt[k] + said_k) for k in keys])
 
     def loss(theta) -> float:
         offv = np.array(theta[:len(keys)])
@@ -352,7 +354,7 @@ def fit(comp: str, *, as_of: str) -> int:
     vals = vals - vals.mean()
     home_elo = float(got.x[len(keys)])
     print()
-    print(f"- 수축 — 벌 `K/(n+K)` · K={off.MIN_GAMES}(표본이 얇으면 0 쪽으로)")
+    print(f"- 수축 — 벌 `K/(n+K)` · K={said_k:g}(표본이 얇으면 0 쪽으로)")
     print()
     print("| 리그 | 오프셋 | 리그 간 맞대결 | 수축 가중 | 판에 적나 |")
     print("|---|---|---|---|---|")
@@ -363,13 +365,18 @@ def fit(comp: str, *, as_of: str) -> int:
         box[k] = ({"value": round(float(vals[idx[k]]), 2), "n": n}
                   if ok else {"n": n})
         print(f"| {k} | {vals[idx[k]]:+.1f} | {n} | "
-              f"{off.MIN_GAMES / (n + off.MIN_GAMES):.2f} | "
+              f"{said_k / (n + said_k):.2f} | "
               + ("✅" if ok else f"🔴 ⬜ (< {off.MIN_GAMES} — 미산출)") + " |")
     print()
     print(f"- **대회 홈 이점**(Elo 점수) **{home_elo:+.1f}** · 적합 로그 손실 "
           f"{float(got.fun):.4f} · 쓴 경기 {len(use)}건")
     import yaml
     conf = str(_cp.row_of(comp).get("confederation") or "").upper()
+    if not write:
+        # 🔴 **판을 안 적는다**(K 비교처럼 **재 보기만** 할 때)
+        return {"values": {k: float(vals[idx[k]]) for k in keys},
+                "n": {k: cnt[k] for k in keys}, "home": home_elo,
+                "loss": float(got.fun), "used": len(use), "k": said_k}
     said_path = off.BOX / conf / f"{as_of}.yaml"
     said_path.parent.mkdir(parents=True, exist_ok=True)
     said_path.write_text(yaml.safe_dump(
@@ -414,7 +421,9 @@ def fit(comp: str, *, as_of: str) -> int:
         print(f"  · {k} — {why_v} / 점수 {why_s}")
     _h, why_h = off.home_of(comp, as_of=at, stage="league phase")
     print(f"- 운영이 보는 대회 홈 이점 — {why_h}")
-    return 0
+    return {"values": {k: float(vals[idx[k]]) for k in keys},
+            "n": {k: cnt[k] for k in keys}, "home": home_elo,
+            "loss": float(got.fun), "used": len(use), "k": said_k}
 
 
 def main(argv: list[str]) -> int:
@@ -423,6 +432,8 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--collect", action="store_true")
     ap.add_argument("--fit", action="store_true")
     ap.add_argument("--seasons", type=int, default=3)
+    ap.add_argument("--ridge-k", type=float, default=None,
+                    help="수축 벌의 K(기본은 MIN_GAMES=20 · 1번 K 비교용)")
     ap.add_argument("--fast", action="store_true",
                     help="일정 한 장으로 모은다(경기 페이지 안 받는다 · P1)")
     ap.add_argument("--as-of", default="2026-10-13")
@@ -432,7 +443,8 @@ def main(argv: list[str]) -> int:
                            if args.fast
                            else collect(args.comp, seasons=args.seasons))
     if args.fit:
-        return fit(args.comp, as_of=args.as_of)
+        fit(args.comp, as_of=args.as_of, ridge_k=args.ridge_k)
+        return 0
     print("🔴 `--collect` 또는 `--fit` 중 하나를 준다")
     return 2
 

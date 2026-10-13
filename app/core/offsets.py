@@ -166,12 +166,38 @@ def league_of(team: str) -> tuple[str, str]:
 def latest_plate(conf: str) -> tuple[dict, str]:
     """🔴 그 대륙의 **가장 최근** 오프셋 판(표시 전용 · 위 설명)."""
     box = BOX / str(conf or "").upper()
-    rows = sorted(box.glob("*.yaml")) if box.exists() else []
+    # 🔴 **날짜 이름만** 센다 — `verify.yaml`(검증 ρ)이 섞이면 그것이 판으로
+    #    잡힌다(실측 2026-10-13: 맞대결 수가 `None` 으로 찍혔다).
+    rows = sorted(p for p in (box.glob("*.yaml") if box.exists() else [])
+                  if __import__("re").fullmatch(r"\d{4}-\d{2}-\d{2}", p.stem))
     if not rows:
         return {}, f"⬜ `{conf}` 오프셋 판이 없다"
     import yaml
     got = yaml.safe_load(rows[-1].read_text(encoding="utf-8")) or {}
     return dict(got), f"판 `{rows[-1].stem}`(맞대결 {got.get('n')}경기)"
+
+
+def verify_said(conf: str) -> str:
+    """🔴🔴 **검증 꼬리표**(후속 지시 2026-10-13 밤 1번) — 외부 순위와의 ρ.
+
+    > 카드의 🌐 표시 줄은 **ρ ≥ 0.6 확인 전까지 🟡 "검증 전"** 꼬리표.
+
+    🔴 판은 `data/league_offsets/<대륙>/verify.yaml` 이고
+       `tools/offset_check.py` 가 적는다(외부 순위는 **받아서 읽는다**).
+    """
+    path = BOX / str(conf or "").upper() / "verify.yaml"
+    if not path.exists():
+        return " · 🟡 **검증 전**(외부 순위와의 ρ 를 아직 안 쟀다)"
+    import yaml
+    box = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    rho = box.get("rho")
+    if rho is None:
+        return " · 🟡 **검증 전**(ρ 가 판에 없다)"
+    if not bool(box.get("ok")):
+        return (f" · 🟡 **검증 미달** — 외부 순위와 ρ {float(rho):.2f} < "
+                f"{float(box.get('cut') or 0.6):.1f}(적합 방식을 의심한다)")
+    return (f" · ✅ **검증** 외부 협회 순위와 스피어만 ρ **{float(rho):.2f}**"
+            f"(짝 {int(box.get('pairs') or 0)}개)")
 
 
 def gap_said(*, conf: str, home: str, away: str) -> str:
@@ -203,4 +229,5 @@ def gap_said(*, conf: str, home: str, away: str) -> str:
     else:
         tail = " → 🟡 **차를 못 센다**(한쪽 이상 ⬜)"
     return (" · ".join(out) + tail + f" · {why}"
+            + verify_said(conf)
             + " · ⚠️ **표시만**(확률 경로에 안 들어간다 · P1 판정 전)")
