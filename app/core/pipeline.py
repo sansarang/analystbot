@@ -1142,17 +1142,27 @@ def _direction(said: Judgement, layers: dict, ref: MatchRef) -> Judgement:
 
     ⚠️ 종전 방향 줄은 우리 확률만 적었다 — 세 열이 있으면 그 셋을 나란히 적고, 둘
        이상이 한 팀을 0.15 이상 앞세울 때만 그 팀을 적는다(§7 마지막 줄).
-    🔴 열이 **우리뿐이면 종전 줄을 그대로 둔다**(없는 열을 지어내지 않는다).
+    🔴🔴 **열이 우리뿐이어도 적는다**(예측 지시 2026-10-13 §0) — 그 열 하나로
+       정하고 *"열이 하나다"* 를 글자에 남긴다(문장 꼴은 `survive.direction_line`
+       하나다 · 사본 금지). ⚠️ 없는 열은 **지어내지 않는다**(빈 칸으로 넘긴다).
     """
     from app.core import compare
     base_p, market = layers.get("base"), layers.get("market")
-    if base_p is None or market is None:
+    said_ours = layers.get("ours")
+    # 🔴🔴 **우리 확률만 있어도 방향을 적는다**(예측 지시 2026-10-13 §0:
+    #    *"결론은 봇 확률(%)만으로"*). ⚠️ 종전에는 기준·시장이 둘 다 없으면
+    #    **그냥 돌려보냈고**, 그래서 ACL 카드의 방향 줄이 **빈 글자**였다
+    #    (카드가 *"방향 줄이 비었다 — 이것은 결함이다"* 를 찍었다 · 실측).
+    if said_ours is None and (base_p is None or base_p.probs is None):
         return said
-    if base_p.probs is None and not (market.probs or {}):
-        return said
+    if base_p is None:
+        from app.core.schema import BaseProb as _BP
+        base_p = _BP(probs=None, why="⬜ 기준(Elo) 없다")
+    if market is None:
+        from app.core.schema import MarketProb as _MP
+        market = _MP()
     return said.model_copy(update={
-        "direction": compare.direction_line(base_p, layers.get("ours"),
-                                            market, ref)})
+        "direction": compare.direction_line(base_p, said_ours, market, ref)})
 
 
 def _grade_by_check(said: Judgement, layers: dict, *,

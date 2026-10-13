@@ -332,6 +332,28 @@ def direction_line(base: BaseProb, ours: ProbTriple | None, market: MarketProb,
     if not cols:
         return "방향: 못 정한다 — 세 열이 다 비었다"
     body = " · ".join(f"{nm} 홈 {p.home:.0%}/원정 {p.away:.0%}" for nm, p in cols)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **열이 하나면 그 열로 정한다**(예측 지시 2026-10-13 §0)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 배당·시장 확률 쓰지 않는다 … **결론은 봇 확률(%)만으로**.
+    #
+    #  ⚠️ 실측 2026-10-13(ACL 세 경기): 기준(Elo)도 시장도 없어 열이 **우리
+    #     하나**였고, *"둘 이상이 앞세운다"* 는 규칙은 그때 **절대 만족되지
+    #     않는다** → 늘 `반반` 이다(게다가 `pipeline._direction` 이 아예 안 돌아
+    #     방향 줄이 **빈 글자**였고 카드가 *"결함"* 을 찍었다).
+    #  🔴 한 열뿐이면 그 열의 `LEAD`(0.15) 차로 정하고, **열이 하나라는 사실을
+    #     글자에 적는다**(두 열이 동의한 것처럼 보이지 않게).
+    if len(cols) == 1:
+        nm, one = cols[0]
+        if one.home - one.away >= LEAD:
+            return (f"방향: **{ref.home_name}** ({nm} 열 **하나**가 0.15 이상 "
+                    f"앞세운다 · 다른 열이 없다) — {body}")
+        if one.away - one.home >= LEAD:
+            return (f"방향: **{ref.away_name}** ({nm} 열 **하나**가 0.15 이상 "
+                    f"앞세운다 · 다른 열이 없다) — {body}")
+        return (f"방향: **반반**({nm} 열 **하나**뿐이고 0.15 미만이다) — "
+                f"기울기: {body}")
     votes = {"home": 0, "away": 0}
     for _, p in cols:
         if p.home - p.away >= LEAD:
