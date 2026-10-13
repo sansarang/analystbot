@@ -197,6 +197,9 @@ def read_card(path: Path) -> dict | None:
         out["upset"] = said.group(2)
     # 🔴 예상 XI 적중의 재료(블록 2) — 없으면 **빈 표**다(0 으로 세지 않는다)
     out["xi_block"] = xi_of_card(text)
+    # 🔴🔴 **사후 카드 표시**(후속 지시 2026-10-13 밤 7번) — 적중 기록에서 뺀다
+    #    🔴 카드가 스스로 적는 그 글자로 센다(`slate`·`s7_judge` 가 찍는다).
+    out["post_hoc"] = ("이미 시작한 경기다" in text)
     return out
 
 
@@ -285,11 +288,31 @@ async def main() -> None:
         if not got:
             continue
         key = f"{got['home']}|{got['away']}|{got['day']}"
-        if key in seen:          # 🔴 같은 경기 여러 카드 → **마지막 것만**
-            rows = [r for r in rows if f"{r['home']}|{r['away']}|{r['day']}" != key]
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **같은 경기 여러 장이면 — 킥오프 전 카드가 이긴다**(7번)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > 사후 카드는 **적중 기록에서 뺀다**.
+        #  ⚠️ 종전에는 **마지막 카드**만 남겼다 — 그러면 같은 경기를 킥오프 뒤에
+        #     한 번 더 돌린 것이 **예측을 덮는다**(실측 2026-10-13 상하이–대전).
+        #  🔴 그래서 **킥오프 전 카드**를 먼저 쓰고, 사후만 있으면 그 사실을
+        #     적고 **적중 기록에서 뺀다**.
+        mine = [r for r in rows
+                if f"{r['home']}|{r['away']}|{r['day']}" == key]
+        if mine:
+            if got.get("post_hoc") and any(not r.get("post_hoc")
+                                           for r in mine):
+                continue                     # 🔴 사후가 예측을 덮지 못한다
+            rows = [r for r in rows
+                    if f"{r['home']}|{r['away']}|{r['day']}" != key]
         seen.add(key)
         rows.append(got)
-    print(f"카드 {len(rows)}장(같은 경기는 마지막 카드만)")
+    said_post = [r for r in rows if r.get("post_hoc")]
+    rows = [r for r in rows if not r.get("post_hoc")]
+    print(f"카드 {len(rows)}장(같은 경기는 **킥오프 전** 카드 우선)")
+    if said_post:
+        print(f"🔴 **사후 카드 {len(said_post)}장은 적중 기록에서 뺐다**(7번) — "
+              + " · ".join(f"{r['home']} vs {r['away']}" for r in said_post))
     scored: list[dict] = []
     for one in rows:
         said = await result_of(net, one)
