@@ -145,3 +145,19 @@ def fit(matches: list[dict], *, as_of, half_life: float = 365.0) -> Table:
                + " · ⚠️ 뒷선(GK·DF)은 **출전 분 비중**이다 — 수비 가치는 "
                  "**후속 과제**다(지어내지 않는다)")
     return got
+
+
+def plate_of(*, league: str, as_of) -> tuple[dict, str]:
+    """🔴🔴 그 리그의 **가치 v2 판** → `{"value":…, "kind":…}` 과 사유.
+
+    🔴 고르는 규칙은 `versions`(엄격히 이전 · L3) 하나이고, parquet 읽기는
+       `player_pm.load` 하나다(사본 금지 · #1). `kind` 는 포지션에서 만든다.
+    """
+    from app.core import versions as _v
+    from app.core.ratings import player_pm as _pm
+    got, why = _pm.load(_v.path_of("player_box", league), as_of=as_of)
+    if not got.value:
+        return {}, why
+    kind = {k: ("출전 분" if str(got.pos.get(k, "")).upper() in BACK
+                else "공격") for k in got.value}
+    return {"value": dict(got.value), "kind": kind}, why

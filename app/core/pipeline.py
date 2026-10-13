@@ -284,6 +284,12 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
                      user_mk, state=st, outlook=look, strategy=plan)
     layers["strategy"] = plan
     layers["matchup"] = edge
+    # 🔴 **(가) 표시 전용** — 라인업 수를 ② 칸에 **표시로만** 싣는다(확률 경로 밖).
+    #    ⚠️ `adj_prob.probs` 는 건드리지 않는다 — 계약이 그 자리를 센다.
+    if layers.get("adj") is not None:
+        layers["adj"] = layers["adj"].model_copy(update={
+            "lineup_view": dict(edge.get("lineup_view") or {}),
+            "lineup_view_why": str(edge.get("lineup_view_why") or "")})
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **확률은 한 곳이다 — 최종 = 시뮬레이션**(사용자 지시 2026-10-10 ④)
     # ══════════════════════════════════════════════════════════════════

@@ -136,6 +136,18 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
     out["games"] = games
     out["window_bad"] = window_bad
     out["usual_xi"] = {s: sorted(v) for s, v in usual.items()}
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **(가) 라인업 표시 — 확률에 안 닿는다**(사용자 결정 2026-10-13 밤)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 보정 세 판(L1·L6·L9)이 모두 판정을 못 넘었다 → *"라인업은 확률에 넣지
+    #     않고 카드 표시·검증만. **L9 값**과 **평소 대비 공격 기여 −X%** 를 카드에
+    #     적는다."* ⚠️ 그래서 아래 수는 **λ·격자·확률에 가지 않는다**(계약이 센다).
+    said_view, why_view = _lineup_view(ref, facts, pid_box=pid_box,
+                                       usual=usual)
+    out["lineup_view"] = said_view
+    out["lineup_view_why"] = why_view
+    state.note(f"s2e (가) 라인업 표시 — {why_view}")
     for side, said in window_bad.items():
         if said:
             state.note(f"🔴🔴 **운영자 알림** — {side} 경기 목록의 두 창이 "
@@ -716,6 +728,46 @@ def _gate_off(axes: list[str], *, usual: set[str],
         return list(axes)
     from app.core.matchup import SIX_DEF
     return [x for x in axes if x in SIX_DEF]
+
+
+def _lineup_view(ref, facts, *, pid_box: dict, usual: dict
+                 ) -> tuple[dict, str]:
+    """🔴🔴 **(가) 표시용 라인업 수** — `L9` 와 평소 대비 공격 기여 %. `(값, 사유)`.
+
+    🔴 재료는 **선수 가치 v2 판**(`player_box` · `data/player_box/<리그>/<as_of>`)
+       과 **평소 XI**(이미 id 로 센 것)와 **오늘 XI id** 다.
+    ⚠️ 판이 없으면 **미산출 + 사유**다(지어내지 않는다 · #3). 🔴 이 수는 확률에
+       가지 않는다 — `tests/contracts/test_v19_2_lineup_view.py` 가 그것을 센다.
+    """
+    from app.core import lineupfix as _lf
+    from app.core import playerid as _pid
+    from app.core import probmodel as _pmd
+    from app.core.ratings import player_box as _pbx
+    kind = str(_pmd._kind(ref, facts) or "")
+    at = getattr(ref, "kickoff_utc", None)
+    if not kind or at is None:
+        return {}, (f"🔴 **라인업 표시 미산출** — 대회 열쇠/킥오프가 없다"
+                    f"(열쇠 `{kind}`)")
+    box, why_plate = _pbx.plate_of(league=kind, as_of=at)
+    if not box:
+        return {}, f"🔴 **라인업 표시 미산출** — {why_plate}"
+    said: dict[str, dict] = {}
+    for side in ("home", "away"):
+        key = str(getattr(ref, side, "") or "")
+        one = (getattr(facts, "xi", None) or {}).get(key)
+        names = ([getattr(p, "name", "") for p in (getattr(one, "lineup", None)
+                                                   or [])]
+                 or list(getattr(one, "players", None) or []))
+        today = {_pid.resolve(pid_box[side], said=nm)[0] or f"name:{nm}"
+                 for nm in names if str(nm or "").strip()}
+        said[side] = {"xi": sorted(today), "usual": sorted(usual[side]),
+                      "bench": []}
+    if not said["home"]["xi"] or not said["away"]["xi"]:
+        return {}, ("🔴 **라인업 표시 미산출** — 오늘 XI 를 id 로 못 세웠다"
+                    f"(홈 {len(said['home']['xi'])}명 · 원정 "
+                    f"{len(said['away']['xi'])}명)")
+    got, why = _lf.view_of(home=said["home"], away=said["away"], box=box)
+    return got, (why + f" · {why_plate}" if got else why)
 
 
 def _ko_players() -> dict:

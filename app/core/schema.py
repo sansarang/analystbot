@@ -1097,6 +1097,16 @@ class AdjProb(Frozen):
     #: 🔴 ② 가 돌았나 — 돌았으면 결장 계열 변수 무게가 0 이다(§4 마지막)
     measured: bool = False
     estimated_players: int = 0
+    # ══════════════════════════════════════════════════════════════
+    # 🔴🔴 **(가) 표시 전용** — 사용자 결정 2026-10-13(밤)
+    # ══════════════════════════════════════════════════════════════
+    #
+    #  🔴 라인업 보정 세 판(L1·L6·L9)이 모두 판정을 못 넘었다 → **확률에 넣지
+    #     않고** 카드 표시·검증만 한다. ⚠️ 이 칸이 λ·격자·확률에 닿으면
+    #     `tests/contracts/test_v19_2_lineup_view.py` 가 빨개진다.
+    #: 🔴 `{L9, home_pct, away_pct, home_now, home_usual, …}`(선수 가치 v2)
+    lineup_view: dict[str, float] = Field(default_factory=dict)
+    lineup_view_why: str = ""
 
 
 class MarketQuote(Frozen):

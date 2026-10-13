@@ -1117,6 +1117,26 @@ def _b3c(card: Card) -> str:
                        + (" (추정값)" if d.estimated else ""))
     else:
         out.append(f"- ⬜ **라인업 보정 없음** — {a.why}")
+    # ══════════════════════════════════════════════════════════════
+    # 🔴🔴 **(가) 표시 전용 줄** — 사용자 결정 2026-10-13(밤)
+    # ══════════════════════════════════════════════════════════════
+    #
+    #  🔴 라인업 보정 세 판이 판정을 못 넘었다(L1 폭 0.12%p · L6 선택 적중 ↓ ·
+    #     L9 넓은 구간 방향 37.9%). 그래서 **확률에 안 넣고** 이 줄로만 적는다.
+    #  ⚠️ 이 줄의 수는 **확률을 움직이지 않는다** — 그 말을 줄이 직접 한다.
+    view = dict(getattr(a, "lineup_view", None) or {})
+    if view:
+        out.append(
+            f"- **평소 대비 공격 기여**(선수 가치 v2): "
+            f"{card.match.home_name} **{view.get('home_pct', 0.0):+.0f}%** · "
+            f"{card.match.away_name} **{view.get('away_pct', 0.0):+.0f}%** · "
+            f"L9 **{view.get('L9', 0.0):+.3f}** — ⚠️ **확률은 안 움직인다**"
+            f"(판정 탈락 · 표시·검증용)")
+        if getattr(a, "lineup_view_why", ""):
+            out.append(f"    {a.lineup_view_why}")
+    else:
+        out.append(f"- ⬜ **라인업 표시 미산출** — "
+                   f"{getattr(a, 'lineup_view_why', '') or '재료가 없다'}")
     return "\n".join(out)
 
 

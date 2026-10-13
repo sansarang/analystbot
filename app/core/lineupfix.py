@@ -134,6 +134,47 @@ def raw_v2_of(*, home: dict, away: dict, box: dict) -> tuple[dict, str]:
     return got, why
 
 
+def view_of(*, home: dict, away: dict, box: dict) -> tuple[dict, str]:
+    """🔴🔴 **(가) 표시용** — `L9` 와 **평소 대비 공격 기여 %**. `(값, 사유)`.
+
+    🔴 사용자 결정 2026-10-13(밤): 세 판 모두 판정을 못 넘었으므로 라인업은
+       **확률에 넣지 않고** 카드 표시·검증만 한다. ⚠️ 그래서 이 함수의 결과가
+       λ·격자·확률에 닿으면 **계약이 빨개진다**(`test_v19_2_lineup_view.py`).
+    🔴 못 쟀으면 **빈 값 + 사유**다(0 으로 메우지 않는다 · #3).
+    """
+    said, why = raw_v2_of(home=home, away=away, box=box)
+    if "L9" not in said:
+        return {}, (f"🔴 **라인업 표시 미산출** — {why}" if why
+                    else "🔴 **라인업 표시 미산출** — 재료가 없다")
+    value, front = _front(box)
+    out: dict[str, float] = {"L9": float(said["L9"])}
+    bits: list[str] = []
+    for key, one in (("home", home), ("away", away)):
+        box_one = dict(one or {})
+        mid = ([float(value[k]) for k in front] or [0.0])
+        avg = sum(mid) / len(mid)
+
+        def _sum(ids, avg=avg) -> float:
+            got = 0.0
+            for p in (ids or []):
+                k = str(p)
+                if k in front:
+                    got += float(value[k])
+                elif k not in value:
+                    got += avg
+            return got
+
+        now = _sum(box_one.get("xi"))
+        was = _sum(box_one.get("usual"))
+        pct = ((now - was) / was * 100.0) if was > 0 else 0.0
+        out[f"{key}_pct"] = pct
+        out[f"{key}_now"] = now
+        out[f"{key}_usual"] = was
+        bits.append(f"{key} {pct:+.0f}%({now:.2f} vs 평소 {was:.2f})")
+    return out, ("**평소 대비 공격 기여** — " + " · ".join(bits)
+                 + f" · L9 {out['L9']:+.3f} · " + why)
+
+
 def ortho(raw: dict, *, axis0: float, plate: dict) -> tuple[dict, str]:
     """🔴🔴 직교화 — `L⊥ = L − (a + b·축0Δ)`. 판에 `a·b` 가 없는 신호는 **버린다**.
 
