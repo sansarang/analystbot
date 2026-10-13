@@ -890,7 +890,13 @@ async def _fill_form(ref: MatchRef, box: dict, *, state: RunState, net: Any,
                                  state=state, team=f"{name} 팀 페이지")
             if tp is None:
                 continue
+            # 🔴🔴 `as_of` 는 **필수 인자**다(사용자 지시 2026-10-12 ⓐ) —
+            #    ⚠️ 실사고 2026-10-13(이스트 벵골–알쇼르타): 이 자리가 그것을
+            #       안 넘겨 `TypeError` 로 **카드가 통째로 터졌다**. 이 길은
+            #       `recent` 가 비었을 때만 도는 **퇴로**라서 J1·K1 카드에서는
+            #       한 번도 안 지났다(리그 표가 폼을 줬다).
             rows = fm.team_recent(getattr(tp, "text", "") or "", tid, n=5,
+                                  as_of=ref.kickoff_utc,
                                   before=ref.kickoff_utc)
             if not rows:
                 continue

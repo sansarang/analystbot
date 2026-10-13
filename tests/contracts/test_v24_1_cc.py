@@ -22,11 +22,25 @@ AT = datetime(2026, 10, 13, tzinfo=timezone.utc)
 # ══════════════════════════════════════════════════════════════════
 
 def test_continental_does_not_borrow_the_domestic_baseline() -> None:
-    """🔴🔴 **CC1** — 대륙 대회는 국내 리그 기준을 **빌리지 않는다**."""
+    """🔴🔴 **CC1** — 대륙 대회는 국내 리그 기준을 **빌리지 않는다**.
+
+    🔴 **빈 칸이어야 한다는 뜻이 아니다** — *"그 대회 자체 실측이거나, 아니면
+       없다"* 는 뜻이다(§5-3-c). 그래서 두 가지만 센다:
+       ① 앞머리 퇴로(`kinds.league` 합계)와 **같은 수가 아니다**
+       ② 있으면 그 `source` 가 **그 대회 자체 실측**이라고 말한다.
+    ⚠️ 2026-10-13 에 ACLE·ACL2·UCL 은 `tools/fit_comp_goals.py` 로 **실측**해
+       적었다(ACLE 235경기 · ACL2 254 · UCL 370 · 중립 단계 제외).
+    """
     from app import rules
+    said_pool = dict(rules.goal_baseline("league:fotmob9999"))
     for key in ("league:UCL", "league:ACLE", "league:ACL2"):
         got = rules.goal_baseline(key)
-        assert not got, (key, got)
+        if not got:
+            continue                      # 🔴 없는 것도 맞다(미산출)
+        assert got.get("goals_per_match") != said_pool.get("goals_per_match"), \
+            (key, "🔴 국내 리그 합계를 그대로 쓰고 있다(CC1)")
+        assert key in str(got.get("source") or ""), (key, got.get("source"))
+        assert "자체 실측" in str(got.get("source") or ""), got.get("source")
 
 
 def test_domestic_league_still_falls_back() -> None:

@@ -1,5 +1,23 @@
 measured_at: '2026-10-12'
 kinds:
+  league:UCL:
+    goals_per_match: 3.3892
+    home_share: 1.9514
+    n: 370
+    n_home: 370
+    source: fotmob league:UCL 자체 실측(2026/2027 18경기 · 2025/2026 189경기 · 2024/2025 189경기) · 중립 단계 제외(CC3) · tools/fit_comp_goals.py 2026-10-13
+  league:ACL2:
+    goals_per_match: 3.0551
+    home_share: 1.689
+    n: 254
+    n_home: 254
+    source: fotmob league:ACL2 자체 실측(2026/2027 19경기 · 2025/2026 116경기 · 2024/2025 119경기) · 중립 단계 제외(CC3) · tools/fit_comp_goals.py 2026-10-13
+  league:ACLE:
+    goals_per_match: 2.8213
+    home_share: 1.6723
+    n: 235
+    n_home: 235
+    source: fotmob league:ACLE 자체 실측(2026/2027 23경기 · 2025/2026 115경기 · 2024/2025 111경기) · 중립 단계 제외(CC3) · tools/fit_comp_goals.py 2026-10-13
   league:
     goals_per_match: 2.7458
     n: 7348

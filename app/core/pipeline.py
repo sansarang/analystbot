@@ -836,10 +836,16 @@ def _gate_card(ref: MatchRef, facts, variables: list, gate, *,
     """
     from app.core.schema import Card as _C
     state.note(gate.card())
+    # 🔴🔴 **`notes` 칸은 `Card` 에 없다**(`Frozen` · extra 금지) —
+    #    ⚠️ 실사고 2026-10-13(이스트 벵골–알쇼르타): 이 자리가 `notes=` 를 넘겨
+    #       **카드가 통째로 터졌다**(`ValidationError: extra_forbidden`). 이 길은
+    #       신원 검문이 걸릴 때만 도는 **퇴로**라서 여태 한 번도 안 지났다.
+    #    🔴 사유는 **결론 줄**에 적는다(그 자리가 *"왜 확률이 없나"* 를 말한다) ·
+    #       같은 글은 `state.note` 로도 남는다(위 줄).
     return _C(match=ref, facts=facts, variables=list(variables or []),
               funnel=state.counted_box() if hasattr(state, "counted_box")
               else _C(match=ref, facts=facts).funnel,
-              notes=[gate.card(), *state.notes[-8:]])
+              conclusion=gate.card(), stance="🔴 확률 미산출(신원 검문)")
 
 
 def _moved(before: Card, layers: dict, mr: object) -> list[str]:
