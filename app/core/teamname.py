@@ -24,8 +24,12 @@ NOISE = {"fc", "cf", "cp", "sc", "sk", "fk", "ac", "as", "rc", "club",
 #: 🔴🔴 **혼자서는 못 맞추는 낱말** — 수십 팀이 함께 쓴다.
 #    ⚠️ 실사고 2026-10-14 01:19: `Buriram United` 가 `united` 하나로
 #    `JEF United Chiba`(J1 판)에 붙었다 — 계약 SR2 가 잡았다(`ja` ≠ `th`).
-WEAK = {"united", "city", "sporting", "racing", "athletic", "real", "club",
-        "atletico", "dynamo", "lokomotiv", "olympic", "olympique"}
+WEAK = {"united", "city", "sporting", "racing", "athletic", "club", "al"}
+# ⚠️ `al` — 아랍어 관사다. 안 빼면 `Al-Sadd`·`Al Hilal`·`Al Ahli` 가 서로
+#    절반 겹친다(실측 2026-10-14: 외부 대조 표에 남의 경기가 섞여 들어왔다).
+# ⚠️ `real`·`atletico` 는 **빼지 않는다** — 실측 2026-10-14: `real` 을 약한
+#    낱말로 두자 `Real Madrid` 와 `Atlético Madrid` 의 겹침이 **1.00 으로 같아져**
+#    외부 대조에서 짝을 못 골랐다(UCL 58경기가 그렇게 떨어졌다).
 
 #: 🔴 겹침 문턱 — 속 낱말이 **반쪽**은 같아야 한다
 CUT = 0.5
@@ -33,9 +37,27 @@ CUT = 0.5
 
 def _core(said: str) -> set[str]:
     """🔴 속 낱말 — 소문자·꼬리말 제거."""
+    # ⚠️ 한 글자 토막은 버린다(`F.C.` → `f`·`c` 가 남아 겹침을 어지럽힌다)
     got = {w for w in str(said or "").lower().replace(".", " ")
-           .replace("-", " ").split() if w and w not in NOISE}
+           .replace("-", " ").split()
+           if w and len(w) > 1 and w not in NOISE}
     return got or {w for w in str(said or "").lower().split() if w}
+
+
+def share(a: str, b: str, *, weak: bool = True) -> float:
+    """🔴 두 이름의 **속 낱말 겹침**(0~1) — `pick` 과 외부 대조가 같이 쓴다.
+
+    🔴 `weak=False` 면 흔한 낱말을 **안 뺀다** — 외부 대조가 `Real Madrid` 와
+       `Atlético Madrid` 를 가를 때 그 수를 잣대로 쓴다(짝 맞춤의 가름끈).
+    """
+    mine, yours = _core(a), _core(b)
+    if not mine or not yours:
+        return 0.0
+    if weak:
+        x, y = mine - WEAK, yours - WEAK
+        if x and y:
+            mine, yours = x, y
+    return len(mine & yours) / max(1, min(len(mine), len(yours)))
 
 
 def pick(name: str, keys) -> tuple[str, str]:
@@ -48,26 +70,15 @@ def pick(name: str, keys) -> tuple[str, str]:
     if not said or not rows:
         return "", "⬜ 판이 비었다"
     low = said.lower()
+    hits: list[tuple[float, str]] = []
     for k in rows:
         if k.strip().lower() == low:
             return k, "글자 그대로"
-    mine = _core(said)
-    hits = []
     for k in rows:
-        yours = _core(k)
-        if not yours:
-            continue
-        # 🔴 **흔한 낱말만 겹치는 것은 맞춤이 아니다** — 양쪽에 고유 낱말이 다
-        #    있으면 그것들로만 센다(`Buriram`↔`JEF`·`Chiba` → 0)
-        a, b = mine - WEAK, yours - WEAK
-        if a and b:
-            mine_use, yours_use = a, b
-        else:
-            mine_use, yours_use = mine, yours
-        share = (len(mine_use & yours_use)
-                 / max(1, min(len(mine_use), len(yours_use))))
-        if share >= CUT:
-            hits.append((share, k))
+        # 🔴 **흔한 낱말만 겹치는 것은 맞춤이 아니다**(`share` 가 그 규칙을 든다)
+        got = share(said, k)
+        if got >= CUT:
+            hits.append((got, k))
     if not hits:
         return "", f"⬜ `{said}` 가 판에 없다(적힌 팀 {len(rows)}개)"
     top = max(h[0] for h in hits)

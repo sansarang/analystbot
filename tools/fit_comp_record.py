@@ -12,7 +12,13 @@ PYTHONPATH=. python tools/fit_comp_record.py --comp league:ACLE --seasons 2
 🔴 두 가지를 적는다 —
    ① **대회 전체** 홈/원정 승률(그 차이가 S03 의 `win_pct_delta` 다)
    ② **팀별** 홈·원정 성적(승/무/패·득·실·경기 수)
-🔴 **중립 단계는 뺀다**(CC3 · 홈이 없는 경기는 홈 이점을 말할 수 없다).
+🔴🔴 **집계 기간**(수정 지시 2026-10-14c ②) — `--seasons 2` 는 *지금 시즌을
+   **뺀** 직전 두 시즌*이다. 지금 시즌 진행분은 **따로**(`now`) 센다.
+🔴 리그 단계·플레이오프·토너먼트를 **다 넣는다**. 중립 경기(결승 등)는 `neutral`
+   칸에 **따로** 적는다 — 대회 전체 홈 우위(S03)만 중립을 뺀다(CC3).
+⚠️ 실사고 2026-10-14: `neutral: ["final"]` 을 부분 문자열로 맞춰
+   `Quarter-Finals`·`Semi-Finals` 가 중립으로 잡혀 **통째로 빠졌다** —
+   그래서 스포르팅의 아스날 **0-0 원정**이 사라졌다(`competition.stage_hit` 로 고쳤다).
 ⚠️ 판은 `data/comp_record/<대회>/<as-of>.yaml` 이고 **표시 전용**이다 —
    λ 는 `goal_baselines.home_share`(득점 실측)만 쓴다(확률 불변).
 """
@@ -45,7 +51,9 @@ async def rows_of(comp: str, *, seasons: int) -> tuple[list[dict], str]:
     said = fm.league_seasons(j)
     out: list[dict] = []
     box: list[str] = []
-    for i, season in enumerate(said[:max(1, int(seasons))]):
+    # 🔴 `said[0]` 이 **지금 시즌**이다 — 직전 N 시즌은 그 뒤 N 개다
+    want = said[:1 + max(1, int(seasons))]
+    for i, season in enumerate(want):
         if i == 0:
             pp = ((j.get("props") or {}).get("pageProps") or {})
         else:
@@ -65,49 +73,83 @@ async def rows_of(comp: str, *, seasons: int) -> tuple[list[dict], str]:
                         "away": str((m.get("away") or {}).get("name") or ""),
                         "hg": int(got.group(1)), "ag": int(got.group(2)),
                         "stage": str(m.get("roundName") or m.get("round")
-                                     or ""), "season": str(season)})
+                                     or ""), "season": str(season),
+                        # 🔴 **지금 시즌인가**(목록의 첫 시즌) — 따로 센다
+                        "now": i == 0,
+                        # 🔴 외부 대조가 **날짜로 짝을 가른다**(같은 짝이 리그
+                        #    단계와 녹아웃에 두 번 나오는 자리가 있다)
+                        "utc": str(st.get("utcTime") or "")})
             add += 1
         box.append(f"{season} {add}경기")
     return out, " · ".join(box)
 
 
+def _empty() -> dict:
+    return {"w": 0, "d": 0, "l": 0, "gf": 0, "ga": 0, "n": 0}
+
+
+def _add(box: dict, gf: int, ga: int) -> None:
+    box["n"] += 1
+    box["gf"] += gf
+    box["ga"] += ga
+    box["w" if gf > ga else ("d" if gf == ga else "l")] += 1
+
+
 def build(comp: str, rows: list[dict]) -> dict:
-    """🔴 대회 전체 홈 우위 + 팀별 홈/원정 성적."""
+    """🔴 대회 전체 홈 우위 + 팀별 홈/원정/중립 성적(**시즌별**).
+
+    🔴 `prev` = 지금 시즌을 뺀 직전 시즌들 · `now` = 지금 시즌 진행분 ·
+       `neutral` = 중립 단계(결승 등) · `by_season` = 시즌마다 같은 세 칸.
+    🔴 대회 전체 수치(S03 의 `win_pct_delta`)는 **중립을 뺀 경기**로만 센다(CC3).
+    """
     from app.core import competition as _cp
-    keep = [r for r in rows
-            if not _cp.neutral_of(comp, stage=str(r.get("stage") or ""))[0]]
+    for r in rows:
+        r["neutral"] = bool(_cp.neutral_of(comp,
+                                           stage=str(r.get("stage") or ""))[0])
+    keep = [r for r in rows if not r["neutral"]]
     hw = sum(1 for r in keep if r["hg"] > r["ag"])
     dr = sum(1 for r in keep if r["hg"] == r["ag"])
     aw = len(keep) - hw - dr
     teams: dict[str, dict] = {}
-    for r in keep:
+    for r in rows:
         for side in ("home", "away"):
             name = r[side]
             said = teams.setdefault(name, {
-                "home": {"w": 0, "d": 0, "l": 0, "gf": 0, "ga": 0, "n": 0},
-                "away": {"w": 0, "d": 0, "l": 0, "gf": 0, "ga": 0, "n": 0}})
-            mine = said[side]
+                "home": _empty(), "away": _empty(), "neutral": _empty(),
+                "now": {"home": _empty(), "away": _empty(),
+                        "neutral": _empty()},
+                "by_season": {}})
             gf = r["hg"] if side == "home" else r["ag"]
             ga = r["ag"] if side == "home" else r["hg"]
-            mine["n"] += 1
-            mine["gf"] += gf
-            mine["ga"] += ga
-            mine["w" if gf > ga else ("d" if gf == ga else "l")] += 1
+            where = "neutral" if r["neutral"] else side
+            # 🔴 **직전 시즌 합계**(`home`·`away`·`neutral`)와 **지금 시즌**을 가른다
+            if r.get("now"):
+                _add(said["now"][where], gf, ga)
+            else:
+                _add(said[where], gf, ga)
+            one = said["by_season"].setdefault(str(r.get("season") or ""), {
+                "home": _empty(), "away": _empty(), "neutral": _empty()})
+            _add(one[where], gf, ga)
     n = len(keep) or 1
     return {
-        "대회": comp, "n": len(keep),
+        "대회": comp, "n": len(rows), "n_graded": len(keep),
         "competition": {
             "home_games": len(keep),
             "home_win_pct": round(100 * hw / n, 1),
             "away_win_pct": round(100 * aw / n, 1),
             "draw_pct": round(100 * dr / n, 1),
-            # 🔴 S03 이 읽는 그 수 — **홈 승률 − 원정 승률**(%p)
+            # 🔴 S03 이 읽는 그 수 — **홈 승률 − 원정 승률**(%p · 중립 뺀 경기)
             "win_pct_delta": round(100 * (hw - aw) / n, 1),
             "goals_delta": round(
                 sum(r["hg"] - r["ag"] for r in keep) / n, 2)},
         "teams": teams,
-        "왜": ("대회 일정의 스코어로 센다(중립 단계 제외) · **표시 전용** — λ 는 "
-               "득점 실측(`goal_baselines.home_share`)만 쓴다")}
+        # 🔴🔴 **검증 꼬리표**(수정 지시 2026-10-14c ③) — 외부 공식 결과와 대조해
+        #    불일치가 0 이 될 때까지 카드는 "검증 전 — 판단에 쓰지 말 것"을 적는다.
+        "verified": False,
+        "왜": ("대회 일정의 스코어(`status.scoreStr`·`finished`)로 센다 · "
+               "중립 단계는 `neutral` 칸에 따로 · 대회 전체 수치만 중립 제외"
+               "(CC3) · **표시 전용** — λ 는 득점 실측"
+               "(`goal_baselines.home_share`)만 쓴다")}
 
 
 async def main(argv: list[str]) -> int:
@@ -139,13 +181,19 @@ async def main(argv: list[str]) -> int:
     print(f"🔴 **판을 적었다** — `{path.relative_to(ROOT)}`(표시 전용) · 팀 "
           f"{len(box['teams'])}개")
     print()
-    print("| 팀 | 홈 성적 | 홈 득·실 | 원정 성적 | 원정 득·실 |")
+    print("| 팀 | 시즌 | 홈 | 원정 | 중립 |")
     print("|---|---|---|---|---|")
+
+    def _one(b: dict) -> str:
+        if not int(b.get("n") or 0):
+            return "—"
+        return (f"{b['w']}승 {b['d']}무 {b['l']}패({b['n']}경기 · "
+                f"{b['gf']}·{b['ga']})")
+
     for name, said in sorted(box["teams"].items())[:40]:
-        h, a = said["home"], said["away"]
-        print(f"| {name} | {h['w']}승 {h['d']}무 {h['l']}패({h['n']}) | "
-              f"{h['gf']}·{h['ga']} | {a['w']}승 {a['d']}무 {a['l']}패"
-              f"({a['n']}) | {a['gf']}·{a['ga']} |")
+        for season, one in sorted(said["by_season"].items(), reverse=True):
+            print(f"| {name} | {season} | {_one(one['home'])} | "
+                  f"{_one(one['away'])} | {_one(one['neutral'])} |")
     return 0
 
 

@@ -48,8 +48,13 @@ def plate_for(home: str, away: str) -> tuple[dict, str]:
                 f"(판 {len(list(BOX.glob('*.yaml')))}개)")
 
 
-def said_of(home: str, away: str) -> str:
-    """🔴 카드 한 줄 — 팀마다 `남은 선발/11` · 감독 · 🟡 판정."""
+def said_of(home: str, away: str, *, comp: str = "") -> str:
+    """🔴 카드 한 줄 — 팀마다 `남은 선발/11` · 감독 · 🟡 판정.
+
+    🔴 **검증 꼬리표**(수정 지시 2026-10-14c ③) — 그 대회의 이력 판이 외부
+       공식 결과와 대조되기 전이면 **"검증 전 — 판단에 쓰지 말 것"** 을 적는다.
+       🔴 그 판단은 `comprecord.verified_of` **하나**가 든다(사본 금지).
+    """
     box, why = plate_for(home, away)
     if not box:
         return f"⬜ {why}"
@@ -68,4 +73,10 @@ def said_of(home: str, away: str) -> str:
             f"감독 " + ("**같다**" if same else "🔴 **바뀜**")
             + (f"({said.get('coach_now')})" if said.get("coach_now") else "")
             + (" · 🟡 **이력 근거 약함**" if weak else " · ✅ 근거 있다"))
-    return " / ".join(out) + f" · {why} · ⚠️ **표시만**(확률 불변)"
+    said_out = " / ".join(out) + f" · {why} · ⚠️ **표시만**(확률 불변)"
+    if comp:
+        from app.core import comprecord as _cr
+        ok, said_ok = _cr.verified_of(str(comp))
+        if not ok:
+            said_out += f" · {said_ok}"
+    return said_out

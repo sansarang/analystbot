@@ -21,16 +21,23 @@ ROOT = Path(__file__).resolve().parents[2]
 BOX = ROOT / "data/comp_record"
 
 
-def plate(key: str) -> tuple[dict, str]:
-    """🔴 그 대회의 가장 최근 판. 없으면 `({}, 사유)`."""
+def latest(key: str):
+    """🔴 그 대회의 **가장 최근 판 경로**(없으면 `None`) — `plate` 와 같은 고름."""
     box = BOX / str(key or "").replace(":", "_")
     rows = sorted(box.glob("*.yaml")) if box.exists() else []
-    if not rows:
+    return rows[-1] if rows else None
+
+
+def plate(key: str) -> tuple[dict, str]:
+    """🔴 그 대회의 가장 최근 판. 없으면 `({}, 사유)`."""
+    # 🔴 판 **고르기는 `latest` 하나다**(사본 금지) — 기록을 덧쓰는 도구도 그것을 쓴다
+    path = latest(key)
+    if path is None:
         return {}, (f"⬜ **대회 성적 판이 없다**(`{key}`) — "
                     f"`tools/fit_comp_record.py` 가 아직 안 돌았다")
     import yaml
-    got = yaml.safe_load(rows[-1].read_text(encoding="utf-8")) or {}
-    return dict(got), (f"판 `{rows[-1].stem}`(대회 일정 {got.get('n')}경기 · "
+    got = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    return dict(got), (f"판 `{path.stem}`(대회 일정 {got.get('n')}경기 · "
                        f"{got.get('seasons') or '시즌 미상'})")
 
 
@@ -62,29 +69,70 @@ def team_of(key: str, name: str) -> tuple[dict, str]:
                               else f"{why} · {said_pick}")
 
 
+def _said_box(box: dict) -> str:
+    """🔴 성적 한 덩이 — 없으면 `—`."""
+    if not int((box or {}).get("n") or 0):
+        return "—"
+    return (f"{int(box['w'])}승 {int(box['d'])}무 {int(box['l'])}패"
+            f"({int(box['n'])}경기 · 득 {int(box['gf'])}·실 {int(box['ga'])})")
+
+
+def verified_of(key: str) -> tuple[bool, str]:
+    """🔴🔴 그 판이 **외부 공식 결과와 대조**됐나(수정 지시 2026-10-14c ③).
+
+    🔴 불일치가 0 이 될 때까지 카드는 **"검증 전 — 판단에 쓰지 말 것"** 을 적는다.
+    """
+    box, why = plate(key)
+    if not box:
+        return False, why
+    if box.get("verified") is True:
+        return True, f"✅ 외부 공식 결과와 대조 끝({box.get('verified_why') or why})"
+    return False, ("🔴 **검증 전 — 판단에 쓰지 말 것**"
+                   f"(외부 공식 결과 대조 전 · {why})")
+
+
 def said_of(key: str, *, home: str, away: str) -> str:
-    """🔴 카드 한 줄 — 두 팀의 홈/원정 성적(직전 2시즌). 표시 전용."""
+    """🔴 카드 줄 — 두 팀의 대회 성적. **시즌별**로 나눠 적는다(표시 전용).
+
+    🔴 집계 기간(수정 지시 2026-10-14c ②) — *지금 시즌을 뺀 직전 두 시즌*이
+       `home`·`away` 고, **지금 시즌 진행분**은 따로, **중립 경기**(결승 등)도
+       따로다. 시즌별 줄은 판의 `by_season` 이 든다.
+    🔴 꼬리표 — 외부 대조가 끝나지 않았으면 **검증 전**이라고 적는다(③).
+    """
     out = []
     for name, side in ((home, "home"), (away, "away")):
         got, why = team_of(key, name)
         if not got:
             out.append(f"{name} ⬜ {why}")
             continue
-        mine = dict(got.get(side) or {})
-        other = dict(got.get("away" if side == "home" else "home") or {})
         tag = "홈" if side == "home" else "원정"
-        out.append(
-            f"**{name}** {tag} {int(mine.get('w') or 0)}승 "
-            f"{int(mine.get('d') or 0)}무 {int(mine.get('l') or 0)}패"
-            f"({int(mine.get('n') or 0)}경기 · 득 {int(mine.get('gf') or 0)}"
-            f"·실 {int(mine.get('ga') or 0)})"
-            f" / 반대쪽 {int(other.get('w') or 0)}승 "
-            f"{int(other.get('d') or 0)}무 {int(other.get('l') or 0)}패"
-            f"({int(other.get('n') or 0)}경기)")
+        other = "away" if side == "home" else "home"
+        mine = [f"**{name}** 직전 두 시즌 {tag} {_said_box(got.get(side))}"
+                f" / 반대쪽 {_said_box(got.get(other))}"]
+        now = dict(got.get("now") or {})
+        if now:
+            mine.append(f"지금 시즌 {tag} {_said_box(now.get(side))}"
+                        f" / 반대쪽 {_said_box(now.get(other))}")
+        said_n = dict(got.get("neutral") or {})
+        if int(said_n.get("n") or 0) or int(
+                dict(now.get("neutral") or {}).get("n") or 0):
+            mine.append("중립(결승 등) "
+                        + _said_box({
+                            k: int(said_n.get(k) or 0)
+                            + int(dict(now.get("neutral") or {}).get(k) or 0)
+                            for k in ("w", "d", "l", "gf", "ga", "n")}))
+        for season, one in sorted(dict(got.get("by_season") or {}).items(),
+                                  reverse=True):
+            # ⚠️ 그 시즌에 그쪽 경기가 **없으면 줄을 안 적는다**(빈 `—` 는 소음이다)
+            if not int((dict(one).get(side) or {}).get("n") or 0):
+                continue
+            mine.append(f"{season} {tag} {_said_box(dict(one).get(side))}")
+        out.append(" · ".join(mine))
     said_comp, why_comp = comp_of(key)
     tail = (f" · 대회 전체 홈 승 {said_comp.get('home_win_pct')}% · 무 "
             f"{said_comp.get('draw_pct')}% · 원정 승 "
             f"{said_comp.get('away_win_pct')}%(홈 우위 "
-            f"**{said_comp.get('win_pct_delta'):+}%p**)" if said_comp
+            f"**{said_comp.get('win_pct_delta'):+}%p** · 중립 제외)" if said_comp
             else f" · ⬜ 대회 전체 수치 없음({why_comp})")
-    return " · ".join(out) + tail
+    ok, said_ok = verified_of(key)
+    return " · ".join(out) + tail + ("" if ok else f" · {said_ok}")

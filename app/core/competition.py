@@ -381,6 +381,50 @@ def neutral_of(key: str, *, stage: str) -> tuple[bool | None, str]:
                       f"모른다(지어내지 않는다)")
     said = str(stage or "").strip().lower()
     for one in [str(x).lower() for x in (box.get("neutral") or [])]:
-        if one and one in said:
+        if one and stage_hit(one, said):
             return True, f"중립 경기(`{one}` · 표 `{CONF}`)"
     return False, f"중립 아님(단계 `{stage}` · 표의 중립 목록에 없다)"
+
+
+#: 🔴 그 낱말 **앞에** 붙으면 다른 단계가 되는 글자(한글은 띄어쓰기가 없다)
+STAGE_NOT = ("준", "4강", "8강", "16강")
+
+
+def _stage_words(said: str) -> list[str]:
+    """🔴 단계 이름을 **낱말**로 쪼갠다(`quarter-finals` → `quarter`·`finals`).
+
+    ⚠️ 이름이 `_stage_words` 인 까닭 — 이 파일에는 **별칭용 `_words(row: dict)`**
+       가 이미 있다. 실사고 2026-10-14: 같은 이름으로 넣어 그 함수를 **덮었고**
+       (ruff 는 안 잡았다) `kor.1`·`J1 League` 의 대회 열쇠 맞춤이 깨졌다
+       (계약 `test_v6_9_layers` 둘이 빨개져 잡혔다).
+    """
+    got = re.split(r"[^0-9a-z가-힣]+", str(said or "").lower())
+    return [w for w in got if w]
+
+
+def stage_hit(entry: str, stage: str) -> bool:
+    """🔴🔴 단계 이름 맞춤 — **낱말 단위**다(부분 문자열이 아니다).
+
+    ⚠️ 실사고 2026-10-14(대회 이력 칸): `neutral: ["final"]` 을 부분 문자열로
+       맞춰 **`Quarter-Finals`·`Semi-Finals` 가 전부 중립**으로 잡혔고, 그
+       단계 경기들이 대회 성적 집계에서 **통째로 빠졌다**(스포르팅의 아스날
+       0-0 원정·0-1 홈이 사라졌다 — 0-0 은 득실에도 자취가 없어 더 늦게 보였다).
+    🔴 ASCII 는 **낱말 줄**이 그대로 들어 있어야 한다(`finals` ≠ `final`).
+    🔴 한글은 띄어쓰기가 없어 부분 문자열로 보되, `준결승`·`8강` 처럼 **앞에
+       글자가 붙어 다른 단계가 되는 경우**는 뺀다.
+    """
+    one = str(entry or "").strip().lower()
+    said = str(stage or "").strip().lower()
+    if not one or not said:
+        return False
+    if re.fullmatch(r"[0-9a-z \-_/]+", one):
+        want, have = _stage_words(one), _stage_words(said)
+        n = len(want)
+        return any(have[i:i + n] == want for i in range(len(have) - n + 1))
+    i = said.find(one)
+    while i >= 0:
+        head = said[:i]
+        if not any(head.endswith(x) for x in STAGE_NOT):
+            return True
+        i = said.find(one, i + 1)
+    return False

@@ -370,7 +370,9 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
         from app.core import comphistory as _ch
         said_std["comp_history"] = _ch.said_of(
             str(getattr(ref, "home_name", "") or ""),
-            str(getattr(ref, "away_name", "") or ""))
+            str(getattr(ref, "away_name", "") or ""),
+            # 🔴 대회 열쇠 — **검증 꼬리표**(2026-10-14c ③)를 그 판으로 센다
+            comp=said_lg)
         said_std["league_gap"] = _off.gap_said(
             conf=said_conf,
             home=str(getattr(ref, "home_name", "") or ""),
