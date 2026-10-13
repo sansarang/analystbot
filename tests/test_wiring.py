@@ -666,6 +666,15 @@ TOOL_ONLY: dict[str, str] = {
     "app.core.ratings.player_pm.value_of": "tools/fit_player_pm.py",
     # 🔴🔴 **§3 새 λ 식**(지시서 2026-10-12 §3) — 적합 도구가 부른다. ⚠️ 운영 ⑯ 에
     #    잇는 것은 **§3 판정이 끝난 뒤**다(§0 승격 절차 · §10).
+    # 🔴🔴 **§5-3 리그 오프셋·대회 홈 이점**(지시서 2026-10-13 밤 셋째) — 지금은
+    #    **적합·판 적기**만 돌아간다. ⚠️ 운영 ③·⑯ 에 잇는 것은 **§5-3-f 백필
+    #    판정**(M1 오프셋 판 vs 리그 간 Elo · 규칙 v2+(d)) 뒤다.
+    #    🔴 그때까지 대륙 대회는 `rules.goal_baseline` 이 **빈 사전**을 내므로
+    #       (CC1) 카드가 그 칸을 **미산출**로 적는다 — 국내 값을 빌리지 않는다.
+    "app.core.offsets.plate_of": "tools/fit_offsets.py",
+    "app.core.offsets.of": "tools/fit_offsets.py",
+    "app.core.offsets.score_of": "tools/fit_offsets.py",
+    "app.core.offsets.home_of": "tools/fit_offsets.py",
     "app.core.probfloor.lambdas": "tools/fit_probfloor.py",
     # 🔴 §4 `compute` — **전진 선택 도구**가 채택 목록을 바꿔 가며 부른다.
     #    ⚠️ 운영 ⑯ 에 잇는 것은 §9 가 채택을 끝낸 뒤다(§15 승격 순서).

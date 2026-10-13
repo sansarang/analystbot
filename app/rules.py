@@ -930,7 +930,17 @@ def goal_baseline(kind: str) -> dict:
     """
     box = dict((_load(GOAL_BASELINES) or {}).get("kinds") or {})
     said = str(kind or "")
-    for key in (said, said.split(":")[0] if ":" in said else ""):
+    if isinstance(box.get(said), dict):
+        return dict(box[said])
+    # 🔴🔴 **CC1** — 대륙 클럽 대회는 앞머리 퇴로(`league` 합계)를 **쓰지 않는다**
+    #    (지시서 §5-3-c: *"국내 리그 홈 이점을 빌리지 않는다"*).
+    #    ⚠️ 실측 2026-10-13: `league:UCL` 이 국내 9리그 합계(경기당 2.7458 ·
+    #       홈 몫 **없음**)를 조용히 빌렸다 — 그래서 홈 배율이 1.0 이 됐다.
+    #    🔴 판이 생기면(`tools/fit_comp_goals.py`) 위 열쇠 적중으로 돌아온다.
+    from app.core import competition as _cp
+    if _cp.kind_require(said)[0] == "club_continental":
+        return {}
+    for key in (said.split(":")[0] if ":" in said else "",):
         if key and isinstance(box.get(key), dict):
             return dict(box[key])
     return {}
