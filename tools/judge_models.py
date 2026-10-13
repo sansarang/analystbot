@@ -260,8 +260,12 @@ P_CAP = 0.05
 BANDS = (0.30, 0.20, 0.10)
 
 
+#: 🔴 (d) 의 문턱 — 평소→확정 XI 확률 변화 **평균**(사용자 결정 2026-10-13 저녁)
+MOVE_MEAN = 0.010
+
+
 def passes(*, diff: dict, dir_rate: float, base_dir: float, p_value: float,
-           bands: dict, base_bands: dict,
+           bands: dict, base_bands: dict, move: dict | None = None,
            rule: str = "v1") -> tuple[bool, dict, str]:
     """🔴🔴 §7 — 도전 모형이 **(a)(b)(c) 셋 다** 통과하나. `(통과, 칸, 사유)`.
 
@@ -270,6 +274,30 @@ def passes(*, diff: dict, dir_rate: float, base_dir: float, p_value: float,
     """
     # 🔴 `rule="v1"` — 이번 시험의 규칙(구간 **상한** < +0.005)
     #    `rule="v2"` — 다음 시험부터(사용자 결정): 점추정이 낮고 **구간 하한 < 0**
+    # 🔴🔴 `rule="lineup2"` — **사용자 결정 2026-10-13(저녁)**: 규칙 보완.
+    #    > 채택에 **(d) 추가** — 평소→확정 XI 확률 변화 **평균 ≥ 1.0%p** 이고,
+    #    > 변화 **≥ 3%p 경기의 방향 적중률 ≥ B**.
+    #    🔴 왜 — `B+L1` 이 (a)(b)(c)를 통과했는데 **움직이는 폭이 0.12%p**,
+    #       ≥3%p 경기가 **0건**이었다. 규칙을 통과해도 **라인업을 반영한 것이
+    #       아니다**. ⚠️ ≥3%p 경기가 **0건이면 (d) 는 탈락**이다(잴 것이 없다).
+    if str(rule) == "lineup2":
+        ok, box, said = passes(diff=diff, dir_rate=dir_rate,
+                               base_dir=base_dir, p_value=p_value,
+                               bands=bands, base_bands=base_bands,
+                               rule="lineup")
+        one = dict(move or {})
+        mean = float(one.get("mean", 0.0))
+        wide_n = int(one.get("wide_n", 0) or 0)
+        wide = float(one.get("wide_hit", 0.0))
+        base_wide = float(one.get("base_wide_hit", 0.0))
+        d = bool(mean >= MOVE_MEAN and wide_n > 0 and wide >= base_wide)
+        box = {**box, "d": d}
+        said += (f" · (d) 평균 변화 {mean * 100:.2f}%p ≥ "
+                 f"{MOVE_MEAN * 100:.1f}%p · ≥3%p 경기 {wide_n}건"
+                 + (f" 방향 {wide:.1%} vs B {base_wide:.1%}" if wide_n
+                    else " 🔴 **잴 것이 없다**")
+                 + f" → {'✅' if d else '🔴'}")
+        return (ok and d), box, said
     # 🔴🔴 `rule="lineup"` — **라인업 지시서 §6**(2026-10-13)이 다시 쓴 v2 다.
     #    > (a) 로그 손실 점추정 < B · 구간 하한 < 0
     #    > (b) 방향이 B 보다 **낮지 않음**(맥니마 **B 우세** p<0.05 탈락)

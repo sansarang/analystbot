@@ -178,3 +178,38 @@ def test_lineup_rule_is_committed_before_the_trial() -> None:
                                dir_rate=0.55, base_dir=0.50, p_value=0.9,
                                bands=base, base_bands=base, rule="lineup")
     assert not bad2 and box3["a"] is False
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **(d) 조건** — 사용자 결정 2026-10-13(저녁) · 다음 시험부터
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 채택에 (d) 추가 — 평소→확정 XI 확률 변화 **평균 ≥ 1.0%p** 이고,
+#  > 변화 **≥ 3%p 경기의 방향 적중률 ≥ B**.
+#  🔴 왜 — `B+L1` 은 (a)(b)(c)를 통과했는데 폭이 **0.12%p** · ≥3%p 경기 **0건**
+#     이었다. 규칙을 통과해도 **라인업이 반영된 것이 아니다**.
+
+def test_rule_d_requires_real_movement() -> None:
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
+    import judge_models as jm
+    base = {0.30: 0.50, 0.20: 0.50, 0.10: 0.50}
+    good = {"diff": {"mean": -0.01, "lo": -0.02, "hi": 0.001},
+            "dir_rate": 0.50, "base_dir": 0.50, "p_value": 0.9,
+            "bands": base, "base_bands": base, "rule": "lineup2"}
+    # 🔴 (a)(b)(c) 통과 + 폭 1.2%p · ≥3%p 20경기에서 방향이 B 보다 높다 → 채택
+    ok, box, why = jm.passes(**good, move={"mean": 0.012, "wide_n": 20,
+                                           "wide_hit": 0.55,
+                                           "base_wide_hit": 0.50})
+    assert ok and box["d"] is True, why
+    # 🔴 폭이 0.12%p 면 **탈락**(지난 시험의 `B+L1` 이 이 자리다)
+    bad, box2, why2 = jm.passes(**good, move={"mean": 0.0012, "wide_n": 0,
+                                              "wide_hit": 0.0,
+                                              "base_wide_hit": 0.0})
+    assert not bad and box2["d"] is False and "잴 것이 없다" in why2, why2
+    # 🔴 폭은 넓지만 넓게 움직인 경기에서 **방향이 더 낮으면** 탈락
+    bad2, box3, _w = jm.passes(**good, move={"mean": 0.02, "wide_n": 19,
+                                             "wide_hit": 0.368,
+                                             "base_wide_hit": 0.421})
+    assert not bad2 and box3["d"] is False
