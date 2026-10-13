@@ -205,13 +205,16 @@ def fit(matches: list[dict], *, as_of, lam: float,
     return got
 
 
-def shrink(raw: dict, *, minutes: dict, pos: dict | None = None
+def shrink(raw: dict, *, minutes: dict, pos: dict | None = None,
+           floor: float = MIN_MINUTES, k: float = SHRINK_K
            ) -> tuple[dict, str]:
     """🔴🔴 §2 — 출전 **300분 미만**은 **리그·포지션 평균** 쪽으로 수축한다.
 
     🔴 왜 포지션인가 — GK·수비수의 ± 는 공격수와 **분포가 다르다**. 전체 평균으로
        끌면 자리 때문에 생긴 차가 "적게 뛴 탓"으로 섞인다.
     ⚠️ 포지션을 모르는 선수는 **리그 평균** 쪽이고, 사유가 그렇게 **적는다**.
+    🔴 `floor`·`k` 는 **부르는 쪽이 정한다** — 선수 가치 v2 는 450분이다(사용자
+       결정 2026-10-13 저녁). ⚠️ 두 문턱을 두 모듈에 베끼지 않는다(#1).
     """
     got = {str(k): float(v) for k, v in dict(raw or {}).items()}
     if not got:
@@ -238,7 +241,7 @@ def shrink(raw: dict, *, minutes: dict, pos: dict | None = None
     n_pos = n_lg = 0
     for pid, val in got.items():
         mins = float(dict(minutes or {}).get(pid, 0.0))
-        if mins >= MIN_MINUTES:
+        if mins >= float(floor):
             out[pid] = val
             continue
         to, by_position = _mean_without(pid, val)
@@ -246,9 +249,9 @@ def shrink(raw: dict, *, minutes: dict, pos: dict | None = None
             n_pos += 1
         else:
             n_lg += 1
-        k = mins / (mins + SHRINK_K)
-        out[pid] = k * val + (1.0 - k) * to
-    why = (f"출전 분 {MIN_MINUTES} 미만 **{n_pos + n_lg}명 수축**"
+        share = mins / (mins + float(k))
+        out[pid] = share * val + (1.0 - share) * to
+    why = (f"출전 분 {float(floor):g} 미만 **{n_pos + n_lg}명 수축**"
            + (f"(포지션 평균 {n_pos}명" if n_pos else "(")
            + (f" · 🔴 **리그 평균** {n_lg}명 — 포지션을 모른다)" if n_lg
               else ")"))

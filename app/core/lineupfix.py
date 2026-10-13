@@ -23,8 +23,10 @@ import math
 
 logger = logging.getLogger(__name__)
 
-#: 🔴 후보 신호 — §4 그대로(전부 차분값 · 직교화 대상은 L1·L2·L5)
-SIGNALS: tuple[str, ...] = ("L1", "L2", "L3", "L4", "L5")
+#: 🔴 후보 신호 — §4 와 **재료 교체판 v2**(사용자 결정 2026-10-13 저녁 2번).
+#   L1·L2·L5 는 **구간 ±**(`player_pm`) 재료, L6·L7·L8 은 **박스 기록**
+#   (`player_box` · 90분당 xG+xA) 재료다. 전부 **차분값**이고 직교화를 지난다.
+SIGNALS: tuple[str, ...] = ("L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8")
 
 #: 🔴 상한 감시 — `|g_k · sd(L_k)|` 가 이보다 크면 그 판은 **무효**다(§5)
 CAP = 0.15
@@ -96,6 +98,64 @@ def raw_of(*, home: dict, away: dict, value: dict) -> tuple[dict, str]:
     if thin:
         for k in ("L2", "L3", "L4"):
             got.pop(k, None)
+    return got, why
+
+
+def _front(box: dict) -> tuple[dict, set]:
+    """🔴 가치 v2 표 → `(값, 공격으로 센 선수들)`. ⚠️ 뒷선은 **공격에 안 센다**."""
+    value = dict(dict(box or {}).get("value") or {})
+    kind = dict(dict(box or {}).get("kind") or {})
+    front = {k for k in value if str(kind.get(k, "공격")) == "공격"}
+    return value, front
+
+
+def raw_v2_of(*, home: dict, away: dict, box: dict) -> tuple[dict, str]:
+    """🔴🔴 **신호 v2** — L6·L7·L8(전부 홈−원정 차). `(값, 사유)`.
+
+    | 신호 | 무엇 |
+    |---|---|
+    | L6 | 오늘 XI **공격 기여 합**(90분당 xG+xA) 차 |
+    | L7 | 평소 XI 의 **공격 기여 상위 3명** 중 빠진 수 차 |
+    | L8 | (빠진 평소 주전 기여 − 들어온 선수 기여) 차 |
+
+    🔴 **뒷선(GK·DF)은 공격 합에 0 으로 들어간다** — 그 수는 출전 분 비중이고
+       xG 단위가 아니다(`player_box` PB3). ⚠️ 수비 가치는 **후속 과제**다.
+    ⚠️ 표가 없으면 **빈 값 + 사유**다(0 으로 메우지 않는다 · #3).
+    """
+    value, front = _front(box)
+    if not value:
+        return {}, "🔴 **선수 가치 v2 표가 없다** — L6·L7·L8 을 못 쟀다"
+
+    def _sum(ids) -> float:
+        return sum(float(value.get(str(p), 0.0)) for p in (ids or [])
+                   if str(p) in front)
+
+    def _side(one: dict) -> dict:
+        said = dict(one or {})
+        xi = [str(p) for p in (said.get("xi") or [])]
+        usual = [str(p) for p in (said.get("usual") or [])]
+        gone = [p for p in usual if p not in set(xi)]
+        came = [p for p in xi if p not in set(usual)]
+        top = sorted([p for p in usual if p in front],
+                     key=lambda p: -float(value.get(p, 0.0)))[:KEY_TOP]
+        return {"attack": _sum(xi),
+                "keyout": float(len([p for p in top if p not in set(xi)])),
+                "abs": _sum(gone) - _sum(came), "n_usual": len(usual)}
+
+    h, a = _side(home), _side(away)
+    got = {"L6": h["attack"] - a["attack"], "L7": h["keyout"] - a["keyout"],
+           "L8": h["abs"] - a["abs"]}
+    thin = [s for s, one in (("home", h), ("away", a)) if not one["n_usual"]]
+    if thin:
+        for k in ("L7", "L8"):
+            got.pop(k, None)
+    why = (f"L6 {got.get('L6', 0.0):+.3f} · L7 "
+           + (f"{got['L7']:+.0f}" if "L7" in got else "⬜")
+           + " · L8 " + (f"{got['L8']:+.3f}" if "L8" in got else "⬜")
+           + " · ⚠️ **뒷선(GK·DF)은 공격 합에 안 센다**(출전 분 비중이라 단위가 "
+             "다르다 — 수비 가치는 후속 과제)"
+           + (f" · 🔴 평소 XI 가 없다({', '.join(thin)}) → L7·L8 **못 쟀다**"
+              if thin else ""))
     return got, why
 
 

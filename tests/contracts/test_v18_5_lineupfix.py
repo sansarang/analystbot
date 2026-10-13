@@ -33,14 +33,16 @@ def _plate(**g) -> dict:
 
 def test_signals_are_all_differences() -> None:
     from app.core import lineupfix as lf
-    assert tuple(lf.SIGNALS) == ("L1", "L2", "L3", "L4", "L5")
+    # ⚠️ **재료 교체**(사용자 결정 2026-10-13 저녁)로 L6·L7·L8 이 더해졌다 —
+    #    §4 의 다섯은 그대로 있어야 한다(지운 것이 아니다).
+    assert tuple(lf.SIGNALS)[:5] == ("L1", "L2", "L3", "L4", "L5")
     side = {"xi": ["p1", "p2"], "usual": ["p1", "p3"], "bench": ["p4"]}
     got, why = lf.raw_of(
         home=side, away={"xi": ["q1", "q2"], "usual": ["q1", "q2"],
                          "bench": ["q3"]},
         value={"p1": 0.3, "p2": 0.1, "p3": 0.5, "p4": 0.0,
                "q1": 0.0, "q2": 0.0, "q3": 0.0})
-    assert set(got) == set(lf.SIGNALS), got
+    assert set(got) == {"L1", "L2", "L3", "L4", "L5"}, got
     # 🔴 홈이 평소 주전 하나(p3 · 0.5)를 빼고 p2(0.1)를 넣었다 → L2 는 **양수**
     assert got["L2"] > 0, (got, why)
     # 🔴 L3 — 홈 2/2 중 1명만 평소 XI → 0.5, 원정은 1.0 → 차는 **음수**

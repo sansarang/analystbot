@@ -22,12 +22,17 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
-#: 🔴 비교 판 — §6 그대로
+#: 🔴🔴 비교 판 — **재료 교체판**(사용자 결정 2026-10-13 저녁 3번):
+#   `B · B+L6 · B+L7 · B+L8 · B+L6+L8`
+#   ⚠️ 옛 판(`B+L1…B+L3+L4`)의 결과는 `docs/fable/stages/2026-10-13_lineup_to_m1.md`
+#      에 남아 있다 — 그 재료(구간 ±)는 **반분 상관 0.09/0.06** 으로 탈락했다.
 PLATES: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("B", ()), ("B+L1", ("L1",)), ("B+L1+L2", ("L1", "L2")),
-    ("B+L1+L2+L5", ("L1", "L2", "L5")), ("B+L3", ("L3",)),
-    ("B+L4", ("L4",)), ("B+L3+L4", ("L3", "L4")),
+    ("B", ()), ("B+L6", ("L6",)), ("B+L7", ("L7",)), ("B+L8", ("L8",)),
+    ("B+L6+L8", ("L6", "L8")),
 )
+
+#: 🔴 판정 규칙 — (d) 가 더해진 판이다(실행 **전에** 커밋했다)
+RULE = "lineup2"
 
 #: 🔴 계수 릿지의 벌 — 격자에서 **시즌 교차**로 고른다(손값 금지)
 GS = (0.5, 2.0, 10.0, 50.0)
@@ -94,9 +99,13 @@ def load() -> tuple[list[dict], str]:
     return out, why
 
 
-def tables_of(rows: list[dict], *, lam: float) -> dict:
-    """🔴🔴 **확장 창** — 달마다, 그 달 **이전** 경기로만 선수 점수를 적합한다."""
-    from app.core.ratings import player_pm as pm
+def tables_of(rows: list[dict], *, lam: float = 0.0) -> dict:
+    """🔴🔴 **확장 창** — 달마다, 그 달 **이전** 경기로만 **가치 v2** 를 적합한다.
+
+    🔴 재료 교체(2026-10-13 저녁): 구간 ±(`player_pm`) → **박스 기록**
+       (`player_box` · 90분당 xG+xA). 반분 상관 0.09/0.06 → **0.54/0.64**.
+    """
+    from app.core.ratings import player_box as pb
     out: dict[tuple[str, str], object] = {}
     for league in sorted({r["league"] for r in rows}):
         said = sorted([r for r in rows if r["league"] == league],
@@ -106,7 +115,7 @@ def tables_of(rows: list[dict], *, lam: float) -> dict:
             prior = [r for r in said if r["month"] < month]
             if len(prior) < 20:
                 continue            # 🔴 표본이 모자라면 **표를 만들지 않는다**
-            out[(league, month)] = pm.fit(prior, as_of=at, lam=lam)
+            out[(league, month)] = pb.fit(prior, as_of=at)
     return out
 
 
@@ -144,15 +153,16 @@ def signals_of(rows: list[dict], tables: dict) -> int:
         for s in ("home", "away"):
             side[s] = {"xi": r[f"{s}_ids"], "bench": r[f"{s}_bench"],
                        "usual": usual_of(rows, r, s)}
-        raw, _why = lf.raw_of(home=side["home"], away=side["away"],
-                              value=table.value)
+        box = {"value": dict(table.value), "kind": dict(table.kind)}
+        raw, _why = lf.raw_v2_of(home=side["home"], away=side["away"],
+                                 box=box)
         r["raw"] = raw
         r["usual"] = {s: list(side[s]["usual"]) for s in ("home", "away")}
         # 🔴 §7 — **평소 XI 로 뒀을 때**의 신호(확정 XI 와 나란히 볼 짝)
         said_u = {s: {**side[s], "xi": (side[s]["usual"] or side[s]["xi"])}
                   for s in ("home", "away")}
-        raw_u, _w2 = lf.raw_of(home=said_u["home"], away=said_u["away"],
-                               value=table.value)
+        raw_u, _w2 = lf.raw_v2_of(home=said_u["home"], away=said_u["away"],
+                                  box=box)
         r["raw_usual"] = raw_u
         got += 1
     return got
@@ -247,12 +257,11 @@ def main(argv: list[str]) -> int:
         return 1
     rows.sort(key=lambda r: r["utc"])
     at = datetime.now(timezone.utc)
-    # 🔴 격자는 §2 실측에서 온다 — 시즌 교차가 **센 벌**을 골랐다(J1 3200 ·
-    #    K1 12800 이고 그 뒤로 평평하다 = 선수 ± 가 거의 **아무 말도 안 한다**).
-    lam0, lam_why = pm.pick_lam(rows, as_of=at,
-                                lams=(800.0, 3200.0, 12800.0))
-    print(f"🔴 선수 ± 벌 — {lam_why}")
-    tables = tables_of(rows, lam=lam0)
+    # 🔴 **가치 v2 는 벌이 없다** — 릿지 회귀가 아니라 **집계**(90분당 xG+xA)이고
+    #    표본이 적은 선수만 리그·포지션 평균으로 수축한다(450분 문턱).
+    print("🔴 선수 가치 **v2**(박스 기록 · 90분당 xG+xA) — 반분 상관 "
+          "J1 +0.54 · K1 +0.64(문턱 0.3 통과 · `tools/fit_box.py`)")
+    tables = tables_of(rows)
     n_sig = signals_of(rows, tables)
     live = [r for r in rows if r.get("raw")]
     print(f"🔴 신호를 센 경기 **{n_sig}건**(표가 없어 못 센 경기 "
@@ -326,7 +335,8 @@ def main(argv: list[str]) -> int:
                 "dir": sum(dirs) / len(dirs), "dirs": dirs,
                 "bands": {f: said[f]["p"]["rate"] for f in said}}
 
-    def verdict(cand: dict, base0: dict) -> tuple[str, str, str, bool]:
+    def verdict(cand: dict, base0: dict, move: dict | None = None
+                ) -> tuple[str, str, str, bool]:
         """🔴 판정 — 규칙은 **실행 전에 커밋한** `rule="lineup"` 하나다."""
         diff = me.paired(cand["lls"], base0["lls"])
         b = sum(1 for x, y in zip(cand["dirs"], base0["dirs"], strict=True)
@@ -337,7 +347,8 @@ def main(argv: list[str]) -> int:
         ok, _box, why = jm.passes(diff=diff, dir_rate=cand["dir"],
                                   base_dir=base0["dir"], p_value=pv,
                                   bands=cand["bands"],
-                                  base_bands=base0["bands"], rule="lineup")
+                                  base_bands=base0["bands"],
+                                  move=dict(move or {}), rule=RULE)
         # 🔴 **통과는 불리언이 말한다** — 사유 글자에 ✅ 가 있는지로 세면 조건
         #    하나만 통과한 판도 "채택"으로 둔다(실사고 2026-10-13: 그렇게 세어
         #    탈락한 판 다섯이 통과 목록에 들어갔다).
@@ -345,61 +356,17 @@ def main(argv: list[str]) -> int:
                 f"{pv:.4f}", ("✅ **채택 후보**" if ok else "🔴 탈락") + f" {why}",
                 bool(ok))
 
-    base_s = score(base["probs"], base["hits"])
-    print("| 판 | 경기 | 로그 손실 | 방향 적중 | 상위 30% | 20% | 10% | "
-          "짝지은 차이(95%) | 맥니마 p | 판정 |")
-    print("|---|---|---|---|---|---|---|---|---|---|")
-    picks: list[dict] = []
-    for name, _keys in PLATES:
-        one = out.get(name) or {}
-        if "probs" not in one:
-            print(f"| {name} | — | — | — | — | — | — | — | — | "
-                  f"{one.get('why', '🔴')} |")
-            continue
-        got = score(one["probs"], one["hits"])
-        cells = " | ".join(f"{got['bands'][f]:.1%}" for f in (0.30, 0.20, 0.10))
-        if name == "B":
-            print(f"| {name} | {len(one['hits'])} | {got['ll']:.4f} | "
-                  f"{got['dir']:.1%} | {cells} | — | — | **기준** |")
-            continue
-        d, pv, said, ok = verdict(got, base_s)
-        picks.append({"name": name, "ll": got["ll"], "ok": ok,
-                      "keys": _keys})
-        print(f"| {name} | {len(one['hits'])} | {got['ll']:.4f} | "
-              f"{got['dir']:.1%} | {cells} | {d} | {pv} | {said} |")
-    print()
-    # 🔴🔴 **교체 시각 확보 경기 / 거친 판을 따로** 본다(§6 요구)
-    print("## 🔴 하위 표본 — **교체 시각 확보**(J리그 정확한 시각) vs 그 밖(뛴 분)")
-    print()
-    print("| 판 | 시각 확보 경기 | 로그 손실 | 방향 | 그 밖 경기 | 로그 손실 | 방향 |")
-    print("|---|---|---|---|---|---|---|")
-    for name, _keys in PLATES:
-        one = out.get(name) or {}
-        if "probs" not in one:
-            continue
-        cells = []
-        for want in (True, False):
-            pr = [p for p, f in zip(one["probs"], one["fine"], strict=True)
-                  if f is want]
-            hh = [h for h, f in zip(one["hits"], one["fine"], strict=True)
-                  if f is want]
-            if not pr:
-                cells += ["0", "—", "—"]
-                continue
-            g2 = score(pr, hh)
-            cells += [str(len(hh)), f"{g2['ll']:.4f}", f"{g2['dir']:.1%}"]
-        print(f"| {name} | " + " | ".join(cells) + " |")
-    print()
     # ══════════════════════════════════════════════════════════════
     # 🔴🔴 **§7 — 라인업이 실제로 움직이는 폭**(평소 XI → 확정 XI)
     # ══════════════════════════════════════════════════════════════
-    print("## 🔴🔴 §7 평소 XI → 확정 XI 확률 차 분포")
+    print("## 🔴🔴 §7·(d) 평소 XI → 확정 XI 확률 차 분포")
     print()
     print("🔴 *예상 XI* 자리에 **평소 XI**(그 경기 **앞** 경기의 출전 분 가중 상위"
           " 11명)를 둔다 — 과거의 *그때 예상 XI* 는 어디에도 저장돼 있지 않다(#4).")
     print()
     print("| 판 | 쌍 | 평균 |Δ| | σ | 상위 10% | ≥3%p 경기 | 그 경기 방향(B / 판) |")
     print("|---|---|---|---|---|---|---|")
+    moves: dict[str, dict] = {}
     import statistics as stt
 
     from app.core import probfloor as pf0
@@ -449,15 +416,20 @@ def main(argv: list[str]) -> int:
                                   base_p["away"]], pair[0], int(r["hit"])))
         if not deltas:
             print(f"| {name} | 0 | — | — | — | — | — |")
+            moves[name] = {"mean": 0.0, "wide_n": 0, "wide_hit": 0.0,
+                           "base_wide_hit": 0.0}
             continue
         top = sorted(deltas)[int(len(deltas) * 0.9):]
         said_w = "—"
+        b_hit = c_hit = 0.0
         if wide:
             b_hit = sum(1 for bp, _cp, h in wide
                         if me.direction_hit(bp, h)) / len(wide)
             c_hit = sum(1 for _bp, cp, h in wide
                         if me.direction_hit(cp, h)) / len(wide)
             said_w = f"{b_hit:.1%} / {c_hit:.1%}"
+        moves[name] = {"mean": stt.fmean(deltas), "wide_n": len(wide),
+                       "wide_hit": c_hit, "base_wide_hit": b_hit}
         print(f"| {name} | {len(deltas)} | **{stt.fmean(deltas) * 100:.2f}%p** "
               f"| {stt.pstdev(deltas) * 100:.2f}%p | "
               f"{(stt.fmean(top) if top else 0.0) * 100:.2f}%p | "
@@ -466,6 +438,52 @@ def main(argv: list[str]) -> int:
     print("⚠️ **전(B)** 은 보정이 0 이므로 이 표에서 Δ 가 **구조적으로 0** 이다 —"
           " 지금 운영에서 평소→확정 XI 가 만드는 폭은 진단에서 잰 **0.2~0.7%p**"
           "(M1 축0 안에서만 움직인 값)이다. 위 표의 Δ 는 **보정이 더하는 폭**이다.")
+    print()
+
+    base_s = score(base["probs"], base["hits"])
+    print("| 판 | 경기 | 로그 손실 | 방향 적중 | 상위 30% | 20% | 10% | "
+          "짝지은 차이(95%) | 맥니마 p | 판정 |")
+    print("|---|---|---|---|---|---|---|---|---|---|")
+    picks: list[dict] = []
+    for name, _keys in PLATES:
+        one = out.get(name) or {}
+        if "probs" not in one:
+            print(f"| {name} | — | — | — | — | — | — | — | — | "
+                  f"{one.get('why', '🔴')} |")
+            continue
+        got = score(one["probs"], one["hits"])
+        cells = " | ".join(f"{got['bands'][f]:.1%}" for f in (0.30, 0.20, 0.10))
+        if name == "B":
+            print(f"| {name} | {len(one['hits'])} | {got['ll']:.4f} | "
+                  f"{got['dir']:.1%} | {cells} | — | — | **기준** |")
+            continue
+        d, pv, said, ok = verdict(got, base_s, moves.get(name))
+        picks.append({"name": name, "ll": got["ll"], "ok": ok,
+                      "keys": _keys})
+        print(f"| {name} | {len(one['hits'])} | {got['ll']:.4f} | "
+              f"{got['dir']:.1%} | {cells} | {d} | {pv} | {said} |")
+    print()
+    # 🔴🔴 **교체 시각 확보 경기 / 거친 판을 따로** 본다(§6 요구)
+    print("## 🔴 하위 표본 — **교체 시각 확보**(J리그 정확한 시각) vs 그 밖(뛴 분)")
+    print()
+    print("| 판 | 시각 확보 경기 | 로그 손실 | 방향 | 그 밖 경기 | 로그 손실 | 방향 |")
+    print("|---|---|---|---|---|---|---|")
+    for name, _keys in PLATES:
+        one = out.get(name) or {}
+        if "probs" not in one:
+            continue
+        cells = []
+        for want in (True, False):
+            pr = [p for p, f in zip(one["probs"], one["fine"], strict=True)
+                  if f is want]
+            hh = [h for h, f in zip(one["hits"], one["fine"], strict=True)
+                  if f is want]
+            if not pr:
+                cells += ["0", "—", "—"]
+                continue
+            g2 = score(pr, hh)
+            cells += [str(len(hh)), f"{g2['ll']:.4f}", f"{g2['dir']:.1%}"]
+        print(f"| {name} | " + " | ".join(cells) + " |")
     print()
     said_ok = [x for x in picks if x["ok"]]
     if said_ok:
