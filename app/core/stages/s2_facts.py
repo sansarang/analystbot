@@ -366,6 +366,11 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
         #    오늘 사고: 꽁안(V리그) vs 가시마(J1) 가 축0+홈 이점만으로 섰다.
         from app.core import offsets as _off
         said_conf = str(_cp3.row_of(said_lg).get("confederation") or "")
+        # 🔴 **대회 이력의 깊이**(표시만) — 그때 선발 중 오늘 명단 남은 수/11
+        from app.core import comphistory as _ch
+        said_std["comp_history"] = _ch.said_of(
+            str(getattr(ref, "home_name", "") or ""),
+            str(getattr(ref, "away_name", "") or ""))
         said_std["league_gap"] = _off.gap_said(
             conf=said_conf,
             home=str(getattr(ref, "home_name", "") or ""),

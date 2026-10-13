@@ -1211,6 +1211,14 @@ def _b3c(card: Card) -> str:
         said_gap = ""
     if said_gap:
         out.append(f"- 🌐 **리그 간 전력 차**(표시만) — {said_gap}")
+    # 🔴 **대회 이력의 깊이**(표시만) — 그때 선발 중 오늘 명단 남은 수/11
+    try:
+        said_hist = str(dict(card.facts.standings or {}).get("comp_history")
+                        or "")
+    except AttributeError:
+        said_hist = ""
+    if said_hist:
+        out.append(f"- 📜 **대회 이력의 깊이**(표시만) — {said_hist}")
     if b.probs is not None:
         out.append(f"- Elo: {card.match.home_name} **{b.home_elo:.0f}** · "
                    f"{card.match.away_name} **{b.away_elo:.0f}** · 차 {b.dr:+.0f} "
