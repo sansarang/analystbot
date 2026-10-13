@@ -93,6 +93,9 @@ def load() -> tuple[list[dict], str]:
             "home_box": dict(one.get("home") or {}),
             "away_box": dict(one.get("away") or {}),
             "goals": goals, "pos": dict(said.get("pos") or {}),
+            # 🔴 **선수 가치 v2 의 재료**(분·xG·xA) — 이것이 없으면 표가 빈다
+            #    (실사고 2026-10-13: 이 칸을 안 담아 표 0개 · 신호 0건이었다)
+            "pstat": dict(said.get("pstat") or {}),
             "fine": bool(fine), "src": src})
     why = (f"이은 경기 **{len(out)}건** · 버린 것 — "
            + " · ".join(f"{k} {v}건" for k, v in gone.items()))
@@ -492,8 +495,8 @@ def main(argv: list[str]) -> int:
               f"{[x['name'] for x in said_ok]} 중 로그 손실 최저 · 겹치면 "
               f"단순한 쪽)")
     else:
-        print("🔴🔴 **판정 — B 유지**(라인업 보정 판 가운데 (a)(b)(c) 를 **셋 다** "
-              "통과한 것이 없다)")
+        print("🔴🔴 **판정 — B 유지**(라인업 보정 판 가운데 **(a)(b)(c)(d) 를 "
+              "전부** 통과한 것이 없다 · 규칙 `" + RULE + "`)")
     print()
     for name, _keys in PLATES:
         one = out.get(name) or {}
