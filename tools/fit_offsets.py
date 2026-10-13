@@ -128,23 +128,30 @@ async def _domestic_of(net, team_id: object, seen: dict) -> tuple[str, str]:
     j = fm.payload(getattr(got, "text", "") or "") or {}
     said = ""
     why = "⬜ 팀 페이지에서 국내 리그를 못 읽었다"
-    pp = ((j.get("props") or {}).get("pageProps") or {})
-    for box in (pp.get("team") or {}, pp):
-        for name in ("table", "tableData", "league"):
-            one = (box or {}).get(name)
-            rows = one if isinstance(one, list) else [one]
-            for r in rows:
-                if not isinstance(r, dict):
-                    continue
-                lid = r.get("leagueId") or r.get("id")
-                lname = str(r.get("leagueName") or r.get("name") or "")
-                if lid is None and not lname:
-                    continue
-                k2, w2 = _cp.key_of(competition=lname, league_id=lid)
-                if k2 and _cp.kind_require(k2)[0] == "domestic_league":
-                    said, why = k2, f"팀 페이지 순위표 `{lname}`({lid}) · {w2}"
-                    break
-            if said:
+    # 🔴🔴 **받아서 확인한 자리**(2026-10-13): 국내 리그는
+    #    `props.pageProps.fallback["team-<id>"].table[*].data` 에 있다
+    #    (`leagueId` 55 · `leagueName` "Serie A" · `ccode` ITA).
+    #  ⚠️ 내가 처음 본 자리(`pageProps.team.table`)는 **없는 칸**이었고, 그래서
+    #     396경기 전부 *"국내 리그를 못 찾았다"* 가 됐다 — 받아서 확인했다(#4).
+    box = (((j.get("props") or {}).get("pageProps") or {})
+           .get("fallback") or {}).get(f"team-{key}") or {}
+    rows = box.get("table")
+    rows = rows if isinstance(rows, list) else [rows]
+    for one in rows:
+        data = (one or {}).get("data") if isinstance(one, dict) else None
+        # ⚠️ 대륙 대회 칸은 `tables`(여러 조)로 들어온다 — 그것도 본다
+        for r in ([data] if isinstance(data, dict) else []) + \
+                 list((data or {}).get("tables") or []
+                      if isinstance(data, dict) else []):
+            if not isinstance(r, dict):
+                continue
+            lid = r.get("leagueId")
+            lname = str(r.get("leagueName") or "")
+            if lid is None and not lname:
+                continue
+            k2, w2 = _cp.key_of(competition=lname, league_id=lid)
+            if k2 and _cp.kind_require(k2)[0] == "domestic_league":
+                said, why = k2, f"팀 페이지 순위표 `{lname}`({lid}) · {w2}"
                 break
         if said:
             break
