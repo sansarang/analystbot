@@ -1,0 +1,15 @@
+# 🔴🔴 **P4 현지어 질의 — 베트남어**(수정 지시 2026-10-13 밤 P4)
+#
+#  > 현지어 질의 필수: 팀 국가 언어(vi·th·zh·ar·ja·ko·hi·en)로 팀명 현지 표기 +
+#  > "선발·부상·결장·기자회견".
+#
+#  🔴 오늘 실측(꽁안 하노이): 질의 25회 · 결과 641건 · **문서 1건** —
+#     베트남어 질의가 없어 현지 매체가 거의 안 걸렸다.
+lang: vi
+absence: ["vắng mặt", "chấn thương", "treo giò", "thẻ đỏ", "án treo"]
+return: ["trở lại", "bình phục", "tái xuất", "hồi phục"]
+expected_xi: ["đội hình dự kiến", "đội hình xuất phát", "ra sân"]
+presser: ["họp báo", "phát biểu trước trận"]
+rotation: ["luân phiên", "xoay tua", "dự bị"]
+coach: ["huấn luyện viên", "HLV mới", "thay tướng"]
+national: ["triệu tập", "danh sách tuyển"]

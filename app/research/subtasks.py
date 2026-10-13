@@ -252,7 +252,33 @@ def team_lang(team: object) -> str:
     got, _how = resolve.nation_langs(said)
     # ⚠️ 끝의 `en` 은 그 함수가 **보탠 것**이다 — 현지어가 먼저다
     local = [x for x in got if x and x != "en"]
-    return local[0] if local else ""
+    if local:
+        return local[0]
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **P4 — 구단은 나라 코드가 없다**(수정 지시 2026-10-13 밤 P4)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실측 2026-10-13: ACL 구단 **일곱 팀 전부** `team_lang` 이 빈 글자였다
+    #     (이름표의 나라 코드는 **대표팀**에만 있다). 그래서 꽁안 하노이에
+    #     베트남어 질의가 **한 번도** 안 나갔다(문서 1건).
+    #  🔴 그 팀의 **국내 리그**는 안다(자동 등록 · P1) — 그 리그의 `langs` 가
+    #     CLDR 로 푼 현지어다. 그것을 쓴다(지어내지 않는다 · 표가 든다).
+    from app.core import autoleague as _al
+    from app.core import offsets as _off
+    key, _why = _off.league_of(said)
+    if not key:
+        return ""
+    rows = [str(x) for x in (dict(_al.load(key) or {}).get("langs") or [])
+            if str(x) and str(x) != "en"]
+    if rows:
+        return rows[0]
+    # 🔴 손 표(`config/sources/<리그>.yaml`)의 `lang` 도 본다 — J1·K1 처럼
+    #    자동 등록이 아니라 손으로 적어 둔 리그가 거기 있다.
+    from app.core.search import sources as _sr
+    said_tab = dict(_sr.table(key) or {})
+    rows2 = [str(x) for x in (said_tab.get("lang") or [])
+             if str(x) and str(x) != "en"]
+    return rows2[0] if rows2 else ""
 
 
 def local_lang_of(*, league: str, teams: tuple | list = ()) -> str:
