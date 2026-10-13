@@ -73,6 +73,18 @@ L9_BAND = re.compile(r"\|L9\| 구간 \*\*(상위 10%|그 밖|못 쟀다)\*\*")
 #: 🔴 `**E1**(M1 0.5 + M3 0.5) 홈 41% · 무 27% · 원정 32%`
 ENS = re.compile(r"\*\*(E1|E2)\*\*\([^)]*\) 홈 (\d+)% · 무 (\d+)% · 원정 (\d+)%")
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **4번 — 예상 XI 판 / 확정 XI 판**(지시 2026-10-13 밤 넷째)
+# ══════════════════════════════════════════════════════════════════
+#
+#  > score_cards 30경기마다 두 판의 방향·로그 손실·상위 20% 비교 — 차이가
+#  > 작으면 *"판정은 확정 XI 후에만"* 을 **등급 규칙 후보**로 보고.
+#
+#  🔴 카드 **글자에서** 읽는다. ⚠️ 예상 XI 판이 없는 카드는 **짝이 없다**(그
+#     사실을 보고가 적는다 — 0 으로 메우지 않는다).
+#: 🔴 `🔁 **예상 XI 판** 홈 41% · 무 27% · 원정 32% → **확정 XI 판**…`
+XI_PLATE = re.compile(r"\*\*예상 XI 판\*\* 홈 (\d+)% · 무 (\d+)% · 원정 (\d+)%")
+
 #: 🔴 이변 경고 — `⚠️ 이변 경고 S +0.800 → 🟡 …`
 UPSET = re.compile(r"이변 경고 S \*\*([+-][\d.]+)\*\* → (🟡|🔴)")
 
@@ -103,6 +115,9 @@ def read_card(path: Path) -> dict | None:
     out["l9_band"] = said_l9.group(1) if said_l9 else ""
     for got_ens in ENS.finditer(text):
         out[got_ens.group(1).lower()] = _pct(*got_ens.groups()[1:])
+    said_xi = XI_PLATE.search(text)
+    if said_xi:
+        out["xi_expected"] = _pct(*said_xi.groups())
     said = XGB.search(text)
     if said:
         out["xg"] = _pct(*said.groups())
@@ -306,6 +321,36 @@ async def main() -> None:
               f"{hit / len(box):.1%} | {said_b[0.20]['p']['rate']:.1%} | "
               + ("" if len(box) >= REPORT_EVERY
                  else f"🔴 **{REPORT_EVERY}경기 미만 — 참고**") + " |")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **예상 XI 판 vs 확정 XI 판**(지시 4번) — 짝이 있는 카드만
+    # ══════════════════════════════════════════════════════════════════
+    pair = [r for r in scored if r.get("xi_expected") and r.get("ours")]
+    print()
+    if pair:
+        print("| 판 | n | 로그 손실 | 방향 | 상위 20% | ⚠️ |")
+        print("|---|---|---|---|---|---|")
+        for name, key in (("예상 XI 판", "xi_expected"),
+                          ("확정 XI 판(운영)", "ours")):
+            ll = [_me.logloss(r[key], r["hit"]) for r in pair]
+            hit = sum(1 for r in pair if _me.direction_hit(r[key], r["hit"]))
+            said_b = _me.bands([{"p": r[key], "hit": r["hit"]} for r in pair],
+                               keys=("p",))
+            print(f"| {name} | {len(pair)} | **{sum(ll) / len(ll):.4f}** | "
+                  f"{hit / len(pair):.1%} | "
+                  f"{said_b[0.20]['p']['rate']:.1%} | "
+                  + ("" if len(pair) >= REPORT_EVERY
+                     else f"🔴 **{REPORT_EVERY}경기 미만 — 참고**") + " |")
+        a = [_me.logloss(r["xi_expected"], r["hit"]) for r in pair]
+        b = [_me.logloss(r["ours"], r["hit"]) for r in pair]
+        gap = sum(a) / len(a) - sum(b) / len(b)
+        print()
+        print(f"🔴 두 판 차이 — 로그 손실 **{gap:+.4f}**(예상 − 확정) · "
+              + ("차이가 **작다** → *\"판정은 확정 XI 후에만\"* 을 등급 규칙 "
+                 "**후보로 올린다**(지시 4번)" if abs(gap) < 0.005
+                 else "차이가 **크다** → 확정 XI 판을 기다릴 값이 있다"))
+    else:
+        print("⬜ **예상/확정 두 판을 적은 카드가 없다** — 그 줄은 이번 지시로 "
+              "생겼다(재분석이 돌면 쌓인다)")
     said_l9 = [r for r in scored if r.get("l9_band")]
     print()
     if said_l9:

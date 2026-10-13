@@ -448,6 +448,30 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
         edge["sim"] = {"why": prob.gap}
         edge["share"] = {}
         st.note(f"S3 — 🔴 확률을 못 셌다 · {prob.gap}")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **4번 — 예상 XI 판 / 확정 XI 판을 둘 다 싣는다**(2026-10-13 밤 넷째)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 지금 카드의 확률이 **확정 XI 판**이면, **지난 실행**(예상 XI 때)의
+    #     확률을 `prob_expected` 로 싣는다 — 그래야 `score_cards` 가 두 판을
+    #     **짝지어** 채점할 수 있다(지시 4번).
+    #  ⚠️ **확률은 안 바뀐다** — 저장·채점용이다(계약이 등급·생존을 잠근다).
+    #  🔴 XI 상태를 읽는 문은 `layer1.xi_state` 하나다(사본 금지).
+    said_prev = dict(_LAST.get(ref.id) or {})
+    got_prev = said_prev.get("card")
+    if got_prev is not None:
+        from app.core import layer1 as _l1
+        was = _l1.xi_state(got_prev)
+        if was == "예상" and getattr(got_prev, "our_prob", None) is not None:
+            layers["prob_expected"] = got_prev.our_prob
+            layers["prob_expected_why"] = (
+                f"지난 실행(**예상 XI 판** · "
+                f"{said_prev.get('at').strftime('%H:%M') if said_prev.get('at') else '시각 모름'})")
+        else:
+            layers["prob_expected_why"] = (
+                f"⬜ 지난 실행의 XI 상태가 `{was}` 다 — 예상 XI 판이 아니다")
+    else:
+        layers["prob_expected_why"] = "⬜ 지난 실행이 없다(첫 분석이다)"
     layers["ocr_text"] = ocr_text
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **단계 4 — 검증(가설 ↔ 시뮬) → 시나리오**(순서 재편 §4)
@@ -923,6 +947,8 @@ def card_of(ref: MatchRef, facts: Facts, variables: list[Variable],
         # 🔴 §2·§4 — 전략 판정과 **잠정 확률**(최종은 `our_prob`)
         strategy=box.get("strategy"),
         prob_before=box.get("prob_before"),
+        prob_expected=box.get("prob_expected"),
+        prob_expected_why=str(box.get("prob_expected_why") or ""),
         matchup=dict(box.get("matchup") or {}),
         # 🔴🔴 **가설 검증표**(순서 재편 §4-5) — 최종 평이 `supported` 만 쓴다
         check=dict(box.get("check") or {}),

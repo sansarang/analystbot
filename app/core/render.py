@@ -1728,6 +1728,30 @@ def prob_long(card: Card) -> str:
     #  🔴 **E0 유지**(채택 없음)이므로 운영 확률은 **M1 단독**이다 — 이 줄은
     #     `score_cards` 가 30경기마다 채점할 **기록**이다(EN8: 등급·생존 금지).
     #  🔴 섞는 자리는 `ensemble.mix` 하나다(사본 금지) — 격자 혼합과 같은 답이다.
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **4번 — 예상 XI 판 / 확정 XI 판**(지시 2026-10-13 밤 넷째)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 `score_cards` 가 **이 줄을 읽어** 두 판을 짝지어 채점한다(30경기마다).
+    #  ⚠️ **확률은 안 바뀐다** — 지금 확률이 **확정 XI 판**이고, 예상 XI 판은
+    #     **지난 실행**의 수다. 못 실었으면 그 사유를 적는다(#3).
+    from app.core import layer1 as _l1x
+    # ⚠️ 계약이 **부분 카드**(스텁)를 넣는다 — `facts` 가 없을 수 있다.
+    #    🔴 그때는 상태를 **모른다고 적는다**(터지지 않는다 · 실측 2026-10-13:
+    #    `'_Box' object has no attribute 'facts'` 로 계약이 빨개졌다).
+    try:
+        said_xi = _l1x.xi_state(card)
+    except AttributeError:
+        said_xi = "모름"
+    got_exp = getattr(card, "prob_expected", None)
+    if got_exp is not None:
+        out.append(
+            f"- 🔁 **예상 XI 판** 홈 {got_exp.home:.0%} · 무 {got_exp.draw:.0%}"
+            f" · 원정 {got_exp.away:.0%} → **확정 XI 판**(지금 · XI `{said_xi}`)"
+            f" — {getattr(card, 'prob_expected_why', '')}")
+    else:
+        out.append(f"- ⬜ **예상 XI 판 없음**(XI `{said_xi}`) — "
+                   f"{getattr(card, 'prob_expected_why', '') or '사유 없음'}")
     said_ours = {k: float(pull(k) or 0.0) for k in ("home", "draw", "away")}
     if said_shadow and all(said_ours.values()):
         from app.core import ensemble as _en
