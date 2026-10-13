@@ -160,7 +160,8 @@ def roster_gap(facts, key: str) -> list:
 
 
 def ladder(facts, *, keys: list[str], league: str = "",
-           articles: dict | None = None) -> dict:
+           articles: dict | None = None,
+           discipline: dict | None = None) -> dict:
     """🔴🔴 **사다리를 내려간다**. 돌려주는 표:
 
     ```
@@ -194,7 +195,14 @@ def ladder(facts, *, keys: list[str], league: str = "",
         for k, v in made.items():
             add.setdefault(k, []).extend(v)
     # ── 칸 3 — 연맹 징계 공지
-    got3, why3 = _discipline(league)
+    #  🔴🔴 **받아 온 공시가 있으면 그것을 센다**(지시 2026-10-13 밤 넷째 3번).
+    #     ⚠️ 받는 일은 **부르는 쪽**(s2_facts · async)이 한다 — 이 함수는 동기다.
+    #     🔴 L2: 공시는 **현재 값**이라 재생에서는 부르는 쪽이 **안 넘긴다**.
+    if discipline is not None:
+        got3 = int(dict(discipline).get("n") or 0)
+        why3 = str(dict(discipline).get("why") or "")
+    else:
+        got3, why3 = _discipline(league)
     rows.append({"rung": "연맹 징계", "got": got3, "why": why3})
     # ── 칸 4 — 국내 기사 2매체(변수 단계가 센다)
     box = dict(articles or {})

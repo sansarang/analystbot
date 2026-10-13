@@ -245,11 +245,25 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
     #     매달려 있었고 그 칸이 비자 *"결장 명단 미확보"* → 기사 0 → 전략 버림 →
     #     전술 템플릿까지 **한 줄로 이어졌다**.
     from app.core import absence as _ab
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **칸 3 연맹 징계 — 받아 온다**(지시 2026-10-13 밤 넷째 3번)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 표(`config/league_discipline.yaml`)에 **받아서 확인한 주소**가 있는
+    #     리그만 받는다. ⚠️ **L2** — 공시는 **현재 값**이므로 **재생에서는
+    #     안 받는다**(그 사실을 사유가 적는다).
+    said_kind = _kind_of(ref, box)
+    said_disc = await _discipline_rows(net, ref, league=said_kind,
+                                       state=state)
+    for key, rows in dict(said_disc.get("add") or {}).items():
+        missing.setdefault(key, []).extend(rows)
     said_lad = _ab.ladder(
         adapt.facts_of(box, xi=xi, missing=missing, squad=squad,
                        past_xi=past, coach=coach),
         keys=[str(getattr(ref, "home", "")), str(getattr(ref, "away", ""))],
-        league=_kind_of(ref, box))
+        league=said_kind,
+        discipline={k: v for k, v in said_disc.items() if k != "add"}
+        if said_disc.get("asked") else None)
     for key, rows in dict(said_lad.get("add") or {}).items():
         missing.setdefault(key, []).extend(rows)
     state.note("s2 결장 사다리 — " + _ab.said_of(said_lad))
@@ -332,6 +346,58 @@ async def _context_of(net, ref, *, state) -> dict:
         out[side] = got
         state.note(f"[③] 일정 `{name}` — {got.why}")
     return out
+
+
+async def _discipline_rows(net, ref, *, league: str, state) -> dict:
+    """🔴🔴 칸 3 — 연맹 징계 공시를 **받아** 그 경기의 결장을 만든다.
+
+    돌려주는 표: `{asked, n, why, add: {팀 열쇠: [Missing …]}}`.
+    🔴 **L2** — 공시는 **현재 값**이다 → **재생(카세트)에서는 안 받는다**.
+    🔴 표에 **받아서 확인한 주소**가 없는 리그는 그냥 넘긴다(옛 사유가 남는다).
+    """
+    from app import cassette as _cas
+    from app import rules as _rules
+    from app.core.schema import Missing
+    box = _rules.discipline_of(str(league or ""))
+    if not box or "data.j-league.or.jp" not in str(box.get("url") or ""):
+        return {"asked": False, "n": 0, "why": "", "add": {}}
+    if _cas.mode() == _cas.REPLAY:
+        return {"asked": True, "n": 0, "add": {},
+                "why": ("⏸ **재생에서는 안 받는다** — 공시는 **현재 값**이다"
+                        "(L2) · 주소는 표에 있다")}
+    from app.collect import jl_official as _jo
+    rows, why = await _jo.fetch_suspensions(net)
+    if not rows:
+        return {"asked": True, "n": 0, "add": {}, "why": f"🔴 {why}"}
+    at = getattr(ref, "kickoff_utc", None)
+    if at is None:
+        return {"asked": True, "n": 0, "add": {},
+                "why": "🔴 킥오프가 없어 **대상 경기를 못 맞춘다**"}
+    from datetime import timedelta
+    day = (at + timedelta(hours=9)).strftime("%-m/%-d")
+    add: dict[str, list] = {}
+    n = 0
+    for side in ("home", "away"):
+        key = str(getattr(ref, side, "") or "")
+        name = str(getattr(ref, f"{side}_name", "") or "")
+        from app.core import discover as _d
+        said, why2 = _jo.for_match(rows, team_names=list(_d.aliases_of(name)),
+                                   day=day)
+        del why2
+        for one in said:
+            # 🔴 스키마가 이 통로를 **이미 알고 있었다** — `source="discipline"`
+            #    (`reason="suspension"`). ⚠️ 없는 칸(`hard`·`note`)을 지어내지
+            #    않는다 — 사유는 `why` 에 적는다.
+            add.setdefault(key, []).append(Missing(
+                name=str(one["player"]), reason="suspension",
+                source="discipline", source_url=_jo.SUSPEND,
+                why=(f"J리그 출장정지 공시 · {one['kind']} · "
+                     f"{str(one['match'])[:40]}")))
+            n += 1
+    return {"asked": True, "n": n, "add": add,
+            "why": (f"출장정지 공시 **{n}명**(공시 {len(rows)}줄 · 대상 "
+                    f"{day} · 주소 {_jo.SUSPEND})" if n
+                    else f"⬜ 공시 {len(rows)}줄에 **이 경기({day}) 선수가 없다**")}
 
 
 def _load_of(seq: list, kickoff) -> int | None:

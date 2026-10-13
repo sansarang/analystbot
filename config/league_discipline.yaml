@@ -22,7 +22,24 @@ source: "사용자 지시 2026-10-11(연쇄를 앞에서부터 고친다) ①"
 checked_at: "2026-10-11"
 
 #: 🔴 받아서 확인한 리그만 적는다 — 지금은 **없다**
-leagues: {}
+leagues:
+  # 🔴🔴 **받아서 확인했다**(2026-10-13) — `data.j-league.or.jp/SFIN03/` 는
+  #    `選手 | チーム | 前回の停止 | 今回の停止 | 出場停止試合` 표다(실측: 표
+  #    20줄에서 선수 12명). ⚠️ **현재 값**이므로 재생에서는 쓰지 않는다(L2).
+  "league:J1":
+    url: "https://data.j-league.or.jp/SFIN03/"
+    kind: suspension
+    lang: ja
+    checked_at: "2026-10-13"
+    parser: "app.collect.jl_official.suspensions"
+    note: "출장정지 선수 공지 — 대상 경기(라운드·날짜)까지 적혀 있다"
+  "league:J2":
+    url: "https://data.j-league.or.jp/SFIN03/"
+    kind: suspension
+    lang: ja
+    checked_at: "2026-10-13"
+    parser: "app.collect.jl_official.suspensions"
+    note: "같은 공지에 J2 도 함께 실린다(실측: `U-21` 줄도 있다)" 
 
 # ══════════════════════════════════════════════════════════════════
 # 🔴🔴 **라인업 사다리 — J리그 공식**(사용자 지시 2026-10-11 ⑦)

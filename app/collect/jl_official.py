@@ -65,3 +65,15 @@ def for_match(rows: list[dict], *, team_names: list[str], day: str
     return out, (f"그 경기({day}) 출장정지 **{len(out)}명**"
                  + (f" — {', '.join(r['player'] for r in out[:5])}" if out
                     else f" · 팀 별칭 {said[:3]} 로 못 찾았다(0명)"))
+
+
+async def fetch_suspensions(net) -> tuple[list[dict], str]:
+    """🔴 공시를 **받아서** 읽는다(한 번에 하나의 문). `(줄, 사유)`.
+
+    🔴 **L2** — 현재 값이다. 부르는 쪽이 **재생이 아닐 때만** 부른다.
+    """
+    try:
+        page = await net.get(SUSPEND)
+    except Exception as exc:                                # noqa: BLE001
+        return [], f"🔴 출장정지 공시를 **못 받았다**: {exc!r:.60}"
+    return suspensions(getattr(page, "text", "") or "")

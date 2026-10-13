@@ -64,6 +64,40 @@ def _sub_cfg() -> dict:
     return dict((cfg().get("budget") or {}).get("per_subtask") or {})
 
 
+#: 🔴 경기당 **새 질의**를 이만큼만 쓴다(원천 표의 상한은 질의 생성기가 본다 —
+#   여기서는 하위 질문마다 같은 목록을 쓰므로 **앞 몇 개**만 자른다)
+TABLE_CAP = 8
+
+
+def _table_queries(ref: MatchRef, *, state: Any = None
+                   ) -> list[tuple[str, str]]:
+    """🔴🔴 §6-2 표 기반 질의 → `(질의, 언어)` 목록. 표가 없으면 **빈 목록**.
+
+    🔴 만드는 곳은 `search.query.build` 하나다(사본 금지) — 여기서는 **꼴만**
+       바꾼다. ⚠️ 상한을 넘기면 **원천 지정(S·A)이 앞**이므로 앞에서 자른다.
+    """
+    try:
+        from app.core import probmodel as _pm
+        from app.core.schema import Facts as _F
+        from app.core.search import query as _qy
+        kind = str(_pm._kind(ref, _F()) or "")
+        got, why = _qy.build(league=kind,
+                             home=str(getattr(ref, "home_name", "") or ""),
+                             away=str(getattr(ref, "away_name", "") or ""),
+                             players=[], coach="",
+                             kinds=("absence", "expected_xi"))
+        out = [(str(q["q"]), str(q["lang"])) for q in got[:TABLE_CAP]]
+        if state is not None:
+            state.note(f"s3 표 질의 — {why} → **{len(out)}개** 썼다"
+                       f"(상한 {TABLE_CAP})" if out
+                       else f"s3 표 질의 — ⬜ 없다({why[:60]})")
+        return out
+    except Exception as exc:                                # noqa: BLE001
+        if state is not None:
+            state.note(f"s3 표 질의 — 🔴 못 만들었다: {exc!r:.60}")
+        return []
+
+
 def queries_for(sub: Any, ref: MatchRef) -> list[tuple[str, str]]:
     """🔴 ① **질의 2개를 코드가 만든다**(§5 s3-1). `(질의, 언어)`.
 
@@ -485,10 +519,23 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, chain: Any,
     #     던지는 통로는 **기존 사슬**이고, 매체는 `site:` 질의로 들어간다.
     #  ⚠️ 실패하면 빈 목록이고 **코드 질의가 그대로 돈다**(퇴로가 있다).
     said_extra = await _llm_queries(ref, state=state, net=net)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **표 기반 새 질의**(지시 2026-10-13 밤 넷째 3번 · §6-2)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 현지어 + 영어 · **팀 별칭 전부** · **원천 지정(`site:`)이 먼저** ·
+    #     낱말은 `config/search_terms/<언어>.yaml` · 원천은
+    #     `config/sources/<리그>.yaml`(robots 확인한 것만).
+    #  🔴 **왜** — 기준선(2026-10-13): 결장 재현율 **16.3%** 이고 버린 문서의
+    #     절반이 신원인데 **잘못 버림은 1%** 였다 → *"맞는 기사를 애초에 못
+    #     찾는다"* 가 병이다. 실측: 광주–울산이 **24질의 → 결과 489건**.
+    #  ⚠️ 표가 없는 리그는 **빈 목록**이다(QY1) — 그러면 옛 질의만 돈다.
+    said_table = _table_queries(ref, state=state)
     # ── ① 찾기 — **동시에**(순서가 결과를 바꾸지 않는다)
     found = await asyncio.gather(
         *[_candidates(sub, ref, state=state, chain=chain,
-                      queries=[*queries_for(sub, ref), *said_extra])
+                      queries=[*said_table, *queries_for(sub, ref),
+                               *said_extra])
           for sub in subs],
         return_exceptions=True)
     # ── ② 자리 잡고 받기 — 🔴 **하위 순서대로**(배분이 결정적이어야 한다)
