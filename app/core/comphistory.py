@@ -27,12 +27,23 @@ def plate_for(home: str, away: str) -> tuple[dict, str]:
     if not BOX.is_dir():
         return {}, "⬜ **대회 이력 깊이 판이 없다**(도구가 아직 안 돌았다)"
     import yaml
-    want = {str(home or "").strip().lower(), str(away or "").strip().lower()}
+    # 🔴 **이름 맞춤은 `core/teamname` 하나다**(사본 금지) — 판은 fotmob 약칭
+    #    (`Slavia Prague`)이고 카드는 우리 이름(`SK Slavia Praha`)이다.
+    from app.core import teamname as _tn
     for path in sorted(BOX.glob("*.yaml"), reverse=True):
         got = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-        rows = {str(k).strip().lower() for k in dict(got.get("teams") or {})}
-        if want <= rows:
-            return dict(got), f"판 `{path.stem}`"
+        rows = dict(got.get("teams") or {})
+        pair = [_tn.pick(str(x or ""), rows.keys()) for x in (home, away)]
+        if all(k for k, _w in pair):
+            # 🔴 **우리 이름으로 다시 적어 돌려준다** — 카드가 그 이름으로 묻는다
+            got["teams"] = {str(nm): rows[k] for nm, (k, _w)
+                            in zip((home, away), pair)}
+            return dict(got), (f"판 `{path.stem}`"
+                               + ("" if all(w == "글자 그대로"
+                                            for _k, w in pair)
+                                  else " · " + " · ".join(
+                                      w for _k, w in pair
+                                      if w != "글자 그대로")))
     return {}, (f"⬜ 두 팀(`{home}`·`{away}`)이 적힌 이력 깊이 판이 없다"
                 f"(판 {len(list(BOX.glob('*.yaml')))}개)")
 

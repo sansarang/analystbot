@@ -52,18 +52,14 @@ def team_of(key: str, name: str) -> tuple[dict, str]:
         return {}, why
     rows = dict(box.get("teams") or {})
     said = str(name or "")
-    got = rows.get(said)
-    if got is None:
-        # 🔴 느슨한 대조 — fotmob 표기와 우리 이름이 한 글자 다를 수 있다
-        low = said.strip().lower()
-        for k, v in rows.items():
-            if str(k).strip().lower() == low:
-                got = v
-                break
-    if got is None:
-        return {}, (f"⬜ `{said}` 가 대회 성적 판에 없다(적힌 팀 "
-                    f"{len(rows)}개 · {why})")
-    return dict(got), why
+    # 🔴 **이름 맞춤은 `core/teamname` 하나다**(사본 금지) — 판은 fotmob 약칭
+    #    (`Lens`)이고 카드는 정식명(`Racing Club de Lens`)이다.
+    from app.core import teamname as _tn
+    pick, said_pick = _tn.pick(said, rows.keys())
+    if not pick:
+        return {}, f"{said_pick}(· {why})"
+    return dict(rows[pick]), (why if said_pick == "글자 그대로"
+                              else f"{why} · {said_pick}")
 
 
 def said_of(key: str, *, home: str, away: str) -> str:

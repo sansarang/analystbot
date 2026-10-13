@@ -147,6 +147,7 @@ def league_of(team: str) -> tuple[str, str]:
     if not said or not AUTO_ELO.is_dir():
         return "", "⬜ 자동 등록 Elo 판이 없다"
     low = said.lower()
+    loose: list[tuple[str, str]] = []
     from app.core import competition as _cp
     for path in sorted(AUTO_ELO.glob("*.yaml")):
         got = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
@@ -155,11 +156,26 @@ def league_of(team: str) -> tuple[str, str]:
         said_key = str(got.get("league") or "")
         if _cp.kind_require(said_key)[0] == "club_continental":
             continue
-        teams = {str(k).strip().lower(): float(v)
-                 for k, v in dict(got.get("teams") or {}).items()}
-        if low in teams:
-            return str(got.get("league") or ""), (
-                f"판 `{path.stem}`(경기 {got.get('n')} · 팀 {len(teams)})")
+        teams = dict(got.get("teams") or {})
+        # 🔴 **이름 맞춤은 `core/teamname` 하나다**(사본 금지 · 표시 전용 판)
+        from app.core import teamname as _tn
+        pick, said_pick = _tn.pick(said, teams.keys())
+        if not pick:
+            continue
+        row = (str(got.get("league") or ""),
+               f"판 `{path.stem}`(경기 {got.get('n')} · 팀 {len(teams)})"
+               + ("" if said_pick == "글자 그대로" else f" · {said_pick}"))
+        # 🔴🔴 **글자 그대로가 이긴다** — 판 순서가 아니라 맞춤의 질로 고른다.
+        #    ⚠️ 실사고 2026-10-14: `Buriram United` 가 J1 판의 느슨한 맞춤에
+        #    먼저 걸려, 태국 판에 **글자 그대로** 있는데도 `league:J1` 이 됐다.
+        if said_pick == "글자 그대로":
+            return row
+        loose.append(row)
+    if len(loose) == 1:
+        return loose[0]
+    if loose:
+        return "", (f"⬜ `{said}` 는 느슨한 맞춤이 판 {len(loose)}개에 걸렸다 — "
+                    f"고르지 않는다({' · '.join(w for _l, w in loose[:3])})")
     return "", f"⬜ `{said}` 가 어느 자동 등록 판에도 없다"
 
 
