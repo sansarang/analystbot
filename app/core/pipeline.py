@@ -503,6 +503,11 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     # 🔴 F5 — **생존은 시뮬 분포에서** 센다(시나리오는 표시용이다)
     said = s7_judge.run(ref, facts, variables, state=st, board=got_board,
                         board_source=board_src, now=now,
+                        # 🔴🔴 **보드 없음 결론 규칙 (가)의 재료**(사용자 결정
+                        #    2026-10-13) — 우리 확률의 **최고값**이다. ⚠️ 판정
+                        #    쪽에서 격자를 다시 세지 않는다(계약 M1-3).
+                        top=(max(prob.home, prob.draw, prob.away)
+                             if (prob is not None and prob.ok()) else None),
                         dist=dict(dict(edge.get("sim") or {}).get("scores")
                                   or {}))
     # 🔴🔴 **[3d] 반증 판정을 기존 등급 위에 얹는다**(지시서 2026-10-12)

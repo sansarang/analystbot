@@ -873,10 +873,19 @@ async def _fill_form(ref: MatchRef, box: dict, *, state: RunState, net: Any,
         vals = [float(v["total_per_game"]) for v in got_tot.values()]
         if len(vals) == 2:
             std["match_total_baseline"] = round(sum(vals) / 2, 3)
+            # 🔴🔴 **표본(경기 수)도 싣는다**(수정 지시 2026-10-13 4번) —
+            #    ⚠️ 실사고: 상하이–대전 카드가 **ACL 리그 단계 2경기**로 센 두 팀
+            #       총골 **5.5** 를 λ 바닥으로 썼다(대회 실측 2.82의 1.95배).
+            #       그 칸이 **표본을 안 들고 있어** 받는 쪽이 수축을 못 했다.
+            #    🔴 두 팀 중 **적게 치른 쪽**의 경기 수다(둘 다 많아야 믿는다).
+            std["match_total_played"] = int(min(
+                int(v.get("played") or 0) for v in got_tot.values()))
             state.note(f"s2 §3 경기당 총골 — "
                        + " · ".join(f"{n} {totals[n]['total_per_game']}"
+                                    f"({totals[n]['played']}경기)"
                                     for n in want if n in totals)
-                       + f" → 이 경기 기준 {std['match_total_baseline']}")
+                       + f" → 이 경기 기준 {std['match_total_baseline']}"
+                       f"(표본 {std['match_total_played']}경기)")
     else:
         state.note("s2 §2 경기당 총골 — 리그 표에 두 팀이 없다")
     # ② 폼 — **비었을 때만** 팀 페이지를 받는다

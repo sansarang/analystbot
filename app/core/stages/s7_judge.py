@@ -42,7 +42,7 @@ _MAP: dict[str, tuple[str, str]] = {
 def run(ref: MatchRef, facts: Facts, variables: list[Variable],
         *, state: RunState, board: Board | None = None,
         board_source: str = "", dist: dict | None = None,
-        now: Any = None) -> Judgement:
+        now: Any = None, top: float | None = None) -> Judgement:
     """🔴 마켓마다 대입하고 등급을 매긴다. ⚠️ 등급이 없어도 **카드는 나온다**.
 
     ══════════════════════════════════════════════════════════════════
@@ -106,9 +106,16 @@ def run(ref: MatchRef, facts: Facts, variables: list[Variable],
     #    시나리오가 없다), 지금은 `pipeline._direction` 이 **확률**로 센다.
     return Judgement(evals=evals, direction="",
                      board_source=src,
+                     # 🔴 **규칙 (가)의 재료** — 우리 확률의 **최고값**과 대회
+                     #    유형. ⚠️ `dist` 가 없으면 `top` 은 `None` 이고 결론은
+                     #    *"확률이 없다"* 다(지어내지 않는다).
+                     # 🔴 **규칙 (가)의 재료** — 우리 확률의 **최고값**(부르는
+                     #    쪽이 넘긴다 · 여기서 격자를 다시 세지 않는다: 계약
+                     #    M1-3 이 판정 쪽에 바닥·그림자 글자를 금한다)과 대회 유형.
                      conclusion=_conclusion(evals, started=started,
                                             enough=enough, thin_why=thin_why,
-                                            source=src),
+                                            source=src, top=top,
+                                            kind=_kind_for(ref, facts)),
                      triggers=_triggers(variables, ref),
                      started=started, started_why=started_why, notes=notes)
 
@@ -385,20 +392,31 @@ def _same_direction_cap(evals: list[MarketEval], *, notes: list[str]
 # ⚠️ **`_direction` 은 지웠다** — 방향을 **시나리오 무게**로 세던 함수다.
 #    §1 처분으로 시나리오가 없고, 방향은 `pipeline._direction` 이 **확률**로
 #    센다(문장 꼴은 `survive.direction_line` 하나다 · 사본 금지).
+def _kind_for(ref, facts) -> str:
+    """🔴 대회 유형 열쇠 — `comp_kind` 하나가 만든다(사본 금지)."""
+    from app.core.stages.s5_verify import comp_kind as _ck
+    try:
+        return str(_ck(ref, facts) or "")
+    except Exception:                                       # noqa: BLE001
+        return ""
+
+
 def _conclusion(evals: list[MarketEval], *, started: bool, enough: bool,
-                thin_why: str, source: str = "") -> str:
+                thin_why: str, source: str = "", top: float | None = None,
+                kind: str = "") -> str:
     """🔴 결론 — **죽는 시나리오를 함께** 적는다(`✗` 와 `△` 둘 다 · §2-1).
 
-    🔴 보드가 없으면(출처 `none`) 결론은 *"보드를 주면 판정"* 으로 끝난다(지시 ②).
+    🔴🔴 **보드가 없으면 규칙 (가)로 판정한다**(사용자 결정 2026-10-13 ·
+       `app/core/conclude.py`) — 종전의 *"⏸ 보류 — 보드가 없다"* 는 **걷혔다**.
+       ⚠️ 배당·시장은 쓰지 않는다 — 봇 확률과 **측정된 구간표**만 본다.
     """
     from app import survive
     if source == "none":
+        from app.core import conclude as _cc
         best = max(evals, key=lambda e: e.survival, default=None)
-        return ("⏸ **보류 — 보드가 없다.** 평가할 마켓 줄이 없어 등급을 붙이지 "
-                "않는다(아래 표는 **참고**다"
-                + (f" · 가장 두꺼운 줄 {best.line.market} {best.line.side} "
-                   f"{best.survival:.3f}" if best else "")
-                + ") → 🔴 **보드를 주면 판정**한다")
+        return (_cc.line(top, kind=kind)
+                + (f" · 참고로 가장 두꺼운 줄 {best.line.market} "
+                   f"{best.line.side} {best.survival:.3f}" if best else ""))
     if started:
         return ("🔴 **이미 시작한 경기다 — 등급 없음.** 분석은 그대로 낸다"
                 "(예측이 아니라 사후 설명이 되기 때문이다)")

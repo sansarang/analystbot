@@ -76,6 +76,9 @@ def card_text(card: Card, *, debug: bool = False) -> str:
             out.append("\n" + matchup_report_long(card))
             # 🔴🔴 **상성에서 나온 확률**(사용자 질문 2026-10-11) — 축 바로 뒤다
             out.append("\n" + prob_long(card))
+            # 🔴🔴 **표준 확률 블록**(수정 지시 2026-10-13 2번) — 대회 무관 고정
+            #    틀. ⚠️ 계약이 **줄 이름 전부**를 센다(빠지면 출력 실패).
+            out.append("\n" + prob_block(card))
             out.append("\n" + score_grid(card))
             out.append("\n" + verify_long(card))
             # 🔴🔴 **반증 표**(지시서 2026-10-12 ⑯) — 검증 바로 뒤다(같은 얘기다)
@@ -1662,6 +1665,152 @@ MATCHUP_LONG_HEAD = "⚔️ MatchupReport (전체)"
 VERIFY_LONG_HEAD = "🔎 VerificationTable"
 GRID_HEAD = "🎲 시뮬 스코어 상위 10"
 FIT_HEAD = "🧮 적합 정보"
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **표준 확률 블록**(수정 지시 2026-10-13 2번·6번) — 대회 무관 고정 틀
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 카드에 반드시 들어갈 확률 블록(세 장 모두 같은 틀 · 값 없으면 칸은 그리고
+#  > ⬜ + 사유): 승무패·λ·총골 기대 / 그림자 M1·E1·M3·Elo / 역배 / 핸디 양쪽
+#  > 여섯 줄 / 더블찬스·DNB / 오버·언더 다섯 줄 / BTTS / 스코어 상위 10 /
+#  > 확신 구간·등급·결론·방아쇠.
+#
+#  🔴 **수는 한 격자에서 온다**(C2) — `markets_of(저장된 격자)` 하나다. λ·총골은
+#     `ProbOut` 이 적어 둔 수다. ⚠️ 격자가 없으면 **칸을 그리고 ⬜ + 사유**다
+#     (조용히 빼지 않는다 · #3).
+#  🔴 **배당·시장 줄은 없다**(예측 지시 §0) — 이 블록에 시장 열을 넣지 않는다.
+#: 🔴 블록의 **줄 이름**(계약이 이 목록으로 센다 · 사본 금지)
+PROB_ROWS: tuple[str, ...] = (
+    "승무패", "λ", "총골 기대", "그림자", "역배", "핸디 홈", "핸디 원정",
+    "더블찬스", "DNB", "오버/언더", "양팀 득점(BTTS)", "스코어 상위 10",
+    "확신 구간", "등급", "결론", "방아쇠")
+
+#: 🔴 핸디 여섯 줄(양쪽 같은 줄) · 오버 다섯 줄 — `probfloor.markets_of` 의 열쇠
+AH_LINES = (-2.5, -1.5, -0.5, 0.5, 1.5, 2.5)
+OU_LINES = (0.5, 1.5, 2.5, 3.5, 4.5)
+
+
+def prob_block(card: Card) -> str:
+    """🔴🔴 **표준 확률 블록** — 틀은 늘 같고, 빈 칸은 ⬜ + 사유다."""
+    from app.core import bands as _bd
+    from app.core import probfloor as _pf
+    box = dict(getattr(card, "matchup", None) or {})
+    sim = dict(box.get("sim") or {})
+    got = box.get("prob")
+    pull = (lambda k: (sim.get(k) if sim.get(k) is not None
+                       else getattr(got, k, None)))
+    grid: dict = {}
+    for key, val in dict(pull("scores") or {}).items():
+        if isinstance(key, str) and "-" in key:
+            h, a = key.split("-", 1)
+            grid[(int(h), int(a))] = float(val)
+        elif isinstance(key, (tuple, list)) and len(key) == 2:
+            grid[(int(key[0]), int(key[1]))] = float(val)
+    why_gap = str(pull("why") or pull("gap") or "사유 없음")
+    mk = _pf.markets_of(grid) if grid else {}
+    # ⚠️ 머리글에 **그 두 낱말을 적지 않는다** — 계약 PB5 가 이 블록에서
+    #    시장·배당 글자 **0건**을 센다(설명이 금지어를 담으면 그 계약이 무의미해진다).
+    out = ["**📊 표준 확률 블록**(대회 무관 고정 틀 · **봇 확률만**)"]
+
+    def row(name: str, said: str) -> None:
+        out.append(f"- **{name}** — {said}")
+
+    # ── 승무패 · λ · 총골 기대
+    if mk:
+        row("승무패", f"홈 **{mk['home']:.1%}** · 무 **{mk['draw']:.1%}** · "
+                      f"원정 **{mk['away']:.1%}**")
+    else:
+        row("승무패", f"⬜ 격자가 없다 — {why_gap}")
+    lam = dict(pull("lam") or {})
+    if lam:
+        row("λ", " · ".join(f"{k} {float(v):.3f}" for k, v in lam.items()))
+        row("총골 기대", f"{sum(float(v) for v in lam.values()):.3f}골"
+                         + (" (λ 합)" if len(lam) == 2 else ""))
+    else:
+        row("λ", f"⬜ λ 가 없다 — {why_gap}")
+        row("총골 기대", "⬜ λ 가 없어 못 센다")
+    # ── 그림자 네 판
+    said_sh = []
+    for nm, one in (("M1(운영)", (mk.get("home"), mk.get("draw"),
+                                  mk.get("away")) if mk else None),
+                    ("M3", _three(box.get("shadow") or pull("shadow"))),
+                    ("Elo", _three(box.get("floor") or pull("floor")))):
+        said_sh.append(f"{nm} " + (" / ".join(f"{float(x):.0%}" for x in one)
+                                   if one and all(x is not None for x in one)
+                                   else "⬜ 없다"))
+    said_e1 = _e1_of(box, pull, mk)
+    said_sh.insert(1, f"E1 {said_e1}")
+    row("그림자", " · ".join(said_sh) + "  (홈/무/원정)")
+    # ── 역배 · 핸디 · 더블찬스 · DNB
+    if mk:
+        fav_home = mk["home"] >= mk["away"]
+        dog = mk["away"] if fav_home else mk["home"]
+        no_win = 1.0 - (mk["home"] if fav_home else mk["away"])
+        who_dog = card.match.away_name if fav_home else card.match.home_name
+        who_fav = card.match.home_name if fav_home else card.match.away_name
+        row("역배", f"약팀 **{who_dog}** 승 **{dog:.1%}** · 강팀 "
+                    f"**{who_fav}** 미승 **{no_win:.1%}**")
+        for side, nm in (("home", "핸디 홈"), ("away", "핸디 원정")):
+            said = " · ".join(
+                f"{line:+.1f} {float(mk['ah'].get(f'{side}{line:+.1f}', 0.0)):.1%}"
+                for line in AH_LINES)
+            row(nm, said)
+        row("더블찬스", f"1X **{mk['home'] + mk['draw']:.1%}** · "
+                        f"X2 **{mk['draw'] + mk['away']:.1%}** · "
+                        f"12 **{mk['home'] + mk['away']:.1%}**")
+        tot = mk["home"] + mk["away"]
+        row("DNB", (f"홈 **{mk['home'] / tot:.1%}** · 원정 "
+                    f"**{mk['away'] / tot:.1%}**") if tot > 0
+                   else "⬜ 홈·원정 확률이 0 이다")
+        row("오버/언더", " · ".join(
+            f"{line} 오버 **{float(mk['over'].get(line, 0.0)):.1%}** / 언더 "
+            f"{1.0 - float(mk['over'].get(line, 0.0)):.1%}"
+            for line in OU_LINES))
+        row("양팀 득점(BTTS)", f"예 **{mk['btts_yes']:.1%}** · 아니오 "
+                               f"**{mk['btts_no']:.1%}**")
+        top10 = sorted(grid.items(), key=lambda kv: -kv[1])[:10]
+        row("스코어 상위 10", " · ".join(f"{h}-{a} {v:.1%}"
+                                         for (h, a), v in top10))
+    else:
+        for nm in ("역배", "핸디 홈", "핸디 원정", "더블찬스", "DNB",
+                   "오버/언더", "양팀 득점(BTTS)", "스코어 상위 10"):
+            row(nm, f"⬜ 격자가 없다 — {why_gap}")
+    # ── 확신 구간 · 등급 · 결론 · 방아쇠
+    top = (max(mk["home"], mk["draw"], mk["away"]) if mk else None)
+    row("확신 구간", _bd.said_of(top))
+    said_grade = sorted({e.grade for e in (card.evals or [])})
+    row("등급", " · ".join(said_grade) if said_grade
+        else "⬜ 등급 줄이 없다(평가할 마켓 줄이 없다)")
+    row("결론", str(card.conclusion or "⬜ 결론 줄이 비었다"))
+    said_trig = [str(t) for t in (getattr(card, "triggers", None) or [])]
+    row("방아쇠", (" · ".join(said_trig[:4])
+                   + (f" (+{len(said_trig) - 4})" if len(said_trig) > 4 else ""))
+        if said_trig else "⬜ 방아쇠가 없다")
+    return "\n".join(out)
+
+
+def _three(one) -> tuple | None:
+    """🔴 `{home,draw,away}` 꼴 → 세 수. 못 읽으면 `None`."""
+    box = dict(one or {}) if not hasattr(one, "home") else {
+        "home": getattr(one, "home", None), "draw": getattr(one, "draw", None),
+        "away": getattr(one, "away", None)}
+    said = [box.get(k) for k in ("home", "draw", "away")]
+    return tuple(said) if all(x is not None for x in said) else None
+
+
+def _e1_of(box: dict, pull, mk: dict) -> str:
+    """🔴 E1(0.5·M1 + 0.5·M3) — 섞는 자리는 `ensemble.mix` 하나다(사본 금지)."""
+    from app.core import ensemble as _en
+    said_m3 = _three(box.get("shadow") or pull("shadow"))
+    if not mk or said_m3 is None:
+        return "⬜ 없다(M1 또는 M3 가 없다)"
+    one, why = _en.mix({"M1": [mk["home"], mk["draw"], mk["away"]],
+                        "M3": [float(x) for x in said_m3]},
+                       {"M1": 0.5, "M3": 0.5})
+    if not one:
+        return f"⬜ {why}"
+    return " / ".join(f"{x:.0%}" for x in one)
 
 
 def prob_long(card: Card) -> str:
