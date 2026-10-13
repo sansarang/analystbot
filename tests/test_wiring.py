@@ -671,6 +671,10 @@ TOOL_ONLY: dict[str, str] = {
     #    판정**(M1 오프셋 판 vs 리그 간 Elo · 규칙 v2+(d)) 뒤다.
     #    🔴 그때까지 대륙 대회는 `rules.goal_baseline` 이 **빈 사전**을 내므로
     #       (CC1) 카드가 그 칸을 **미산출**로 적는다 — 국내 값을 빌리지 않는다.
+    # 🔴🔴 **P0 슬레이트 스케줄러**(수정 지시 2026-10-13 밤) — 큐를 세우는 것은
+    #    도구다(`tools/slate_queue.py`). ⚠️ 운영 봇은 단계 **시각표**만 쓴다
+    #    (`slate.head_of` — 카드 머리에 찍는다 · 그쪽은 배선된 것이라 여기 없다).
+    "app.core.slate.queue": "tools/slate_queue.py",
     "app.core.offsets.plate_of": "tools/fit_offsets.py",
     "app.core.offsets.of": "tools/fit_offsets.py",
     "app.core.offsets.score_of": "tools/fit_offsets.py",

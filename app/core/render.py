@@ -293,6 +293,20 @@ def _head(card: Card) -> str:
         said_top = max(float(got_ours.home), float(got_ours.draw),
                        float(got_ours.away))
     head += "\n" + _bd.said_of(said_top)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **P0 — 실행 단계 시각표**(수정 지시 2026-10-13 밤 P0)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 각 단계 시각을 **카드 머리에 찍는다**(T−24h/T−3h/XI 확정 판 각각).
+    #  🔴 킥오프를 지난 실행은 머리에서 *"사후 기록용"* 이라고 말한다 — 오늘
+    #     실측(상하이–대전)이 그 카드였다.
+    #  ⚠️ 세는 곳은 `core/slate` 하나다(사본 금지) · 확률에 닿지 않는다.
+    from app import window as _w
+    from app.core import slate as _sl
+    try:
+        head += "\n" + _sl.head_of(m.kickoff_utc, _w.now_utc())
+    except (ValueError, AttributeError) as exc:
+        head += f"\n⏱ ⬜ **실행 단계를 못 찍었다** — {exc!r:.60}"
     # 🔴🔴 **§7 경기 직전 상태** — 머리 줄에 적는다(지시서 2026-10-12(둘째) §7).
     #  ⚠️ 확률에는 아직 **안 들어간다**(§9 전진 선택 전) — 그 사실을 줄이 말한다.
     if card.schedule:
