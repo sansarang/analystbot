@@ -2,16 +2,32 @@
 ⬜ **확신 구간 밖** — 최고 확률 42.2% < 44.8%(상위 30% 문턱) · ⚠️ 판정 문턱은 **보류**다
 🗓 일정: 홈 휴식 4일 · 14일 내 1 / 원정 휴식 5일 · 14일 내 1 — ⚠️ **확률에는 아직 안 들어간다**(§9 전진 선택 전)
 📏 InfoQ **2/5** — 빠진 칸 벤치 id 확정 — ⬜ 못 센 칸 결장 사다리 한 칸 이상(양 팀) · 새 사실 72시간 ≥1 → **등급 한 단계↓**
-💵 $0.0016 · 호출 3회 · 출력 1313 (추론 330)
+💵 $0.0014 · 호출 3회 · 출력 1097 (추론 336)
 📋 **시장 피드에 없는 경기 — 보드 캡처를 보내 달라**(보드가 없으면 등급을 못 붙인다)
 📋 라인업 확정 · 출처 www.fotmob.com
+
+**📈 확률 요약**(맨 위 고정 · 같은 격자 하나에서 · **봇 확률만**)
+
+| 승무패 | 홈 | 무 | 원정 |
+|---|---|---|---|
+| 확률 | 33.0% | 24.7% | 42.2% |
+
+| 핸디 | -2.5 | -1.5 | -0.5 | +0.5 | +1.5 | +2.5 |
+|---|---|---|---|---|---|---|
+| 홈 | 5.1% | 14.6% | 33.0% | 57.8% | 79.1% | 91.8% |
+| 원정 | 8.2% | 20.9% | 42.2% | 67.0% | 85.4% | 94.9% |
+
+| 총골 | 0.5 | 1.5 | 2.5 | 3.5 | 4.5 |
+|---|---|---|---|---|---|
+| 오버 | 94.6% | 78.7% | 55.5% | 32.9% | 16.6% |
+| 언더 | 5.4% | 21.3% | 44.5% | 67.1% | 83.4% |
 
 🔁 강팀 Johor Darul Ta'zim 42% · 🔁 **Pohang Steelers 승 33%** · Johor Darul Ta'zim 미승 58% · Pohang Steelers +1.5 79% · Pohang Steelers 더블찬스 58% · Pohang Steelers DNB 44%
 
 **1. 자료 한계 고백**
 - 🔴 **이미 시작한 경기다 — 예측이 아니다**(등급을 내지 않는다)
-- 버린 것: `body_missing` 9건 · `identity_mismatch` 69건 · `off_match` 3건 · `quote_not_found` 1건 · `sport_mismatch` 4건 · `stale` 36건
-- 🔎 **검색** — 질의 6 · 결과 193 · 날짜 통과 239 · 문서 2 · 잃음 — ④ 신원 72 · ② 질의·날짜 36 · ③ 본문 9 · ① 원천 4 · ⑤ 추출 1 · ⬜ 원천 등급·사실 종류별 수는 **아직 못 적는다**(카드가 문서 URL 을 안 들고 있다 · §6-5)
+- 버린 것: `body_missing` 4건 · `identity_mismatch` 19건 · `off_match` 2건 · `quote_not_found` 1건 · `sport_mismatch` 4건 · `stale` 20건
+- 🔎 **검색** — 질의 5 · 결과 178 · 날짜 통과 150 · 문서 2 · 잃음 — ④ 신원 21 · ② 질의·날짜 20 · ① 원천 4 · ③ 본문 4 · ⑤ 추출 1 · ⬜ 원천 등급·사실 종류별 수는 **아직 못 적는다**(카드가 문서 URL 을 안 들고 있다 · §6-5)
 - 문서 2건 · 변수 8개 · 시나리오 0개
 
 **2. 기준 XI**
@@ -31,7 +47,7 @@
     Jeong-Won Eo(?) — 사유 미상 · 
     Ki-Jong Won(?) — 사유 미상 · 
 
-🆕 **새 사실(72시간)** — 🔴 **0건** · 기사 변수 0개(F 하위에서 온 것 0개) · docs 2 · hits 193 · kept_date 239 · queries 6
+🆕 **새 사실(72시간)** — 🔴 **0건** · 기사 변수 0개(F 하위에서 온 것 0개) · docs 2 · hits 178 · kept_date 150 · queries 5
 
 🧾 **손실 표**(버린 단계 · 사유 · 제목)
 
@@ -40,49 +56,49 @@
 | `s5` | `off_match` | ⬜ 제목 없음 | 🔴 `match_link` 가 이 경기를 가리키지 않는다(상대팀·경기장·날짜가 없다): 'Pohang wil |
 | `s5` | `quote_not_found` | ⬜ 제목 없음 | 🔴 인용이 **본문에 없다** — 지어낸 것이다(§5-1): `we had an a-match break a |
 | `s5` | `off_match` | ⬜ 제목 없음 | 🔴 `match_link` 가 이 경기를 가리키지 않는다(상대팀·경기장·날짜가 없다): 'Pohang wil |
-| `s5` | `off_match` | ⬜ 제목 없음 | 🔴 `match_link` 가 이 경기를 가리키지 않는다(상대팀·경기장·날짜가 없다): 'Pohang wil |
-| `s3/신원` | `identity_mismatch` | 이호재(2000) | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '이호재(2000) ※본 문서는 간소화한 것입니다. 스 |
-| `s3/신원` | `identity_mismatch` | 경남 FC/2019년 - 읽기전용위키 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '경남 fc/2019년 - 읽기전용위키 ' |
-| `s3/신원` | `identity_mismatch` | [프리미엄픽] 프로토 109회차 ACLE 분석 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '[프리미엄픽] 프로토 109회차 acle 분석 202 |
-| `s3/신원` | `identity_mismatch` | 조호르 다룰 탁짐 FC 축구 팀 순위·경기 일정·이적·라인업 — 다음 경기 10/13 .... | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '조호르 다룰 탁짐 fc 축구 팀 순위·경기 일정·이적 |
-| `s3/신원` | `identity_mismatch` | AFC 챔피언스리그 엘리트 부상자 명단 2026-27 시즌 · 총 33명 결장 · Scorebase | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'afc 챔피언스리그 엘리트 부상자 명단 2026-27 |
-| `s3/날짜` | `stale` | 포항, 日 원정서 ‘경기력+결과’ 다 잡았다…울산 ‘조호르 악연’ 탈출 | 🔴 **7일 밖이다** — 주소 날짜 2023-10-24, 지금보다 1085일 전 (받지 않는다) |
-| `s3/신원` | `identity_mismatch` | 이호재(2000) | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '이호재(2000) ※본 문서는 간소화한 것입니다. 스 |
-| `s3/신원` | `identity_mismatch` | 경남 FC/2019년 - 읽기전용위키 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '경남 fc/2019년 - 읽기전용위키 ' |
-| `s3/신원` | `identity_mismatch` | [프리미엄픽] 프로토 109회차 ACLE 분석 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '[프리미엄픽] 프로토 109회차 acle 분석 202 |
-
-… (이어짐 1)
-| `s3/신원` | `identity_mismatch` | 조호르 다룰 탁짐 FC 축구 팀 순위·경기 일정·이적·라인업 — 다음 경기 10/13 .... | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '조호르 다룰 탁짐 fc 축구 팀 순위·경기 일정·이적 |
-| `s3/신원` | `identity_mismatch` | AFC 챔피언스리그 엘리트 부상자 명단 2026-27 시즌 · 총 33명 결장 · Scorebase | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'afc 챔피언스리그 엘리트 부상자 명단 2026-27 |
-| `s3/날짜` | `stale` | 포항, 日 원정서 ‘경기력+결과’ 다 잡았다…울산 ‘조호르 악연’ 탈출 | 🔴 **7일 밖이다** — 주소 날짜 2023-10-24, 지금보다 1085일 전 (받지 않는다) |
-| `s3/신원` | `identity_mismatch` | 이호재(2000) | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '이호재(2000) ※본 문서는 간소화한 것입니다. 스 |
-| `s3/신원` | `identity_mismatch` | 경남 FC/2019년 - 읽기전용위키 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '경남 fc/2019년 - 읽기전용위키 ' |
-| `s3/신원` | `identity_mismatch` | [프리미엄픽] 프로토 109회차 ACLE 분석 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '[프리미엄픽] 프로토 109회차 acle 분석 202 |
-| `s3/신원` | `identity_mismatch` | 조호르 다룰 탁짐 FC 축구 팀 순위·경기 일정·이적·라인업 — 다음 경기 10/13 .... | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '조호르 다룰 탁짐 fc 축구 팀 순위·경기 일정·이적 |
-| `s3/신원` | `identity_mismatch` | AFC 챔피언스리그 엘리트 부상자 명단 2026-27 시즌 · 총 33명 결장 · Scorebase | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'afc 챔피언스리그 엘리트 부상자 명단 2026-27 |
-| `s3/날짜` | `stale` | 포항, 日 원정서 ‘경기력+결과’ 다 잡았다…울산 ‘조호르 악연’ 탈출 | 🔴 **7일 밖이다** — 주소 날짜 2023-10-24, 지금보다 1085일 전 (받지 않는다) |
-| `s3/신원` | `identity_mismatch` | 이호재(2000) | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '이호재(2000) ※본 문서는 간소화한 것입니다. 스 |
-| `s3/신원` | `identity_mismatch` | 경남 FC/2019년 - 읽기전용위키 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '경남 fc/2019년 - 읽기전용위키 ' |
-| `s3/신원` | `identity_mismatch` | [프리미엄픽] 프로토 109회차 ACLE 분석 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '[프리미엄픽] 프로토 109회차 acle 분석 202 |
-| `s3/신원` | `identity_mismatch` | 조호르 다룰 탁짐 FC 축구 팀 순위·경기 일정·이적·라인업 — 다음 경기 10/13 .... | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '조호르 다룰 탁짐 fc 축구 팀 순위·경기 일정·이적 |
-| `s3/신원` | `identity_mismatch` | AFC 챔피언스리그 엘리트 부상자 명단 2026-27 시즌 · 총 33명 결장 · Scorebase | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'afc 챔피언스리그 엘리트 부상자 명단 2026-27 |
-| `s3/날짜` | `stale` | 포항, 日 원정서 ‘경기력+결과’ 다 잡았다…울산 ‘조호르 악연’ 탈출 | 🔴 **7일 밖이다** — 주소 날짜 2023-10-24, 지금보다 1085일 전 (받지 않는다) |
-| `s3/신원` | `identity_mismatch` | 이호재(2000) | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '이호재(2000) ※본 문서는 간소화한 것입니다. 스 |
-| `s3/신원` | `identity_mismatch` | 경남 FC/2019년 - 읽기전용위키 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '경남 fc/2019년 - 읽기전용위키 ' |
-| `s3/신원` | `identity_mismatch` | [프리미엄픽] 프로토 109회차 ACLE 분석 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '[프리미엄픽] 프로토 109회차 acle 분석 202 |
-| `s3/신원` | `identity_mismatch` | 조호르 다룰 탁짐 FC 축구 팀 순위·경기 일정·이적·라인업 — 다음 경기 10/13 .... | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '조호르 다룰 탁짐 fc 축구 팀 순위·경기 일정·이적 |
-| `s3/신원` | `identity_mismatch` | AFC 챔피언스리그 엘리트 부상자 명단 2026-27 시즌 · 총 33명 결장 · Scorebase | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'afc 챔피언스리그 엘리트 부상자 명단 2026-27 |
-| `s3/날짜` | `stale` | 포항, 日 원정서 ‘경기력+결과’ 다 잡았다…울산 ‘조호르 악연’ 탈출 | 🔴 **7일 밖이다** — 주소 날짜 2023-10-24, 지금보다 1085일 전 (받지 않는다) |
+| `s3/날짜` | `stale` | 포항 스틸러스 vs 부천 FC, K리그1 관전 포인트는? - TrendSoccer 프리뷰 | 🔴 **7일 밖이다** — 주소 날짜 2026-03-22, 지금보다 205일 전 (받지 않는다) |
 | `s3/날짜` | `stale` | Pohang's Defensive Errors Cost 1-3 AFC Loss | 🔴 **7일 밖이다** — 주소 날짜 2026-09-15, 지금보다 28일 전 (받지 않는다) |
 | `s3/신원` | `identity_mismatch` | K League United · South Korean football news, opinions, match previews | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'k league united · south korea |
 | `s3/날짜` | `stale` | Pohang concedes early errors, loses 1-3 to Beijing in ACLE opener | 🔴 **7일 밖이다** — 주소 날짜 2026-09-15, 지금보다 28일 전 (받지 않는다) |
 | `s3/신원` | `identity_mismatch` | "(Song) Min-gyu, you're not registered yet? Come back again!"... Kim K | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '"(song) min-gyu, you\'re not  |
+
+… (이어짐 1)
 | `s3/신원` | `identity_mismatch` | Jeonbuk hoping to see benefit of squad rotation in tight schedule | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'jeonbuk hoping to see benefit |
 | `s3/신원` | `identity_mismatch` | Best Betting Tips and Predictions for the UK 2026 · Betzoid | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'best betting tips and predict |
-- ⚠️ **82줄 더 있다**(표는 40줄까지 적는다)
+| `s3/날짜` | `stale` | Pohang Steelers vs Jeonbuk Hyundai Motors live score, H2H and lineups  | 🔴 **7일 밖이다** — 스니펫 날짜 2026-07-25, 지금보다 80일 전 (받지 않는다) |
+| `s3/날짜` | `stale` | Pohang Steelers Sign Versatile Forward Won Ki-jong to Bolster Attack | 🔴 **7일 밖이다** — 주소 날짜 2026-07-30, 지금보다 75일 전 (받지 않는다) |
+| `s3/날짜` | `stale` | Pohang Steelers Sign Versatile Forward Won Ki-jong to Bolster Attack | 🔴 **7일 밖이다** — 주소 날짜 2026-07-30, 지금보다 75일 전 (받지 않는다) |
+| `s3/신원` | `identity_mismatch` | Kee Sung Young | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'kee sung young soccer player  |
+| `s3/신원` | `identity_mismatch` | FC Seoul to release veteran midfielder Ki Sung-yueng | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'fc seoul to release veteran m |
+| `s3/신원` | `identity_mismatch` | Topic: Fc Seoul | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'topic: fc seoul fc seoul acqu |
+| `s3/신원` | `identity_mismatch` | Cho Jae-jin | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'cho jae-jin cho jae-jin (kore |
+| `s3/신원` | `identity_mismatch` | Kim Byung-ji | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'kim byung-ji kim byung-ji (bo |
+| `s3/신원` | `identity_mismatch` | Whyyyyy? · GitHub | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'whyyyyy? · github hi ; how ca |
+| `s3/신원` | `identity_mismatch` | password_check js · GitHub | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'password_check js · github if |
+| `s3/신원` | `identity_mismatch` | 6, 2020 Articles · Site Map · Yonhap News Agency | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — "6, 2020 articles · site map · |
+| `s3/날짜` | `stale` | Pohang Steelers win 2nd straight Korea Cup football tournament | 🔴 **7일 밖이다** — 주소 날짜 2024-11-30, 지금보다 682일 전 (받지 않는다) |
+| `s3/날짜` | `stale` | 울산 HD FC | 🔴 **7일 밖이다** — 스니펫 날짜 2024-09-03, 지금보다 770일 전 (받지 않는다) |
+| `s3/신원` | `identity_mismatch` | Coach Chung Jung-yong took the helm of the Gimcheon Standing Committee | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'coach chung jung-yong took th |
+| `s3/날짜` | `stale` | Pohang Steelers Sign Versatile Forward Won Ki-jong to Bolster Attack | 🔴 **7일 밖이다** — 주소 날짜 2026-07-30, 지금보다 75일 전 (받지 않는다) |
+| `s3/신원` | `identity_mismatch` | What's in an exemption — will Asiad glory really benefit Korea's young | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — "what's in an exemption — will |
+| `s3/신원` | `identity_mismatch` | password_check js · GitHub | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'password_check js · github if |
+| `s3/신원` | `identity_mismatch` | On Byung-hoon | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'on byung-hoon on byung-hoon ( |
+| `s3/신원` | `identity_mismatch` | Dynamic K League with 40 Years - 건국불레틴 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'dynamic k league with 40 year |
+| `s3/신원` | `identity_mismatch` | Ulsan complete trophy hat trick with 3rd K League 1 title | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'ulsan complete trophy hat tri |
+| `s3/날짜` | `stale` | Pohang Steelers vs Zob Ahan - skor langsung, susunan pemain prediksi,  | 🔴 **7일 밖이다** — 스니펫 날짜 2010-09-22, 지금보다 5865일 전 (받지 않는다) |
+| `s3` | `sport_mismatch` | ⬜ 제목 없음 | 🔴 본문에 **soccer 낱말이 없다**(football, fútbol, nogomet, soccer …) |
+| `s3` | `stale` | ⬜ 제목 없음 | 발행일 2026-09-15 · 창 7일 |
+| `s3` | `stale` | ⬜ 제목 없음 | 발행일 2026-07-31 · 창 7일 |
+| `s3` | `stale` | ⬜ 제목 없음 | 발행일 2016-04-11 · 창 7일 |
+| `s3` | `stale` | ⬜ 제목 없음 | 발행일 2016-04-11 · 창 7일 |
+| `s3` | `body_missing` | ⬜ 제목 없음 | 원문 원문: 상태 ? · 재시도도 실패 · AMP ⬜ **AMP 없다** — 원문에 `rel=amphtml` |
+| `s3` | `stale` | ⬜ 제목 없음 | 발행일 2021-11-24 · 창 7일 |
+| `s3` | `sport_mismatch` | ⬜ 제목 없음 | 🔴 본문에 **soccer 낱말이 없다**(football, fútbol, nogomet, soccer …) |
 
 … (이어짐 2)
-- 합계 — `s3/body_missing` 9건 · `s3/sport_mismatch` 4건 · `s3/stale` 12건 · `s3/날짜/stale` 24건 · `s3/신원/identity_mismatch` 69건 · `s5/off_match` 3건 · `s5/quote_not_found` 1건
+| `s3` | `body_missing` | ⬜ 제목 없음 | 원문 원문: 받았다(상태 200) · 🔴 **본문 0자** — 빈 본문 · AMP ⬜ **AMP 없다** — |
+- ⚠️ **10줄 더 있다**(표는 40줄까지 적는다)
+- 합계 — `s3/body_missing` 4건 · `s3/sport_mismatch` 4건 · `s3/stale` 8건 · `s3/날짜/stale` 12건 · `s3/신원/identity_mismatch` 19건 · `s5/off_match` 2건 · `s5/quote_not_found` 1건
 
 **🧠 라인업 전략 (자세히)** — 판정 `코드 판정(LLM 없음)`
 - **Pohang Steelers** — `squad_turnover` · 근거 ['L1', 'L2', 'L3'] · Pohang Steelers — **선수단 교체**(① 최근 5경기 선발 중 오늘 경기 명단(선발+벤치+명단 24명)에 **없는 선수 5명**(문턱 5명) — ['Jeong-Won Eo', 'Ki-Jong Won', 'Pyung-Gook Yoon', 'Seo-Woong Hwang', 'Sung-Wook Jo']). 바뀐 자리는 체력 관리가 아니라 그 선수들이 **이 팀에 없어서**다 (원래 판정 `공격 위주` 을 덮었다)
@@ -138,11 +154,11 @@
       실 61' · 필드골 · 앞섬 · xG 0.35
     원정 vs Daejeon Hana Citizen
       득 48' · 필드골 · 동점 · xG 0.35 · 헤더
+
+… (이어짐 3)
       득 51' · 필드골 · 앞섬 · xG 0.70
       실 84' · 세트피스 · 뒤짐 · xG 0.04 · 🎲 운 요소
       실 88' · 미상 · 뒤짐 · xG 0.05 · 🎲 운 요소
-
-… (이어짐 3)
     원정 vs Beijing Guoan
       실 2' · 미상 · 동점 · xG 없음
       득 6' · PK · 뒤짐 · xG 없음 · 🎲 운 요소
@@ -225,9 +241,9 @@
     최근 5경기 W D W W W · 득점 평균 4.0(보정 3.25) · 기준 팀당 1.4106골(대회 league:ACLE) 대비 득점 많다 · 실점 평균 0.2…(잘림) · 축1 — 보정 폼
 - `S02` [h2h_pattern] soft 무게 0.4 · 🔴 **근거 불가**(맥락) · 자리 ['hypo']
     맞대결 3경기 Pohang Steelers 2승 0무 1패(상대 1승) · 평균 4.667골 · 상성 밖 — V5 맞대결
-- `S03` [home_field] soft 무게 0.4 · 자리 ['lambda_const']
 
 … (이어짐 4)
+- `S03` [home_field] soft 무게 0.4 · 자리 ['lambda_const']
     Pohang Steelers 홈 경기 — 홈 **승률** 수치 없음(대회 유형 `league:ACLE` 의 승률 표가 없다 · 다른 대회 숫자를 빌리지 않는다) …(잘림) · 리그 홈 이점(λ 상수) — 가설 근거로도 쓰지 않는다(지시서 표의 `—`)
 - `IR02-home` [def_absence] soft 무게 0.7 · 자리 ['axis0', 'axis2', 'hypo']
     Pohang Steelers 직전 선발 Jeong-Won Eo 가 오늘 명단에 없다(결장) · 축0(빠진 수비 자원 가치) · 축2(수비 무기 꺼짐)
@@ -275,9 +291,9 @@
 - **승무패** — 홈 **33.0%** · 무 **24.7%** · 원정 **42.2%**
 - **λ** — home 1.345 · away 1.550
 - **총골 기대** — 2.895골 (λ 합)
-- **그림자** — M1(운영) 33% / 25% / 42% · E1 ⬜ 없다(M1 또는 M3 가 없다) · M3 ⬜ 없다 · Elo ⬜ 없다  (홈/무/원정)
 
 … (이어짐 5)
+- **그림자** — M1(운영) 33% / 25% / 42% · E1 ⬜ 없다(M1 또는 M3 가 없다) · M3 ⬜ 없다 · Elo ⬜ 없다  (홈/무/원정)
 - **역배** — 약팀 **Pohang Steelers** 승 **33.0%** · 강팀 **Johor Darul Ta'zim** 미승 **57.8%**
 - **핸디 홈** — -2.5 5.1% · -1.5 14.6% · -0.5 33.0% · +0.5 57.8% · +1.5 79.1% · +2.5 91.8%
 - **핸디 원정** — -2.5 8.2% · -1.5 20.9% · -0.5 42.2% · +0.5 67.0% · +1.5 85.4% · +2.5 94.9%
@@ -325,9 +341,9 @@
 - `S03` [home_field] Pohang Steelers 홈 경기 — 홈 **승률** 수치 없음(대회 유형 `league:ACLE` 의 승률 표가 없다 · 다른 대회 숫자를 빌리지 않는다) · ⚠️ λ 홈 배율은 **득점 실측**을 쓴다(홈 팀 평균 1.6723 · 표본 235) — 승패 **home** · 득점 - · soft · 출처 구조 사실 · 대상 `home_field` · [규칙 S03]
 - `IR02-home` [def_absence] Pohang Steelers 직전 선발 Jeong-Won Eo 가 오늘 명단에 없다(결장) — 승패 **away** · 득점 - · soft · 출처 구조 사실 · 대상 `def_absence:IR02-home` · [규칙 IR02-home]
 - `IR02-away` [def_absence] Johor Darul Ta'zim 직전 선발 Shane Lowry, Nené 가 오늘 명단에 없다(결장) — 승패 **home** · 득점 - · soft · 출처 구조 사실 · 대상 `def_absence:IR02-away` · [규칙 IR02-away]
-- `IR12-away` [team_stats] Johor Darul Ta'zim 무패 5경기 — 승패 **away** · 득점 - · soft · 출처 구조 사실 · 대상 `team_stats:IR12-away` · [규칙 IR12-away]
 
 … (이어짐 6)
+- `IR12-away` [team_stats] Johor Darul Ta'zim 무패 5경기 — 승패 **away** · 득점 - · soft · 출처 구조 사실 · 대상 `team_stats:IR12-away` · [규칙 IR12-away]
 - `TURN-home` [squad_rotation] Pohang Steelers 선수단 교체 — ① 최근 5경기 선발 중 오늘 경기 명단(선발+벤치+명단 24명)에 **없는 선수 5명**(문턱 5명) — ['Jeong-Won Eo', 'Ki-Jong Won', 'Pyung-Gook Yoon', 'Seo-Woong Hwang', 'Sung-Wook Jo'] · 명부에 없는 과거 선발 5명 — 승패 **away** · 득점 - · hard · 출처 구조 사실 · 대상 `squad_rotation:turnover` · [규칙 IR03T]
 
 **(근거 불가)** — 맥락으로만 쓴다
@@ -393,17 +409,33 @@
 🎚 **확신 구간 상위 30%** — 최고 확률 46.1% · ⚠️ 문턱은 **보류**(표시만 · 460경기와 442경기 표가 크게 달랐다)
 🗓 일정: 홈 휴식 4일 · 14일 내 1 / 원정 휴식 4일 · 14일 내 1 — ⚠️ **확률에는 아직 안 들어간다**(§9 전진 선택 전)
 📏 InfoQ **2/5** — 빠진 칸 벤치 id 확정 — ⬜ 못 센 칸 결장 사다리 한 칸 이상(양 팀) · 새 사실 72시간 ≥1 → **등급 한 단계↓**
-💵 $0.0031 · 호출 4회 · 출력 2674 (추론 599)
+💵 $0.0034 · 호출 4회 · 출력 2573 (추론 533)
 📋 **시장 피드에 없는 경기 — 보드 캡처를 보내 달라**(보드가 없으면 등급을 못 붙인다)
 📋 라인업 확정 · 출처 www.fotmob.com
+
+**📈 확률 요약**(맨 위 고정 · 같은 격자 하나에서 · **봇 확률만**)
+
+| 승무패 | 홈 | 무 | 원정 |
+|---|---|---|---|
+| 확률 | 46.1% | 24.6% | 29.3% |
+
+| 핸디 | -2.5 | -1.5 | -0.5 | +0.5 | +1.5 | +2.5 |
+|---|---|---|---|---|---|---|
+| 홈 | 9.7% | 23.7% | 46.1% | 70.7% | 87.8% | 96.0% |
+| 원정 | 4.0% | 12.2% | 29.3% | 53.9% | 76.3% | 90.3% |
+
+| 총골 | 0.5 | 1.5 | 2.5 | 3.5 | 4.5 |
+|---|---|---|---|---|---|
+| 오버 | 94.4% | 78.2% | 54.7% | 32.2% | 16.1% |
+| 언더 | 5.6% | 21.8% | 45.3% | 67.8% | 83.9% |
 
 🔁 강팀 Shanghai Port 46% · 🔁 **Daejeon Hana Citizen 승 29%** · Shanghai Port 미승 54% · Daejeon Hana Citizen +1.5 76% · Daejeon Hana Citizen 더블찬스 54% · Daejeon Hana Citizen DNB 39%
 
 **1. 자료 한계 고백**
 - 🔴 **이미 시작한 경기다 — 예측이 아니다**(등급을 내지 않는다)
-- 버린 것: `body_missing` 15건 · `duplicate` 6건 · `identity_mismatch` 133건 · `off_match` 5건 · `sport_mismatch` 14건 · `stale` 81건 · `type_off_catalog` 5건
-- 🔎 **검색** — 질의 18 · 결과 604 · 날짜 통과 733 · 문서 4 · 잃음 — ④ 신원 138 · ② 질의·날짜 81 · ① 원천 19 · ③ 본문 15 · — 중복 6 · ⬜ 원천 등급·사실 종류별 수는 **아직 못 적는다**(카드가 문서 URL 을 안 들고 있다 · §6-5)
-- 문서 4건 · 변수 9개 · 시나리오 0개
+- 버린 것: `body_missing` 12건 · `identity_mismatch` 157건 · `sport_mismatch` 11건 · `stale` 34건 · `type_off_catalog` 3건
+- 🔎 **검색** — 질의 18 · 결과 320 · 날짜 통과 316 · 문서 4 · 잃음 — ④ 신원 157 · ② 질의·날짜 34 · ① 원천 14 · ③ 본문 12 · ⬜ 원천 등급·사실 종류별 수는 **아직 못 적는다**(카드가 문서 URL 을 안 들고 있다 · §6-5)
+- 문서 4건 · 변수 8개 · 시나리오 0개
 
 **2. 기준 XI**
 - **Shanghai Port** 5-4-1 [확정] 감독 Kevin Muscat
@@ -424,62 +456,62 @@
     Victor Bobsin(?) — 사유 미상 · 
     Moon-Hwan Kim(?) — 사유 미상 · 
 
-🆕 **새 사실(72시간)** — 🔴 **0건** · 기사 변수 1개(F 하위에서 온 것 0개) · docs 4 · hits 604 · kept_date 733 · queries 18
+🆕 **새 사실(72시간)** — 🔴 **0건** · 기사 변수 0개(F 하위에서 온 것 0개) · docs 4 · hits 320 · kept_date 316 · queries 18
 
 🧾 **손실 표**(버린 단계 · 사유 · 제목)
 
 | 단계 | 사유 | 제목 | 상세 |
 |---|---|---|---|
-| `s5` | `off_match` | ⬜ 제목 없음 | 🔴 `match_link` 가 이 경기를 가리키지 않는다(상대팀·경기장·날짜가 없다): 'Daejeon' |
-| `s5` | `off_match` | ⬜ 제목 없음 | 🔴 `match_link` 가 이 경기를 가리키지 않는다(상대팀·경기장·날짜가 없다): 'Daejeon' |
-| `s5` | `off_match` | ⬜ 제목 없음 | 🔴 `match_link` 가 이 경기를 가리키지 않는다(상대팀·경기장·날짜가 없다): 'Daejeon' |
-| `s5` | `off_match` | ⬜ 제목 없음 | 🔴 `match_link` 가 이 경기를 가리키지 않는다(상대팀·경기장·날짜가 없다): 'Daejeon' |
-| `s5` | `off_match` | ⬜ 제목 없음 | 🔴 `match_link` 가 이 경기를 가리키지 않는다(상대팀·경기장·날짜가 없다): 'Daejeon' |
 | `s5` | `identity_mismatch` | ⬜ 제목 없음 | F-home-D1 본문이 `team:000316` 를 말하지 않는다 |
-| `s5` | `duplicate` | ⬜ 제목 없음 | 같은 사실로 묶었다(열쇠 team_stats·shanghai port) → 출처 1곳 |
-| `s5` | `duplicate` | ⬜ 제목 없음 | 같은 사실로 묶었다(열쇠 team_stats·shanghai port) → 출처 1곳 |
-| `s5` | `duplicate` | ⬜ 제목 없음 | 같은 사실로 묶었다(열쇠 team_stats·shanghai port) → 출처 1곳 |
-| `s5` | `duplicate` | ⬜ 제목 없음 | 같은 사실로 묶었다(열쇠 team_stats·shanghai port) → 출처 1곳 |
-| `s5` | `duplicate` | ⬜ 제목 없음 | 같은 사실로 묶었다(열쇠 team_stats·shanghai port) → 출처 1곳 |
-| `s5` | `duplicate` | ⬜ 제목 없음 | 같은 사실로 묶었다(열쇠 team_stats·shanghai port) → 출처 1곳 |
-| `s4` | `body_missing` | ⬜ 제목 없음 | 문서 1건에서 문단을 못 뽑았다 |
-| `s3/신원` | `identity_mismatch` | ABSTRACTS | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'abstracts 720페이지50mbabstracts |
-| `s3/신원` | `identity_mismatch` | China 2030 - World Bank Group - International Development, Poverty and | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'china 2030 - world bank group |
+| `s5` | `identity_mismatch` | ⬜ 제목 없음 | F-home-D1 본문이 `team:000316` 를 말하지 않는다 |
+| `s5` | `identity_mismatch` | ⬜ 제목 없음 | F-home-D1 본문이 `team:000316` 를 말하지 않는다 |
+| `s5` | `identity_mismatch` | ⬜ 제목 없음 | F-home-D1 본문이 `team:000316` 를 말하지 않는다 |
+| `s5` | `identity_mismatch` | ⬜ 제목 없음 | F-home-D1 본문이 `team:000316` 를 말하지 않는다 |
+| `s5` | `identity_mismatch` | ⬜ 제목 없음 | F-home-D1 본문이 `team:000316` 를 말하지 않는다 |
+| `s5` | `identity_mismatch` | ⬜ 제목 없음 | F-home-D1 본문이 `team:000316` 를 말하지 않는다 |
+| `s5` | `identity_mismatch` | ⬜ 제목 없음 | F-home-D1 본문이 `team:000316` 를 말하지 않는다 |
+| `s5` | `identity_mismatch` | ⬜ 제목 없음 | F-home-D1 본문이 `team:000316` 를 말하지 않는다 |
+| `s3/날짜` | `stale` | Elfsborg 대 Daejeon Hana Citizen - 실시간 점수, 예상 스타팅 라인업 및 H2H 통계 | 🔴 **7일 밖이다** — 스니펫 날짜 2026-01-31, 지금보다 255일 전 (받지 않는다) |
+| `s3/날짜` | `stale` | Daejeon Hana Citizens Defeat Gangwon 3-0 Despite Eom's Ankle Injury | 🔴 **7일 밖이다** — 주소 날짜 2026-08-23, 지금보다 51일 전 (받지 않는다) |
 
 … (이어짐 1)
-| `s3/신원` | `identity_mismatch` | The 8th International Symposium on Architectural Interchanges in Asia | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'the 8th international symposi |
-| `s3/신원` | `identity_mismatch` | 한국 물리학회 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '한국 물리학회 1162페이지7mb2016.10 bul |
-| `s3/신원` | `identity_mismatch` | Global Proxy Voting Records: 01/01/2020 - 30/06/2020 For any queries,  | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'global proxy voting records:  |
-| `s3/신원` | `identity_mismatch` | 2014/data_2.pdf | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '2014/data_2.pdf 163페이지29mbawa |
-| `s3/신원` | `identity_mismatch` | 2025 Pohang Steelers season | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '2025 pohang steelers season t |
-| `s3/날짜` | `stale` | Shanghai Port F.C. | 🔴 **7일 밖이다** — 스니펫 날짜 2005-12-25, 지금보다 7597일 전 (받지 않는다) |
-| `s3/날짜` | `stale` | Daejeon Hana Citizen celebrates eco-friendly campaign success with bot | 🔴 **7일 밖이다** — 주소 날짜 2025-05-30, 지금보다 501일 전 (받지 않는다) |
-| `s3/날짜` | `stale` | Shanghai Port FC vs Ulsan HD FC AFC Champions League Elite 티켓 판매 중 · T | 🔴 **7일 밖이다** — 스니펫 날짜 2026-02-18, 지금보다 237일 전 (받지 않는다) |
-| `s3/신원` | `identity_mismatch` | 중국 슈퍼 리그 - 나무위키 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '중국 슈퍼 리그 - 나무위키 1. 개요 2025 화룬 |
-| `s3/신원` | `identity_mismatch` | 일반용어190306.hwp | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '일반용어190306.hwp 992kb#1---latt |
-| `s3/신원` | `identity_mismatch` | [KB금융] 투자설명서 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '[kb금융] 투자설명서 2026.08.31.전자문서  |
-| `s3/신원` | `identity_mismatch` | DELIVERING SUSTAINABLE VALUES TO FUTURE GENERATIONS | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'delivering sustainable values |
-| `s3/신원` | `identity_mismatch` | 홍콩으로간다2_web_양면(고).pdf | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '홍콩으로간다2_web_양면(고).pdf 102페이지3 |
-| `s3/신원` | `identity_mismatch` | ePapyrus PDF Document | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'epapyrus pdf document 47페이지2m |
-| `s3/신원` | `identity_mismatch` | 축구 뉴스, 페이지 128 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — "축구 뉴스, 페이지 128 2026.02.18.'김민 |
-| `s3/신원` | `identity_mismatch` | 제 출 문 - 해양수산과학기술진흥원 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '제 출 문 - 해양수산과학기술진흥원 785페이지70m |
-| `s3/신원` | `identity_mismatch` | 전후 이라크 재건시장 전망 및 진출방안 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '전후 이라크 재건시장 전망 및 진출방안 534페이지4 |
-| `s3/신원` | `identity_mismatch` | 글로벌 자산배분전략 하늘은 높고 말은 살찔 정도이니 주변을 경계하라 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '글로벌 자산배분전략 하늘은 높고 말은 살찔 정도이니  |
-| `s3/신원` | `identity_mismatch` | 2019년 수출입물류 동향 연차보고 및 보세화물제도 연구 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '2019년 수출입물류 동향 연차보고 및 보세화물제도  |
-| `s3/신원` | `identity_mismatch` | 열정과 도전의 반세기 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '열정과 도전의 반세기 344페이지75mb대한대장항문학 |
-| `s3/날짜` | `stale` | 전북 현대 모터스 - Shanghai Port, 2027년 2월 16일 - AFC 챔피언스리그 엘리트 - 경기 내용 | 🔴 **7일 밖이다** — 스니펫 날짜 2020-12-04, 지금보다 2139일 전 (받지 않는다) |
-| `s3/신원` | `identity_mismatch` | ABSTRACTS | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'abstracts 720페이지50mbabstracts |
-| `s3/신원` | `identity_mismatch` | China 2030 - World Bank Group - International Development, Poverty and | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'china 2030 - world bank group |
-| `s3/신원` | `identity_mismatch` | The 8th International Symposium on Architectural Interchanges in Asia | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'the 8th international symposi |
-| `s3/신원` | `identity_mismatch` | 한국 물리학회 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '한국 물리학회 1162페이지7mb2016.10 bul |
-- ⚠️ **219줄 더 있다**(표는 40줄까지 적는다)
-- 합계 — `s3/body_missing` 14건 · `s3/sport_mismatch` 14건 · `s3/stale` 4건 · `s3/날짜/stale` 77건 · `s3/도메인/type_off_catalog` 5건 · `s3/신원/identity_mismatch` 132건 · `s4/body_missing` 1건 · `s5/duplicate` 6건 · `s5/identity_mismatch` 1건 · `s5/off_match` 5건
+| `s3/날짜` | `stale` | Daejeon Hana Citizen vs Suwon FC live score, H2H and lineups · Sofasco | 🔴 **7일 밖이다** — 스니펫 날짜 2025-08-10, 지금보다 429일 전 (받지 않는다) |
+| `s3/날짜` | `stale` | Daejeon Hana Citizen vs Pohang Steelers live score, H2H and lineups ·  | 🔴 **7일 밖이다** — 스니펫 날짜 2026-09-12, 지금보다 31일 전 (받지 않는다) |
+| `s3/날짜` | `stale` | Daejeon Hana Citizen Crush Bucheon 5-0, Climb to 6th in K League 1 | 🔴 **7일 밖이다** — 주소 날짜 2026-09-05, 지금보다 38일 전 (받지 않는다) |
+| `s3/날짜` | `stale` | Daejeon Hana Citizen vs Pohang Steelers - live score, predicted lineup | 🔴 **7일 밖이다** — 스니펫 날짜 2026-09-12, 지금보다 31일 전 (받지 않는다) |
+| `s3/날짜` | `stale` | [Official] Daejeon Hana Citizen Unveils New ACLE Uniforms, On Sale Fro | 🔴 **7일 밖이다** — 주소 날짜 2026-08-29, 지금보다 45일 전 (받지 않는다) |
+| `s3/날짜` | `stale` | Bae Jun-ho | 🔴 **7일 밖이다** — 스니펫 날짜 2003-08-21, 지금보다 8454일 전 (받지 않는다) |
+| `s3/날짜` | `stale` | Daejeon Hana Citizen vs Daegu FC live score, H2H and lineups · Sofasco | 🔴 **7일 밖이다** — 스니펫 날짜 2025-09-20, 지금보다 388일 전 (받지 않는다) |
+| `s3/신원` | `identity_mismatch` | Jeonbuk Hyundai Motors - 전선수 · SoFIFA | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'jeonbuk hyundai motors - 전선수  |
+| `s3/신원` | `identity_mismatch` | 랏차부리 미트르 폴 vs 상하이 포트 분석 (2026-09-15 · AFC 챔피언스리그) · 토팁 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '랏차부리 미트르 폴 vs 상하이 포트 분석 (2026 |
+| `s3/신원` | `identity_mismatch` | 전북 현대 모터스/2026년 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '전북 현대 모터스/2026년 부상 부상 정보 포지션  |
+| `s3/신원` | `identity_mismatch` | 챔피언스리그 · 상하이 하이강 vs 전북 현대 : 경기분석, H2H, 순위 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '챔피언스리그 · 상하이 하이강 vs 전북 현대 : 경 |
+| `s3/신원` | `identity_mismatch` | 스포츠 - 문화·라이프 뉴스 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '스포츠 - 문화·라이프 뉴스 최동원 야구교실서 시작한 |
+| `s3/신원` | `identity_mismatch` | 축구 뉴스 및 리그 · MSN 스포츠 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — "축구 뉴스 및 리그 · msn 스포츠 '韓 축구 초대 |
+| `s3/신원` | `identity_mismatch` | 대한비뇨기과학회사 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '대한비뇨기과학회사 548페이지68mb대한비뇨기과학회사 |
+| `s3/신원` | `identity_mismatch` | 2026년 10월 14일 AFC 챔피언스리그 엘리트 매치데이2 프리뷰, 비셀 고베-전북·알 .... | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '2026년 10월 14일 afc 챔피언스리그 엘리트  |
+| `s3/날짜` | `stale` | Shandong Taishan 대 Shanghai Port - 실시간 점수, 예상 스타팅 라인업 및 H2H 통계 | 🔴 **7일 밖이다** — 스니펫 날짜 2026-09-01, 지금보다 42일 전 (받지 않는다) |
+| `s3/도메인` | `type_off_catalog` | Shanghai cancels flights as Typhoon In-Fa lashes eastern China · Weath | 도메인 등급 — 🔴 등급 `deny` — 본문을 받지 않는다(§4-3) · 검색 결과에서 제거 |
+| `s3/도메인` | `type_off_catalog` | China shuts down ports, cancels flights as Typhoon In-Fa nears · Weath | 도메인 등급 — 🔴 등급 `deny` — 본문을 받지 않는다(§4-3) · 검색 결과에서 제거 |
+| `s3/신원` | `identity_mismatch` | Singapore-flagged bulk carrier and Japan ship collide in China, no inj | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'singapore-flagged bulk carrie |
+| `s3/도메인` | `type_off_catalog` | Shanghai Port vs Shanghai Shenhua Prediction, Betting Tips, Lineups &  | 도메인 등급 — 🔴 등급 `tip` — 본문을 받지 않는다(§4-3) · 변수 근거 금지 |
+| `s3/날짜` | `stale` | Jannik Sinner to miss Shanghai Masters with ongoing right knee injury | 🔴 **7일 밖이다** — 주소 날짜 2026-10-03, 지금보다 10일 전 (받지 않는다) |
+| `s3/신원` | `identity_mismatch` | Jeonbuk Hyundai Motors - 전선수 · SoFIFA | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'jeonbuk hyundai motors - 전선수  |
+| `s3/신원` | `identity_mismatch` | 랏차부리 미트르 폴 vs 상하이 포트 분석 (2026-09-15 · AFC 챔피언스리그) · 토팁 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '랏차부리 미트르 폴 vs 상하이 포트 분석 (2026 |
+| `s3/신원` | `identity_mismatch` | 전북 현대 모터스/2026년 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '전북 현대 모터스/2026년 부상 부상 정보 포지션  |
+| `s3/신원` | `identity_mismatch` | 챔피언스리그 · 상하이 하이강 vs 전북 현대 : 경기분석, H2H, 순위 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '챔피언스리그 · 상하이 하이강 vs 전북 현대 : 경 |
+| `s3/신원` | `identity_mismatch` | 스포츠 - 문화·라이프 뉴스 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '스포츠 - 문화·라이프 뉴스 최동원 야구교실서 시작한 |
+| `s3/신원` | `identity_mismatch` | 축구 뉴스 및 리그 · MSN 스포츠 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — "축구 뉴스 및 리그 · msn 스포츠 '韓 축구 초대 |
+
+… (이어짐 2)
+| `s3/신원` | `identity_mismatch` | 대한비뇨기과학회사 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '대한비뇨기과학회사 548페이지68mb대한비뇨기과학회사 |
+| `s3/신원` | `identity_mismatch` | 2026년 10월 14일 AFC 챔피언스리그 엘리트 매치데이2 프리뷰, 비셀 고베-전북·알 .... | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '2026년 10월 14일 afc 챔피언스리그 엘리트  |
+- ⚠️ **177줄 더 있다**(표는 40줄까지 적는다)
+- 합계 — `s3/body_missing` 12건 · `s3/sport_mismatch` 11건 · `s3/stale` 4건 · `s3/날짜/stale` 30건 · `s3/도메인/type_off_catalog` 3건 · `s3/신원/identity_mismatch` 148건 · `s5/identity_mismatch` 9건
 
 **🧠 라인업 전략 (자세히)** — 판정 `코드 판정(LLM 없음)`
 - **Shanghai Port** — `수비 위주` · 근거 ['L1', 'L2', 'L3'] · 🔴 **코드 판정**(LLM 판정을 버렸다) — 공격 기여가 크게 내려갔다 — 바뀐 자리 5 · ΔA -37.0% · ΔD -12.5% · 핵심 빠짐 0명 · 🔴 **임시값**(적합 전)
     `L1` [formation] Shanghai Port 포메이션 4-2-3-1→5-4-1
-
-… (이어짐 2)
     `L2` [backline] Shanghai Port 수비 4백→5백
     `L3` [rotation] Shanghai Port 평소 XI 대비 바뀐 자리 5개
     `L4` [delta_att] Shanghai Port 공격 기여 -37%(시즌 득점+도움 합)
@@ -536,6 +568,8 @@
       득 90' · 미상 · 뒤짐 · xG 없음
     홈 vs Qingdao Hainiu
       실 17' · 미상 · 동점 · xG 없음
+
+… (이어짐 3)
       득 44' · 미상 · 뒤짐 · xG 없음
       득 67' · PK · 동점 · xG 없음 · 🎲 운 요소
     원정 vs Shenzhen Peng City
@@ -561,8 +595,6 @@
       득 18' · 미상 · 동점 · xG 없음
       득 47' · 미상 · 앞섬 · xG 없음
       득 56' · 미상 · 앞섬 · xG 없음
-
-… (이어짐 3)
       실 72' · PK · 뒤짐 · xG 없음 · 🎲 운 요소
 - **Daejeon Hana Citizen** 골 35건 (분·유형·상태·xG · 상태는 **넣은 팀 기준**)
     원정 vs Chungnam Asan FC
@@ -623,12 +655,12 @@
     `T3` Daejeon Hana Citizen — box_entry 2.063 ↔ 상대 low_block 0.588 · 효과 {'lambda_own': 0.05} · 박스 안에서 만드는 팀 ↔ 깊게 서지 못하는 상대 · 🔴 **임시값**(적합 전) — 적합 못 했다 — 리그 전체 경기 통계를 쌓아 둔 자리가 없다
     `T10` Daejeon Hana Citizen — 후반(61분+) — 내 득점 61%(14/23) ↔ 상대 후반 실점 47%(7/15) · 효과 {'lambda_own_late': 0.12} · 🔴 **임시값**(적합 전) — 적합 못 했다 — 구간별 득점률을 적합할 표본이 없다
 
-**🔢 변수 (배치 자리)** — 변수 9개 — axis0 1 · axis1 5 · axis2 5 · lambda_const 1 · hypo 8
-- `R1` [team_stats] soft 무게 0.7 · 자리 ['axis1', 'axis2', 'hypo']
-    Shanghai Port have seven wins, two draws and one defeat in the 10 supplied matches, remain…(잘림) · 축1 또는 축2 — 내용에 따라(둘 다 열어 두고 축이 쓸 것을 고른다)
+**🔢 변수 (배치 자리)** — 변수 8개 — axis0 1 · axis1 4 · axis2 4 · lambda_const 1 · hypo 7
 - `S01-home` [recent_pattern] soft 무게 0.7 · 자리 ['axis1', 'hypo']
     최근 5경기 W W D W W · 득점 평균 3.0(보정 2.25) · 기준 팀당 1.4106골(대회 league:ACLE) 대비 득점 많다 · 실점 평균 1.0…(잘림) · 축1 — 보정 폼
 - `S01-away` [recent_pattern] soft 무게 0.7 · 자리 ['axis1', 'hypo']
+
+… (이어짐 4)
     최근 5경기 W D W D W · 득점 평균 1.8(보정 1.5) · 기준 팀당 1.4106골(대회 league:ACLE) 대비 득점 보통 · 실점 평균 1.2(…(잘림) · 축1 — 보정 폼
 - `S02` [h2h_pattern] soft 무게 0.4 · 🔴 **근거 불가**(맥락) · 자리 ['hypo']
     맞대결 1경기 Shanghai Port 0승 0무 1패(상대 1승) · 평균 3.0골 · 상성 밖 — V5 맞대결
@@ -636,8 +668,6 @@
     Shanghai Port 홈 경기 — 홈 **승률** 수치 없음(대회 유형 `league:ACLE` 의 승률 표가 없다 · 다른 대회 숫자를 빌리지 않는다) · …(잘림) · 리그 홈 이점(λ 상수) — 가설 근거로도 쓰지 않는다(지시서 표의 `—`)
 - `IR01-home` [lineup_intent] soft 무게 0.7 · 자리 ['axis2', 'hypo']
     Shanghai Port 5-4-1 — 5백으로 내려앉는 운영 · 축2 — 스타일 조정·전략 판정 입력
-
-… (이어짐 4)
 - `IR02-away` [def_absence] soft 무게 0.7 · 자리 ['axis0', 'axis2', 'hypo']
     Daejeon Hana Citizen 직전 선발 Moon-Hwan Kim, Myung-Jae Lee, Victor Bobsin 가 오늘 명단에 없다(결장) · 축0(빠진 수비 자원 가치) · 축2(수비 무기 꺼짐)
 - `IR12-home` [team_stats] soft 무게 0.7 · 자리 ['axis1', 'axis2', 'hypo']
@@ -651,10 +681,10 @@
     근거 변수 ['IR02-away']
 - **axis1** 홈 0.8 · 원정 0.896 · 차 -0.064 · 우위 —(없음)
     보정 득실차/경기 홈 0.8 · 원정 0.896 → r 가중 home r=1 · away r=1 · home 최근 1경기 득 6·실 4 · 최근 1경기 득 6·실 4 → 지수 0.8 · away 최근 1경기 득 1·실 0 · 최근 1경기 득 1·실 0 → 지수 0.896
-    근거 변수 ['R1', 'S01-home', 'S01-away', 'IR12-home', 'IR12-away']
+    근거 변수 ['S01-home', 'S01-away', 'IR12-home', 'IR12-away']
 - **axis2** 홈 0.1475 · 원정 0.15 · 차 -0.0025 · 우위 —(없음)
     6축 차 -0.0025(공격 − 상대 수비 · 크기 0.15) · 발동 2건(규칙당 0.15) · 꺼진 무기 home 0 · away 0(하나당 −0.1) · 🔴 임시
-    근거 변수 ['R1', 'IR01-home', 'IR02-away', 'IR12-home', 'IR12-away']
+    근거 변수 ['IR01-home', 'IR02-away', 'IR12-home', 'IR12-away']
 - **axis3** 홈 0.0 · 원정 0.15 · 차 -0.15 · 우위 away(약)
     발동 1건(규칙당 0.15) · 🔴 임시
     근거 변수 **없다**
@@ -672,7 +702,7 @@
 - ⬜ **예상 XI 판 없음**(XI `확정`) — ⬜ 지난 실행이 없다(첫 분석이다)
 - 🧬 **앙상블** — ⬜ **앙상블 미적용** — 채택된 판이 없다(M1 단독 · 🔴 `league_ACLE` 에 2026-10-13 **이전 판이 없다**(있는 판 0개) — 표 없이 간다 · 전체 판 — 🔴 `all` 에 2026-10-13 **이전 판이 없다**(있는 판 1개) — 표 없이 간다)
 - 기여(리그 평균 대비 · ⚠️ **보정 전** 수를 설명한다) — axis0 +3.2%p · axis1 -0.3%p · axis2 -0.0%p · axis3 -0.5%p
-    주요 변수 축0 IR02-away · 축1 R1,S01-home,S01-away · 축2 R1,IR01-home,IR02-away
+    주요 변수 축0 IR02-away · 축1 S01-home,S01-away,IR12-home · 축2 IR01-home,IR02-away,IR12-home
 - 오버 — 0.5 94% · 1.5 78% · 2.5 55% · 3.5 32% · 4.5 16%
 - 기대 득점(분포 평균) — home 1.617 · away 1.245
 - 🔬 **xG 판** — ⬜ 🔴 xG 판 없음 — home xG 를 읽은 경기 0건(<5) → 득실판으로 간다 · ⬜ home 경기가 창 안에 0건 — 쪽 폼 안 쓴다 · away xG 를 읽은 경기 0건(<5) → 득실판으로 간다 · ⬜ away 경기가 창 안에 0건 — 쪽 폼 안 쓴다
@@ -681,14 +711,14 @@
 - **승무패** — 홈 **46.1%** · 무 **24.6%** · 원정 **29.3%**
 - **λ** — home 1.617 · away 1.245
 - **총골 기대** — 2.862골 (λ 합)
+
+… (이어짐 5)
 - **그림자** — M1(운영) 46% / 25% / 29% · E1 ⬜ 없다(M1 또는 M3 가 없다) · M3 ⬜ 없다 · Elo ⬜ 없다  (홈/무/원정)
 - **역배** — 약팀 **Daejeon Hana Citizen** 승 **29.3%** · 강팀 **Shanghai Port** 미승 **53.9%**
 - **핸디 홈** — -2.5 9.7% · -1.5 23.7% · -0.5 46.1% · +0.5 70.7% · +1.5 87.8% · +2.5 96.0%
 - **핸디 원정** — -2.5 4.0% · -1.5 12.2% · -0.5 29.3% · +0.5 53.9% · +1.5 76.3% · +2.5 90.3%
 - **더블찬스** — 1X **70.7%** · X2 **53.9%** · 12 **75.4%**
 - **DNB** — 홈 **61.1%** · 원정 **38.9%**
-
-… (이어짐 5)
 - **오버/언더** — 0.5 오버 **94.4%** / 언더 5.6% · 1.5 오버 **78.2%** / 언더 21.8% · 2.5 오버 **54.7%** / 언더 45.3% · 3.5 오버 **32.2%** / 언더 67.8% · 4.5 오버 **16.1%** / 언더 83.9%
 - **양팀 득점(BTTS)** — 예 **57.5%** · 아니오 **42.5%**
 - **스코어 상위 10** — 1-1 11.6% · 2-1 9.5% · 1-0 9.2% · 2-0 7.5% · 1-2 7.2% · 0-1 7.0% · 2-2 5.9% · 0-0 5.6% · 3-1 5.1% · 0-2 4.4%
@@ -732,15 +762,14 @@
 - ⬜ **시즌 초 — 경우의 수 해당 없음**(**시즌 초** — 남은 라운드 7(판정은 5 이하부터)) · 조 `East`
 
 **4. 뒤집는 변수**
-- `R1` [team_stats] Shanghai Port have seven wins, two draws and one defeat in the 10 supplied matches, remaining unbeaten in the latest eight of that sample. — 승패 **away** · 득점 - · soft · 출처 1곳 · 대상 `Shanghai Port` · 원천 C등급 1곳
 - `S01-home` [recent_pattern] 최근 5경기 W W D W W · 득점 평균 3.0(보정 2.25) · 기준 팀당 1.4106골(대회 league:ACLE) 대비 득점 많다 · 실점 평균 1.0(적다) — 승패 **home** · 득점 ↑ · soft · 출처 구조 사실 · 대상 `recent` · [규칙 S01]
 - `S01-away` [recent_pattern] 최근 5경기 W D W D W · 득점 평균 1.8(보정 1.5) · 기준 팀당 1.4106골(대회 league:ACLE) 대비 득점 보통 · 실점 평균 1.2(적다) — 승패 **away** · 득점 - · soft · 출처 구조 사실 · 대상 `recent` · [규칙 S01]
 - `S03` [home_field] Shanghai Port 홈 경기 — 홈 **승률** 수치 없음(대회 유형 `league:ACLE` 의 승률 표가 없다 · 다른 대회 숫자를 빌리지 않는다) · ⚠️ λ 홈 배율은 **득점 실측**을 쓴다(홈 팀 평균 1.6723 · 표본 235) — 승패 **home** · 득점 - · soft · 출처 구조 사실 · 대상 `home_field` · [규칙 S03]
 - `IR01-home` [lineup_intent] Shanghai Port 5-4-1 — 5백으로 내려앉는 운영 — 승패 **home** · 득점 ↓ · soft · 출처 구조 사실 · 대상 `lineup_intent:IR01-home` · [규칙 IR01-home]
-- `IR02-away` [def_absence] Daejeon Hana Citizen 직전 선발 Moon-Hwan Kim, Myung-Jae Lee, Victor Bobsin 가 오늘 명단에 없다(결장) — 승패 **home** · 득점 - · soft · 출처 구조 사실 · 대상 `def_absence:IR02-away` · [규칙 IR02-away]
-- `IR12-home` [team_stats] Shanghai Port 무패 5경기 — 승패 **home** · 득점 - · soft · 출처 구조 사실 · 대상 `team_stats:IR12-home` · [규칙 IR12-home]
 
 … (이어짐 6)
+- `IR02-away` [def_absence] Daejeon Hana Citizen 직전 선발 Moon-Hwan Kim, Myung-Jae Lee, Victor Bobsin 가 오늘 명단에 없다(결장) — 승패 **home** · 득점 - · soft · 출처 구조 사실 · 대상 `def_absence:IR02-away` · [규칙 IR02-away]
+- `IR12-home` [team_stats] Shanghai Port 무패 5경기 — 승패 **home** · 득점 - · soft · 출처 구조 사실 · 대상 `team_stats:IR12-home` · [규칙 IR12-home]
 - `IR12-away` [team_stats] Daejeon Hana Citizen 무패 5경기 — 승패 **away** · 득점 - · soft · 출처 구조 사실 · 대상 `team_stats:IR12-away` · [규칙 IR12-away]
 
 **(근거 불가)** — 맥락으로만 쓴다
@@ -807,13 +836,30 @@
 💵 $0.0000 · 호출 0회 · 출력 0 (추론 0)
 📋 **시장 피드에 없는 경기 — 보드 캡처를 보내 달라**(보드가 없으면 등급을 못 붙인다)
 
+**📈 확률 요약**(맨 위 고정 · 같은 격자 하나에서 · **봇 확률만**)
+
+| 승무패 | 홈 | 무 | 원정 |
+|---|---|---|---|
+| 확률 | ⬜ | ⬜ | ⬜ |
+
+| 핸디 | -2.5 | -1.5 | -0.5 | +0.5 | +1.5 | +2.5 |
+|---|---|---|---|---|---|---|
+| 홈 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| 원정 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+
+| 총골 | 0.5 | 1.5 | 2.5 | 3.5 | 4.5 |
+|---|---|---|---|---|---|
+| 오버 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| 언더 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+🔴 **칸이 비었다** — 🔴 확률 미산출(신원 검문)
+
 🔁 **역배·보호 줄 없음** — ⑯ 이 격자를 못 만들었다(확률이 없으면 그 줄도 없다)
 
 **1. 자료 한계 고백**
 - 🔴🔴 **🔴 대회를 알아보지 못했다** — 받은 표기 `AFC Champions League Two` → **기준(①)·경우의 수·리그 평균이 비었다**. 등급은 전부 **보류**이고, 이 표기는 운영자 알림으로 보냈다(표에 넣어야 한다)
 - 🔴🔴 **XI 출처 없음** — `그 리그` 사다리 3칸(fotmob_match → espn_match_html → article)을 다 돌았는데 선발을 못 받았다 · 확인일 2026-10-10 · ⚠️ **막혀서 쓰지 않는 출처**: `espn_summary_json` → ② 라인업 보정·IR02·IR03 이 돌지 못한다
 - 🔎 **검색** — 질의 못 쟀다 · 결과 못 쟀다 · 날짜 통과 못 쟀다 · 문서 못 쟀다 · 잃음 0건 · ⬜ 원천 등급·사실 종류별 수는 **아직 못 적는다**(카드가 문서 URL 을 안 들고 있다 · §6-5)
-- 문서 못 쟀다건 · 변수 3개 · 시나리오 0개
+- 문서 못 쟀다건 · 변수 8개 · 시나리오 0개
 - 못 받은 칸 — XI 없음(경기 페이지에 라인업이 아직 없다) · 결장 명단 미확보 — fotmob 0건 — 🔴 **0건** — 경기 페이지에 결장 칸이 비었다 / 명단 대조 0건 — 🔴 **0건** — `team:000610` 오늘 출전 명단(선발+벤치)을 못 받았다 · `team:000611` 오늘 출전 명단(선발+벤치)을 못 받았다 / 연맹 징계 0건 — ⬜ **통로 없음** — `config/league_discipline.yaml` 에 `league:ACL2` 공지 주소가 없다(추측해 붙이지 않는다) / 국내 기사 0건 — ⏸ **변수 단계에서 센다** — 기사 결장 변수(F 하위)의 매체 수를 카드가 적는다 · 감독 미확보 · 맞대결 없음 · 선수 포지션 표 비었음(결장 유형은 다수결로 간다) · 직전 경기 XI 없음(IR02·IR06 이 못 돈다) · 일정 없음(IR11 이 못 돈다)
 
 **2. 기준 XI**
@@ -827,7 +873,10 @@
     연맹 징계 — **0건** · ⬜ **통로 없음** — `config/league_discipline.yaml` 에 `league:ACL2` 공지 주소가 없다(추측해 붙이지 않는다)
     국내 기사 — **0건** · ⏸ **변수 단계에서 센다** — 기사 결장 변수(F 하위)의 매체 수를 카드가 적는다
 
-🆕 **새 사실(72시간)** — 🔴 **0건** · 기사 변수 0개(F 하위에서 온 것 0개)
+🆕 **새 사실(72시간)**
+· East Bengal FC scored two goals in the first half through Ramirez and Anwar Ali before conceding two goals in the last two quarters. — 출처 1곳 · [R5]
+· Al-Shorta SC have won the Iraqi league 8 times. — 출처 1곳 · [R7]
+· The match between East Bengal FC and Al-Shorta SC will be played at Vivekananda Yuba Bharati Krirangan in Kolkata on 13th October 2026 at 7:15 PM. — 출처 1곳 · [R8]
 
 🧾 **손실 표** — ⬜ 버린 것이 없다
 
@@ -836,8 +885,20 @@
 
 **⚔️ 상성 세 축 (자세히)** — ⬜ 안 돌렸다
 
-**🔢 변수 (배치 자리)** — ⚠️ 카드가 직접 배치했다 · 변수 3개 — axis1 2 · lambda_const 1 · hypo 2
+**🔢 변수 (배치 자리)** — ⚠️ 카드가 직접 배치했다 · 변수 8개 — axis1 7 · axis2 4 · lambda_const 1 · hypo 7
+- `R2` [regression] soft 무게 0.7 · 자리 ['axis1', 'hypo']
+    East Bengal are fifth after nine games in the league with four wins, four draws and one de…(잘림) · 축1 — 운 요소·xG 대비 성과 보정
+- `R3` [team_stats] soft 무게 0.7 · 자리 ['axis1', 'axis2', 'hypo']
+    East Bengal are fifth after nine games in the league with four wins, four draws and one de…(잘림) · 축1 또는 축2 — 내용에 따라(둘 다 열어 두고 축이 쓸 것을 고른다)
+- `R5` [team_stats] soft 무게 0.7 · 자리 ['axis1', 'axis2', 'hypo']
+    East Bengal FC scored two goals in the first half through Ramirez and Anwar Ali before con…(잘림) · 축1 또는 축2 — 내용에 따라(둘 다 열어 두고 축이 쓸 것을 고른다)
+- `R7` [team_stats] soft 무게 0.7 · 자리 ['axis1', 'axis2', 'hypo']
+    Al-Shorta SC have won the Iraqi league 8 times. · 축1 또는 축2 — 내용에 따라(둘 다 열어 두고 축이 쓸 것을 고른다)
+- `R8` [team_stats] soft 무게 0.7 · 자리 ['axis1', 'axis2', 'hypo']
+    The match between East Bengal FC and Al-Shorta SC will be played at Vivekananda Yuba Bhara…(잘림) · 축1 또는 축2 — 내용에 따라(둘 다 열어 두고 축이 쓸 것을 고른다)
 - `S01-home` [recent_pattern] soft 무게 0.7 · 자리 ['axis1', 'hypo']
+
+… (이어짐 1)
     최근 5경기 D D D W W · 득점 평균 1.4(보정 0.75) · 기준 팀당 1.5275골(대회 league:ACL2) 대비 득점 적다 · 실점 평균 0.6…(잘림) · 축1 — 보정 폼
 - `S01-away` [recent_pattern] soft 무게 0.7 · 자리 ['axis1', 'hypo']
     최근 5경기 D W W D W · 득점 평균 1.0(보정 0.333) · 기준 팀당 1.5275골(대회 league:ACL2) 대비 득점 적다 · 실점 평균 0.…(잘림) · 축1 — 보정 폼
@@ -881,8 +942,6 @@
 
 **3. 폼**
 - **East Bengal FC** — 최근5 **D D D W W** · 득점 평균 1.4 · 보정 평균 **0.75** · 휴식 27일 · 14일 내 0경기
-
-… (이어짐 1)
     2026-09-16 원정 Al-Hussein SC 2-2
     2026-08-23 홈 Mohun Bagan SG 0-0
     2026-08-19 원정 SC Delhi 0-0
@@ -908,6 +967,13 @@
 - ⬜ 경우의 수를 못 센다 — **순위표가 없다**(`unknown`) · 형식 `unknown`
 
 **4. 뒤집는 변수**
+- `R2` [regression] East Bengal are fifth after nine games in the league with four wins, four draws and one defeat, having scored nine goals and conceded four for 16 points. — 승패 **both** · 득점 - · soft · 출처 1곳 · 대상 `fifth` · 원천 C등급 1곳
+- `R3` [team_stats] East Bengal are fifth after nine games in the league with four wins, four draws and one defeat, having scored nine goals and conceded four for 16 points. — 승패 **home** · 득점 - · soft · 출처 1곳 · 대상 `16 points` · 원천 C등급 1곳
+- `R5` [team_stats] East Bengal FC scored two goals in the first half through Ramirez and Anwar Ali before conceding two goals in the last two quarters. — 승패 **home** · 득점 - · soft · 출처 1곳 · 대상 `Ramirez and Anwar Ali` · 원천 C등급 1곳
+- `R7` [team_stats] Al-Shorta SC have won the Iraqi league 8 times. — 승패 **home** · 득점 - · soft · 출처 1곳 · 대상 `8 times` · 원천 C등급 1곳
+- `R8` [team_stats] The match between East Bengal FC and Al-Shorta SC will be played at Vivekananda Yuba Bharati Krirangan in Kolkata on 13th October 2026 at 7:15 PM. — 승패 **home** · 득점 - · soft · 출처 1곳 · 대상 `Vivekananda Yuba Bharati Krirangan` · 원천 C등급 1곳
+
+… (이어짐 2)
 - `S01-home` [recent_pattern] 최근 5경기 D D D W W · 득점 평균 1.4(보정 0.75) · 기준 팀당 1.5275골(대회 league:ACL2) 대비 득점 적다 · 실점 평균 0.6(적다) — 승패 **home** · 득점 ↓ · soft · 출처 구조 사실 · 대상 `recent` · [규칙 S01]
 - `S01-away` [recent_pattern] 최근 5경기 D W W D W · 득점 평균 1.0(보정 0.333) · 기준 팀당 1.5275골(대회 league:ACL2) 대비 득점 적다 · 실점 평균 0.2(적다) — 승패 **away** · 득점 ↓ · soft · 출처 구조 사실 · 대상 `recent` · [규칙 S01]
 - `S03` [home_field] East Bengal FC 홈 경기 — 홈 승률 +43.8%p(16경기 · 쪼갠 표 · league:ACL2) — 승패 **home** · 득점 - · soft · 출처 구조 사실 · 대상 `home_field` · [규칙 S03]
