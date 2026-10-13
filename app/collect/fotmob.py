@@ -1308,7 +1308,13 @@ def parse_lineup(j: dict, q: Question, *, url: str, when) -> list[Fact]:
     """
     out: list[Fact] = []
     state = lineup_kind_of(j)
-    for which in ("homeTeam", "awayTeam"):
+    # 🔴🔴 **팀 번호를 함께 싣는다**(P1 · 수정 지시 2026-10-13 밤):
+    #    ⚠️ 실측: `team_index`(6,028팀)에 **V리그 팀이 없다** — 꽁안 하노이는
+    #       이름으로 번호를 못 찾아 과거 경기가 0건이었고 축1~축3 이 통째로 비었다.
+    #    🔴 그 번호는 **이 경기 페이지에 있다**(`side_ids`) — 색인 밖 팀의 통로다.
+    said_ids = side_ids(j)
+    for which, said_tid in zip(("homeTeam", "awayTeam"), said_ids,
+                               strict=False):
         side = _side(j, which)
         name = str(side.get("name") or "").strip()
         if not name:
@@ -1324,6 +1330,9 @@ def parse_lineup(j: dict, q: Question, *, url: str, when) -> list[Fact]:
                    "players": names, "lineup": players_of(side),
                    "missing": gone, "coach": coach_name,
                    "lineup_state": state,
+                   # 🔴 **팀 번호**(P1) — 색인에 없는 팀도 이것으로 과거 경기를
+                   #    받는다. ⚠️ 못 읽었으면 빈 글자다(지어내지 않는다).
+                   "team_id": str(said_tid or ""),
                    "squad": squad_names(side),
                    "subs": len(side.get("subs") or [])},
             # 🔴 확정이면 `hard` — 예상은 바뀔 수 있다(방아쇠가 그것을 본다)

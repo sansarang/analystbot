@@ -73,6 +73,9 @@ def of(draw: float | None) -> tuple[dict, str]:
     box, why = plate()
     if not box:
         return {}, why
+    if draw is None:
+        # 🔴 **확률이 없으면 구간도 없다** — 빈 괄호로 말하지 않는다(#3)
+        return {}, f"⬜ **확률이 없어 무 구간을 못 잰다**({why})"
     name = band_of(draw)
     for one in list(box.get("bands") or []):
         if str(one.get("band")) == name:

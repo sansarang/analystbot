@@ -124,6 +124,10 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
             if key:
                 # 🔴 **결장 명단·감독을 같은 사실에서 받는다**(축구 §2)
                 raw_xi[key] = {**val, "source_url": url}
+                # 🔴🔴 **팀 번호를 모아 둔다**(P1) — 색인 밖 팀(V리그·태국 등)의
+                #    과거 경기를 받는 유일한 통로다(⑧ 이 이것을 쓴다).
+                if val.get("team_id"):
+                    box.setdefault("team_ids", {})[key] = str(val["team_id"])
                 mine = adapt.missing_of(val.get("missing"), source_url=url)
                 if mine:
                     missing[key] = mine
@@ -334,6 +338,10 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
     #  🔴 운영 확률은 **얼린 M1**(K0)이 내고 그것도 같은 칸을 읽으므로 **칸을
     #     고친다** — 수축한 수를 싣고 원값·표본·사유를 옆 칸에 남긴다(#3).
     said_std = dict(getattr(got_facts, "standings", None) or {})
+    # 🔴 P1 — 팀 번호를 facts 에 남긴다(⑧ `s2e` 가 이름 대신 이것으로 받는다)
+    if box.get("team_ids"):
+        said_std["team_ids"] = dict(box["team_ids"])
+        state.note(f"s2 P1 팀 번호 — {said_std['team_ids']}")
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **대회 홈/원정 성적**(사용자 지시 2026-10-13 ①) — 대륙 대회의 S03 을
     #    **대회 일정 표**로 채운다(표시 전용 · λ 는 득점 실측만 쓴다).

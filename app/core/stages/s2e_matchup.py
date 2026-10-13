@@ -58,8 +58,13 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
     for side in ("home", "away"):
         name = str(getattr(ref, f"{side}_name", "") or "")
         # 🔴 as-of 는 **킥오프**다 — 그 뒤 경기는 어떤 목록에도 없다(L1)
-        got = await _history(net, name, state=state, ref=ref,
-                             as_of=getattr(ref, "kickoff_utc", None))
+        said_ids = dict(dict(getattr(facts, "standings", None) or {})
+                        .get("team_ids") or {})
+        got = await _history(
+            net, name, state=state, ref=ref,
+            as_of=getattr(ref, "kickoff_utc", None),
+            tid_hint=str(said_ids.get(str(getattr(ref, side, "")) or "")
+                         or ""))
         if got is None:
             out[f"{side}_why"] = f"🔴 `{name}` 의 과거 경기를 못 받았다"
             continue
@@ -74,8 +79,15 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
             one["xg_group"] = adv["xg_group"]
         rows[side] = got
     if len(rows) != 2:
-        out["axis2_why"] = "🔴 두 팀 과거 경기를 다 못 받아 축2 를 안 센다"
-        out["why"] = "🔴 두 팀 과거 경기를 다 못 받아 **상성을 안 센다**"
+        # 🔴 **어느 쪽이 왜 비었나**를 함께 적는다(P1) — 종전에는 *"두 팀"* 이라고만
+        #    적어 어느 팀이 막혔는지 카드에서 알 수 없었다(실측: 꽁안 하노이).
+        said_gap = " · ".join(
+            str(out.get(f"{s2}_why") or "")
+            for s2 in ("home", "away") if out.get(f"{s2}_why"))
+        out["axis2_why"] = ("🔴 두 팀 과거 경기를 다 못 받아 축2 를 안 센다"
+                            + (f" — {said_gap}" if said_gap else ""))
+        out["why"] = ("🔴 두 팀 과거 경기를 다 못 받아 **상성을 안 센다**"
+                      + (f" — {said_gap}" if said_gap else ""))
         state.note(f"s2e 상성 — {out['why']}")
         return out
     # ══════════════════════════════════════════════════════════════════
@@ -360,7 +372,7 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
 
 
 async def _history(net: Any, name: str, *, state: RunState, as_of,
-                   ref: Any = None) -> list[dict] | None:
+                   ref: Any = None, tid_hint: str = "") -> list[dict] | None:
     """🔴 그 팀 **최근 끝난 경기 + 골 목록**. 못 받으면 `None`.
 
     🔴 주소는 **팀 일정 HTML → 경기 페이지 HTML** 이다(robots 허용 경로).
@@ -372,13 +384,26 @@ async def _history(net: Any, name: str, *, state: RunState, as_of,
     try:
         # 🔴🔴 **등급을 가린다** — 색인이 같은 슬러그를 두 번 준다(여자팀·2군).
         #    고르는 규율은 `discover.pick_team` 하나다(#1 사본 금지).
-        got = await _d.pick_team(net, name, ref=ref, state=state)
+        # 🔴🔴 **번호가 오면 색인을 안 본다**(P1) — 색인(6,028팀)에 **V리그·태국
+        #    리그 팀이 없다**(실측 2026-10-13: 꽁안 하노이 0건). 그 번호는 경기
+        #    페이지가 준다(`fotmob.side_ids` → `facts.standings["team_ids"]`).
+        got = ((str(tid_hint), "x") if tid_hint
+               else await _d.pick_team(net, name, ref=ref, state=state))
+        if tid_hint:
+            state.note(f"s2e P1 `{name}` — 색인 대신 **경기 페이지의 팀 번호** "
+                       f"`{tid_hint}` 로 과거 경기를 받는다")
         if not got:
+            # 🔴 **어디서 멈췄나를 적는다**(P1 · 조용한 0 금지) — 등록 리그 밖
+            #    팀이 여기서 떨어지면 축1~축3 이 통째로 빈다(실측: 꽁안 하노이).
+            state.note(f"s2e ⬜ `{name}` — **팀 번호를 못 골랐다**(색인·별칭) "
+                       f"→ 과거 경기 0건")
             return None
         tid, slug = got
         page = await _day_page(net, fm.team_fixtures_url(tid, slug),
                                state=state, team=f"{name} 일정")
         if page is None:
+            state.note(f"s2e ⬜ `{name}`(번호 {tid}) — **팀 일정 페이지를 못 "
+                       f"받았다** → 과거 경기 0건")
             return None
         # 🔴🔴 **누설 금지**(사용자 지시 2026-10-12 ⓐ · 계약 L1) — `as_of` **이전**
         #    경기만 본다. ⚠️ 실사고 2026-10-12: 여기가 *"끝난 경기"* 만 걸러서
@@ -387,6 +412,10 @@ async def _history(net: Any, name: str, *, state: RunState, as_of,
         said_done = [r for r in _d.team_fixtures(
             getattr(page, "text", "") or "", tid) if r.get("finished")]
         fx = fm.before_as_of(said_done, as_of=as_of)[-BACK:]
+        if not fx:
+            state.note(f"s2e ⬜ `{name}`(번호 {tid}) — 일정에 **as-of 이전 끝난 "
+                       f"경기가 0건**이다(받은 경기 {len(said_done)}건) → "
+                       f"축1~축3 을 못 센다")
         if len(said_done) != len(fx):
             state.note(f"s2e 누설 막음 — `{name}` 끝난 경기 {len(said_done)}건 중 "
                        f"as-of 이전 {len(fx)}건만 본다")
