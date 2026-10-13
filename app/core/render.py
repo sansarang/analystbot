@@ -757,6 +757,13 @@ def _b3(card: Card) -> str:
             # 🔴 **보정했으면 그 사실을 적는다** — 조용히 다른 수를 쓰지 않는다
             bits.append(f"보정 평균 **{trim}**")
         bits.append(f"휴식 {rest}일" if rest is not None else "휴식 못 쟀다")
+        # 🔴🔴 **§5-2 — 14일 내 경기 수도 적는다**(통합 지시서 2026-10-13 밤 셋째).
+        #  > 챔피언십 특성 표시: 24팀 46라운드 · **주중 경기 잦음** →
+        #  > ContextRow(`rest_days`·`load_14d`) 카드 표시(**확률 불변**).
+        #  ⚠️ 못 쟀으면 **이름으로** 남긴다(0 으로 메우지 않는다 · #3).
+        load = box.get("load_14d")
+        bits.append(f"14일 내 {load}경기" if load is not None
+                    else "14일 내 경기 수 못 쟀다")
         for name, label in (("streak_unbeaten", "무패"), ("streak_scored", "연속 득점"),
                             ("streak_winless", "무승")):
             if box.get(name):

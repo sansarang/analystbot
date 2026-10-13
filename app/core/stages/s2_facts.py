@@ -334,6 +334,26 @@ async def _context_of(net, ref, *, state) -> dict:
     return out
 
 
+def _load_of(seq: list, kickoff) -> int | None:
+    """🔴 **14일 내 경기 수** — 세는 곳은 `context.row_of` 하나다(사본 금지).
+
+    ⚠️ 날짜가 없으면 `None` 이다(0 으로 메우면 *"푹 쉬었다"* 는 거짓이 된다 · #3).
+    """
+    if kickoff is None or not seq:
+        return None
+    from app.core import context as _ctx
+    rows = [{"utc": f"{x.get('date')}T00:00:00Z", "comp": "league",
+             "gf": 0, "ga": 0}
+            for x in seq if x.get("date")]
+    if not rows:
+        return None
+    try:
+        got = _ctx.row_of("", rows, as_of=kickoff)
+    except Exception:                                       # noqa: BLE001
+        return None
+    return int(got.load_14d)
+
+
 def _kind_of(ref, box: dict) -> str:
     """🔴 그 경기의 **대회 유형 열쇠** — 사다리의 징계 표가 이 글자를 본다.
 
@@ -948,6 +968,10 @@ def _recent_from_games(games: list[dict], *, kickoff=None) -> dict:
         "matches": n,
         "sequence": seq,
         "rest_days": rest,
+        # 🔴🔴 **§5-2 — 14일 내 경기 수**(통합 지시서 2026-10-13 밤 셋째).
+        #  🔴 세는 곳은 `context.row_of` **하나**다(사본 금지) — 카드가 그 수를
+        #     적고 **확률은 안 바뀐다**(§5-2: *"확률 불변"*).
+        "load_14d": _load_of(seq, kickoff),
         "recent_scored_avg": (round(five["gf"] / n, 3) if n else None),
         "recent_trimmed_avg": trimmed,
         "recent_conceded_avg": (round(five["ga"] / n, 3) if n else None),
@@ -998,6 +1022,7 @@ def _recent_of(rows: list[dict], *, kickoff=None) -> dict:
     return {"last5": [r["result"] for r in rows],
             "sequence": seq,
             "rest_days": rest,
+            "load_14d": _load_of(seq, kickoff),
             "recent_scored_avg": round(sum(got) / len(got), 3) if got else None,
             "recent_trimmed_avg": trimmed,
             "recent_conceded_avg": round(sum(con) / len(con), 3) if con else None,
