@@ -934,6 +934,37 @@ async def _fill_form(ref: MatchRef, box: dict, *, state: RunState, net: Any,
     totals = fm.team_totals(tj)
     want = {ref.home_name: ref.home, ref.away_name: ref.away}
     got_tot = {key: totals[name] for name, key in want.items() if name in totals}
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **P3 감독 신선도 대조**(후속 지시 2026-10-13 밤 6번)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 감독은 **경기 페이지 isCoach** 를 우선 원천으로 한다(팀 페이지 이력 행
+    #  > 금지). 둘이 다르면 **경기 페이지 채택 + 🟡 기록**.
+    #
+    #  🔴 여기서 **채택을 바꾸지 않는다** — 경기 페이지 값이 이미 들어와 있고,
+    #     이 자리는 *"팀 페이지 이력 마지막 행과 다른가"* 를 **적는 곳**이다.
+    said_coach = dict(box.get("coach") or {})
+    for name2, key2 in want.items():
+        tid2 = ids.get(name2)
+        if tid2 is None:
+            continue
+        page2 = await _day_page(net, fm.team_fixtures_url(tid2, "x"),
+                                state=state, team=f"{name2} 감독 대조")
+        if page2 is None:
+            continue
+        j2 = fm.payload(getattr(page2, "text", "") or "") or {}
+        said_last, why_last = fm.coach_history_last(j2, tid2)
+        said_now = str((said_coach.get(key2) or {}).get("name")
+                       if isinstance(said_coach.get(key2), dict)
+                       else said_coach.get(key2) or "")
+        if said_last and said_now and said_last != said_now:
+            state.note(f"🟡 **감독 신원 불일치** — `{name2}` 경기 페이지 "
+                       f"**{said_now}**(채택 · isCoach) ↔ {why_last}: "
+                       f"{said_last}")
+        elif said_last and not said_now:
+            state.note(f"⬜ `{name2}` 경기 페이지에 감독이 없다 — {why_last}: "
+                       f"{said_last}(**채택하지 않는다** · 이력 행이다)")
+
     if got_tot:
         std = box.setdefault("standings", {})
         std["team_totals"] = got_tot

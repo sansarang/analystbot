@@ -48,8 +48,11 @@ def test_lg2_team_id_path_exists() -> None:
 def test_lg3_offsets_shrink() -> None:
     said = _src("tools/fit_offsets.py")
     assert "ridge" in said and "수축" in said
-    # 🔴 벌의 문턱은 **이미 쓰던 수**다(새 계수를 만들지 않는다)
-    assert "off.MIN_GAMES / (cnt[k] + off.MIN_GAMES)" in said
+    # 🔴 벌의 문턱은 **이미 쓰던 수**가 기본이다(새 계수를 만들지 않는다) ·
+    #    후속 지시 1번의 **K 비교**를 위해 인자로 받는다(기본 `MIN_GAMES`).
+    assert "said_k = float(ridge_k if ridge_k is not None else off.MIN_GAMES)" \
+        in said
+    assert "said_k / (cnt[k] + said_k)" in said
 
 
 def test_lg4_thin_pairs_have_no_value() -> None:
