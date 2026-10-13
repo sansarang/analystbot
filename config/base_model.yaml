@@ -1,194 +1,239 @@
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 **① 기준 확률 계수** — `tools/fit_base_model.py` 가 적는다
-# ══════════════════════════════════════════════════════════════════
-#
-# 🔴 **손으로 고치지 않는다.** 네 층 지시서 §3-2: *"봇은 계수만 읽는다
-#    (실행 중 적합 금지)"*. 다시 재려면 위 스크립트를 돌린다.
-# 🔴 모형은 **대회 유형별**이다 — 다른 유형 계수를 빌려 쓰지 않는다.
-# 🔴 `venue: home_only` — **홈 개최 경기만** 적합했다. 중립 경기 줄은
-#    eloratings 가 **결과순**으로 적어(원정승 936건 중 2건) 쓸 수 없다.
-#    그래서 **중립 경기에는 이 계수를 쓰지 않는다**(① 기준 없음).
-#    홈 이점은 절단점(`c1`·`c2`)이 머금고 있다.
-# ⚠️ `logloss` 가 `logloss_base`(늘 같은 비율) 보다 **크면 쓸 수 없다** —
-#    그때는 모형이 자료보다 못한 것이다.
-# 적합 자료: eloratings.net `{연}_results.tsv` 2010-2026 · 경기 16397건
-# 적합 시각: 2026-10-06T09:58:14+00:00
-# 🔴 `league:*` 는 **우리가 계산한 자체 Elo**로 적합했다(clubelo 는 dead).
-#    등급은 `var/league_elo/{날짜}/{대회}.json` 이 들고, 하루 1회 갱신된다.
-# 🔴 `league:*` 는 **우리가 계산한 자체 Elo**로 적합했다(clubelo 는 dead).
-#    등급은 `var/league_elo/{날짜}/{대회}.json` 이 들고, 하루 1회 갱신된다.
-# 🔴 `league:*` 는 **우리가 계산한 자체 Elo**로 적합했다(clubelo 는 dead).
-#    등급은 `var/league_elo/{날짜}/{대회}.json` 이 들고, 하루 1회 갱신된다.
-
 models:
   national_friendly:
     c1: -1.223292
     c2: 0.210397
     b_dr: 0.516512
-    venue: "home_only"
+    venue: home_only
     n: 3842
     logloss: 0.883157
     logloss_base: 1.031044
-    share_home_draw_away: [0.5117, 0.2525, 0.2358]
-    fitted_at: "2026-10-06"
+    share_home_draw_away:
+    - 0.5117
+    - 0.2525
+    - 0.2358
+    fitted_at: '2026-10-06'
     converged: true
     ds_to_dr: 8.8669
-    ds_fit: {"n": 33, "r2": 0.6094, "intercept": 26.5851, "fitted_at": "2026-10-06", "x_std": 18.1069, "y_std": 205.6728}
-    ds_fit_note: "대표팀 경기 횡단 회귀(fotmob 선발 가치 vs eloratings 경기 전 Elo) — 대회 유형을 가르지 않았다"
+    ds_fit:
+      n: 33
+      r2: 0.6094
+      intercept: 26.5851
+      fitted_at: '2026-10-06'
+      x_std: 18.1069
+      y_std: 205.6728
+    ds_fit_note: 대표팀 경기 횡단 회귀(fotmob 선발 가치 vs eloratings 경기 전 Elo) — 대회 유형을 가르지 않았다
   national_official:
     c1: -1.364561
     c2: 0.156278
     b_dr: 0.661014
-    venue: "home_only"
+    venue: home_only
     n: 7609
     logloss: 0.745394
     logloss_base: 1.033156
-    share_home_draw_away: [0.503, 0.2151, 0.2819]
-    fitted_at: "2026-10-06"
+    share_home_draw_away:
+    - 0.503
+    - 0.2151
+    - 0.2819
+    fitted_at: '2026-10-06'
     converged: true
     ds_to_dr: 8.8669
-    ds_fit: {"n": 33, "r2": 0.6094, "intercept": 26.5851, "fitted_at": "2026-10-06", "x_std": 18.1069, "y_std": 205.6728}
-    ds_fit_note: "대표팀 경기 횡단 회귀(fotmob 선발 가치 vs eloratings 경기 전 Elo) — 대회 유형을 가르지 않았다"
+    ds_fit:
+      n: 33
+      r2: 0.6094
+      intercept: 26.5851
+      fitted_at: '2026-10-06'
+      x_std: 18.1069
+      y_std: 205.6728
+    ds_fit_note: 대표팀 경기 횡단 회귀(fotmob 선발 가치 vs eloratings 경기 전 Elo) — 대회 유형을 가르지 않았다
   league:PL:
     c1: -0.818032
     c2: 0.381007
     b_dr: 0.804984
-    venue: "home_only"
+    venue: home_only
     n: 810
     logloss: 1.021385
     logloss_base: 1.081485
-    share_home_draw_away: [0.4136, 0.263, 0.3235]
-    fitted_at: "2026-10-09"
+    share_home_draw_away:
+    - 0.4136
+    - 0.263
+    - 0.3235
+    fitted_at: '2026-10-09'
     converged: true
-    source: "football-data PL 자체 Elo"
+    source: football-data PL 자체 Elo
     matches: 810
   league:PD:
     c1: -1.050645
     c2: 0.131216
     b_dr: 0.871451
-    venue: "home_only"
+    venue: home_only
     n: 829
     logloss: 0.990546
     logloss_base: 1.060039
-    share_home_draw_away: [0.4656, 0.2497, 0.2847]
-    fitted_at: "2026-10-09"
+    share_home_draw_away:
+    - 0.4656
+    - 0.2497
+    - 0.2847
+    fitted_at: '2026-10-09'
     converged: true
-    source: "football-data PD 자체 Elo"
+    source: football-data PD 자체 Elo
     matches: 829
   league:SA:
     c1: -0.782912
     c2: 0.485656
     b_dr: 0.891036
-    venue: "home_only"
+    venue: home_only
     n: 810
     logloss: 0.996974
     logloss_base: 1.085826
-    share_home_draw_away: [0.3963, 0.2667, 0.337]
-    fitted_at: "2026-10-09"
+    share_home_draw_away:
+    - 0.3963
+    - 0.2667
+    - 0.337
+    fitted_at: '2026-10-09'
     converged: true
-    source: "football-data SA 자체 Elo"
+    source: football-data SA 자체 Elo
     matches: 810
   league:BL1:
     c1: -0.787074
     c2: 0.346655
     b_dr: 0.825289
-    venue: "home_only"
+    venue: home_only
     n: 647
     logloss: 1.006056
     logloss_base: 1.075797
-    share_home_draw_away: [0.4189, 0.2457, 0.3354]
-    fitted_at: "2026-10-09"
+    share_home_draw_away:
+    - 0.4189
+    - 0.2457
+    - 0.3354
+    fitted_at: '2026-10-09'
     converged: true
-    source: "football-data BL1 자체 Elo"
+    source: football-data BL1 자체 Elo
     matches: 647
   league:FL1:
     c1: -0.871822
     c2: 0.164539
     b_dr: 0.799541
-    venue: "home_only"
+    venue: home_only
     n: 655
     logloss: 1.003648
     logloss_base: 1.057103
-    share_home_draw_away: [0.4611, 0.2275, 0.3115]
-    fitted_at: "2026-10-09"
+    share_home_draw_away:
+    - 0.4611
+    - 0.2275
+    - 0.3115
+    fitted_at: '2026-10-09'
     converged: true
-    source: "football-data FL1 자체 Elo"
+    source: football-data FL1 자체 Elo
     matches: 655
   league:DED:
     c1: -0.91906
     c2: 0.293877
     b_dr: 0.879317
-    venue: "home_only"
+    venue: home_only
     n: 675
     logloss: 1.000134
     logloss_base: 1.073941
-    share_home_draw_away: [0.4356, 0.2578, 0.3067]
-    fitted_at: "2026-10-09"
+    share_home_draw_away:
+    - 0.4356
+    - 0.2578
+    - 0.3067
+    fitted_at: '2026-10-09'
     converged: true
-    source: "football-data DED 자체 Elo"
+    source: football-data DED 자체 Elo
     matches: 675
   league:PPL:
     c1: -0.941445
     c2: 0.393519
     b_dr: 0.946076
-    venue: "home_only"
+    venue: home_only
     n: 674
     logloss: 0.963632
     logloss_base: 1.080966
-    share_home_draw_away: [0.4184, 0.2671, 0.3145]
-    fitted_at: "2026-10-09"
+    share_home_draw_away:
+    - 0.4184
+    - 0.2671
+    - 0.3145
+    fitted_at: '2026-10-09'
     converged: true
-    source: "football-data PPL 자체 Elo"
+    source: football-data PPL 자체 Elo
     matches: 674
   league:ELC:
     c1: -0.932907
     c2: 0.266349
     b_dr: 0.58179
-    venue: "home_only"
+    venue: home_only
     n: 1209
     logloss: 1.057184
     logloss_base: 1.076472
-    share_home_draw_away: [0.4342, 0.2763, 0.2895]
-    fitted_at: "2026-10-09"
+    share_home_draw_away:
+    - 0.4342
+    - 0.2763
+    - 0.2895
+    fitted_at: '2026-10-09'
     converged: true
-    source: "football-data ELC 자체 Elo"
+    source: football-data ELC 자체 Elo
     matches: 1209
   league:BSA:
     c1: -1.172075
     c2: 0.059842
     b_dr: 0.669893
-    venue: "home_only"
+    venue: home_only
     n: 1049
     logloss: 1.019015
     logloss_base: 1.050376
-    share_home_draw_away: [0.4833, 0.2679, 0.2488]
-    fitted_at: "2026-10-09"
+    share_home_draw_away:
+    - 0.4833
+    - 0.2679
+    - 0.2488
+    fitted_at: '2026-10-09'
     converged: true
-    source: "football-data BSA 자체 Elo"
+    source: football-data BSA 자체 Elo
     matches: 1049
   league:J1:
     c1: -0.771216
     c2: 0.375467
     b_dr: 0.586731
-    venue: "home_only"
+    venue: home_only
     n: 960
     logloss: 1.064788
     logloss_base: 1.083875
-    share_home_draw_away: [0.4083, 0.2687, 0.3229]
-    fitted_at: "2026-10-09"
+    share_home_draw_away:
+    - 0.4083
+    - 0.2687
+    - 0.3229
+    fitted_at: '2026-10-09'
     converged: true
-    source: "fotmob J1 자체 Elo"
+    source: fotmob J1 자체 Elo
     matches: 960
   league:KL1:
     c1: -0.742054
     c2: 0.418333
     b_dr: 0.325511
-    venue: "home_only"
+    venue: home_only
     n: 636
     logloss: 1.08261
     logloss_base: 1.088111
-    share_home_draw_away: [0.3962, 0.2783, 0.3255]
-    fitted_at: "2026-10-09"
+    share_home_draw_away:
+    - 0.3962
+    - 0.2783
+    - 0.3255
+    fitted_at: '2026-10-09'
     converged: true
-    source: "fotmob KL1 자체 Elo"
+    source: fotmob KL1 자체 Elo
     matches: 636
+  league:MLS:
+    c1: -0.98592
+    c2: 0.115489
+    b_dr: 0.620145
+    venue: home_only
+    n: 500
+    logloss: 1.043179
+    logloss_base: 1.058076
+    share_home_draw_away:
+    - 0.47
+    - 0.252
+    - 0.278
+    fitted_at: '2026-10-13'
+    converged: true
+    why: 🔴 `tools/mls_elo_fix.py` 가 적었다 — 재생 500경기(0-0 포함)로 적합 · **시즌 교차로 평가한 뒤**
+      전 표본으로 적합한 판

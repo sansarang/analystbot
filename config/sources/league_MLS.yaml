@@ -1,0 +1,32 @@
+# 🔴🔴 **§6-1 원천 표 — MLS**(지시서 2026-10-13)
+#
+#  🔴 등급: **S**(공식) · **A**(통신·주요지) · **B**(데이터) · **C**(기타).
+#     표에 **없는 도메인은 C** 다(계약 SR1).
+#  🔴 `robots_checked` 는 **받아서 확인한 날**이다(`Net.allowed` · 2026-10-13).
+#  ⚠️ **구단 공식은 ⬜ 미조사**다(§6-6) — 적지 않는다.
+
+league: "league:MLS"
+lang: ["en", "es"]
+per_match_query_cap: 24
+
+S:
+  - domain: mlssoccer.com
+    lang: en
+    robots_checked: "2026-10-13"
+    what: ['공식 일정·결과', '부상 보고서']
+  - domain: ⬜구단공식
+    lang: en
+    robots_checked: ""
+    what: ["라인업 발표", "부상 발표"]
+    note: "⬜ **미조사**(§6-6)"
+
+A:
+  - {domain: apnews.com, lang: en, robots_checked: "2026-10-13", what: [결장, 예상 선발, 감독]}
+  - {domain: theathletic.com, lang: en, robots_checked: "2026-10-13", what: [결장, 예상 선발, 감독]}
+  - {domain: as.com, lang: es, robots_checked: "2026-10-13", what: [결장, 예상 선발, 감독]}
+
+B:
+  - {domain: fotmob.com, lang: en, robots_checked: "2026-10-13", what: [라인업, 부상 목록, 선수 기록]}
+  - {domain: espn.com, lang: en, robots_checked: "2026-10-13", what: [일정, 라인업]}
+
+C: []

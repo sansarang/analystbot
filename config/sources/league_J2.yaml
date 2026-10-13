@@ -1,0 +1,43 @@
+# 🔴🔴 **§6-1 원천 표 — J2**(J1 과 같은 매체·공식 통로)(지시서 2026-10-13 밤 셋째)
+#
+#  🔴 등급: **S**(공식) · **A**(통신·주요지) · **B**(데이터) · **C**(기타 ·
+#     단독 근거 불가). 표에 **없는 도메인은 C** 다(계약 SR1).
+#  🔴 `robots_checked` 는 **받아서 확인한 날**이다(`Net.allowed` · 2026-10-13).
+#     ⚠️ 확인하지 않은 칸은 **⬜** 로 두고 적지 않는다(#4 추측 금지).
+#  ⚠️ **구단 공식**은 아직 조사하지 않았다 — 20개 구단 도메인을 받아 확인해야
+#     한다(그 칸은 ⬜ 이고 §6-6 이 그 일을 맡는다).
+
+league: "league:J2"
+lang: ["ja", "en"]
+per_match_query_cap: 24        # 🔴 §6-9 비용 상한 — 넘으면 S·A 만
+
+S:
+  - domain: jleague.jp
+    lang: ja
+    robots_checked: "2026-10-13"
+    what: ["공식 일정·결과", "공시"]
+    extract: html
+    note: "🔴 SPA 껍데기다(실측 2026-10-05) — 본문 추출은 data.j-league.or.jp 로"
+  - domain: data.j-league.or.jp
+    lang: ja
+    robots_checked: "2026-10-13"
+    what: ["경기 기록", "선발·교체 시각", "예고 선발"]
+    extract: html
+    note: "✅ 서버 렌더(실측 2026-10-13 · 교체 시각 확보율 100%)"
+  - domain: ⬜구단공식
+    lang: ja
+    robots_checked: ""
+    what: ["라인업 발표", "부상 발표"]
+    note: "⬜ **미조사** — 20개 구단 도메인을 받아 확인해야 한다(§6-6)"
+
+A:
+  - {domain: nikkansports.com, lang: ja, robots_checked: "2026-10-13", what: [결장, 예상 선발, 감독]}
+  - {domain: sponichi.co.jp, lang: ja, robots_checked: "2026-10-13", what: [결장, 감독]}
+  - {domain: hochi.news, lang: ja, robots_checked: "2026-10-13", what: [결장, 감독]}
+  - {domain: daily.co.jp, lang: ja, robots_checked: "2026-10-13", what: [결장]}
+  - {domain: sanspo.com, lang: ja, robots_checked: "2026-10-13", what: [결장]}
+
+B:
+  - {domain: fotmob.com, lang: en, robots_checked: "2026-10-13", what: [라인업, 부상 목록, 선수 기록]}
+
+C: []   # 🔴 표에 없는 도메인이 자동으로 C 다(SR1)

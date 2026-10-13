@@ -1,0 +1,33 @@
+# 🔴🔴 **§6-1 원천 표 — 프리미어리그**(지시서 2026-10-13)
+#
+#  🔴 등급: **S**(공식) · **A**(통신·주요지) · **B**(데이터) · **C**(기타).
+#     표에 **없는 도메인은 C** 다(계약 SR1).
+#  🔴 `robots_checked` 는 **받아서 확인한 날**이다(`Net.allowed` · 2026-10-13).
+#  ⚠️ **구단 공식은 ⬜ 미조사**다(§6-6) — 적지 않는다.
+
+league: "league:PL"
+lang: ["en"]
+per_match_query_cap: 24
+
+S:
+  - domain: premierleague.com
+    lang: en
+    robots_checked: "2026-10-13"
+    what: ['공식 일정·결과', '징계 공시']
+  - domain: ⬜구단공식
+    lang: en
+    robots_checked: ""
+    what: ["라인업 발표", "부상 발표"]
+    note: "⬜ **미조사**(§6-6)"
+
+A:
+  - {domain: bbc.com, lang: en, robots_checked: "2026-10-13", what: [결장, 예상 선발, 감독]}
+  - {domain: theguardian.com, lang: en, robots_checked: "2026-10-13", what: [결장, 예상 선발, 감독]}
+  - {domain: skysports.com, lang: en, robots_checked: "2026-10-13", what: [결장, 예상 선발, 감독]}
+  - {domain: telegraph.co.uk, lang: en, robots_checked: "2026-10-13", what: [결장, 예상 선발, 감독]}
+
+B:
+  - {domain: fotmob.com, lang: en, robots_checked: "2026-10-13", what: [라인업, 부상 목록, 선수 기록]}
+  - {domain: espn.com, lang: en, robots_checked: "2026-10-13", what: [일정, 라인업]}
+
+C: []

@@ -283,6 +283,9 @@ keys:
       espn_slugs: ["usa.1"]
       fotmob_ids: [130]
       fotmob_names: ["MLS"]
-    # ⚠️ **기준 모형이 없다** — 자체 Elo 도 적합도 안 돌렸다. 그래서 기준 열은
-    #    비고 카드가 그 사실을 적는다(지어내지 않는다).
-    baseline: {}
+    # 🔴🔴 **복구했다**(2026-10-13 밤 넷째 지시 1번) — 재생 500경기(0-0 포함)로
+    #    `tools/mls_elo_fix.py` 가 적합해 `config/base_model.yaml` 에
+    #    `league:MLS` 를 적었다(n 500 · 로그 손실 1.0432).
+    #  ⚠️ Elo 출처는 **fotmob** 이다(football-data 코드가 없다 — `league_elo.yaml`
+    #     의 목록에 MLS 가 없는 까닭이 그것이다 · J1·K1 과 같은 길).
+    baseline: {elo: fotmob, fit: "league:MLS"}
