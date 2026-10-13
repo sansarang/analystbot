@@ -20,3 +20,4 @@ var/
 
 # 🔴 v5 §2 — 비용 원장(토큰·USD). 커밋하지 않는다
 ledger/
+var/daycache/

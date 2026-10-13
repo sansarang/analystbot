@@ -91,6 +91,13 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
                                  s3_docs, s4_extract, s5_verify,
                                  s7_judge)
     st = state if state is not None else RunState()
+    # 🔴🔴 **P0 상한**(수정 지시 2026-10-13 밤) — 카드 한 장 15분. 넘는 단계는
+    #    ⬜ + 사유로 넘긴다(멈추지 않는다). ⚠️ 재생·시험은 안 건다(`clock` 이
+    #    이미 있으면 그대로 쓴다).
+    if st.clock is None:
+        from app.core import deadline as _dline
+        from app.core import slate as _slate
+        st.clock = _dline.Deadline(_slate.CARD_CAP_MIN)
     q = _question(raw, now=now)
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **보드를 s1 보다 먼저 읽는다** — 사용자 지시 2026-10-10(재작성) §1-1 ①
@@ -958,6 +965,9 @@ def card_of(ref: MatchRef, facts: Facts, variables: list[Variable],
         # 🔴 §2·§4 — 전략 판정과 **잠정 확률**(최종은 `our_prob`)
         strategy=box.get("strategy"),
         prob_before=box.get("prob_before"),
+        # 🔴 **P0** — 쓴 시간·건너뛴 단계(카드 머리가 적는다)
+        time_note=(state.clock.said_of()
+                   if getattr(state, "clock", None) is not None else ""),
         prob_expected=box.get("prob_expected"),
         prob_expected_why=str(box.get("prob_expected_why") or ""),
         matchup=dict(box.get("matchup") or {}),

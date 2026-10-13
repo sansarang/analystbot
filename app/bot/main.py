@@ -241,7 +241,10 @@ async def _v6_card(pool, *, team: str = "", opponent: str = "", said: str = "",
     asked = said or (f"{team} vs {opponent}".strip() if opponent else team)
     # 🔴 **재분석은 다른 입구다**(§4) — s3·s4 를 다시 돌지 않는다
     fn = pipeline.reanalyze if again else pipeline.analyze
-    got = await fn(asked, pool=pool, net=_net_mod.Net(),
+    # 🔴🔴 **P0** — 카드 실행은 **하루 캐시**를 쓴다(팀 페이지·대회 일정·순위표).
+    #    ⚠️ XI·결장·뉴스 주소는 그 목록에 없어 **늘 새로 받는다**(`Net.DAY_CACHE`).
+    got = await fn(asked, pool=pool,
+                   net=_net_mod.Net(cache=True, day_cache=True),
                    chain=_search.build_chain(),
                    # 🔴 **사람이 준 라인업 캡처**는 두 길에 다 간다(실사고
                    #    2026-10-11: `--deep` 은 재분석 길이라 안 갔다)

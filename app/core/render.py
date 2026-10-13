@@ -307,6 +307,10 @@ def _head(card: Card) -> str:
         head += "\n" + _sl.head_of(m.kickoff_utc, _w.now_utc())
     except (ValueError, AttributeError) as exc:
         head += f"\n⏱ ⬜ **실행 단계를 못 찍었다** — {exc!r:.60}"
+    # 🔴 **P0 상한** — 쓴 시간과 건너뛴 단계(비면 상한을 안 걸었다)
+    said_time = str(getattr(card, "time_note", "") or "")
+    if said_time:
+        head += "\n" + said_time
     # 🔴🔴 **§7 경기 직전 상태** — 머리 줄에 적는다(지시서 2026-10-12(둘째) §7).
     #  ⚠️ 확률에는 아직 **안 들어간다**(§9 전진 선택 전) — 그 사실을 줄이 말한다.
     if card.schedule:

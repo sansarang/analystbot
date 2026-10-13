@@ -383,6 +383,11 @@ async def _context_of(net, ref, *, state) -> dict:
     out: dict = {}
     for side in ("home", "away"):
         name = str(getattr(ref, f"{side}_name", "") or "")
+        # 🔴 **P0 상한** — 넘겼으면 ContextRow 는 ⬜ 로 둔다(카드는 나간다)
+        said_clock = getattr(state, "clock", None)
+        if said_clock is not None and said_clock.over():
+            state.note(said_clock.skip(f"§7 경기 직전 상태({name})"))
+            continue
         try:
             rows = await _hist(net, name, state=state,
                                as_of=ref.kickoff_utc, ref=ref)

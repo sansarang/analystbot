@@ -67,8 +67,27 @@ class Fetched:
 class Net:
     """호스트별 robots·간격을 지키는 열기. 인스턴스 하나가 하루를 산다."""
 
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **P0 하루 캐시**(수정 지시 2026-10-13 밤) — 디스크에 둔다
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 캐시: 팀 과거 경기·대회 일정·순위표·신원표는 **하루 1회 미리 받아 둔다.**
+    #  > 카드 실행 때는 새로 받는 건 **XI·결장·72시간 기사만.**
+    #
+    #  🔴 위 `_cache` 는 **한 실행 안**(메모리)이다 — 실행이 끝나면 사라진다.
+    #     그래서 "하루 1회"는 **디스크**가 필요하다.
+    #  🔴 **느린 변화만** 담는다(아래 `DAY_CACHE` 조각이 주소에 있을 때) —
+    #     XI·결장·뉴스는 담지 않는다(그것은 늘 새로 받는다).
+    #  ⚠️ 하루가 지난 파일은 **안 쓴다**(`DAY_TTL_SEC`) — 묵은 값을 조용히
+    #     쓰면 어제 명단으로 오늘 카드를 만든다.
+    DAY_CACHE: tuple[str, ...] = ("/leagues/", "/teams/", "/table",
+                                  "/matches/x", "teams.json")
+    DAY_TTL_SEC: float = 24 * 3600.0
+    DAY_DIR = "var/daycache"
+
     def __init__(self, *, ua: str = UA, min_interval: float = MIN_INTERVAL_SEC,
-                 timeout: float = TIMEOUT_SEC, cache: bool = False):
+                 timeout: float = TIMEOUT_SEC, cache: bool = False,
+                 day_cache: bool = False):
         self.ua = ua
         self.min_interval = min_interval
         self.timeout = timeout
@@ -84,6 +103,8 @@ class Net:
         #     하는 주기가 있고, 거기서 캐시가 켜지면 점수가 영원히 멈춘다.
         #     🔴 그래서 켜는 쪽(`analyze.gather`)이 **한 분석 동안만** 켠다.
         self._cache: dict[tuple, "Fetched"] | None = {} if cache else None
+        #: 🔴 **하루 캐시**를 쓰나(느린 주소만 · 위 설명)
+        self._day = bool(day_cache)
         self._robots: dict[str, robotparser.RobotFileParser | None] = {}
         self._last: dict[str, float] = {}
         #: 🔴 `{호스트: 사유}` — **사유 없이 죽이지 않는다.** `source_state` 표의
@@ -240,6 +261,18 @@ class Net:
         if self._cache is not None and ckey in self._cache:
             logger.info("[net] 캐시 적중 %s", url)
             return self._cache[ckey]
+        # 🔴🔴 **하루 캐시**(P0) — 느린 주소만, 24시간 안의 파일만
+        said_day = self._day_path(url, q)
+        if said_day is not None and said_day.exists():
+            import time as _t
+            if (_t.time() - said_day.stat().st_mtime) < self.DAY_TTL_SEC:
+                logger.info("[net] 하루 캐시 적중 %s", url)
+                got = Fetched(url, True, status=200,
+                              text=said_day.read_text(encoding="utf-8"),
+                              reason="하루 캐시")
+                if self._cache is not None:
+                    self._cache[ckey] = got
+                return got
 
         ok, why = await self.allowed(url)
         if not ok:
@@ -284,7 +317,30 @@ class Net:
         #    같은 주소를 죽은 것으로 만든다(§19-b-4 는 그날 dead 지, 영구가 아니다).
         if self._cache is not None and out.ok:
             self._cache[ckey] = out
+        # 🔴🔴 **하루 캐시에 적는다**(P0) — 느린 주소만·성공만
+        if said_day is not None and out.ok and out.text:
+            try:
+                said_day.parent.mkdir(parents=True, exist_ok=True)
+                said_day.write_text(out.text, encoding="utf-8")
+            except OSError as exc:                          # noqa: BLE001
+                logger.info("[net] 하루 캐시를 못 적었다 — %r", exc)
         return out
+
+    def _day_path(self, url: str, q: str):
+        """🔴 그 주소의 하루 캐시 파일. **느린 주소가 아니면 `None`**.
+
+        🔴 `day_cache=False` 면 늘 `None` 이다 — 켜는 쪽이 정한다(기본 꺼짐).
+        ⚠️ XI·결장·뉴스 주소는 목록에 없다(그것은 **늘 새로 받는다**).
+        """
+        if not self._day:
+            return None
+        said = str(url or "")
+        if not any(x in said for x in self.DAY_CACHE):
+            return None
+        import hashlib
+        from pathlib import Path
+        key = hashlib.sha256(f"{said}|{q}".encode()).hexdigest()[:40]
+        return Path(self.DAY_DIR) / f"{key}.html"
 
     def _from_cassette(self, url: str, q: str) -> Fetched:
         """🔴 `replay` — 저장된 응답뿐이다. 없으면 **없다고 적는다.**"""

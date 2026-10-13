@@ -547,6 +547,14 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, chain: Any,
             state.drop(f"s3/{name}", DropReason.NO_DOC, f"터졌다: {row!r}")
             state.book[_sid(sub)] = "not_tried"
             continue
+        # 🔴🔴 **P0 상한** — 넘겼으면 남은 하위는 **받지 않는다**(⬜ + 사유).
+        #    ⚠️ 오늘 실측: 한 카드가 25분을 썼고 그 카드는 킥오프 뒤에 나왔다.
+        said_clock = getattr(state, "clock", None)
+        if said_clock is not None and said_clock.over():
+            state.drop(f"s3/{name}", DropReason.NO_DOC,
+                       said_clock.skip(f"s3 본문 받기({name})"))
+            state.book[_sid(sub)] = "not_tried"
+            continue
         got = await _fetch(sub, ref, row, state=state, net=net, cache=cache,
                            claimed=claimed)
         out += got
