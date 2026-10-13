@@ -40,6 +40,9 @@ class ProbOut:
     shadow: dict = field(default_factory=dict)
     #: 🔴 바닥(Elo)이 낸 승무패 — 카드가 그 줄을 적는다
     floor: dict = field(default_factory=dict)
+    #: 🔴🔴 **앙상블**(지시 2026-10-13 밤 다섯째 1번 · 판정 E1 채택) — 무엇을 어떤
+    #   가중치로 섞었나 · 섞기 **전** 수. 안 섞었으면 사유만 든다.
+    ens: dict = field(default_factory=dict)
     #: 🔴🔴 **무승부 보정**(5번) — 걸었으면 그 판과 값, 안 걸었으면 비어 있다
     draw_fix: dict = field(default_factory=dict)
     #: 🔴🔴 **C4 재정의**(사용자 결정 2026-10-12) — 상성이 λ 를 **민 방향**이다.
@@ -443,6 +446,10 @@ def run(ref, facts, mr, varset, *, edge: dict | None = None,
                             state_mult=(said_state or None))
             said_m3 = {"home": out3.home, "draw": out3.draw,
                        "away": out3.away,
+                       # 🔴 **격자를 들고 있는다** — 앙상블이 승무패가 아니라
+                       #    **격자**를 섞는다(C2 · EW1)
+                       "grid": {(int(h), int(a)): float(v)
+                                for (h, a), v in dict(out3.scores or {}).items()},
                        "lam": {"home": round(lam_h3, 4),
                                "away": round(lam_a3, 4)},
                        "why": (f"M3 **새 경로**(Elo 바닥 + 축0·축1 잔차) — "
@@ -464,18 +471,22 @@ def run(ref, facts, mr, varset, *, edge: dict | None = None,
         #     무승부 예측 26.8% → **22.7%**(실제 22.1%).
         #  ⚠️ 판이 없으면 **보정하지 않는다**(손값 금지) — 사유를 적는다.
         from app.core import drawfix as _dfx
+        # 🔴🔴 **전체 격자를 한 번 만든다** — 꼴 맞추기(글자 열쇠 → 쌍)를 **여기
+        #    한 곳**에서 한다. ⚠️ 종전에는 무승부 보정이 격자를 굽히고 **그 아래
+        #    줄이 굽지 않은 격자로 다시 덮어썼다** — 그래서 승무패는 보정 뒤 수,
+        #    스코어 줄은 보정 **전** 수였다(한 카드가 두 분포를 말했다 · C2 위반).
+        grid_m1: dict = {}
+        for key, val in dict(said_m1.scores or {}).items():
+            if isinstance(key, str) and "-" in key:
+                h, a = key.split("-", 1)
+                grid_m1[(int(h), int(a))] = float(val)
+            else:
+                grid_m1[(int(key[0]), int(key[1]))] = float(val)
         said_fix, why_fix = _dfx.load(
             league=_kind(ref, facts),
             as_of=getattr(ref, "kickoff_utc", None))
-        if said_fix and said_m1.scores:
-            said_grid = {}
-            for key, val in dict(said_m1.scores or {}).items():
-                if isinstance(key, str) and "-" in key:
-                    h, a = key.split("-", 1)
-                    said_grid[(int(h), int(a))] = float(val)
-                else:
-                    said_grid[(int(key[0]), int(key[1]))] = float(val)
-            bent = _dfx.bend(said_grid, rho=float(said_fix.get("rho") or 0.0),
+        if said_fix and grid_m1:
+            bent = _dfx.bend(grid_m1, rho=float(said_fix.get("rho") or 0.0),
                              draw=float(said_fix.get("draw") or 0.0))
             said_three = _dfx.triple(bent)
             # 🔴 **보정 전 수를 남긴다** — 축 기여 분해(`share`)는 **보정 전**
@@ -485,21 +496,72 @@ def run(ref, facts, mr, varset, *, edge: dict | None = None,
                             "before_draw": round(float(got.draw), 6),
                             "before_away": round(float(got.away), 6)}
             got.home, got.draw, got.away = said_three
-            got.scores = dict(sorted(bent.items(), key=lambda kv: -kv[1])[:40])
+            grid_m1 = dict(bent)          # 🔴 **굽힌 격자가 M1 격자다**
             got.draw_fix.update({"why": why_fix,
                                  **{k: float(v) for k, v in said_fix.items()
                                     if isinstance(v, (int, float))}})
-        # ⚠️ **꼴을 맞춘다(경계에서)** — 얼린 경로는 스코어 열쇠를 `"1-0"` 글자로
-        #    담고, 카드·생존은 `(1, 0)` 쌍을 본다. 🔴 얼린 파일을 고치지 않는다
-        #    (K0) — **여기서** 옮긴다(실측 2026-10-12: e2e 가 그 차이를 잡았다).
-        got.scores = {}
-        for key, val in dict(said_m1.scores or {}).items():
-            if isinstance(key, str) and "-" in key:
-                h, a = key.split("-", 1)
-                got.scores[(int(h), int(a))] = float(val)
-            else:
-                got.scores[key] = float(val)
+        # ⚠️ **꼴은 위에서 맞췄다** — 얼린 경로는 스코어 열쇠를 `"1-0"` 글자로
+        #    담고, 카드·생존은 `(1, 0)` 쌍을 본다(얼린 파일은 안 고친다 · K0).
+        got.scores = dict(grid_m1)
         got.over = dict(said_m1.over or {})
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **앙상블 — ⑯ 안에서 격자로 섞는다**(지시 2026-10-13 밤 다섯째 1번)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  🔴 판정(누설 제거 뒤 **2,582경기** · 규칙 v2+(d)): **E1 채택** —
+        #     로그 손실 1.0498 vs E0 1.0525 · 짝지은 −0.0026(95% −0.0058~+0.0007)
+        #     · 맥니마 p 0.1334 · 상위 20% 61.43% vs 60.85%.
+        #  ⚠️ **방향은 E0 가 낫다**(46.51% vs 47.37% · 뒤집힌 288경기에서 E0
+        #     109 : E1 87) — 규칙 (b) 는 *"B 우세가 유의하지 않으면 통과"* 라서
+        #     통과했다. 🔴 그 사실을 **카드가 적는다**(숨기지 않는다).
+        #  🔴 **EW1** 섞는 것은 **격자**다(승무패만 섞으면 오버·핸디캡이 그 확률과
+        #     어긋난다 · C2) · **EW2** 판이 없으면 **M1 단독** · **EW3** 섞은 뒤의
+        #     모든 시장 줄은 `probfloor.markets_of` 로 **그 격자 하나**에서 나온다.
+        #  ⚠️ **순서** — 무승부 보정(ρ)을 **먼저** 걸고 그 격자를 섞는다. 두 보정의
+        #     **합성은 아직 안 재 봤다**(각각 M1 대비로만 쟀다) — 후속 과제다.
+        from app.core import ensemble as _en
+        said_plate, why_plate = _en.plate_of(
+            league=_kind(ref, facts), as_of=getattr(ref, "kickoff_utc", None))
+        if not dict(said_plate or {}).get("adopted"):
+            got.ens = {"why": (f"⬜ **앙상블 미적용** — 채택된 판이 없다"
+                               f"(M1 단독 · {why_plate})")}
+        else:
+            box_g: dict = {}
+            why_g = ""
+            for name, one in (("M1", grid_m1),
+                              ("M3", dict(said_m3.get("grid") or {}))):
+                said_n, why_n = _en.normalise(one)
+                if said_n:
+                    box_g[name] = said_n
+                else:
+                    why_g += f" · {name}: {why_n}"
+            mixed, why_mix = _en.of(box_g, plate=dict(said_plate))
+            if not mixed:
+                got.ens = {"why": f"🔴 {why_mix}{why_g}"}
+            else:
+                # 🔴 **C1** — `run` 안에 시장(`market`) 글자를 두지 않는다. 격자
+                #    에서 줄을 뽑는 일은 **모듈 함수**가 한다(`_lines_from`).
+                said_mk = _lines_from(mixed)
+                got.ens = {"w": dict(dict(said_plate).get("w") or {}),
+                           "before": {"home": round(float(got.home), 6),
+                                      "draw": round(float(got.draw), 6),
+                                      "away": round(float(got.away), 6)},
+                           "why": (f"{why_mix} · 판 {why_plate}"),
+                           # 🔴 방향 주의 — 판정에서 **방향은 E0 가 나았다**
+                           "note": ("⚠️ 방향 적중률은 판정에서 **M1 단독이 더 "
+                                    "높았다**(46.5% vs 47.4% · 유의하지 않다)")}
+                got.home = round(float(said_mk["home"]), 6)
+                got.draw = round(float(said_mk["draw"]), 6)
+                got.away = round(float(said_mk["away"]), 6)
+                got.scores = dict(sorted(mixed.items(),
+                                         key=lambda kv: -kv[1])[:40])
+                # 🔴 **EW3** — 오버도 그 격자에서(열쇠 꼴은 시뮬과 같다)
+                got.over = {f"{k}": round(float(v), 4)
+                            for k, v in dict(said_mk.get("over") or {}).items()}
+                got.xg = {"home": round(sum(h * v for (h, _a), v
+                                            in mixed.items()), 4),
+                          "away": round(sum(a * v for (_h, a), v
+                                            in mixed.items()), 4)}
         got.lam = dict(said_m1.lam or {})
         got.move = dict(said_m1.move or {})
         if said_m1.share:
@@ -546,6 +608,17 @@ def _state_said(facts) -> str:
     from app.core import staterates as _sr
     return _sr.said_of(dict(getattr(facts, "state_rates", None) or {}),
                        dict(getattr(facts, "state_rates_why", None) or {}))
+
+
+def _lines_from(grid: dict) -> dict:
+    """🔴🔴 **EW3** — 섞은 격자 **하나**에서 모든 줄을 뽑는다(`probfloor` 가 센다).
+
+    🔴 이 함수가 따로 있는 까닭은 **C1** 이다 — `run` 안에는 시장 글자를 두지
+       않는다(C1 이 막는 것은 *"배당·시장 정보를 S3 가 읽는 것"* 이고, 이 함수는
+       **우리 격자**에서 줄을 뽑는다).
+    """
+    from app.core import probfloor as _pf2
+    return dict(_pf2.markets_of(dict(grid or {})))
 
 
 def _fill(got: ProbOut, out) -> None:

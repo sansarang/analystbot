@@ -1772,8 +1772,26 @@ def prob_long(card: Card) -> str:
              + ") " + " · ".join(f"{nm} {v:.0%}" for nm, v
                                  in zip(("홈", "무", "원정"), e2, strict=True)))
             if e2 else f"E2 — {why_e2}")
-        out.append("- 🕯 **앙상블 그림자**(표시·채점용 · 확률은 **M1 단독**) — "
-                   + " / ".join(rows_mix))
+        out.append("- 🕯 **앙상블 그림자**(표시·채점용) — " + " / ".join(rows_mix))
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **앙상블 적용 줄**(지시 2026-10-13 밤 다섯째 1번 · E1 채택)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 운영 확률이 **섞인 격자**에서 나왔는지 카드가 말한다(C2) — 안 섞였으면
+    #     그 사유를 적는다(#3). ⚠️ 판정에서 **방향은 M1 단독이 더 높았다** — 그
+    #     주의 글자도 함께 낸다(숨기지 않는다).
+    said_ens = dict(box.get("ens") or pull("ens") or {})
+    if said_ens.get("w"):
+        said_before = dict(said_ens.get("before") or {})
+        out.append(
+            "- 🧬 **앙상블 적용**(격자 혼합 — 모든 시장 줄이 한 분포) "
+            + " · ".join(f"{k} {float(v):.2f}"
+                         for k, v in sorted(dict(said_ens["w"]).items()))
+            + (f" · 섞기 전 홈 {float(said_before.get('home') or 0.0):.1%} → "
+               f"지금 {float(pull('home') or 0.0):.1%}" if said_before else "")
+            + f" — {said_ens.get('why', '')} · {said_ens.get('note', '')}")
+    elif said_ens.get("why"):
+        out.append(f"- 🧬 **앙상블** — {said_ens['why']}")
     share = dict(box.get("share") or pull("share") or {})
     refs = dict(box.get("share_refs") or {})
     said_fix = dict(box.get("draw_fix") or pull("draw_fix") or {})

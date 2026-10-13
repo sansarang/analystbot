@@ -64,7 +64,7 @@ def test_m1_2_correction_needs_the_plate_in_code() -> None:
     i = said.index("_dfx.load(")
     j = said.index("_dfx.bend(")
     assert i < j, "🔴 판을 읽기 전에 보정한다"
-    assert "if said_fix and said_m1.scores" in said
+    assert "if said_fix and grid_m1" in said
 
 
 def test_m1_3_shadow_and_floor_never_touch_grade_or_survival() -> None:
