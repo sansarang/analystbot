@@ -708,6 +708,12 @@ TOOL_ONLY: dict[str, str] = {
     #    부른다. ⚠️ 둘 다 **판정에서 떨어졌다**(S1 (c) 0.01%p · S2 k=0) →
     #    운영 ⑯·⑪ 에 **잇지 않는다**(§7 전진 선택: 기준은 B 그대로).
     "app.core.legacy.form_input.pick": "tools/season_trial.py",
+    # 🔴🔴 **§8 앙상블**(통합 지시서 2026-10-13 밤) — 격자 도구·적합 도구가
+    #    부른다. ⚠️ 운영 ⑯ 에 잇는 것은 **채택 뒤**다(E0 유지 → 지금은 안 잇는다).
+    "app.core.ensemble.normalise": "tools/build_grids.py",
+    "app.core.ensemble.blend": "tools/fit_ensemble.py",
+    "app.core.ensemble.of": "tools/fit_ensemble.py",
+    "app.core.ensemble.plate_of": "tools/fit_ensemble.py",
     "app.core.seasonfix.bend": "tools/seasonfix_trial.py",
     "app.core.seasonfix.plate_of": "tools/seasonfix_trial.py",
     "app.core.season.games_of": "tools/season_prep.py",

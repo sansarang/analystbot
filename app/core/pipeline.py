@@ -284,6 +284,25 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
                      user_mk, state=st, outlook=look, strategy=plan)
     layers["strategy"] = plan
     layers["matchup"] = edge
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **§11 앙상블 그림자 판**(통합 지시서 2026-10-13 밤) — 기록용
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 **E0 유지**(채택 없음)이므로 운영 확률은 **M1 단독**이다. 이 판은
+    #     카드가 **E2 그림자 줄**을 적는 데만 쓴다(EN8: 등급·생존 금지).
+    #  ⚠️ 판 고르기는 `versions`(엄격히 이전 · L3) 하나다 — 같은 날 판은 안 쓴다.
+    try:
+        from app.core import ensemble as _ens
+        from app.core import probmodel as _pmd0
+        said_kind = str(_pmd0._kind(ref, facts) or "")
+        said_plate, said_why = _ens.plate_of(
+            league=said_kind, as_of=getattr(ref, "kickoff_utc", None))
+        edge["ens_w"] = dict(said_plate.get("w") or {})
+        edge["ens_why"] = said_why
+        st.note(f"§11 앙상블 그림자 판 — {said_why}")
+    except Exception as exc:                                # noqa: BLE001
+        edge["ens_w"] = {}
+        edge["ens_why"] = f"🔴 판을 못 읽었다: {exc!r:.60}"
     # 🔴 **(가) 표시 전용** — 라인업 수를 ② 칸에 **표시로만** 싣는다(확률 경로 밖).
     #    ⚠️ `adj_prob.probs` 는 건드리지 않는다 — 계약이 그 자리를 센다.
     if layers.get("adj") is not None:

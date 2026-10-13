@@ -1680,6 +1680,36 @@ def prob_long(card: Card) -> str:
                                               ("원정", "away"))
                                 if said_shadow.get(k) is not None)
                    + " — 🔴 판정에는 **안 쓴다**(짝지은 채점용으로 쌓는다)")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **§11 앙상블 그림자**(통합 지시서 2026-10-13 밤) — 확률·등급 불변
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 지금부터 운영 카드마다 **E1·E2(최신 판)·seasonfix 후보 확률**을 그림자로.
+    #  🔴 **E0 유지**(채택 없음)이므로 운영 확률은 **M1 단독**이다 — 이 줄은
+    #     `score_cards` 가 30경기마다 채점할 **기록**이다(EN8: 등급·생존 금지).
+    #  🔴 섞는 자리는 `ensemble.mix` 하나다(사본 금지) — 격자 혼합과 같은 답이다.
+    said_ours = {k: float(pull(k) or 0.0) for k in ("home", "draw", "away")}
+    if said_shadow and all(said_ours.values()):
+        from app.core import ensemble as _en
+        box_mix = {"M1": [said_ours[k] for k in ("home", "draw", "away")],
+                   "M3": [float(said_shadow.get(k) or 0.0)
+                          for k in ("home", "draw", "away")]}
+        e1, why_e1 = _en.mix(box_mix, {"M1": 0.5, "M3": 0.5})
+        said_w = dict(box.get("ens_w") or {})
+        e2, why_e2 = ((_en.mix(box_mix, said_w)) if said_w
+                      else ([], "🔴 **E2 판이 없다**(EN2 · 그림자도 안 센다)"))
+        rows_mix = [f"**E1**(M1 0.5 + M3 0.5) "
+                    + " · ".join(f"{nm} {v:.0%}" for nm, v
+                                 in zip(("홈", "무", "원정"), e1, strict=True))
+                    ] if e1 else [f"E1 — {why_e1}"]
+        rows_mix.append(
+            ("**E2**(판 " + " · ".join(f"{k} {float(v):.2f}"
+                                       for k, v in sorted(said_w.items()))
+             + ") " + " · ".join(f"{nm} {v:.0%}" for nm, v
+                                 in zip(("홈", "무", "원정"), e2, strict=True)))
+            if e2 else f"E2 — {why_e2}")
+        out.append("- 🕯 **앙상블 그림자**(표시·채점용 · 확률은 **M1 단독**) — "
+                   + " / ".join(rows_mix))
     share = dict(box.get("share") or pull("share") or {})
     refs = dict(box.get("share_refs") or {})
     said_fix = dict(box.get("draw_fix") or pull("draw_fix") or {})

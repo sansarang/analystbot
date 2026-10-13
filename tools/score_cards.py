@@ -63,6 +63,16 @@ INFOQ = re.compile(r"InfoQ \*\*(\d)/(\d)\*\*")
 #: 🔴 `… · |L9| 구간 **상위 10%** — ⚠️ 확률은 안 움직인다…`
 L9_BAND = re.compile(r"\|L9\| 구간 \*\*(상위 10%|그 밖|못 쟀다)\*\*")
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **§11 앙상블 그림자** — 운영·B·M3·E1·E2 를 **함께** 채점한다
+# ══════════════════════════════════════════════════════════════════
+#
+#  > score_cards 30경기마다: 운영·B·M3·Elo·E1·E2 — 로그 손실·방향·상위 20%…
+#  🔴 카드 **글자에서** 읽는다(다시 돌리지 않는다). 🔴 E0 유지이므로 운영 =
+#     M1 단독이고, E1·E2 는 **그림자**다.
+#: 🔴 `**E1**(M1 0.5 + M3 0.5) 홈 41% · 무 27% · 원정 32%`
+ENS = re.compile(r"\*\*(E1|E2)\*\*\([^)]*\) 홈 (\d+)% · 무 (\d+)% · 원정 (\d+)%")
+
 #: 🔴 이변 경고 — `⚠️ 이변 경고 S +0.800 → 🟡 …`
 UPSET = re.compile(r"이변 경고 S \*\*([+-][\d.]+)\*\* → (🟡|🔴)")
 
@@ -91,6 +101,8 @@ def read_card(path: Path) -> dict | None:
     out["ours"] = _pct(*got.groups())
     said_l9 = L9_BAND.search(text)
     out["l9_band"] = said_l9.group(1) if said_l9 else ""
+    for got_ens in ENS.finditer(text):
+        out[got_ens.group(1).lower()] = _pct(*got_ens.groups()[1:])
     said = XGB.search(text)
     if said:
         out["xg"] = _pct(*said.groups())
@@ -276,6 +288,24 @@ async def main() -> None:
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **|L9| 상위 10% 구간의 방향 적중률**(머리 §0 · 확률 불변)
     # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **§11 — 운영·M3·E1·E2 를 나란히**(30경기 미만은 "참고")
+    print()
+    print("| 판 | n | 로그 손실 | 방향 | 상위 20% | ⚠️ |")
+    print("|---|---|---|---|---|---|")
+    for name, key in (("운영(M1 단독)", "ours"), ("그림자 M3", "shadow"),
+                      ("E1(0.5/0.5)", "e1"), ("E2(판 w)", "e2")):
+        box = [r for r in scored if r.get(key)]
+        if not box:
+            print(f"| {name} | 0 | — | — | — | ⬜ 그 줄을 적은 카드가 없다 |")
+            continue
+        ll = [_me.logloss(r[key], r["hit"]) for r in box]
+        hit = sum(1 for r in box if _me.direction_hit(r[key], r["hit"]))
+        said_b = _me.bands([{"p": r[key], "hit": r["hit"]} for r in box],
+                           keys=("p",))
+        print(f"| {name} | {len(box)} | **{sum(ll) / len(ll):.4f}** | "
+              f"{hit / len(box):.1%} | {said_b[0.20]['p']['rate']:.1%} | "
+              + ("" if len(box) >= REPORT_EVERY
+                 else f"🔴 **{REPORT_EVERY}경기 미만 — 참고**") + " |")
     said_l9 = [r for r in scored if r.get("l9_band")]
     print()
     if said_l9:
