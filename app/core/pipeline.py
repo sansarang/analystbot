@@ -909,24 +909,31 @@ def _gate_of(ref: MatchRef, facts, turn: dict, *, state: RunState):
 
 
 def _recall_fill(ref: MatchRef, facts, variables, *, state: RunState):
-    """🔴🔴 **LLM 회상으로 빈 칸을 메운다**(지시 2026-10-14). `(facts, 사유)`.
+    """🔴🔴 **LLM 이 빈 칸을 겨냥한 질의를 쓴다**(지시 2026-10-14). `(facts, 사유)`.
 
-    🔴 딥서치가 찾은 칸은 **안 덮는다** — `s4b_recall.run` 이 그것을 지킨다.
-    ⚠️ 회상이 실패하거나 빈 글자여도 **facts 를 그대로** 돌려준다(0 으로 메우지
-       않는다 · #3) — 그 사실만 사유에 적는다.
+    > llm 회상하는게 아니라 **서치**하는거다 · 검색할 대상은 **변수에 관련된
+    > 내용**이다 — **x search 가 약해서** 한다.
+
+    🔴 LLM 은 **글자만** 낸다 — 사실은 문서에서만 온다(계약 GS1·GS2).
+    ⚠️ `facts` 를 **바꾸지 않는다** — 2차 수확을 아직 안 이었다(그 사실을 사유에
+       적는다 · #2 안 이은 것을 이었다고 말하지 않는다).
     """
-    from app.core.stages import s4b_recall as _rc
+    from app.core.stages import s4b_gapsearch as _rc
     keys = [str(getattr(ref, "home", "") or ""), str(getattr(ref, "away", "") or "")]
     # 🔴 불화 문서 수 — 하위 B 가 나른 `coach_conflict` 변수가 있나
     n_conf = sum(1 for v in (variables or [])
                  if str(getattr(v, "type", "")) == "coach_conflict")
-    got, why = _rc.run(ref, facts, state=state, keys=keys, conflict_docs=n_conf)
-    box = dict(dict(got or {}).get("coach") or {})
-    if not box:
-        return facts, why
-    coach = dict(getattr(facts, "coach", None) or {})
-    coach.update(box)
-    return facts.model_copy(update={"coach": coach}), why
+    names = {str(getattr(ref, s, "") or ""):
+             str(getattr(ref, f"{s}_name", "") or "") or str(getattr(ref, s, "") or "")
+             for s in ("home", "away")}
+    want = _rc.need(facts, keys=keys, conflict_docs=n_conf, names=names)
+    thin = _rc.thin_kinds(variables)
+    qs, why = _rc.ask(ref, facts, state=state, want=want, thin=thin)
+    # 🔴 질의는 **사슬이** 던진다 — 이 함수는 글자만 넘긴다(계약 GS4).
+    #    ⚠️ 2차 수확 배선은 아직 안 했다 — 지금은 질의와 사유만 카드에 적는다
+    #       (안 이은 것을 이었다고 말하지 않는다 · #2·#3).
+    return facts, (why + (f" · 🔴 **2차 수확 미배선** — 질의 {len(qs)}개를 "
+                          "아직 사슬에 안 던진다" if qs else ""))
 
 
 def _absence_merge(ref: MatchRef, facts, variables, *, state: RunState):
