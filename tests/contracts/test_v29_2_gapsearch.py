@@ -222,7 +222,8 @@ def test_gs11_sides_are_split() -> None:
         past_xi = {"H": [1, 2, 3], "A": [1, 2, 3]}
         xi = {}
         context = {}
-        recent = {"H": [{"mine_home": True}] * 5, "A": []}
+        recent = {"H": {"sequence": [{"side": "home", "result": "W"}] * 5},
+                  "A": {}}
     got = g.need(_F(), keys=["H", "A"], conflict_docs=1,
                  sides={"H": "home", "A": "away"})
     assert not any("원정 부담" in x for x in got.get("H", [])), (
@@ -245,3 +246,30 @@ def test_gs12_side_full_matches_form() -> None:
     assert g.SIDE_FULL == form.SIDE_FULL, (
         f"GS12 🔴 문턱이 어긋났다 — gapsearch {g.SIDE_FULL} ↔ form "
         f"{form.SIDE_FULL}. 쪽 폼을 '그대로 쓸 수 있는' 경기 수가 이 칸의 뜻이다")
+
+
+def test_gs13_home_form_reads_real_field() -> None:
+    """GS13 🔴🔴 — 홈 전력은 `facts.recent[팀]["sequence"]` 에서 읽는다.
+
+    ⚠️ 실사고 2026-10-14: 내가 `mine_home` 칸을 **가정했고**(그 칸은 `cup_trial`
+       의 폼 줄 이름이다) `facts.recent` 의 값이 목록이 아니라 **표**라서
+       `dict(r)` 가 터졌다 — `ValueError: dictionary update sequence`.
+       🔴 가정하지 말고 **실물 칸**(`sequence`·`side`·`result`)을 읽는다.
+    """
+    import sys
+    sys.path.insert(0, str(ROOT))
+    from app.core.stages import s4b_gapsearch as g
+
+    code = _code(MOD)
+    assert "mine_home" not in code, (
+        "GS13 🔴 `mine_home` 을 다시 읽는다 — `facts.recent` 에는 그 칸이 없다")
+    assert '"sequence"' in code and '"side"' in code and '"result"' in code, (
+        "GS13 🔴 실물 칸(`sequence`·`side`·`result`)을 안 읽는다")
+    n, ok, why = g.home_form(
+        {"H": {"sequence": [{"side": "home", "result": "W"},
+                            {"side": "away", "result": "L"},
+                            {"side": "home", "result": "D"}]}}, "H")
+    assert (n, ok) == (2, 2), f"GS13 🔴 홈 승+무를 잘못 셌다 — {(n, ok)} · {why}"
+    # 🔴 빈 칸은 터지지 않고 사유를 돌려준다
+    assert g.home_form({}, "X")[0] == 0, "GS13 🔴 빈 칸에서 0 이 아니다"
+    assert "⬜" in g.home_form({}, "X")[2], "GS13 🔴 사유를 안 적는다(#3)"

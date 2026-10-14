@@ -170,22 +170,40 @@ def need(facts, *, keys: list[str], conflict_docs: int = 0,
                     ctx.get("venue") or ctx.get("travel")):
                 # 🔴 원정팀만 — 이동 거리·전체 일정·홈까지 거리
                 miss.append(name)
-            elif name.startswith("홈 전력") and _home_games(recent, key) < SIDE_FULL:
+            elif name.startswith("홈 전력"):
                 # 🔴 홈팀만 — 홈 최근 5경기가 모자라면 묻는다
-                miss.append(name)
+                n_h, _ok, _w = home_form(recent, key)
+                if n_h < SIDE_FULL:
+                    miss.append(name)
         if miss:
             out[str(said.get(key) or key)] = miss
     return out
 
 
-def _home_games(recent: dict, key: str) -> int:
-    """🔴 그 팀의 **홈 경기** 수(최근 목록 안에서). 못 세면 0.
+def home_form(recent: dict, key: str) -> tuple[int, int, str]:
+    """🔴🔴 **홈 최근 경기에서 이기거나 비긴 것** — `(홈 경기 수, 승+무, 글자)`.
 
-    ⚠️ 목록 꼴이 어댑터마다 다르다 — `mine_home` 이 참인 줄만 센다. 그 칸이
-       없으면 **0 으로 센다**(모르는 것을 많다고 적지 않는다 · #3).
+    > 홈팀은 **최근 5경기에서 이긴거나 비기거나** 하는거를 통해서 **홈에서의
+    > 전력**을 알수 있다 (사용자 지시 2026-10-14)
+
+    🔴 재료는 `facts.recent[팀]["sequence"]` 다 — `s2_facts._recent_from_games`
+       가 만들고 줄마다 `side`(`home`/`away`)·`result`(`W`/`D`/`L`)를 든다.
+       ⚠️ 그 목록을 여기서 다시 만들지 않는다(사본 금지) — 읽기만 한다.
+    ⚠️ 칸이 없으면 **(0, 0, 사유)** 다 — 모르는 것을 많다고 적지 않는다(#3).
     """
-    rows = list(dict(recent or {}).get(key) or [])
-    return sum(1 for r in rows if dict(r).get("mine_home") is True)
+    box = dict(dict(recent or {}).get(key) or {})
+    rows = [dict(x) for x in (box.get("sequence") or [])]
+    if not rows:
+        return 0, 0, "⬜ 최근 경기 목록이 없다"
+    home = [x for x in rows if str(x.get("side") or "") == "home"]
+    if not home:
+        return 0, 0, f"⬜ 최근 {len(rows)}경기에 **홈 경기가 없다**"
+    got = home[:SIDE_FULL]
+    ok = sum(1 for x in got if str(x.get("result") or "") in ("W", "D"))
+    said = " ".join(str(x.get("result") or "?") for x in got)
+    return len(got), ok, (f"홈 {len(got)}경기 {said} — 승+무 **{ok}**"
+                          + (f" · ⚠️ {SIDE_FULL}경기 미만" if len(got) < SIDE_FULL
+                             else ""))
 
 
 def thin_kinds(variables, *, floor: int = 1) -> dict[str, list[str]]:
