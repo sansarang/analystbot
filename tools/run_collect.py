@@ -35,6 +35,55 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 
+#: 🔴🔴 **단계 장부** — 사용자 지시 2026-10-15: *"16단계 중 어느 하나 그냥
+#   넘어가면 안된다..모니터링 해라"*
+#
+#  꼴: `{단계: (상태, 한 줄)}` · 상태는 `✅ 돌았다` · `⬜ 못 돌았다` · `🔴 빈손`
+#  🔴 **빈손**은 돌았지만 산출이 0 인 것이다 — `✅` 와 **가른다**(#3).
+LEDGER: dict = {}
+
+#: 🔴 16단계의 **이름표** — 하나라도 장부에 없으면 보고가 빨개진다
+STEPS: tuple[str, ...] = (
+    "① 경기", "② fotmob(XI·결장·감독)", "②-b 선수단 교체", "③ 딥서치",
+    "④ 추출", "⑤ 검증", "⑤-b 포메이션·전략", "⑤-c 리그·컵 분석",
+    "3+5 통합", "⑥ LLM 표적 질의", "⑦ 표적 문서", "⑧ 표적 추출",
+    "⑩ 변수 배치", "⑬⑭ 상성·축", "⑮⑯ 확률·시뮬", "⑯ 종합 평(solar)")
+
+
+def mark(step: str, state: str, said: str = "") -> None:
+    """🔴 장부에 적는다. ⚠️ 적지 않으면 보고가 *"그냥 넘어갔다"* 로 센다."""
+    LEDGER[step] = (state, said)
+    print(f"    [장부] {step} — {state}" + (f" · {said[:110]}" if said else ""),
+          flush=True)
+
+
+def report_ledger() -> int:
+    """🔴🔴 **정직한 보고** — 돌은 칸·빈손 칸·안 돈 칸을 가른다. 돌려주는 것은
+    *"그냥 넘어간 칸 수"* 다(0 이어야 한다)."""
+    print("\n" + "=" * 66)
+    print("## 🔎 16단계 장부 — 어느 하나 그냥 넘어가면 안 된다")
+    print("=" * 66)
+    gone, empty, ok = [], [], []
+    for step in STEPS:
+        state, said = LEDGER.get(step, ("⬜ 안 적혔다", ""))
+        print(f"{state:<12} {step:<22} {said[:90]}")
+        if state.startswith("✅"):
+            ok.append(step)
+        elif state.startswith("🔴"):
+            empty.append(step)
+        else:
+            gone.append(step)
+    print("-" * 66)
+    print(f"✅ 돌았다 {len(ok)} · 🔴 빈손 {len(empty)} · ⬜ 안 돌았다 {len(gone)}")
+    if empty:
+        print(f"🔴 **빈손**(돌았는데 산출 0) — {empty}")
+    if gone:
+        print(f"⬜ **안 돌았다** — {gone}")
+    if not empty and not gone:
+        print("🟢 **16단계 전부 산출이 있다**")
+    return len(gone)
+
+
 async def main(argv: list[str]) -> int:
     from app import rules  # noqa: F401  (설정을 먼저 읽힌다)
     from app.core import absence as _ab
@@ -89,6 +138,8 @@ async def main(argv: list[str]) -> int:
     print(f"## ① 경기\n- {ref.home_name or ref.home} vs "
           f"{ref.away_name or ref.away} · {ref.competition} · "
           f"{ref.kickoff_utc}\n", flush=True)
+    mark("① 경기", "✅ 돌았다",
+         f"{ref.home_name or ref.home} vs {ref.away_name or ref.away}")
 
     # ── ② fotmob 구조 사실 (XI · 결장 사다리 · 감독)
     facts = await s2_facts.run(ref, state=st, net=net)
@@ -120,6 +171,18 @@ async def main(argv: list[str]) -> int:
     rungs = list(getattr(facts, "absence_rungs", None) or [])
     print("    🪜 사다리 — " + " / ".join(
         f"{r.get('rung')} {r.get('got')}건" for r in rungs) + "\n", flush=True)
+    n_xi = sum(1 for s2 in ("home", "away")
+               if dict(getattr(facts, "xi", None) or {}).get(
+                   str(getattr(ref, s2, "") or "")) is not None)
+    n_co = sum(1 for s2 in ("home", "away")
+               if str(getattr(dict(getattr(facts, "coach", None) or {}).get(
+                   str(getattr(ref, s2, "") or "")), "name", "") or ""))
+    n_ms = sum(len(v or []) for v in
+               dict(getattr(facts, "missing", None) or {}).values())
+    mark("② fotmob(XI·결장·감독)",
+         "✅ 돌았다" if n_xi else "🔴 빈손",
+         f"XI {n_xi}/2 · 감독 {n_co}/2 · 결장 {n_ms}명 · 사다리 "
+         + "/".join(f"{r.get('rung')}{r.get('got')}" for r in rungs))
 
     # ── ②-b 선수단 교체 — 🔴 s3 **앞**이다(파이프라인 순서 그대로 · 지시
     #    2026-10-10 ③). 재료는 `facts` 뿐이다(새 통신 0건).
@@ -128,6 +191,9 @@ async def main(argv: list[str]) -> int:
     for side, one in turn.items():
         print(f"- {side} — " + ("🔴 **켜졌다** · " if one.get("on") else "")
               + str(one.get("why") or "")[:160])
+    mark("②-b 선수단 교체", "✅ 돌았다",
+         " · ".join(f"{k} {'켜짐' if dict(v).get('on') else '꺼짐'}"
+                    for k, v in turn.items()))
     print(flush=True)
 
     # ── ③ 딥서치
@@ -135,6 +201,7 @@ async def main(argv: list[str]) -> int:
     docs = await s3_docs.run(ref, facts, state=st, chain=chain, net=net,
                              cache=cache)
     print(f"## ③ 딥서치 — 문서 **{len(docs)}건**\n", flush=True)
+    mark("③ 딥서치", "✅ 돌았다" if docs else "🔴 빈손", f"문서 {len(docs)}건")
 
     # ── ④⑤ 추출 · 검증
     cands = await s4_extract.run(ref, docs, state=st, chain=chain, net=net,
@@ -142,6 +209,9 @@ async def main(argv: list[str]) -> int:
     docs = list(cache.values()) or docs
     variables = s5_verify.run(ref, facts, docs, cands, state=st, turnover={})
     print(f"## ④⑤ 추출·검증 — 후보 {len(cands)} → 변수 **{len(variables)}개**")
+    mark("④ 추출", "✅ 돌았다" if cands else "🔴 빈손", f"후보 {len(cands)}개")
+    mark("⑤ 검증", "✅ 돌았다" if variables else "🔴 빈손",
+         f"변수 {len(variables)}개")
     for v in variables[:12]:
         print(f"- `{v.id}` [{v.type}] {str(v.claim or '')[:100]}"
               + (f" · 원천 {v.n_sources}곳" if getattr(v, "n_sources", 0) else ""))
@@ -173,12 +243,19 @@ async def main(argv: list[str]) -> int:
         print(f"    `{fid}` {str(txt)[:110]}")
     for bad in list(getattr(plan, "violations", None) or [])[:4]:
         print(f"- 🔴 {bad}")
+    mark("⑤-b 포메이션·전략",
+         "✅ 돌았다" if list(getattr(plan, "lines", None) or []) else "🔴 빈손",
+         f"판정 {getattr(plan, 'audit', '?')} · 줄 "
+         f"{len(list(getattr(plan, 'lines', None) or []))}개")
     print(flush=True)
 
     # ── 3+5 통합 — 사다리 칸 4 를 기사로 다시 센다
     got_r, why_r = _ab.recount(rungs, variables,
                                keys=[str(ref.home), str(ref.away)])
     print(f"## 3+5 통합\n- {why_r}\n", flush=True)
+    n4 = next((int(x.get("got") or 0) for x in got_r
+               if str(x.get("rung")) == "국내 기사"), 0)
+    mark("3+5 통합", "✅ 돌았다" if n4 else "🔴 빈손", f"칸 4 = {n4}건")
 
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **⑤-c 리그·컵 정보 분석**(지시 2026-10-14) — fotmob 표를 LLM 이 읽는다
@@ -197,6 +274,8 @@ async def main(argv: list[str]) -> int:
         print(f"- 변수 `{v.id}` [{v.type}] {str(v.claim or '')[:150]}")
     if not var_lr:
         print("- ⬜ **변수 없다** — 판단이 `모르겠다` 거나 표를 못 받았다")
+    mark("⑤-c 리그·컵 분석", "✅ 돌았다" if var_lr else "🔴 빈손",
+         f"변수 {len(var_lr)}개 · {str(why_lr)[:80]}")
     print(flush=True)
 
     # ── ⑥ LLM 이 **질의를 쓴다**(못 찾은 칸만)
@@ -236,6 +315,10 @@ async def main(argv: list[str]) -> int:
     said_langs = s4b_gapsearch.langs_of()
     print(f"- 언어 순서 — {said_langs}")
     pairs: list = []
+    for one in qs:
+        lg = said_langs[0]
+    mark("⑥ LLM 표적 질의", "✅ 돌았다" if qs else "🔴 빈손",
+         f"질의 {len(qs)}개 · {str(why_q)[:70]}")
     for one in qs:
         lg = said_langs[0]
         if len(said_langs) > 1 and str(ref.away_name or "") in one:
@@ -278,6 +361,8 @@ async def main(argv: list[str]) -> int:
             ref, state=st, chain=chain, net=net, cache=cache,
             queries=mine, sub=sub, tag=f"gap-{side}")
     print(f"- 표적 문서 **{len(got_docs)}건**")
+    mark("⑦ 표적 문서", "✅ 돌았다" if got_docs else "🔴 빈손",
+         f"문서 {len(got_docs)}건")
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **0건이면 어디서 떨어졌나를 적는다**(규율 #3 조용한 0 금지)
     # ══════════════════════════════════════════════════════════════════
@@ -324,6 +409,8 @@ async def main(argv: list[str]) -> int:
                     print(f"    🔴 버림 {what[:60]} — "
                           f"{getattr(d, 'reason', '?')} · "
                           f"{str(getattr(d, 'detail', '') or '')[:110]}")
+        mark("⑧ 표적 추출", "✅ 돌았다" if said_v2 else "🔴 빈손",
+             f"후보 {len(more)} → 변수 {len(said_v2)}개")
         for v in said_v2:
             print(f"- `{v.id}` [{v.type}] {str(v.claim or '')[:110]}"
                   + (f" · 원천 {v.n_sources}곳" if getattr(v, "n_sources", 0)
@@ -340,6 +427,7 @@ async def main(argv: list[str]) -> int:
             print(f"- 🔴 {bad}")
     else:
         print("## ⑧ 표적 추출 — ⬜ **문서 0건이라 안 돌렸다**")
+        mark("⑧ 표적 추출", "⬜ 안 돌았다", "표적 문서가 0건이다")
     print(flush=True)
 
     # ══════════════════════════════════════════════════════════════════
@@ -364,6 +452,10 @@ async def main(argv: list[str]) -> int:
         print(f"- `{row.id}` [{row.type}] 자리 {row.places} {hit}")
     for bad in varset.fails[:4]:
         print(f"- 🔴 {bad}")
+    AXm = {"axis0", "axis1", "axis2", "axis3", "lambda_const"}
+    n_hit = sum(1 for r in varset.rows if set(r.places) & AXm)
+    mark("⑩ 변수 배치", "✅ 돌았다" if varset.rows else "🔴 빈손",
+         f"변수 {len(varset.rows)}개 · 확률에 닿는 것 {n_hit}개")
     print(flush=True)
 
     print("## ⑬ 상성 재료 + ⑭ 축 판정", flush=True)
@@ -380,6 +472,10 @@ async def main(argv: list[str]) -> int:
                   f"· 근거 {list(getattr(ax, 'refs', None) or []) or '없다'}")
     print(f"- 축 종합 — {float(getattr(mr, 'total', 0.0) or 0.0):+.4f}\n",
           flush=True)
+    n_ax = sum(1 for k in ("axis0", "axis1", "axis2", "axis3")
+               if getattr(mr.axis(k), "home", None) is not None)
+    mark("⑬⑭ 상성·축", "✅ 돌았다" if n_ax else "🔴 빈손",
+         f"선 축 {n_ax}/4 · 종합 {float(getattr(mr, 'total', 0.0) or 0.0):+.4f}")
 
     print("## ⑮ 확률 + ⑯ 시뮬", flush=True)
     prob = _pm.run(ref, facts, mr, varset, edge=edge, state=st)
@@ -392,6 +488,9 @@ async def main(argv: list[str]) -> int:
     print(f"- 오버 — " + " · ".join(
         f"{k} {float(v):.1%}" for k, v in list(dict(prob.over or {}).items())[:5]))
     print(f"- 유도 — {str(prob.why or '')[:420]}\n", flush=True)
+    mark("⑮⑯ 확률·시뮬", "✅ 돌았다",
+         f"홈 {prob.home:.1%}/무 {prob.draw:.1%}/원정 {prob.away:.1%} · "
+         f"스코어 칸 {len(dict(prob.scores or {}))}개")
 
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **⑯ 종합 평 — solar**(지시 2026-10-15)
@@ -404,6 +503,11 @@ async def main(argv: list[str]) -> int:
     for one in said_box:
         print(f"    │ {one[:170]}")
     print()
+    said_verdict, said_bad = _vd.judge(said_vd, said_box)
+    mark("⑯ 종합 평(solar)",
+         "✅ 돌았다" if said_vd is not None else "🔴 빈손",
+         f"지어냄 판정 **{said_verdict}**"
+         + (f" · 위반 {len(said_bad)}건" if said_bad else ""))
     print(_vd.said_of(said_vd, said_box))
     print(flush=True)
 
@@ -414,7 +518,9 @@ async def main(argv: list[str]) -> int:
     except Exception:                                       # noqa: BLE001
         pass
     print(f"\n## 비용\n- 월 ${mo:.4f} · 오늘(UTC) ${day:.4f}", flush=True)
-    return 0
+    # 🔴🔴 **정직한 보고** — 그냥 넘어간 칸이 있으면 돌림값이 0 이 아니다
+    n_gone = report_ledger()
+    return 0 if n_gone == 0 else 5
 
 
 if __name__ == "__main__":

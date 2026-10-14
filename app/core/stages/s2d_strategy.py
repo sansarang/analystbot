@@ -5,9 +5,18 @@
 > 한 줄 이유.
 > 코드 검사: 판정이 **2-1 수치와 반대면 버린다**.
 
-🔴 **예상 XI 로는 돌지 않는다**(§1) — 두 팀 중 하나라도 확정이 아니면
-   `audit="확정 XI 전"` 으로 끝낸다. ⚠️ 예상 XI 는 우리가 **빈도로 지은 것**이라
-   그것으로 전략을 읽으면 *"평소 그대로"* 가 늘 나온다(동어반복이다).
+## 🔴🔴 **예상 XI 에서도 돈다**(사용자 지시 2026-10-15: *"5번 규칙 푼다"*)
+종전 §1 은 *"두 팀 중 하나라도 확정이 아니면 `audit='확정 XI 전'` 으로 끝낸다"*
+였다. 🔴 **직접 지시가 그것을 풀었다.**
+
+⚠️ 그런데 그 문턱의 까닭은 **살아 있다** — 적어 둔다:
+> 예상 XI 는 우리가 **빈도로 지은 것**이라 그것으로 전략을 읽으면 *"평소
+> 그대로"* 가 늘 나온다(**동어반복**이다).
+
+🔴 그래서 풀되 **꼬리표를 단다**: 예상 XI 로 판정하면 `audit` 이
+   `예상 XI 판정` 이고, 그 사실이 카드·보고에 **그대로** 보인다. 확정 XI 가
+   오면 ⑲ 가 다시 돌아 `통과` 로 바뀐다.
+⚠️ 그래도 **확률은 안 움직인다**(아래 절대규칙 5 그대로) — 판정만 낸다.
 🔴 **확률을 움직이지 않는다** — 이 단계는 **판정**만 낸다. 이동량은
    `app/core/reweight.py`·`config/strategy_effects.yaml` 이 정한다(절대규칙 5).
 """
@@ -49,13 +58,22 @@ def run(ref: MatchRef, facts: Facts, *, state: RunState,
     reads["away"].facts = [type(f)(id=f"A{f.id[1:]}", kind=f.kind, text=f.text,
                                    value=f.value)
                            for f in reads["away"].facts]
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **예상 XI 에서도 돈다**(사용자 지시 2026-10-15 *"5번 규칙 푼다"*)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 종전엔 여기서 `audit="확정 XI 전"` 으로 **끝냈다**. 🔴 직접 지시가
+    #     그 문턱을 풀었다 — 다만 **까닭이 사라진 것은 아니다**(머리말 참조):
+    #     예상 XI 는 빈도로 지은 것이라 *"평소 그대로"* 가 늘 나온다.
+    #  🔴 그래서 **멈추지 않고 꼬리표를 단다** — `audit="예상 XI 판정"`.
+    #     그 글자가 카드·보고에 그대로 보여 사람이 가린다(#3).
+    said_pre = ""
     if not all(g.confirmed for g in reads.values()):
-        said = " · ".join(f"{s}: {g.why}" for s, g in reads.items()
-                          if not g.confirmed)
-        state.note(f"s2d 전략 — {said}")
-        logger.info("[s2d] **확정 XI 전** — %s", said[:160])
-        return StrategyOut(audit="확정 XI 전",
-                           violations=[said], facts=box)
+        said_pre = " · ".join(f"{s}: {g.why}" for s, g in reads.items()
+                              if not g.confirmed)
+        state.note(f"s2d 전략 — 🟡 **예상 XI 로 판정한다**(지시 2026-10-15 "
+                   f"규칙 풀림) — {said_pre}")
+        logger.info("[s2d] 🟡 예상 XI 판정 — %s", said_pre[:160])
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **LLM 호출을 지웠다**(지시서 2026-10-12(셋째) §1 처분 · 계약 X2)
     # ══════════════════════════════════════════════════════════════════
@@ -67,8 +85,15 @@ def run(ref: MatchRef, facts: Facts, *, state: RunState,
     #     핵심 선발 여부로 짓는다. ⚠️ 그 수가 확률을 움직이지는 않는다(표시다).
     from app.core.schema import StrategyOut as _SO
     got = _SO(lines=_code_lines(reads, box), audit="코드 판정", facts=box)
+    # 🔴🔴 **꼬리표** — 예상 XI 로 판정했으면 그 글자를 `audit` 에 남긴다
+    #    (사용자 지시 2026-10-15 *"5번 규칙 푼다"*). ⚠️ 동어반복 위험이 살아
+    #    있으므로 사람이 그 꼴을 **보고 가려야** 한다(#3).
+    said_audit = ("🟡 **예상 XI 판정**(확정 전 · 규칙 풀림 2026-10-15)"
+                  if said_pre else "코드 판정(LLM 없음)")
     return _settle(got, ref, facts, reads, turnover, box, state=state,
-                   audit="코드 판정(LLM 없음)", violations=[])
+                   audit=said_audit,
+                   violations=([f"🟡 예상 XI 로 판정했다 — {said_pre}"]
+                               if said_pre else []))
 
 
 def _settle(got, ref: MatchRef, facts: Facts, reads: dict,

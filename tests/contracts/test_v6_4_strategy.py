@@ -27,11 +27,19 @@ def _xi(team: str, state: str, names: list[str], *, formation: str = "4-4-2",
               bench=[str(x) for x in (bench or [])])
 
 
-def test_v6_예상_XI_로는_전략을_판정하지_않는다():
-    """🔴🔴 §1 — *"예상 XI 로는 전략을 추론하지 않는다"*.
+def test_v6_예상_XI_판정에는_꼬리표가_붙는다():
+    """🔴🔴 **규칙이 풀렸다** — 사용자 지시 2026-10-15: *"5번 규칙 푼다"*.
 
-    ⚠️ 돌연변이: `strategy.read` 가 상태를 안 보면 — 예상 XI(우리가 **빈도로 지은
-       것**)로 전략을 읽게 되고 *"평소 그대로"* 가 늘 나온다(동어반복).
+    종전 §1 은 *"예상 XI 로는 전략을 추론하지 않는다"* 였고 이 계약이 그것을
+    지켰다. 🔴 **직접 지시가 덮었다** — 이제 예상 XI 에서도 **돈다**.
+
+    ⚠️ 그런데 그 문턱의 까닭은 **살아 있다**:
+    > 예상 XI 는 우리가 **빈도로 지은 것**이라 그것으로 전략을 읽으면
+    > *"평소 그대로"* 가 늘 나온다(**동어반복**).
+
+    🔴 그래서 계약이 지키는 것이 **바뀌었다**: 멈추는지가 아니라
+       **꼬리표가 붙는지**를 센다. 꼬리표가 없으면 사람이 그 판정을 확정 XI
+       판정과 구별할 수 없다(#3).
     """
     from app.core import strategy
     from app.core.schema import Facts
@@ -40,14 +48,21 @@ def test_v6_예상_XI_로는_전략을_판정하지_않는다():
     ref = _ref()
     facts = Facts(xi={ref.home: _xi(ref.home, "predicted", [f"P{i}" for i in range(11)]),
                       ref.away: _xi(ref.away, "predicted", [f"Q{i}" for i in range(11)])})
+    # 🔴 `strategy.read` 는 **그대로** 다 — 확정 여부를 여전히 정직하게 적는다
     for side in ("home", "away"):
         got = strategy.read(ref, facts, side=side)
         assert not got.confirmed, side
         assert "확정 XI 전" in got.why, got.why
-        assert not got.facts, "🔴 예상 XI 로 사실을 만들었다"
     out = s2d_strategy.run(ref, facts, state=RunState(match_key="x:1"))
-    assert out.audit == "확정 XI 전", out.audit
-    assert not out.lines, "🔴 예상 XI 로 판정을 냈다"
+    # 🔴🔴 **멈추지 않는다**(규칙이 풀렸다)
+    assert out.audit != "확정 XI 전", (
+        "🔴 아직 멈춘다 — 사용자 지시 2026-10-15 가 그 규칙을 풀었다")
+    # 🔴🔴 그러나 **꼬리표가 있어야** 한다
+    assert "예상 XI" in str(out.audit), (
+        f"🔴🔴 꼬리표가 없다 — `{out.audit}`. 확정 XI 판정과 **구별이 안 되면** "
+        "동어반복(*'평소 그대로'*)을 확정 판정으로 읽는다")
+    assert any("예상 XI" in str(x) for x in (out.violations or [])), (
+        f"🔴 사유에도 남아야 한다 — {out.violations}")
 
 
 # ⚠️ **걷은 시험** — `s2d_strategy.check`(LLM 전략 판정의 검열)가 §1 처분
