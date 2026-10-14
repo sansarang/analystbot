@@ -236,19 +236,33 @@ def score_grid(*, lam_home: float, lam_away: float, rho: float = 0.0,
     return {k: v / tot for k, v in out.items()}
 
 
-def markets_of(grid: dict) -> dict:
+#: 🔴 카드가 쓰는 기준선 — 바꾸면 카드 글이 바뀐다(스냅샷이 빨개진다)
+AH_LINES = (-2.5, -1.5, -0.5, 0.5, 1.5, 2.5)
+TOTAL_LINES = (0.5, 1.5, 2.5, 3.5, 4.5)
+#: 🔴🔴 **국내 보드의 0.5 단위 전부**(의심 검증 v2 §1-2 · 정수 기준선은 승·무·패
+#   세 갈래다). ⚠️ 카드는 위 `AH_LINES` 만 쓴다 — 이 넓은 표는 **근사 보드**
+#   (`tools/fit_board_hist.py`)가 *"50% 에 가장 가까운 기준선"* 을 고를 때 쓴다.
+AH_LINES_FULL = tuple(x / 2 for x in range(-6, 7))
+TOTAL_LINES_FULL = tuple(x / 2 for x in range(1, 12))
+
+
+def markets_of(grid: dict, *, ah_lines: tuple | None = None,
+               total_lines: tuple | None = None) -> dict:
     """🔴🔴 **P2** — 승무패·오버·핸디·BTTS 를 **그 격자 하나**에서 센다.
 
     ⚠️ 한 마켓이라도 다른 곳에서 세면 카드의 두 줄이 **서로 다른 말**을 한다.
+    🔴 `ah_lines`·`total_lines` 는 **세는 기준선만** 바꾼다(세는 규칙은 하나다) —
+       근사 보드가 0.5 단위 **전부**를 물어야 해서 열어 뒀다(§1-4). 기본값은
+       카드가 쓰는 표이므로 **카드 글은 안 바뀐다**.
     """
     out: dict = {"home": 0.0, "draw": 0.0, "away": 0.0,
                  "btts_yes": 0.0, "btts_no": 0.0,
                  "over": {}, "ah": {}}
-    tot_lines = (0.5, 1.5, 2.5, 3.5, 4.5)
+    tot_lines = tuple(total_lines or TOTAL_LINES)
     over = dict.fromkeys(tot_lines, 0.0)
     # 🔴 **양쪽 줄을 다 센다** — 약팀이 홈일 수도 원정일 수도 있다(§11).
     #  ⚠️ 실사고 2026-10-12: 홈 줄만 만들어 `away+0.5` 에서 터졌다(e2e 가 잡았다).
-    lines = (-2.5, -1.5, -0.5, 0.5, 1.5, 2.5)
+    lines = tuple(ah_lines or AH_LINES)
     ah = {f"{side}{l:+.1f}": 0.0 for side in ("home", "away") for l in lines}
     for (h, a), p in dict(grid).items():
         if h > a:

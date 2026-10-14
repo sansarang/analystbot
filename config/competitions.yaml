@@ -17,6 +17,23 @@
 #    자체 Elo·기준 모델·홈 이점 표·리그 평균이 **한꺼번에** 비어 카드가 변수 1개로
 #    나갔다. 별칭 하나를 더하는 것으로는 다음 출처에서 또 터진다.
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **`football_data_hist` — 백필 보드 원천**(의심 검증 v2 §1-4)
+# ══════════════════════════════════════════════════════════════════
+#
+#  과거 **마감 배당**(그 경기의 "보드 한 줄")을 어디서 받나. 꼴 둘:
+#    `{kind: mmz4281, code: E1}` → `mmz4281/<시즌2자리>/<code>.csv`
+#        승무패(`B365CH/CD/CA`) · 아시안 핸디(`AHCh`·`B365CAHH/AHA`) ·
+#        O/U 2.5(`B365C>2.5`·`B365C<2.5`) — 🔴 `C` 는 **마감**이다.
+#    `{kind: extra, file: JPN, league: "J1 League"}` → `new/<file>.csv`
+#        ⚠️ **승무패뿐이다**(`PSCH/CD/CA`) — 핸디·언오버는 **근사 보드**가 된다.
+#  🔴 코드는 **받아서 확인했다**(2026-10-14 · `Div` 열과 첫 경기 이름을 봤다).
+#  ⚠️ `football_data`(위) 와 **다른 값이다** — 그쪽은 Elo 기준 모델의 코드다
+#     (`league:ELC` 는 거기선 `ELC`, 여기선 `E1`).
+#  ⚠️ 칸이 **없으면** 그 리그는 `근사 보드`로 간다(판정표에서 따로 집계된다).
+#  🔴 `new/KOR.csv` 는 **쓰지 않는다** — 받아 보니 내용이 `Eliteserien`
+#     (노르웨이)이다(실측 2026-10-14). K리그1 은 근사로 간다.
+
 #: 🔴 표기를 받아서 확인한 날 — `tools/check_competitions.py` 가 적는다
 checked_at: "2026-10-09"
 
@@ -69,6 +86,7 @@ keys:
     kind: domestic_league
     names: ["premier league", "epl", "프리미어"]
     sources:
+      football_data_hist: {kind: mmz4281, code: E0}
       espn_slugs: ["eng.1"]
       fotmob_ids: [47]
       fotmob_names: ["Premier League"]
@@ -79,6 +97,7 @@ keys:
     kind: domestic_league
     names: ["laliga", "la liga", "라리가", "primera", "la liga", "라 리가"]
     sources:
+      football_data_hist: {kind: mmz4281, code: SP1}
       espn_slugs: ["esp.1"]
       fotmob_ids: [87]
       fotmob_names: ["LaLiga"]
@@ -90,6 +109,7 @@ keys:
     kind: domestic_league
     names: ["세리에 a", "세리에a"]
     sources:
+      football_data_hist: {kind: mmz4281, code: I1}
       espn_slugs: ["ita.1"]
       fotmob_ids: [55]
       fotmob_names: ["Serie A"]
@@ -100,6 +120,7 @@ keys:
     kind: domestic_league
     names: ["bundesliga", "분데스리가"]
     sources:
+      football_data_hist: {kind: mmz4281, code: D1}
       espn_slugs: ["ger.1"]
       fotmob_ids: [54]
       fotmob_names: ["Bundesliga"]
@@ -110,6 +131,7 @@ keys:
     kind: domestic_league
     names: ["ligue 1", "리그앙", "리그 1"]
     sources:
+      football_data_hist: {kind: mmz4281, code: F1}
       espn_slugs: ["fra.1"]
       fotmob_ids: [53]
       fotmob_names: ["Ligue 1"]
@@ -120,6 +142,7 @@ keys:
     kind: domestic_league
     names: ["eredivisie", "에레디비시"]
     sources:
+      football_data_hist: {kind: mmz4281, code: N1}
       espn_slugs: ["ned.1"]
       fotmob_ids: [57]
       fotmob_names: ["Eredivisie"]
@@ -130,6 +153,7 @@ keys:
     kind: domestic_league
     names: ["liga portugal", "primeira liga", "프리메이라"]
     sources:
+      football_data_hist: {kind: mmz4281, code: P1}
       espn_slugs: ["por.1"]
       fotmob_ids: [61]
       fotmob_names: ["Liga Portugal"]
@@ -140,6 +164,7 @@ keys:
     kind: domestic_league
     names: ["championship", "챔피언십"]
     sources:
+      football_data_hist: {kind: mmz4281, code: E1}
       espn_slugs: ["eng.2"]
       fotmob_ids: [48]
       fotmob_names: ["Championship"]
@@ -152,6 +177,7 @@ keys:
     #    `ccode: BRA` 이며 표에 Flamengo·Palmeiras 가 있다(받아서 확인).
     names: ["brasileir", "브라질", "serie a - brazil", "série a"]
     sources:
+      football_data_hist: {kind: extra, file: BRA, league: "Serie A"}
       espn_slugs: ["bra.1"]
       fotmob_ids: [268]
       fotmob_names: ["Série A"]
@@ -186,6 +212,7 @@ keys:
     kind: domestic_league
     names: ["j1 league", "j. league", "j리그1", "j1리그"]
     sources:
+      football_data_hist: {kind: extra, file: JPN, league: "J1 League"}
       espn_slugs: ["jpn.1"]
       fotmob_ids: [223]
       fotmob_names: ["J. League"]
@@ -196,6 +223,7 @@ keys:
     #    · `ccode: ARG`. ⚠️ ESPN 슬러그는 확인하지 않았다(적지 않는다).
     names: ["liga profesional", "아르헨티나", "리가 프로페시오날"]
     sources:
+      football_data_hist: {kind: extra, file: ARG, league: "Liga Profesional"}
       fotmob_ids: [112]
       fotmob_names: ["Liga Profesional"]
     # ⚠️ **기준 모형이 없다** — 자체 Elo 도 적합도 안 돌렸다(기준 열은 빈다)
@@ -302,6 +330,7 @@ keys:
     kind: domestic_league
     names: ["major league soccer", "mls"]
     sources:
+      football_data_hist: {kind: extra, file: USA, league: "MLS"}
       espn_slugs: ["usa.1"]
       fotmob_ids: [130]
       fotmob_names: ["MLS"]

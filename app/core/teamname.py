@@ -56,15 +56,43 @@ ALIAS = {
 #: 🔴 여자팀 꼬리표 — 이 낱말이 한쪽에만 있으면 **다른 팀**이다
 WOMEN = {"w", "women", "feminine", "femenino", "여자"}
 
+#: 🔴🔴 **두 낱말 별칭**(§1-3 · 실측 2026-10-14) — 한 낱말로는 못 가르는 약칭.
+#:
+#:  ⚠️ `football-data` 의 `Ath Madrid` 는 **아틀레티코**이고 `Ath Bilbao` 는
+#:     **아틀레틱**이다 — `ath` 하나만 보면 둘이 같아지고, 거기에 `madrid` 가
+#:     `Real Madrid` 와도 반쪽 겹쳐 *"후보가 둘 이상"* 으로 떨어졌다(라리가
+#:     백필 실보드 **140줄**이 그렇게 빠졌다).
+#:  🔴 그래서 **낱말 쪼개기 전에** 글자를 바꾼다. 추측이 아니라 그 파일이 쓰는
+#:     표기다(받아서 확인했다 · `mmz4281/2526/SP1.csv`).
+PHRASE = {
+    "ath madrid": "atletico madrid", "ath bilbao": "athletic bilbao",
+    "espanol": "espanyol", "sp lisbon": "sporting lisbon",
+    "sp braga": "sporting braga", "vallecano": "rayo vallecano",
+    "for sittard": "fortuna sittard", "la coruna": "deportivo coruna",
+}
+
 
 def _core(said: str) -> set[str]:
-    """🔴 속 낱말 — 소문자·꼬리말 제거."""
+    """🔴 속 낱말 — 소문자·꼬리말 제거 · **분음 부호도 걷는다**.
+
+    🔴 분음 부호를 걷는 곳은 `teamref._plain` **하나**다(사본 금지) — 한글·가나를
+       자모로 쪼개지 않는 규칙이 거기에 있다(그 함수 머리말의 실사고 둘).
+    ⚠️ 실측 2026-10-14: 걷지 않아서 `Alaves`↔`Deportivo Alavés` ·
+       `Malaga`↔`Málaga` 가 **한 낱말도 안 겹쳤다** — 라리가 백필 실보드가
+       그만큼 빠졌다.
+    """
+    from app.teamref import _plain
+    flat = _plain(str(said or "")).lower()
+    # 🔴 **두 낱말 별칭을 먼저** 바꾼다(쪼갠 뒤에는 못 본다)
+    for bad, good in PHRASE.items():
+        if bad in flat:
+            flat = flat.replace(bad, good)
     # ⚠️ 한 글자 토막은 버린다(`F.C.` → `f`·`c` 가 남아 겹침을 어지럽힌다)
     got = {ALIAS.get(w, w) for w in
-           str(said or "").lower().replace(".", " ").replace("-", " ")
+           flat.replace(".", " ").replace("-", " ")
            .replace("(", " ").replace(")", " ").replace("'", " ").split()
            if w and len(w) > 1 and w not in NOISE}
-    return got or {w for w in str(said or "").lower().split() if w}
+    return got or {w for w in flat.split() if w}
 
 
 def is_women(said: str) -> bool:
@@ -118,6 +146,25 @@ def pick(name: str, keys) -> tuple[str, str]:
         return "", f"⬜ `{said}` 가 판에 없다(적힌 팀 {len(rows)}개)"
     top = max(h[0] for h in hits)
     best = [k for s, k in hits if s >= top]
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **같은 비율이면 겹친 낱말이 많은 쪽**(§1-3 · 실측 2026-10-14)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ `share` 는 **비율**이라 짧은 이름이 유리하다. 실측: `Sheffield Weds` 가
+    #     `Sheffield United`(겹침 `sheffield` 하나 ÷ 1 = **1.00**)와
+    #     `Sheffield Wednesday`(`sheffield`·`wednesday` ÷ 2 = **1.00**)에
+    #     똑같이 1.00 이 나와 *"후보가 둘 이상"* 으로 떨어졌다(ELC 백필 46줄).
+    #  🔴 그때는 **겹친 낱말 수**가 가른다 — 둘이 겹친 쪽이 맞는 팀이다.
+    #  ⚠️ 그래도 같으면 **고르지 않는다**(지어내지 않는다 · #4).
+    if len(best) > 1:
+        mine = _core(said)
+        deep = {k: len(mine & _core(k)) for k in best}
+        most = max(deep.values())
+        narrow = [k for k in best if deep[k] == most]
+        if len(narrow) == 1:
+            return narrow[0], (f"이름 맞춤 `{narrow[0]}`(속 낱말 {top:.0%} 같고 "
+                               f"겹친 낱말 {most}개 — 후보 {len(best)}개 중 최다)")
+        best = narrow
     if len(best) > 1:
         return "", (f"⬜ `{said}` 는 후보가 둘 이상이다 — "
                     f"{' · '.join(sorted(best)[:4])}(고르지 않는다)")
