@@ -72,20 +72,37 @@ def main() -> int:
     print(f"- ⚠️ **승무패 줄만** 센다 — 보드 핸디·언오버 칸은 그 경기 보드의 "
           f"메인 라인 하나로 쟀고 재생 줄에는 보드가 없다({', '.join(AFTER_KINDS)}).")
     print()
+    # 🔴 **묶음을 깃발로 정한다** — 깃발을 세는 곳은 `fit_doubt.wide_rows`
+    #    하나다(사본 금지 · 거기서 H1 을 누설 없이 센다).
+    from fit_doubt import wide_rows
+    said_w, _why_w = wide_rows()
+    bad_of = {(str(o.get("league")), str(o.get("day")), str(o.get("home")),
+               str(o.get("away"))): (1 if dict(o.get("flag") or {})["H1"]
+                                     else 0)
+              for o in said_w if dict(o.get("flag") or {}).get("H1") is not None}
+    print(f"- 묶음을 정한 경기 **{len(bad_of)}** (H1 을 센 줄) · "
+          f"⚠️ J1 은 보드가 필요해 **못 센다**(판의 `오염` 칸)")
+    print()
     # ── 경기마다 **봇이 앞세운 승무패 줄** 하나
     got: list[dict] = []
     for r in rows:
+        key = (str(r.get("league")), str(r.get("day")), str(r.get("home")),
+               str(r.get("away")))
+        if key not in bad_of:
+            continue        # 🔴 묶음을 못 정하는 경기는 **센다 치지 않는다**
+        n_bad = bad_of[key]
         said_lines = [x for x in lines_of([float(x) for x in r["lam"][:2]],
                                           int(r["hg"]), int(r["ag"]))
                       if x[0] in AFTER_KINDS]
         if not said_lines:
             continue
         name, p, ok = max(said_lines, key=lambda x: x[1])
-        cell = _db.cell_for(box, _db.kind_of(name), float(p), 0)
+        cell = _db.cell_for(box, _db.kind_of(name), float(p), n_bad)
         got.append({"name": name, "p": float(p), "ok": int(bool(ok)),
                     "after": (None if cell is None or cell.get("보류")
                               else float(cell["실측"])),
                     "cell": ("" if cell is None else str(cell.get("구간"))),
+                    "n_bad": n_bad,
                     "day": str(r.get("day")), "league": str(r.get("league")),
                     "season": str(r.get("season") or "")})
     pair = [x for x in got if x["after"] is not None]
@@ -100,6 +117,8 @@ def main() -> int:
     print("|---|---|---|---|---|---|---|---|---|")
     for lo, hi in BANDS:
         part = [x for x in pair if lo <= x["p"] < hi]
+        # ⚠️ 한 구간에 **묶음 0 과 1 이 섞인다** — 그 수도 적는다
+        n1 = sum(1 for x in part if x["n_bad"] >= 1)
         if not part:
             print(f"| {lo:.0%}~{hi - 0.01:.0%} | 0 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ "
                   f"| ⬜ | ⬜ |")
@@ -109,9 +128,9 @@ def main() -> int:
         p_bot = sum(x["p"] for x in part) / n
         p_aft = sum(x["after"] for x in part) / n
         e_bot, e_aft = abs(p_bot - real), abs(p_aft - real)
-        print(f"| {lo:.0%}~{hi - 0.01:.0%} | {n} | {p_bot:.1%} | "
-              f"**{p_aft:.1%}** | {real:.1%} | [{r_lo:.1%}, {r_hi:.1%}] | "
-              f"{e_bot:.1%} | {e_aft:.1%} | "
+        print(f"| {lo:.0%}~{hi - 0.01:.0%} | {n}(의심1 {n1}) | "
+              f"{p_bot:.1%} | **{p_aft:.1%}** | {real:.1%} | "
+              f"[{r_lo:.1%}, {r_hi:.1%}] | {e_bot:.1%} | {e_aft:.1%} | "
               + ("🔴 **의심 후**" if e_aft < e_bot else "봇") + " |")
     print()
     b_bot = brier([(x["p"], x["ok"]) for x in pair])
@@ -132,7 +151,8 @@ def main() -> int:
     days = len({x["day"] for x in got}) or 1
     sure = []
     for x in pair:
-        cell = _db.cell_for(box, _db.kind_of(x["name"]), x["p"], 0)
+        cell = _db.cell_for(box, _db.kind_of(x["name"]), x["p"],
+                            int(x["n_bad"]))
         if cell is None or cut is None:
             continue
         if (float(cell["실측"]) >= float(cut)

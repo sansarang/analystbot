@@ -65,14 +65,19 @@ def lines_of(lam: list[float], hg: int, ag: int) -> list[tuple]:
 AFTER_KINDS = ("홈 승", "원정 승", "무")
 
 
-def _swap(after: dict, got: list[tuple]) -> list[tuple]:
-    """🔴 줄 확률을 **칸 실측**으로 바꾼다. 보정표가 안 덮는 줄은 **버린다**."""
+def _swap(after: dict, got: list[tuple], *, n_bad: int = 0) -> list[tuple]:
+    """🔴 줄 확률을 **칸 실측**으로 바꾼다. 보정표가 안 덮는 줄은 **버린다**.
+
+    🔴 `n_bad` 는 **유효 불리 의심 개수**다 — 묶음이 달라지면 칸이 달라진다.
+       ⚠️ 0 으로 고정하면 H1 걸린 경기도 묶음 0 칸으로 재게 되어 문턱이 **낙관**
+          쪽으로 치우친다(묶음 1 칸의 실측이 5%p 낮다 · 실측 2026-10-14).
+    """
     from app.core import doubt as _db
     out: list[tuple] = []
     for nm, p, ok in got:
         if nm not in AFTER_KINDS:
             continue
-        cell = _db.cell_for(after, _db.kind_of(nm), float(p), 0)
+        cell = _db.cell_for(after, _db.kind_of(nm), float(p), n_bad)
         if cell is not None and not cell.get("보류"):
             out.append((nm, float(cell["실측"]), ok))
     return out
@@ -128,17 +133,33 @@ def main() -> int:
     # 🔴 `--after` 는 보정표를 읽어 **칸 실측**으로 바꾼다(그 식은 `core/doubt`
     #    하나다 — 여기서 다시 짜지 않는다).
     after = None
+    bad_of: dict = {}
     if args.after:
         from app.core import doubt as _db
         after = _db.plates()
         if not after:
             print("🔴 보정표가 없다 — `tools/fit_doubt.py` 를 먼저 돌려라")
             return 1
+        # 🔴 **묶음을 깃발로 정한다** — 깃발을 세는 곳은 `fit_doubt.wide_rows`
+        #    하나다(사본 금지 · 거기서 H1 을 누설 없이 센다).
+        from fit_doubt import wide_rows
+        said_w, _why_w = wide_rows()
+        for one in said_w:
+            flag = dict(one.get("flag") or {})
+            if flag.get("H1") is None:
+                continue
+            bad_of[(str(one.get("league")), str(one.get("day")),
+                    str(one.get("home")), str(one.get("away")))] = (
+                1 if flag["H1"] else 0)
     for r in rows:
         got = lines_of([float(x) for x in r["lam"][:2]], int(r["hg"]),
                        int(r["ag"]))
         if after is not None:
-            got = _swap(after, got)
+            key = (str(r.get("league")), str(r.get("day")),
+                   str(r.get("home")), str(r.get("away")))
+            if key not in bad_of:
+                continue        # 🔴 묶음을 못 정하는 경기는 **센다 치지 않는다**
+            got = _swap(after, got, n_bad=bad_of[key])
         if want is not None:
             got = [x for x in got if x[0] in want]
             if not got:
@@ -193,7 +214,11 @@ def main() -> int:
             # 🔴 `--after` 면 **같은 자**를 쓴다 — 위 표는 의심 후인데 이 표만
             #    봇 원확률이면 두 표가 서로 다른 말을 한다(실측 10-14: 그랬다).
             if after is not None:
-                swap = _swap(after, [(nm, p, ok)])
+                key = (str(r.get("league")), str(r.get("day")),
+                       str(r.get("home")), str(r.get("away")))
+                if key not in bad_of:
+                    continue
+                swap = _swap(after, [(nm, p, ok)], n_bad=bad_of[key])
                 if not swap:
                     continue
                 p = swap[0][1]

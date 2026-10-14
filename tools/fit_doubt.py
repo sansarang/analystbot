@@ -117,8 +117,9 @@ def wide_rows() -> list[dict]:
     🔴 **승무패 방향은 보드가 필요 없다** — 봇이 앞세운 쪽이 맞았나뿐이다.
        그래서 백필 보드가 없는 리그·시즌도 **그대로 쓸 수 있다**.
     ⚠️ `보드 핸디`·`보드 언오버` 는 **보드 기준선이 있어야** 하므로 넓히지 않는다.
-    ⚠️ 재생본에는 `extra`(골 시각·선발·xG)가 없어 **의심 깃발을 못 센다** →
-       넓힌 줄은 **묶음 0** 칸에만 들어간다(그 사실을 판에 적는다).
+    ⚠️ 재생본에는 `extra`(골 시각·선발·xG)가 없다 — 그래도 **H1(순위 동기)은
+       센다**(그 시즌 누적 승점/경기뿐이다). J1 은 보드가 있어야 하므로 못 센다
+       → 묶음 0·1 **둘 다** 넓히되 **J1 을 못 쟀다는 사실을 판에 적는다**.
     """
     import replays
     rows, why = replays.load()
@@ -127,7 +128,43 @@ def wide_rows() -> list[dict]:
         if not (r.get("lam") and r.get("ours") and r.get("hit") is not None):
             continue
         out.append(dict(r))
-    return out, why
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **H1 깃발은 재생본에서도 센다**(순위 동기 · 묶음 1 칸을 키운다)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 H1 재료는 *"그 시즌 누적 승점/경기"* 뿐이다 — `extra`(골 시각·선발·xG)가
+    #     **필요 없다**. 그래서 재생본으로도 센다.
+    #  ⚠️ J1(시장 괴리)·B3(운 요소 골)은 **보드·`extra` 가 있어야** 해서 못 센다 →
+    #     재생 줄의 `flag` 에는 **H1 만** 들어간다(없는 칸은 `None` = ⬜).
+    #  🔴 누설 금지(C11) — 승점은 **그 경기 앞**까지만 누적한다(날짜 순으로 돌고
+    #     갱신은 깃발을 세운 **뒤**에 한다).
+    out.sort(key=lambda r: (str(r.get("league")), str(r.get("day"))))
+    pts: dict[tuple, dict] = {}
+    for r in out:
+        lg, se = str(r.get("league")), str(r.get("season"))
+        home, away = str(r.get("home")), str(r.get("away"))
+        ours = [float(x) for x in r["ours"]]
+        pick = max(range(3), key=lambda i: ours[i])
+        side = "home" if pick == 0 else ("away" if pick == 2 else "")
+        a = dict(pts.get((lg, se, home)) or {"p": 0, "n": 0})
+        b = dict(pts.get((lg, se, away)) or {"p": 0, "n": 0})
+        flag: dict = {}
+        if side and a["n"] >= 5 and b["n"] >= 5:
+            ppg = {"home": a["p"] / a["n"], "away": b["p"] / b["n"]}
+            other = "away" if side == "home" else "home"
+            flag["H1"] = ppg[side] < ppg[other]
+        r["flag"] = flag
+        r["side"] = side
+        r["ok"] = int(pick == int(r["hit"]))
+        hg, ag = int(r["hg"]), int(r["ag"])
+        for team, mine_home in ((home, True), (away, False)):
+            got_p = (3 if ((hg > ag) == mine_home and hg != ag)
+                     else (1 if hg == ag else 0))
+            one = pts.setdefault((lg, se, team), {"p": 0, "n": 0})
+            one["p"] += got_p
+            one["n"] += 1
+    n_h1 = sum(1 for r in out if r["flag"].get("H1") is not None)
+    return out, why + f" · H1 깃발을 센 줄 **{n_h1}**"
 
 
 def line_rows(r: dict, board: dict | None) -> list[dict]:
@@ -398,12 +435,34 @@ def cells(box: list[dict], book: dict, live: list[str], *,
             if band is None:
                 continue
             out.setdefault((one["kind"], band, bucket), []).append(one)
-    # ── 🔴 넓힌 표본은 **승무패 방향 · 묶음 0** 에만 더한다
+    # ── 🔴 넓힌 표본은 **승무패 방향**에만 더한다
+    #    ⚠️ 묶음은 **센 깃발로만** 가른다 — 재생본은 H1 만 셀 수 있으므로
+    #       J1 이 걸릴 수도 있는 경기가 섞인다 — 아래에서 가른다.
+    n_skip = 0
     for x in (wide or []):
         key = (str(x.get("league")), str(x.get("day")),
                str(x.get("home")), str(x.get("away")))
         if key in seen:
             continue        # 🔴 **같은 경기를 두 번 세지 않는다**
+        flag = dict(x.get("flag") or {})
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **H1 이 안 걸린 줄만 묶음 0 에 넣는다**
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  🔴 재생본은 **H1 만** 셀 수 있다(J1 은 보드가, B3 는 `extra` 가 필요).
+        #     그래서 묶음을 **정확히** 못 정한다:
+        #       H1=False → 묶음 **0**(J1 이 걸렸으면 1 이어야 한다)
+        #       H1=True  → 묶음 **1**(J1 이 걸렸으면 2+ 여야 한다)
+        #       H1=⬜    → **버린다**(그 시즌 5경기 미만 · 모르는 것을 0 으로
+        #                 세지 않는다 · #3)
+        #  ⚠️ 두 칸 모두 **J1 을 못 쟀다** — 그만큼 섞인다. J1 은 실보드가 있는
+        #     1,470경기에서 **92건(6%)** 만 걸렸으므로 그 정도의 오염이고,
+        #     **판의 `오염` 칸에 적는다**. 🔴 두 칸을 **같은 규칙**으로 다룬다 —
+        #     한쪽만 넓히면 묶음 비교가 거짓이 된다.
+        if flag.get("H1") is None:
+            n_skip += 1
+            continue
+        bucket = "1" if flag["H1"] else "0"
         for one in line_rows(x, None):
             if one["kind"] != "승무패 방향":
                 continue
@@ -411,7 +470,10 @@ def cells(box: list[dict], book: dict, live: list[str], *,
             if band is None:
                 continue
             one["real"] = None      # 🔴 승무패는 **보드와 무관**하다
-            out.setdefault((one["kind"], band, "0"), []).append(one)
+            out.setdefault((one["kind"], band, bucket), []).append(one)
+    if n_skip:
+        print(f"- ⚠️ 넓힌 줄 중 **{n_skip}개**를 버렸다 — H1 을 **못 쟀다**"
+              f"(그 시즌 5경기 미만)")
     return out
 
 
@@ -537,7 +599,13 @@ def build_cal(box: dict, live: list[str], *,
             {"meta": {"줄종류": kind, "유효_의심": list(live),
                       "칸_최소": CELL_MIN, "구간": [list(x) for x in BANDS],
                       # 🔴 적합에서 **뺀 시즌** — 검증·문턱은 거기서만 센다
-                      "홀드아웃": list(holdout or [])},
+                      "홀드아웃": list(holdout or []),
+                      # 🔴 넓힌 줄(`보드무관`)은 **J1 을 못 쟀다** — 묶음 0 칸에
+                      #    J1 이 걸렸을 수도 있는 줄이 섞인다(실보드 표본에서
+                      #    J1 은 1,470경기 중 92건 = 6% 였다).
+                      "오염": ("`보드무관` 줄은 J1 을 못 쟀다 — 묶음 0 에"
+                              " J1 걸린 줄이, 묶음 1 에 J1 까지 걸린 줄이"
+                              " 섞인다(실보드 표본 기준 6% 수준)")},
              "칸": said}, allow_unicode=True, sort_keys=False),
             encoding="utf-8")
     print()
@@ -627,8 +695,8 @@ def main(argv: list[str]) -> int:
                           f"({before - len(wide)}경기)")
             print()
             print(f"- 🔴 **승무패 방향 칸을 넓혔다** — {why_w}")
-            print("  ⚠️ 재생본에는 `extra` 가 없어 **의심 깃발을 못 센다** → "
-                  "넓힌 줄은 **묶음 0** 칸에만 들어간다.")
+            print("  ⚠️ 재생본은 **H1 만** 센다(J1 은 보드가 필요하다) → "
+                  "묶음 0·1 **둘 다** 넓히고 **J1 을 못 쟀다**고 판에 적는다.")
         print()
         build_cal(cells(box, book, live, wide=wide), live,
                   holdout=sorted(str(x) for x in (args.holdout or [])))
