@@ -301,6 +301,73 @@ def judge(got: Verdict | None, box: list[str]) -> tuple[str, list[str]]:
     return ("지어냈다" if bad else "안 지어냈다"), bad
 
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **근거는 서술형으로 적는다** — 사용자 지시 2026-10-15
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 근거는 ???? **서술형으로 바꿔라**
+#
+#  ⚠️ 전에는 모델이 돌려준 꼬리표를 그대로 찍었다(`근거 \`axis1·S01\``) —
+#     읽는 사람은 그 번호가 **묶음의 어느 줄**인지 알 수 없었다.
+#  🔴 그래서 꼬리표마다 **묶음에서 그 글자를 품은 줄을 찾아** 그 줄의 글자로
+#     풀어 쓴다. 🔴 **새 글자를 짓지 않는다**(묶음이 원본이다 · 사본 금지).
+#  🔴 묶음에 없는 꼬리표는 **그렇게 적는다**(#3 조용한 0 금지) — 그것이
+#     (라) 검열이 잡는 그 자리다.
+_REF_CUT = 46          #: 🔴 풀어 쓴 한 토막의 글자 상한
+
+
+def _ref_one(piece: str, box: list[str]) -> str:
+    """🔴 꼬리표 하나 → **묶음 줄의 글자**로 풀어 쓴 한 토막."""
+    key = str(piece or "").strip().strip("`")
+    if not key:
+        return ""
+    # 🔴🔴 **줄을 고르는 순서가 있다** — ⚠️ 실측 2026-10-15: 그냥 품은 줄을
+    #    먼저 집으니 `axis1` 이 *변수* 줄(자리 `['axis1','hypo']`)에 걸려
+    #    **축 줄 대신 변수 줄**로 풀렸다. 머리 일치를 먼저 본다.
+    line = ""
+    for how in ("머리", "변수 이름", "변수 집안", "품은 줄"):
+        for one in box:
+            said = str(one).strip()
+            if how == "머리" and said.startswith(key):
+                line = said
+            elif how == "변수 이름" and f"변수 `{key}`" in said:
+                line = said
+            elif how == "변수 집안" and f"변수 `{key}" in said:
+                line = said
+            elif how == "품은 줄" and key in said:
+                line = said
+            if line:
+                break
+        if line:
+            break
+    if not line:
+        return f"🔴 묶음에 없는 근거(`{key}`)"
+    # ── 변수 줄 — `변수 \`R1\` [absence] 자리 [...] — 글`
+    got = re.match(r"변수 `([^`]+)` \[([^\]]*)\] 자리 [^—]*—\s*(.*)", line)
+    if got:
+        said = got.group(3).strip()[:_REF_CUT]
+        return f"변수 {got.group(1)}({got.group(2)}) — {said}"
+    # ── 축 줄 — `axis1 — 홈 … · 차 …`
+    got = re.match(r"(axis([0-3]))\s*—.*?차\s*([+-]?[\d.]+)", line)
+    if got:
+        return f"축{got.group(2)}(차 {got.group(3)})"
+    # ── 그 밖(확률·λ·오버·스코어 상위·λ 유도·기여) — 머리와 꼬리를 그대로
+    head, _, tail = line.partition("—")
+    said = tail.strip()[:_REF_CUT] if tail.strip() else ""
+    return f"{head.strip()} 줄" + (f"({said})" if said else "")
+
+
+def ref_said(said_r: str, box: list[str]) -> str:
+    """🔴🔴 **서술형 근거** — 꼬리표 묶음을 한 문장 꼴로 돌려준다."""
+    raw = str(said_r or "").strip()
+    if not raw or raw.startswith("⬜"):
+        return "⬜ 근거 없음"
+    rows = [x for x in (_ref_one(y, box) for y in re.split(r"[·,]", raw)) if x]
+    if not rows:
+        return "⬜ 근거 없음"
+    return ", ".join(rows) + " 에서 왔다"
+
+
 def said_of(got: Verdict | None, box: list[str], *,
             provider: str = "solar") -> str:
     """🔴 카드·보고에 찍는 글 — 평 + **지어냈나 결론**."""
@@ -312,7 +379,7 @@ def said_of(got: Verdict | None, box: list[str], *,
     refs = [str(x) for x in (got.refs or [])]
     for i, one in enumerate(list(got.sentences or [])):
         said_r = refs[i] if i < len(refs) else "⬜ 근거 없음"
-        rows.append(f"- {one}  · 근거 `{said_r}`")
+        rows.append(f"- {one}\n    · 근거 — {ref_said(said_r, box)}")
     for x in bad:
         rows.append(f"  {x}")
     return "\n".join(rows)
