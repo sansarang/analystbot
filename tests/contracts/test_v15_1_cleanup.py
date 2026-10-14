@@ -118,10 +118,20 @@ def test_x2_llm_is_called_only_for_facts() -> None:
 
 
 def test_card_has_no_llm_prose_blocks() -> None:
-    """🔴 ㉔ — 카드 서술은 **코드 템플릿**이다(LLM 문장 블록이 없다)."""
+    """🔴 ㉔ — **최종 평 긴 블록**은 여전히 없다. ⚠️ 전술 예측은 **되살렸다**.
+
+    🔴🔴 지시 2026-10-14 — *"전술예상도 해야 한다 … 전술 전문가다 … 자료로만 …
+       지어내지 않는다"*. 그래서 `tactic_long`(🎓 전술 전문가 예측)은 **있어야**
+       한다. ⚠️ 종전 이 계약은 그 이름을 금지했다 — 직접 지시가 덮었다.
+    🔴 대신 **되살리지 않은 것**을 못 박는다: `say_long`(최종 평 긴 블록)·
+       `verdict_long`. 그 둘은 카드 서술을 LLM 한 편으로 덮는 블록이었다.
+    """
     said = _code("app/core/render.py")
-    for bad in ("say", "tactic_long", "verdict_long"):
-        assert bad not in said, bad
+    for bad in ("say_long", "verdict_long"):
+        assert bad not in said, (
+            f"🔴 `{bad}` 는 되살리지 않았다 — 카드 서술을 LLM 한 편으로 덮는다")
+    assert "tactic_long" in said, (
+        "🔴 전술 전문가 예측 블록이 없다(지시 2026-10-14) — 되살려야 한다")
 
 
 def test_w_score_check_exists() -> None:

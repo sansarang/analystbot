@@ -59,16 +59,17 @@ STAGES: tuple[tuple[str, str, str, str], ...] = (
      "app.core.probmodel", r"\*\*🎯 상성 확률 \(S3\)\*\*"),
     ("S3 시뮬", "λ → 분 단위 시뮬 → 스코어 분포·승무패·오버",
      "app.core.sim", r"\*\*🎲 시뮬 스코어 상위 10\*\*"),
-    ("S4 가설", "변수 + 상성 → 팀별 가설(시뮬을 **보기 전에** 선다)",
-     "app.core.stages.s6_hypo", r"\*\*5\. 팀별 가설"),
-    ("S5 검증(가설↔시뮬)", "가설의 예측 신호를 시뮬 산출과 대조(지지·반박·판단 불가)",
-     "app.core.stages.s6c_check", r"\*\*🧪 가설 검증표"),
+    # 🔴🔴 **지운 단계**(지시서 2026-10-12 셋째 §1 처분 · 커밋 `9d62d10c`) —
+    #    주인을 **빈 글자**로 둔다. ⚠️ 종전엔 `s6_hypo` 를 가리켜 표가 늘 🔴 였고,
+    #    더 나쁘게는 **빈 블록 제목**(`**5. 팀별 가설**`)을 산출로 세어 ✅ 를
+    #    붙였다(실측 2026-10-14) — 저장소 규율 #3 을 점검 도구가 깬 것이다.
+    ("S4 가설 🗑", "🗑 **지웠다**(⑭⑮ · LLM 누설 위험 · 검증 불가)", "", ""),
+    ("S5 가설↔시뮬 🗑", "🗑 **지웠다**(⑰ · 가설이 사라져 대조할 것이 없다)", "", ""),
     ("S5 검증표(V1~V7)", "상성 **밖** 정보(Elo·맞대결·동기·일정·시장) — 등급만 내린다",
-     "app.core.stages.s6c_check", r"\*\*🔎 VerificationTable\*\*"),
+     "app.core.survive", r"\*\*🔎 VerificationTable\*\*"),
     ("적합 정보", "계수가 적합됐나 — 아니면 **🔴 임시값**이라고 적는다",
      "tools.fit_matchup_model", r"\*\*🧮 적합 정보\*\*"),
-    ("S6 시나리오", "시뮬 분포에서 시나리오 + 필수형 보강",
-     "app.core.stages.s6_hypo", r"\*\*6\. 시나리오\*\*"),
+    ("S6 시나리오 🗑", "🗑 **지웠다**(⑳ · 생존은 이제 격자가 센다)", "", ""),
     ("S8 보드 판정", "시나리오 ↔ 마켓 → 생존·상한·등급",
      "app.core.stages.s7_judge", r"\*\*7\. 보드 대입\*\*"),
     ("최종 평", "사실 묶음만으로 쓴 전문가 평(검열 포함)",
@@ -90,6 +91,8 @@ def _check_owners() -> list[str]:
     import importlib
     out = []
     for name, _what, owner, _pat in STAGES:
+        if not owner:
+            continue            # 🔴 지운 단계 — 주인이 없는 것이 **맞다**
         try:
             importlib.import_module(owner)
         except Exception as exc:                            # noqa: BLE001
@@ -109,7 +112,10 @@ def _evidence(said: str, pat: str, *, width: int = 150) -> str:
 def report(path: str) -> str:
     said = pathlib.Path(path).read_text(encoding="utf-8", errors="replace")
     head = _evidence(said, r"^🏟 \*\*") or "(경기 줄 없음)"
-    rows = [f"# {len(STAGES)}단계 파이프라인 점검표",
+    n_live = sum(1 for _n, _w, o, _p in STAGES if o)
+    n_gone = len(STAGES) - n_live
+    rows = [f"# {n_live}단계 파이프라인 점검표"
+            + (f" (+ 지운 단계 {n_gone}개)" if n_gone else ""),
             "",
             "⚠️ 실행 중 감시는 **22줄**로 찍었다 — 이 표는 그 22줄에 `S1 기준 전력`과 "
             "`S3 시뮬`을 **따로 뗀 것**이라 두 줄이 더 많다(같은 파이프라인이다).",
@@ -124,6 +130,17 @@ def report(path: str) -> str:
     gone: list[str] = []
     shown: dict[str, str] = {}
     for i, (name, what, owner, pat) in enumerate(STAGES, 1):
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **지운 단계는 세지 않는다**(지시 2026-10-14 점검)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 실측 2026-10-14: 이 표가 **빈 블록 제목**(`**5. 팀별 가설**`)을
+        #     산출로 세어 ✅ 를 붙였다 — 모듈은 없고 제목만 남은 자리였다.
+        #     🔴 그것은 저장소 규율 #3(조용한 0 금지)을 **점검 도구가** 깨는
+        #     것이다: 지운 것과 돌다 실패한 것이 같은 ✅ 로 보였다.
+        if not owner:
+            rows.append(f"| {i} | {name} | {what} | 🗑 — | 🗑 **해당 없음** | — |")
+            continue
         n = len(re.findall(pat, said, re.M))
         got = _evidence(said, pat).replace("|", "\\|")
         shown[name] = got

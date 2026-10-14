@@ -65,9 +65,18 @@ def test_report_stages_have_distinct_patterns() -> None:
         "pipeline_report", "tools/pipeline_report.py")
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    pats = [row[3] for row in mod.STAGES]
+    # 🔴🔴 **지운 단계는 표식이 빈 글자**다(지시 2026-10-14 점검) — 주인도 산출도
+    #    없는 자리라 `🗑 해당 없음` 으로만 찍힌다. ⚠️ 빈 글자 둘을 *"같은 증거를
+    #    쓴다"* 로 세면 거짓 위반이 난다.
+    pats = [row[3] for row in mod.STAGES if str(row[3] or "")]
     dupes = {p for p in pats if pats.count(p) > 1}
     assert not dupes, f"🔴 두 단계가 같은 증거를 쓴다: {dupes}"
+    # 🔴 반쪽을 막는다 — 지운 단계는 주인·표식을 **둘 다** 비우고, 사는 단계는
+    #    **둘 다** 채운다(한쪽만 비면 표가 거짓이 된다).
+    half = [row[0] for row in mod.STAGES
+            if bool(str(row[2] or "")) != bool(str(row[3] or ""))]
+    assert not half, (
+        f"🔴 주인과 표식 중 하나만 비었다: {half}")
 
 
 def test_extract_stage_reads_its_own_output() -> None:

@@ -69,6 +69,9 @@ def card_text(card: Card, *, debug: bool = False) -> str:
             out.append("\n" + loss_table(card))
             # 🔴🔴 §4 — **전략 블록**은 기준 XI·결장 바로 뒤다(같은 명단 얘기다)
             out.append("\n" + strategy_long(card))
+            # 🔴🔴 **전술 전문가 예측**(지시 2026-10-14) — 전략 블록 바로
+            #    뒤다(같은 명단 얘기다). 🔴 **글뿐이다**(확률 불변).
+            out.append("\n" + tactic_long(card))
             # ⚠️ **전술 예측 블록은 걷었다**(§1 처분) — 그 글을 쓰던 LLM 호출이
             #    없어졌다(X2: LLM 은 사실 추출만). 🔴 이미 저장된 옛 카드의 예측은
             #    `tools/score_cards.py` 가 사후 채점한다(§15).
@@ -1561,7 +1564,37 @@ def strategy_long(card: Card) -> str:
     return "\n".join(out)
 
 
-# ⚠️ `TACTIC_HEAD`·`SAY_LONG_HEAD` 는 지웠다 — 그 두 블록이 §1 처분으로 걷혔다.
+# ⚠️ `SAY_LONG_HEAD` 는 지운 그대로다 — 최종 평 **긴 블록**은 안 되살렸다.
+# 🔴🔴 `TACTIC_HEAD` 는 **되살렸다**(지시 2026-10-14 *"전술예상도 해야
+#    한다 … 전술 전문가다 … 자료로만 … 지어내지 않는다"*). 아래 함수다.
+
+
+TACTIC_HEAD = "🎓 전술 전문가 예측"
+
+
+def tactic_long(card: Card) -> str:
+    """🔴🔴 §6 — 긴 카드의 전술 예측. **글뿐이다**(확률을 안 움직인다).
+
+    ⚠️ 못 돌았거나 버린 경우 **그 사유를 적는다**(#3 조용한 0 금지).
+    """
+    got = getattr(card, "tactic", None)
+    said = str(getattr(got, "audit", "") or "")
+    if got is None or said in ("", "안 돌았다"):
+        return f"**{TACTIC_HEAD}** — ⬜ 안 돌렸다"
+    out = [f"**{TACTIC_HEAD}** — 판정 `{said}`"]
+    # 🔴🔴 ④ — **어떤 판정이든 사유를 적는다**(사용자 지시 2026-10-11 ④:
+    #    *"실패하면 '템플릿' 대신 사유(llm_truncated / 검열 코드 / 근거 0)를"*)
+    #  ⚠️ 종전엔 두 판정(`확정 XI 전`·`버렸다`)에서만 적었다 — 그래서 `템플릿`
+    #     판정의 카드에는 **까닭이 한 글자도 없었다**(실측 2026-10-11).
+    rows = [f"- 🔴 {x}" for x in
+            (getattr(got, "violations", None) or [])[:4]]
+    out += rows
+    if said in ("확정 XI 전", "버렸다"):
+        return "\n".join(out)
+    for one in (getattr(got, "lines", None) or []):
+        out.append(f"- **{one.slot}** — {one.text} · 근거 {list(one.refs)}")
+    return "\n".join(out)
+
 EDGE_LONG_HEAD = "⚔️ 상성 세 축 (자세히)"
 #: 🔴 유형 어휘를 사람 말로 — ⚠️ `미상` 은 `미상` 으로 남긴다(open 으로 밀지 않는다)
 KIND_KO = {"open": "필드골", "counter": "역습", "setpiece": "세트피스",
