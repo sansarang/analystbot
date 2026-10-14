@@ -990,8 +990,23 @@ def parse_form(j: dict, q: Question, *, url: str, when) -> list[Fact]:
         team = str((_side(j, side) or {}).get("name") or "").strip()
         if not team:
             continue
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **이름 맞추기 — 양방향**(실사고 2026-10-15)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ `mentions_team` 은 **한 방향만** 본다(실측):
+        #       mentions_team('Como',      'Como 1907')         → True
+        #       mentions_team('Feyenoord', 'Feyenoord Rotterdam') → **False**
+        #     fotmob 경기 페이지의 이름은 짧고(`Feyenoord`) 우리 이름은 길다
+        #     (`Feyenoord Rotterdam`) — 그래서 **그 팀의 직전 경기를 하나도
+        #     안 냈다** → 과거 XI 0경기 → 평소 XI 없음 → 바뀐 자리·ΔA·ΔD·
+        #     자리별 교체가 **전부 ⬜** 가 됐다(연쇄).
+        #  🔴 `core/teamname.pick` 이 양방향으로 맞춘다 — 어제 조 순위표를 고친
+        #     그 함수다(사본 금지). ⚠️ 남의 팀은 여전히 거부한다(실측).
         if q.team and not verify.mentions_team(team, q.team, q.local):
-            continue
+            from app.core import teamname as _tn2
+            if not _tn2.pick(str(q.team), [team])[0]:
+                continue
         games = [g for g in (tf[which] or []) if isinstance(g, dict)]
         if not games:
             continue

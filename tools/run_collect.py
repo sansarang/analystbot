@@ -47,7 +47,8 @@ STEPS: tuple[str, ...] = (
     "① 경기", "② fotmob(XI·결장·감독)", "②-b 선수단 교체", "③ 딥서치",
     "④ 추출", "⑤ 검증", "⑤-b 포메이션·전략", "⑤-c 리그·컵 분석",
     "3+5 통합", "⑥ LLM 표적 질의", "⑦ 표적 문서", "⑧ 표적 추출",
-    "⑩ 변수 배치", "⑬⑭ 상성·축", "⑮⑯ 확률·시뮬", "⑯ 종합 평(solar)")
+    "⑩ 변수 배치", "⑬⑭ 상성·축", "⑮⑯ 확률·시뮬", "⑯ 종합 평(solar)",
+    "⑯ 종합 평(deepseek)")
 
 
 def mark(step: str, state: str, said: str = "") -> None:
@@ -513,21 +514,41 @@ async def main(argv: list[str]) -> int:
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **⑯ 종합 평 — solar**(지시 2026-10-15)
     # ══════════════════════════════════════════════════════════════════
-    print("## ⑯ 종합 평 (solar)", flush=True)
-    said_vd, said_box, why_vd = _vd.ask(ref, prob, mr, varset, state=st)
-    print(f"- 호출 — {why_vd}")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **두 모델을 같은 묶음으로** — 사용자 지시 2026-10-15
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > solar 서술형 카드와 deepseek 서술형 카드 **동시에** 보여주라
+    #
+    #  🔴 묶음은 **한 번만** 만들고 둘에게 **그대로** 넘긴다 — 다시 만들면
+    #     미세하게 달라져 비교가 뜻을 잃는다.
+    print("## ⑯ 종합 평 — solar · deepseek **같은 묶음**", flush=True)
+    said_box = _vd.chain_of(ref, prob, mr, varset)
     print(f"- 🔴 **묶음은 코드가 만들었다**({len(said_box)}줄) — 모델이 만든 "
           "글자가 하나도 없다")
     for one in said_box:
         print(f"    │ {one[:170]}")
-    print()
-    said_verdict, said_bad = _vd.judge(said_vd, said_box)
-    mark("⑯ 종합 평(solar)",
-         "✅ 돌았다" if said_vd is not None else "🔴 빈손",
-         f"지어냄 판정 **{said_verdict}**"
-         + (f" · 위반 {len(said_bad)}건" if said_bad else ""))
-    print(_vd.said_of(said_vd, said_box))
     print(flush=True)
+    said_cards: dict = {}
+    for pv in ("solar", "deepseek"):
+        got_vd, _b, why_vd = _vd.ask(ref, prob, mr, varset, state=st,
+                                     provider=pv, box=said_box)
+        v, bad = _vd.judge(got_vd, said_box)
+        said_cards[pv] = (got_vd, v, bad)
+        print(f"### {pv} — 호출 {why_vd}")
+        print(_vd.said_of(got_vd, said_box, provider=pv))
+        print(flush=True)
+    # 🔴 장부는 **둘 다** 적는다(하나만 적으면 다른 쪽이 조용히 넘어간다)
+    mark("⑯ 종합 평(solar)",
+         "✅ 돌았다" if said_cards["solar"][0] is not None else "🔴 빈손",
+         f"지어냄 **{said_cards['solar'][1]}**"
+         + (f" · 위반 {len(said_cards['solar'][2])}건"
+            if said_cards["solar"][2] else ""))
+    mark("⑯ 종합 평(deepseek)",
+         "✅ 돌았다" if said_cards["deepseek"][0] is not None else "🔴 빈손",
+         f"지어냄 **{said_cards['deepseek'][1]}**"
+         + (f" · 위반 {len(said_cards['deepseek'][2])}건"
+            if said_cards["deepseek"][2] else ""))
 
     mo, day = (0.0, 0.0)
     try:

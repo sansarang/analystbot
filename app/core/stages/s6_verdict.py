@@ -177,15 +177,21 @@ def chain_of(ref: MatchRef, prob, mr, varset) -> list[str]:
     return rows
 
 
-def ask(ref: MatchRef, prob, mr, varset, *, state: RunState
+def ask(ref: MatchRef, prob, mr, varset, *, state: RunState,
+        provider: str = "solar", box: list[str] | None = None
         ) -> tuple[Verdict | None, list[str], str]:
     """🔴🔴 **solar 가 종합 평을 쓴다**. `(평, 묶음, 사유)`.
 
-    🔴 공급자는 **solar** 다(지시 2026-10-15) — 앞 단계의 deepseek 와 다르다.
+    🔴 공급자는 **solar** 가 기본이다(지시 2026-10-15) — 앞 단계의 deepseek 와
+       다르다. ⚠️ `provider` 로 바꿔 **두 모델을 같은 묶음으로** 비교할 수 있다
+       (사용자 지시 2026-10-15: *"solar 서술형 카드와 deepseek 서술형 카드
+       동시에 보여주라"*).
+    🔴 `box` 를 주면 **그 묶음을 그대로** 쓴다 — 두 모델이 **같은 입력**을 받아야
+       비교가 뜻을 갖는다(다시 만들면 미세하게 달라질 수 있다).
     ⚠️ 실패하면 `(None, 묶음, 사유)` 다 — 코드가 만든 묶음은 **그대로 남는다**.
     """
     from app.core import llm
-    box = chain_of(ref, prob, mr, varset)
+    box = list(box) if box else chain_of(ref, prob, mr, varset)
     said = "\n".join(box)
     names = [str(getattr(ref, f"{s}_name", "") or "")
              or str(getattr(ref, s, "") or "") for s in ("home", "away")]
@@ -207,15 +213,15 @@ def ask(ref: MatchRef, prob, mr, varset, *, state: RunState
             "`변수 IR13-away`). 문장 수와 같게.\n"
             "⚠️ 묶음에 없는 수를 쓰면 **버려진다** — 코드가 대조한다.")),
     ]
-    got = llm.ask(provider="solar", purpose="commentary", messages=msgs,
+    got = llm.ask(provider=provider, purpose="commentary", messages=msgs,
                   out=Verdict, state=state)
     if not isinstance(got, Verdict):
-        why = f"🔴 solar 실패({getattr(got, 'reason', '?')}) — 평이 없다"
+        why = f"🔴 {provider} 실패({getattr(got, 'reason', '?')}) — 평이 없다"
         state.note(f"s6v 종합 평 — {why}")
         return None, box, why
     n = len(list(got.sentences or []))
-    state.note(f"s6v 종합 평 — solar 문장 {n}개")
-    return got, box, f"solar 문장 {n}개"
+    state.note(f"s6v 종합 평 — {provider} 문장 {n}개")
+    return got, box, f"{provider} 문장 {n}개"
 
 
 def _nums(said: str) -> list[float]:
@@ -295,10 +301,11 @@ def judge(got: Verdict | None, box: list[str]) -> tuple[str, list[str]]:
     return ("지어냈다" if bad else "안 지어냈다"), bad
 
 
-def said_of(got: Verdict | None, box: list[str]) -> str:
+def said_of(got: Verdict | None, box: list[str], *,
+            provider: str = "solar") -> str:
     """🔴 카드·보고에 찍는 글 — 평 + **지어냈나 결론**."""
     verdict, bad = judge(got, box)
-    head = f"🧭 **종합 평**(solar) — 지어냄 판정 **{verdict}**"
+    head = f"🧭 **종합 평**({provider}) — 지어냄 판정 **{verdict}**"
     if got is None:
         return head + "\n" + "\n".join(f"- {x}" for x in bad)
     rows = [head]

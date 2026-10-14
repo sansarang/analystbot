@@ -63,12 +63,25 @@ class _P:
 
 
 def test_vd1_provider_is_solar() -> None:
-    """VD1 — **solar** 다."""
-    said = _body("ask")
-    assert 'provider="solar"' in said, (
-        "VD1 🔴 공급자가 solar 가 아니다 — 지시 2026-10-15(*\"llm solar 가 종합 "
-        "평을 낸다\"*). ⚠️ 앞 단계는 deepseek 이고, 작성자와 검열자를 같은 "
-        "모델로 두지 않는 규율과 같은 뜻이다")
+    """VD1 — 기본 공급자가 **solar** 다. ⚠️ 바꿀 수 있지만 **기본값**은 solar.
+
+    🔴 지시 2026-10-15 — *"llm solar 가 종합 평을 낸다"*(기본) 그리고
+       *"solar 서술형 카드와 deepseek 서술형 카드 **동시에** 보여주라"*(비교).
+       그래서 `provider` 를 **인자로** 받되 기본값은 solar 여야 한다.
+    """
+    import sys
+    sys.path.insert(0, str(ROOT))
+    import inspect
+    from app.core.stages import s6_verdict as vd
+    sig = inspect.signature(vd.ask)
+    said = sig.parameters.get("provider")
+    assert said is not None, "VD1 🔴 `provider` 인자가 없다 — 두 모델 비교 불가"
+    assert said.default == "solar", (
+        f"VD1 🔴 기본 공급자가 `{said.default}` 다 — solar 여야 한다"
+        "(지시 2026-10-15)")
+    # 🔴 같은 묶음을 **그대로** 넘길 길이 있어야 비교가 뜻을 갖는다
+    assert "box" in sig.parameters, (
+        "VD1 🔴 `box` 인자가 없다 — 두 모델이 **같은 입력**을 못 받는다")
 
 
 def test_vd2_output_has_no_numbers() -> None:
