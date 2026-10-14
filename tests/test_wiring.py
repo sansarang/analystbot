@@ -657,6 +657,16 @@ TOOL_ONLY: dict[str, str] = {
     #    만든다. 지금 부르는 쪽은 수집 러너뿐이고 **운영 배선은 다음 순서**다.
     #    ⚠️ 운영에 이으면 **이 네 줄을 지워야** 계약이 초록이 된다.
     "app.core.stages.s4c_leagueread.ask": "tools/run_collect.py",
+    # 🔴🔴 **⑯ 종합 평**(지시 2026-10-15) — 지금 부르는 쪽은 수집 러너뿐이고
+    #    **운영 배선은 다음 순서**다. ⚠️ 운영에 이으면 이 셋을 지운다.
+    "app.core.stages.s6_verdict.ask": "tools/run_collect.py",
+    "app.core.stages.s6_verdict.said_of": "tools/run_collect.py",
+    # ⚠️ `chain_of`·`judge` 는 **공개 함수인데** 러너가 직접 안 부른다 —
+    #    `ask`·`said_of` 안에서 쓰인다. 🔴 그래도 공개로 둔다: 계약
+    #    `test_v29_5_verdict.py` 가 **그 둘을 직접 돌려서** 센다(검열이
+    #    작성 안에 숨으면 시험할 수 없다).
+    "app.core.stages.s6_verdict.chain_of": "tests/contracts/test_v29_5_verdict.py",
+    "app.core.stages.s6_verdict.judge": "tests/contracts/test_v29_5_verdict.py",
     "app.core.stages.s4c_leagueread.variable": "tools/run_collect.py",
     # ⚠️ `_table_of`·`_rows_for`·`_said_of` 는 **비공개**다(`ask` 안에서만 쓴다) —
     #    여기 적지 않는다.

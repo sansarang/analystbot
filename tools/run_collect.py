@@ -1,4 +1,11 @@
-"""🔴🔴 **수집 단계까지만 돌린다** — 사용자 지시 2026-10-14.
+"""🔴🔴 **⑯ 단계까지 돌린다** — 사용자 지시 2026-10-15.
+
+> **16단계가 마지막이다** · 각 단계별 배선 완벽하게 하고 테스트 ·
+> llm **solar** 가 종합 평을 낸다 · deepseek… **확률 먼저** ·
+> 변수가 이래케 저렇게 되서 이렇게 나온다 · **코드 만으로** ·
+> solar **지어냈는지 안지어냈는지 결론내다** · **17단계 이후는 없어도 된다**
+
+⚠️ 종전 머리말(아래)은 **수집까지**였다 — 이제 ⑯(확률·시뮬·종합 평)까지 간다.
 
 > 지금 수정된 단계까지만 돌려라..llm 호출해서...전부다 돌리지 말어라..
 > 라인업 확인후 **결장자·팀관련뉴스·감독이름·감독부임후 성적·팀내 불화** 가
@@ -333,6 +340,71 @@ async def main(argv: list[str]) -> int:
             print(f"- 🔴 {bad}")
     else:
         print("## ⑧ 표적 추출 — ⬜ **문서 0건이라 안 돌렸다**")
+    print(flush=True)
+
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **⑩~⑯** — 배치 → 상성 → 확률 → 시뮬 → 종합 평(지시 2026-10-15)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 전부 **실제 단계**를 import 해서 부른다(규율 #12 프로브 금지).
+    #  ⚠️ ⑰ 이후(세 열·보드·등급·카드)는 **안 돈다** — 지시: *"17단계 이후는
+    #     그냥 없어도 된다"*.
+    from app.core import matchup as _mu
+    from app.core import probmodel as _pm
+    from app.core import routing as _rt2
+    from app.core.stages import s2e_matchup as _s2e
+    from app.core.stages import s6_verdict as _vd
+
+    all_vars = list(variables) + list(var_lr)
+    varset = _rt2.place(all_vars)
+    print("## ⑩ 변수 배치")
+    AX2 = {"axis0", "axis1", "axis2", "axis3", "lambda_const"}
+    for row in varset.rows:
+        hit = "✅ 확률에 닿는다" if (set(row.places) & AX2) else "— 표시·검증·가설"
+        print(f"- `{row.id}` [{row.type}] 자리 {row.places} {hit}")
+    for bad in varset.fails[:4]:
+        print(f"- 🔴 {bad}")
+    print(flush=True)
+
+    print("## ⑬ 상성 재료 + ⑭ 축 판정", flush=True)
+    edge = await _s2e.run(ref, facts, state=st, net=net, varset=varset,
+                          turnover=turn, strategy=plan)
+    mr = _mu.report(ref, facts, edge, varset, strategy=plan, turnover=turn)
+    for key in ("axis0", "axis1", "axis2", "axis3"):
+        ax = mr.axis(key)
+        h, a = getattr(ax, "home", None), getattr(ax, "away", None)
+        if h is None or a is None:
+            print(f"- {key} — ⬜ {str(getattr(ax, 'why', '') or '')[:110]}")
+        else:
+            print(f"- {key} — 홈 {h:.4f} · 원정 {a:.4f} · 차 {h - a:+.4f} "
+                  f"· 근거 {list(getattr(ax, 'refs', None) or []) or '없다'}")
+    print(f"- 축 종합 — {float(getattr(mr, 'total', 0.0) or 0.0):+.4f}\n",
+          flush=True)
+
+    print("## ⑮ 확률 + ⑯ 시뮬", flush=True)
+    prob = _pm.run(ref, facts, mr, varset, edge=edge, state=st)
+    if not prob.ok():
+        print(f"- 🔴 확률을 못 냈다 — {prob.gap or prob.why}")
+        return 4
+    print(f"- **홈 {prob.home:.1%} · 무 {prob.draw:.1%} · 원정 {prob.away:.1%}**")
+    print(f"- λ — 홈 {float(dict(prob.lam or {}).get('home') or 0):.3f} · "
+          f"원정 {float(dict(prob.lam or {}).get('away') or 0):.3f}")
+    print(f"- 오버 — " + " · ".join(
+        f"{k} {float(v):.1%}" for k, v in list(dict(prob.over or {}).items())[:5]))
+    print(f"- 유도 — {str(prob.why or '')[:420]}\n", flush=True)
+
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **⑯ 종합 평 — solar**(지시 2026-10-15)
+    # ══════════════════════════════════════════════════════════════════
+    print("## ⑯ 종합 평 (solar)", flush=True)
+    said_vd, said_box, why_vd = _vd.ask(ref, prob, mr, varset, state=st)
+    print(f"- 호출 — {why_vd}")
+    print(f"- 🔴 **묶음은 코드가 만들었다**({len(said_box)}줄) — 모델이 만든 "
+          "글자가 하나도 없다")
+    for one in said_box:
+        print(f"    │ {one[:170]}")
+    print()
+    print(_vd.said_of(said_vd, said_box))
     print(flush=True)
 
     mo, day = (0.0, 0.0)
