@@ -45,10 +45,23 @@ def test_확률_λ_같은_줄도_서술형이_된다() -> None:
     assert "확률 줄" in said and "λ(기대 득점) 줄" in said, said
 
 
-def test_묶음에_없는_꼬리표는_없다고_적는다() -> None:
+def test_묶음을_안_가리키는_근거는_그렇게_적는다() -> None:
     """🔴 조용히 넘기지 않는다 — (라) 검열이 잡는 그 자리다."""
     said = vd.ref_said("IR99", BOX)
-    assert "묶음에 없는 근거" in said, said
+    assert "묶음의 어느 줄도 안 가리킨다" in said, said
+
+
+def test_근거를_문장_통째로_줘도_열쇠를_긁는다() -> None:
+    """⚠️ 실측 2026-10-15: solar 는 꼬리표가 아니라 **문장**을 돌려줬다."""
+    said = vd.ref_said("axis1 — 홈 -0.0620 원정 0.9550 차 -1.0170 S01-home", BOX)
+    assert "축1(차 -1.0170)" in said, said
+    assert "변수 S01-home" in said, said
+    assert "묶음의 어느 줄도" not in said, "🔴 서술형 근거를 못 읽었다"
+
+
+def test_긴_열쇠가_짧은_열쇠를_가로채지_않는다() -> None:
+    said = vd.ref_said("S01-home", BOX)
+    assert "변수 S01-home" in said, said
 
 
 def test_근거가_비면_칸으로_남는다() -> None:
@@ -62,3 +75,14 @@ def test_카드_글에_꼬리표_나열이_안_남는다() -> None:
     said = vd.said_of(got, BOX, provider="solar")
     assert "· 근거 — 축1(차 -1.0170)" in said, said
     assert "근거 `axis1`" not in said, "🔴 옛 꼴이 남았다"
+
+
+def test_상한을_넘기면_몇_개를_뺐는지_적는다() -> None:
+    """🔴 조용한 0 금지 — 토막을 자르면 그 사실이 남아야 한다."""
+    said = vd.ref_said("확률 λ 스코어 상위 axis1 S01-home IR12-home", BOX)
+    assert "외 " in said and "개" in said, said
+
+
+def test_읽는_순서는_묶음_순서다() -> None:
+    said = vd.ref_said("axis1 S01-home", BOX)
+    assert said.index("변수 S01-home") < said.index("축1"), said

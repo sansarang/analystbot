@@ -357,15 +357,60 @@ def _ref_one(piece: str, box: list[str]) -> str:
     return f"{head.strip()} 줄" + (f"({said})" if said else "")
 
 
+#: 🔴 서술형 근거에 넣는 토막 수 상한(넘치면 글이 평보다 길어진다)
+_REF_MAX = 3
+
+
+def _ref_keys(box: list[str]) -> list[str]:
+    """🔴 묶음이 가진 **열쇠 목록** — 변수·축 번호와 줄 머리말. 긴 것이 먼저다.
+
+    ⚠️ 실측 2026-10-15(노리치 2차): solar 는 근거를 꼬리표가 아니라 **문장
+       통째**로 돌려줬다(`확률 — 홈 44.1% 무 26.1% … λ 합 2.602`). 그래서
+       `·` 로 토막내는 방식은 전부 *"묶음에 없는 근거"* 가 됐다.
+    🔴 그래서 토막내지 않고 **근거 글 안에서 이 열쇠들을 긁는다**.
+    """
+    keys: list[str] = list(_ruleids("\n".join(box)))
+    for one in box:
+        head = str(one).strip().partition("—")[0].strip()
+        if not head or head.startswith("변수"):
+            continue            # 🔴 `변수 11개` 머리말은 너무 흔하다
+        keys.append(head)
+        bare = head.partition("(")[0].strip()
+        if bare and bare != head:
+            keys.append(bare)   # `λ(기대 득점)` → `λ` · `λ 유도(코드 글자)` → `λ 유도`
+    # 🔴 긴 열쇠가 먼저여야 한다 — `S01` 이 `S01-home` 을 가로채면 안 된다
+    # ⚠️ 한 글자 열쇠(`λ`)를 빼면 안 된다 — 실측 2026-10-15: `len>=2` 로 걸러
+    #    `확률·λ` 의 λ 가 조용히 사라졌다.
+    return sorted(dict.fromkeys(k for k in keys if k.strip()), key=len,
+                  reverse=True)
+
+
 def ref_said(said_r: str, box: list[str]) -> str:
-    """🔴🔴 **서술형 근거** — 꼬리표 묶음을 한 문장 꼴로 돌려준다."""
+    """🔴🔴 **서술형 근거** — 근거 글이 가리킨 묶음 줄을 글자로 풀어 쓴다."""
     raw = str(said_r or "").strip()
     if not raw or raw.startswith("⬜"):
         return "⬜ 근거 없음"
-    rows = [x for x in (_ref_one(y, box) for y in re.split(r"[·,]", raw)) if x]
+    seen: set = set()
+    rows: list[tuple[int, str]] = []
+    for key in _ref_keys(box):          # 🔴 긴 열쇠부터(가로채기 막는다)
+        if key not in raw or key in seen:
+            continue
+        seen.add(key)
+        said = _ref_one(key, box)
+        if not said or any(said == x for _, x in rows):
+            continue
+        # 🔴 **읽는 순서는 묶음 순서다** — 열쇠 길이 순이 아니다
+        at = next((i for i, one in enumerate(box) if key in str(one)), len(box))
+        rows.append((at, said))
     if not rows:
-        return "⬜ 근거 없음"
-    return ", ".join(rows) + " 에서 왔다"
+        # 🔴 조용히 넘기지 않는다 — 근거 글이 묶음의 아무것도 안 가리켰다
+        return f"🔴 묶음의 어느 줄도 안 가리킨다(`{raw[:40]}`)"
+    rows.sort(key=lambda kv: kv[0])
+    said_all = [x for _, x in rows]
+    # ⚠️ 상한을 넘겨 자를 때는 **몇 개를 뺐는지 적는다**(#3 조용한 0 금지)
+    cut = len(said_all) - _REF_MAX
+    return (", ".join(said_all[:_REF_MAX])
+            + (f", 외 {cut}개" if cut > 0 else "") + " 에서 왔다")
 
 
 def said_of(got: Verdict | None, box: list[str], *,
