@@ -172,8 +172,12 @@ async def main(argv: list[str]) -> int:
     # 🔴 이름으로 적는다(열쇠 `team:000455` 가 아니라)
     said_names = {str(ref.home): str(ref.home_name or ref.home),
                   str(ref.away): str(ref.away_name or ref.away)}
+    # 🔴🔴 **쪽을 넘긴다**(지시 2026-10-14) — 이동·일정·거리는 원정팀만,
+    #    홈 최근 5경기는 홈팀만 묻는다.
+    said_sides = {str(ref.home): "home", str(ref.away): "away"}
     want = s4b_gapsearch.need(facts, keys=[str(ref.home), str(ref.away)],
-                              conflict_docs=n_conf, names=said_names)
+                              conflict_docs=n_conf, names=said_names,
+                              sides=said_sides)
     # 🔴🔴 **변수가 얇은 묶음**도 겨냥한다(지시 2026-10-14: *"llm이 검색할 대상은
     #    변수에 관련된 내용이다 … x search 가 약해서 하는거다"*)
     thin = s4b_gapsearch.thin_kinds(variables)
@@ -192,7 +196,14 @@ async def main(argv: list[str]) -> int:
     print(f"- 언어 순서 — {said_langs}")
     hits = []
     for one in qs:
-        for lg in said_langs:
+        # 🔴🔴 **그 질의의 언어를 먼저 쓴다**(실측 2026-10-14: 이탈리아어 질의
+        #    둘이 `nl` 로 던져졌다 — 첫 언어에서 44건이 나와 멈췄기 때문이다).
+        #    ⚠️ 글자로는 nl·it 를 가릴 수 없다(둘 다 ASCII) → **팀 이름**으로
+        #    가린다: 그 질의가 어느 팀을 담았나.
+        mine = ([said_langs[1]] if (len(said_langs) > 1
+                                    and str(ref.away_name or "") in one)
+                else [])
+        for lg in (mine + [x for x in said_langs if x not in mine]):
             try:
                 got = await chain.query(one, lang=lg)
             except Exception as exc:                        # noqa: BLE001

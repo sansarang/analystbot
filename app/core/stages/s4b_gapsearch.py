@@ -52,19 +52,34 @@ logger = logging.getLogger(__name__)
 #
 #  > 1. 경기에 따른 **팀순위** · 2. 각팀의 **최근 3경기 일정에 따른 피로도** ·
 #  > 3. **홈까지의 거리** · 4. **기본팀의 전술** · 5. **포메이션**
+#  > 🔴 추가(같은 날) — *"이동거리, 그팀의 전체 경기일정, 홈까지의 거리는
+#  >   **원정팀에 대한 부담**이고… 홈팀은 **최근 5경기에서 이긴거나 비기거나**
+#  >   하는거를 통해서 **홈에서의 전력**을 알수 있다"*
 #
-#  ⚠️ 앞서 받던 셋(감독 이름·부임 후 성적·팀내 불화)도 **그대로** 둔다.
-#  🔴 칸 이름 → 그 칸을 **어디서 보나**(이미 있으면 LLM 에 안 묻는다).
-GAPS: tuple[tuple[str, str], ...] = (
-    ("팀 순위", "standings"),
-    ("피로도(최근 3경기)", "schedule"),
-    ("홈까지 거리", "venue"),
-    ("기본 전술", "past_xi"),
-    ("포메이션", "xi"),
-    ("감독 이름", "coach"),
-    ("부임 후 성적", "coach_record"),
-    ("팀내 불화", "conflict"),
+#  🔴🔴 **쪽이 뜻이다** — 같은 칸을 두 팀에 다 묻지 않는다:
+#    · 이동·일정·거리 → **원정팀만**(홈팀에게 "홈까지 거리"는 뜻이 없다)
+#    · 홈 최근 5경기 승·무 → **홈팀만**(그것이 그 팀의 **홈 전력**이다)
+#  ⚠️ 종전 판은 여덟 칸을 **양쪽에** 물어 `홈까지 거리` 를 홈팀에도 물었다
+#     (실측 2026-10-14 코모 실행) — 질의 하나를 헛되게 썼다.
+#
+#  꼴: (칸 이름, 어느 쪽, 어디서 보나)
+GAPS: tuple[tuple[str, str, str], ...] = (
+    ("팀 순위", "both", "standings"),
+    ("피로도(최근 3경기)", "both", "schedule"),
+    ("기본 전술", "both", "past_xi"),
+    ("포메이션", "both", "xi"),
+    ("감독 이름", "both", "coach"),
+    ("부임 후 성적", "both", "coach_record"),
+    ("팀내 불화", "both", "conflict"),
+    # 🔴 원정팀 부담 — 셋을 한 칸으로 묶는다(같은 질의가 셋을 함께 긷는다)
+    ("원정 부담(이동·전체 일정·홈까지 거리)", "away", "travel"),
+    # 🔴 홈팀 홈 전력 — 홈 최근 5경기 승·무(쪽 폼이 `SIDE_FULL=5` 로 보는 그것)
+    ("홈 전력(홈 최근 5경기 승·무)", "home", "side_form"),
 )
+
+#: 🔴 홈 쪽 폼을 **그대로 쓸 수 있는** 경기 수 — `core/form.SIDE_FULL` 과 같아야
+#   한다(사본 금지: 그 값이 바뀌면 이 칸의 뜻도 바뀐다).
+SIDE_FULL = 5
 
 #: 🔴 공급자 둘 — **순서대로 시도**한다(사용자 지시 2026-10-14: *"deepseek,
 #   solar pro 둘다 api가 있다"*). 앞이 0개를 내면 뒤로 간다.
@@ -107,52 +122,70 @@ class GapQueries(BaseModel):
 
 
 def need(facts, *, keys: list[str], conflict_docs: int = 0,
-         names: dict | None = None) -> dict[str, list[str]]:
+         names: dict | None = None, sides: dict | None = None) -> dict:
     """🔴🔴 **무엇이 비었나** — 팀마다 못 받은 칸. 전부 찼으면 빈 표다.
 
     🔴 이 함수가 *"딥서치가 못 찾았다"* 의 **단일 판정**이다(사본 금지).
-    🔴 칸은 `GAPS` 여덟이고, **이미 받은 칸은 묻지 않는다**(지시 2026-10-14:
-       1 팀순위 · 2 피로도 · 3 홈까지 거리 · 4 기본 전술 · 5 포메이션 + 감독 셋).
+    🔴🔴 **쪽을 가린다**(지시 2026-10-14) — `sides` 는 `{팀 열쇠: "home"|"away"}`.
+       이동·일정·거리는 **원정팀만**, 홈 최근 5경기는 **홈팀만** 묻는다.
     ⚠️ 열쇠가 아니라 **이름**으로 적는다 — 카드·프롬프트가 사람 글자를 쓴다.
     """
     out: dict[str, list[str]] = {}
     said = dict(names or {})
+    who = dict(sides or {})
     coach = dict(getattr(facts, "coach", None) or {})
     std = dict(getattr(facts, "standings", None) or {})
     sched = dict(getattr(facts, "schedule", None) or {})
     past = dict(getattr(facts, "past_xi", None) or {})
     xi = dict(getattr(facts, "xi", None) or {})
     ctx = dict(getattr(facts, "context", None) or {})
+    recent = dict(getattr(facts, "recent", None) or {})
     for key in keys:
+        side = str(who.get(key) or "")
         one = coach.get(key)
         miss: list[str] = []
-        # ① 팀 순위 — 그 대회 순위표
-        if not std.get(key) and not std.get("rows") and not std:
-            miss.append("팀 순위")
-        # ② 피로도 — 최근 3경기 일정(휴식일·14일 내 경기 수)
-        if not sched.get(key):
-            miss.append("피로도(최근 3경기)")
-        # ③ 홈까지 거리 — 경기장 좌표·이동
-        if not ctx.get("venue") and not ctx.get("travel"):
-            miss.append("홈까지 거리")
-        # ④ 기본 전술 — 평소 XI(그 팀이 늘 쓰는 꼴)
-        if len(list(past.get(key) or [])) < 3:
-            miss.append("기본 전술")
-        # ⑤ 포메이션 — 오늘 XI 의 꼴
-        got_xi = xi.get(key)
-        if got_xi is None or not str(getattr(got_xi, "formation", "") or ""):
-            miss.append("포메이션")
-        # ⑥⑦ 감독 이름 · 부임 후 성적
-        if one is None or not str(getattr(one, "name", "") or ""):
-            miss.append("감독 이름")
-        if one is None or not str(getattr(one, "record", "") or ""):
-            miss.append("부임 후 성적")
-        # ⑧ 팀내 불화
-        if not conflict_docs:
-            miss.append("팀내 불화")
+        for name, want_side, _where in GAPS:
+            # 🔴 그 쪽에 해당하는 칸만 본다
+            if want_side != "both" and want_side != side:
+                continue
+            if name == "팀 순위" and not (std.get(key) or std):
+                miss.append(name)
+            elif name == "피로도(최근 3경기)" and not sched.get(key):
+                miss.append(name)
+            elif name == "기본 전술" and len(list(past.get(key) or [])) < 3:
+                miss.append(name)
+            elif name == "포메이션":
+                got = xi.get(key)
+                if got is None or not str(getattr(got, "formation", "") or ""):
+                    miss.append(name)
+            elif name == "감독 이름" and (
+                    one is None or not str(getattr(one, "name", "") or "")):
+                miss.append(name)
+            elif name == "부임 후 성적" and (
+                    one is None or not str(getattr(one, "record", "") or "")):
+                miss.append(name)
+            elif name == "팀내 불화" and not conflict_docs:
+                miss.append(name)
+            elif name.startswith("원정 부담") and not (
+                    ctx.get("venue") or ctx.get("travel")):
+                # 🔴 원정팀만 — 이동 거리·전체 일정·홈까지 거리
+                miss.append(name)
+            elif name.startswith("홈 전력") and _home_games(recent, key) < SIDE_FULL:
+                # 🔴 홈팀만 — 홈 최근 5경기가 모자라면 묻는다
+                miss.append(name)
         if miss:
             out[str(said.get(key) or key)] = miss
     return out
+
+
+def _home_games(recent: dict, key: str) -> int:
+    """🔴 그 팀의 **홈 경기** 수(최근 목록 안에서). 못 세면 0.
+
+    ⚠️ 목록 꼴이 어댑터마다 다르다 — `mine_home` 이 참인 줄만 센다. 그 칸이
+       없으면 **0 으로 센다**(모르는 것을 많다고 적지 않는다 · #3).
+    """
+    rows = list(dict(recent or {}).get(key) or [])
+    return sum(1 for r in rows if dict(r).get("mine_home") is True)
 
 
 def thin_kinds(variables, *, floor: int = 1) -> dict[str, list[str]]:
@@ -249,6 +282,13 @@ def ask(ref: MatchRef, facts, *, state: RunState, want: dict,
             "   · 감독 이름 → `{팀} manager` · `{팀} head coach`\n"
             "   · 부임 후 성적 → `{팀} {감독} record since`(감독을 알 때만)\n"
             "   · 팀내 불화 → `{팀} row with coach` · 현지어 표현\n"
+            "   · **원정 부담**(원정팀만) → 그 팀의 **이동 거리 · 전체 경기\n"
+            "     일정 · 홈까지 거리**를 찾을 검색어(예 `{팀} trasferta "
+            "calendario`,\n"
+            "     `{팀} away travel distance`)\n"
+            "   · **홈 전력**(홈팀만) → **홈 최근 5경기**에서 이기거나 비긴\n"
+            "     기록을 찾을 검색어(예 `{팀} thuis ongeslagen`, "
+            "`{팀} home record unbeaten`)\n"
             "   · **검색이 얇은 자리** → 그 유형을 찾을 검색어(예 `absence` →\n"
             "     `{팀} injury news`, `stakes` → `{팀} qualification race`)\n"
             "🔴 각 질의에 **위 팀 표기 중 하나를 반드시** 넣는다.\n"

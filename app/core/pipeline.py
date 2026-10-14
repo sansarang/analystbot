@@ -926,7 +926,9 @@ def _recall_fill(ref: MatchRef, facts, variables, *, state: RunState):
     names = {str(getattr(ref, s, "") or ""):
              str(getattr(ref, f"{s}_name", "") or "") or str(getattr(ref, s, "") or "")
              for s in ("home", "away")}
-    want = _rc.need(facts, keys=keys, conflict_docs=n_conf, names=names)
+    sides = {str(getattr(ref, s, "") or ""): s for s in ("home", "away")}
+    want = _rc.need(facts, keys=keys, conflict_docs=n_conf, names=names,
+                    sides=sides)
     thin = _rc.thin_kinds(variables)
     qs, why = _rc.ask(ref, facts, state=state, want=want, thin=thin)
     # 🔴 질의는 **사슬이** 던진다 — 이 함수는 글자만 넘긴다(계약 GS4).

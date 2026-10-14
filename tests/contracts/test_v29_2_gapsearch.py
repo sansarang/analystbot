@@ -17,6 +17,8 @@
   GS7 확률 경로가 이 모듈을 **안 부른다**
   GS8 **s5 뒤**에 부른다
   GS9 공급자 **둘을 순서대로** 시도한다(한쪽이 0개를 내도 멈추지 않는다)
+  GS10 **현지어 먼저**(지시 2026-10-14)
+  GS11 **쪽을 가린다** — 이동·거리는 원정팀만 · 홈 최근 5경기는 홈팀만
 """
 from __future__ import annotations
 
@@ -188,3 +190,58 @@ def test_gs10_local_language_first() -> None:
     assert g.LANGS[-1] == "en", (
         f"GS10 🔴 언어 열거의 **끝**이 `en` 이어야 한다(현지어가 앞) — {g.LANGS}")
     assert g.langs_of() == ["en"] or g.langs_of(), "GS10 🔴 기본 언어가 없다"
+
+
+def test_gs11_sides_are_split() -> None:
+    """GS11 🔴🔴 — 지시 2026-10-14.
+
+    > 이동거리, 그팀의 전체 경기일정, 홈까지의 거리는 **원정팀에 대한 부담**이고…
+    > 홈팀은 **최근 5경기에서 이긴거나 비기거나** 하는거를 통해서 **홈에서의
+    > 전력**을 알수 있다
+
+    ⚠️ 종전 판은 여덟 칸을 **양쪽에** 물어 `홈까지 거리` 를 홈팀에도 물었다 —
+       질의 하나를 헛되게 썼다(실측 2026-10-14 코모 실행).
+    """
+    import sys
+    sys.path.insert(0, str(ROOT))
+    from app.core.schema import Coach
+    from app.core.stages import s4b_gapsearch as g
+
+    sides = {str(n): sd for n, sd, _w in g.GAPS}
+    assert sides.get("원정 부담(이동·전체 일정·홈까지 거리)") == "away", (
+        f"GS11 🔴 이동·거리 칸이 `away` 가 아니다 — {sides}")
+    assert sides.get("홈 전력(홈 최근 5경기 승·무)") == "home", (
+        f"GS11 🔴 홈 전력 칸이 `home` 가 아니다 — {sides}")
+
+    # 🔴 돌려서 센다 — 홈팀에게 이동 칸을 묻지 않는다
+    class _F:
+        coach = {"H": Coach(name="있다", record="1-0-0"),
+                 "A": Coach(name="있다", record="1-0-0")}
+        standings = {"H": 1, "A": 2}
+        schedule = {"H": 1, "A": 1}
+        past_xi = {"H": [1, 2, 3], "A": [1, 2, 3]}
+        xi = {}
+        context = {}
+        recent = {"H": [{"mine_home": True}] * 5, "A": []}
+    got = g.need(_F(), keys=["H", "A"], conflict_docs=1,
+                 sides={"H": "home", "A": "away"})
+    assert not any("원정 부담" in x for x in got.get("H", [])), (
+        f"GS11 🔴🔴 **홈팀**에게 이동·거리를 물었다 — {got.get('H')}")
+    assert any("원정 부담" in x for x in got.get("A", [])), (
+        f"GS11 🔴 원정팀에게 이동·거리를 안 물었다 — {got.get('A')}")
+    assert not any("홈 전력" in x for x in got.get("A", [])), (
+        f"GS11 🔴 **원정팀**에게 홈 전력을 물었다 — {got.get('A')}")
+    # 🔴 홈팀은 홈 5경기가 차 있으니 그 칸도 안 묻는다
+    assert not any("홈 전력" in x for x in got.get("H", [])), (
+        f"GS11 🔴 홈 5경기가 찼는데도 물었다 — {got.get('H')}")
+
+
+def test_gs12_side_full_matches_form() -> None:
+    """GS12 — 홈 5경기 문턱은 `core/form.SIDE_FULL` 과 **같아야** 한다(사본 금지)."""
+    import sys
+    sys.path.insert(0, str(ROOT))
+    from app.core import form
+    from app.core.stages import s4b_gapsearch as g
+    assert g.SIDE_FULL == form.SIDE_FULL, (
+        f"GS12 🔴 문턱이 어긋났다 — gapsearch {g.SIDE_FULL} ↔ form "
+        f"{form.SIDE_FULL}. 쪽 폼을 '그대로 쓸 수 있는' 경기 수가 이 칸의 뜻이다")
