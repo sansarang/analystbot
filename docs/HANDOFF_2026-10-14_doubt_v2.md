@@ -1,4 +1,4 @@
-# 인계 — 의심 검증 통합본 v2 (2026-10-14 · 작업 중단 지점)
+# 인계 — 의심 검증 통합본 v2 (2026-10-14 밤 · **2-0 ~ 2-5 끝 · 2-6 돌고 있다**)
 
 🔴🔴 **"이어서 해라" 를 받으면 이 문서의 §2 첫 줄부터 그대로 잇는다.**
 정본 지시서: [docs/fable/inbox/2026-10-14i_doubt_v2.md](fable/inbox/2026-10-14i_doubt_v2.md)
@@ -6,80 +6,122 @@
 
 ---
 
-## §1 끝낸 것 (커밋돼 있다 · 스위트 1905 passed · 17 skipped)
+## §1 끝낸 것 (전부 커밋돼 있다 · 스위트 **1952 passed · 17 skipped**)
 
-| 무엇 | 어디 | 상태 |
+| 단계 | 무엇 | 어디 |
 |---|---|---|
-| **공격 계층 제거**(§0) | `app/core/attack.py` 삭제 · `pipeline._attack_of` 삭제 · `Card.attack` 삭제 · `render._attack_line` 삭제 · `tools/attack_sixgame.py`·`attack_efficacy.py` 삭제 · 계약 `test_v28_1_attack.py` 삭제 | ✅ 끝 |
-| **의심 변수 등록표**(§3-1) | `config/doubt_vars.yaml`(옛 `attack_vars.yaml` 을 옮겼다) — 변수 44개 · `시험` 칸에 (가)/(나)/(다) · `의심.유효 = [H1]` | ✅ 끝 |
-| **보드 사다리**(§1-1·1-2) | `app/core/boardfeed.py` — ① 캡처(`var/board/<날짜>.yaml`) ② `football-data.co.uk/fixtures.csv`(robots 전면 허용 · 실측) ③ 배당 API(`ODDS_API_KEY` 있다 · h2h·spreads·totals) · 국내 한 줄 고르기(`main_line`·`pick_domestic`) · 쿼터 라인은 **국내 미대응** 표시 · 실패는 **경보** | ✅ 끝(④ 통로는 아직 없다) |
-| 보드 배선(§7) | `pipeline` → `layers["board_feed"]`·`board_lines` → `Card.board_feed`·`board_lines` → 카드 맨 위 보드 블록(`render`) | ✅ 끝 |
-| 별칭표(§1-3) | `app/core/teamname.ALIAS`(Wolves→Wolverhampton · QPR · West Brom · Man City · Nott'm Forest …) + **여자팀 가름**(`is_women` · `(W)`·Women 이 한쪽만 있으면 share 0) | ✅ 끝 |
-| 사다리 실측(보고 1번 재료) | `var/accept/board_ladder.log` — 10-14 12경기: ② 5 · 실패 7 / 10-15 15경기: ② 3 · 실패 12. ⚠️ **별칭표 넣기 전** 수치다 → **다시 돌려야 한다**(아래 §2-0) | ⏳ 재실행 필요 |
+| **2-0** | 사다리 재측정 + **결함 넷** | `tools/board_ladder.py` · `var/accept/board_ladder2.log` |
+| **2-1** | 백필 보드 **실보드 86%** | `tools/fit_board_hist.py` · `data/board_hist/` · `var/accept/board_hist.log` |
+| **2-2** | **1단 기계 점검** | `app/core/machine.py` · `config/machine_check.yaml` · `var/accept/machine_elc.log` |
+| **2-3** | 2단 의심 시험 + 보정표 | `tools/fit_doubt.py` · `data/doubt_cal/` · `var/accept/doubt_cal.log` |
+| **2-4** | **§4 판정**(확신·보류·역배) | `app/core/doubt.py` · `config/doubt_judge.yaml` |
+| **2-5** | §5 검증 + 문턱 **0.58** | `tools/doubt_verify.py` · `cut_curve.py --after` · `var/accept/cut_after.log` · `var/accept/doubt_verify.log` |
 
-### 알아 둘 실측 (다시 재지 않아도 되는 것)
-- `football-data.co.uk` robots = `Disallow:`(전면 허용) · `fixtures.csv` 는 **그 주 유럽 리그**만(그날 코드 E1·E2·SC1) · 열에 `B365H/D/A` · **`AHh`**(아시안 핸디 기준선) · `B365AHH/AHA` · `B365>2.5`·`B365<2.5`.
-- 과거 마감 배당 = `https://www.football-data.co.uk/mmz4281/<시즌>/<코드>.csv`(예 `2526/E1.csv` · 553줄 · 132열) — **실보드 백필의 원천**이다(§1-4).
-- 배당 API 열쇠는 `.env` 의 **`ODDS_API_KEY`**(월 500 · `get_settings().the_odds_api_key` 같은 이름은 **없다**).
-- 사다리 ③ 는 카드 안에서 이미 돈다 — 사바흐–슬라비아는 **피나클 22곳**을 받았고(실측) 알사드–알힐랄은 **매칭 실패**(이벤트 18건)였다.
-- UCL·ACL·J1 은 ② 가 없다 → ③ 아니면 **경보**다.
+### 보고 1번 — 사다리(예측 시점)
+ELC **12/12**(② football-data) · UCL **9/9**(③ 배당 API) · ACLE **0/10**
+(🔴 ③ 에 AFC 가 없다 → **④ 통로가 남은 구멍**) = **21/31**.
+사후(킥오프 지남 · 피드 목록에서 빠진다) 9건은 따로 센다.
+
+### 보고 3번 — 백필 보드
+1,470경기 중 **실보드 1,258(86%)** · 근사 212 · 없음 0 · 이름 못 붙인 줄 **0**.
+⚠️ J1 `2026`(2026-02~06 · 200경기)은 football-data 에 **아예 없다** → 전부 근사.
+
+### 보고 5번 — 의심 변수(1,470경기 · 체급 3구간 통제)
+| 변수 | 걸림 | 차이 | 95% 구간 | 읽기 |
+|---|---|---|---|---|
+| B1 폼 표본 | 420 | −1.5%p | [−7.1, +4.2] | (나) 제거 |
+| A2 축0 착시 | 41 | −15.9%p | [−31.7, −0.1] | (나) **체급 통제하면 사라진다** → 제거 |
+| B3 운 요소 골 | 187 | −3.8%p | [−11.8, +4.1] | (나) 제거 |
+| C2 팀별 홈 효과 | 152 | −4.3%p | [−12.9, +4.3] | (나) 제거 |
+| **J1 시장 괴리** | 92 | **−17.6%p** | [−27.7, −7.6] | 🔴 **(가) 유효** |
+→ `의심.유효 = [H1, J1]` · `측정_대기 = [E1]`(결장 사다리·축0 상위 3 이 덤프에 없다).
+🔴 **유효 규칙**: (a) 전체 구간이 0 을 안 품고 음수 **그리고** (b) 체급 한 구간에서도 남는다.
+
+### 보고 5·6번 — 보정표와 검증(표본 밖 669경기 · 홀드아웃 `2026/2027`)
+`승무패 방향`(의심 0): 40~44% → **44.0%** · 45~49% → **53.1%** ·
+50~54% → **62.2%** · 55~59% → **72.4%** · 60%+ → **81.7%**.
+`보드 핸디`: 🔴 **확률이 올라가도 실측이 안 올라간다**(70%+ 칸이 **51.0%**) —
+봇 핸디 확률은 줄을 **못 가른다**. `보드 언오버`: 52.5% → 52.1%(잘 맞는다).
+보정 곡선 — **다섯 구간 전부** 의심 후가 더 가깝다 · 브라이어 0.2442 → **0.2400**.
+확신 **137개 · 69.3% · 하루 2.98** · 보류 80%.
+🔴🔴 **같은 하루 수면 봇 원확률 상위 137개도 69.3% — 차이 없다.** 보정은 **수를
+고치고 순서를 안 고친다**(칸이 단조다). 2단이 바꾸는 것은 *어느 줄*이 아니라
+*얼마*이고, 그 수가 **확신 문턱을 뜻 있게** 만든다(전에는 0.88 문턱이 **핸디
+거짓 확신**을 통과시켰다).
+
+### 고친 결함 (전부 실측에서 나왔다)
+1. `fixtures.csv` 첫 열 **BOM** → `row["Div"]` 가 조용히 `None`.
+2. `teamref.bare` 가 **이음줄을 남겨** `Paris Saint Germain` 이 이름표에 없는
+   이름이 됐다 → **맨시티–PSG 의 ③ 보드가 통째로 비어 있었다**.
+3. `AFC Champions League Elite` 가 `champions league` 에 걸려 **UEFA 열쇠**를
+   받아 실패 사유를 가렸다 → `sport_excludes`.
+4. 🔴 **종목 열쇠 표에 칸이 다섯뿐** → 챔피언십·에레디비시에·포르투갈·
+   아르헨티나·브라질이 ③ 에서 통째로 빠졌다 → `/v4/sports/`(0 크레딧) 재측정.
+5. `teamname._core` 가 **분음 부호를 안 걷었다**(`Alaves`↔`Alavés`) + 두 낱말
+   약칭(`Ath Madrid`) + **짧은 이름이 비율로 이겼다**(`Sheffield Weds`).
+6. 보정표 맨 위 칸 **포화**(`50%~100%` 하나로 뭉쳐 67.1%) → 재생본으로 넓혔다.
+7. `markets_of` 의 핸디 줄에 **정수 기준선이 없었다** → 근사 보드가 핸디 0 을
+   못 골랐다(`f"{-0.0:+.1f}"` = `"-0.0"` 음수 0 버그도 함께).
+8. 1단 점검이 **신원 검문 퇴로에서 안 돌았다** · 보류 경기가 **칠 표에서
+   사라졌다** · 보류가 *"보드 없음"* 과 **두 번** 세어졌다.
 
 ---
 
 ## §2 남은 것 — **이 순서로** 잇는다
 
-### 2-0. 사다리 실측 다시 (10분)
+### 2-6. §6 시험 — 🔴 **돌고 있다**
 ```bash
-PYTHONPATH=. uv run python - <<'PY' > var/accept/board_ladder2.log 2>&1
-# var/accept/board_ladder.log 를 만든 그 스크립트를 그대로 쓴다(그 파일 머리에 있다)
-PY
+PYTHONPATH=. uv run python tools/slate_queue.py \
+    --comp league:ELC --comp league:UCL --comp league:ACLE --hours 30 --run \
+    > var/accept/trial_1015.log 2>&1
 ```
-→ 별칭표·여자팀 가름을 넣은 뒤 **출처별 성공률**을 다시 센다(보고 1번).
-⚠️ ③ 를 표에 넣으려면 `market=` 에 피드를 넘겨야 한다 — 카드 안에서는 이미 넘어간다.
+⚠️ **지시서 §6 이 이름 든 10-14 경기(울브스·사바흐·카디프·밀월)는 다시 못
+   돌린다** — 킥오프를 지났고 사후 카드는 **누설**이다(CLAUDE.md · 슬레이트도
+   거부한다). 그래서 **10-15 슬레이트**(ELC 4 · UCL 9 · ACLE 2)로 같은 시험을
+   돌린다. 끝나면 경기마다 적는다: 보드 출처 · 1단 · 봇 확률 · 유효 의심 ·
+   의심 후 확률 · 판정 · (뒤에) 결과.
 
-### 2-1. 백필 보드(§1-4) — `tools/fit_board_hist.py` (새로 만든다)
-- `mmz4281/<시즌>/<코드>.csv` 를 리그별로 받아 `data/board_hist/<리그>/<시즌>.yaml` 로.
-- 한 줄: `{day, home, away, 1X2(B365H/D/A), AHh, AHH, AHA, O2.5, U2.5}` · 이름은 `teamname.share` 로 우리 이름에 붙인다.
-- 코드 표: E0=PL · **E1=ELC** · E2=League One · SC1=SPL · D1=BL1 · I1=SA · SP1=PD · F1=FL1 · N1=DED · P1=PPL.
-- 없는 리그(MLS·J1·K1·ACLE·UCL)는 **근사 보드**(봇 확률로 양쪽 50%에 가장 가까운 0.5 단위) · 표에 **근사** 꼬리표 · 판정표는 **따로 집계**.
-
-### 2-2. 1단 기계 점검(§2) — `app/core/machine.py` (새로 만든다)
-- 입력 완전성(축0~3 · Elo · 폼 표본 · XI 확정/예상 · 결장 원천 · 감독 isCoach · 리그 오프셋 · 대회 이력 · 보드 출처/시각) · 버그 반영(①②③④ · 0-0 · 이력 기간) · 신선도.
-- 판정 `정상 / 고장 / 기계 보류` → `Card.machine` + 카드 의심 블록 머리.
-- **기계 보류면 확신·역배 둘 다 금지**(칠 표에서 빠진다).
-
-### 2-3. 2단 의심 + 조건부 보정표(§3-2·3-3) — `tools/fit_doubt.py` (새로 만든다)
-- 아직 **측정 안 된** 의심 변수부터: **B1 폼 표본 · A2 축0 착시 · B3 운 요소 골**(+ 가능하면 J1·E1). 방법은 체급 3구간 통제 + 95% 구간(끝난 측정은 `config/doubt_vars.yaml` 의 `시험` 칸).
-- 보정표: 줄 종류(승무패 방향 · 보드 핸디 · 보드 언오버) × 봇 확률 구간(40-45·45-50·50-55·55-60·60-70·70-80·80+) × **유효 불리 의심 개수(0·1·2+)** → 칸마다 경기 수·봇 평균·실측·95% 구간·반대쪽 실측·실보드/근사.
-- 칸 <100 이면 이웃 합침, 그래도 <100 이면 **보류**. 판은 `data/doubt_cal/<줄종류>.yaml`.
-- 재료: `var/judge/atk_*.json`(1,470경기 · 좌표·xG·선발·골 시각 들어 있다) + 2-1 의 실보드.
-
-### 2-4. 판정(§4) — `app/core/doubt.py` (새로 만든다)
-- 의심 후 확률 = 그 칸 실측 · **확신**(1단 정상 + 문턱 이상 + 구간 하한도 문턱 근처) · **역배**(반대쪽 구간 하한 > 50% + 다른 시즌 유지) · 나머지 **보류**.
-- 문턱은 **백필 곡선**으로(`tools/cut_curve.py` 를 의심 후 확률로 다시 그린다).
-- 카드 의심 블록(§7) · `core/picks` 는 **확신/역배만** 받는다(지금은 문턱만 쓴다 — 그 자리를 갈아끼운다).
-
-### 2-5. 검증(§5) · 10-14 시험(§6) · 출력(§7)
-- 보정 곡선(의심 후가 원래보다 실측에 가까운가) · 확신/역배 적중률 · 보류 비율 · 시즌 교차 · 다폴 규칙(기계 보류 다리 금지).
-- §6 대상: 챔피언십 6 · ACL 4 · UCL 2 · 알사드–알힐랄 — 카드 로그가 `var/accept/ch_*.log`·`ucl_*.log`·`alsadd_board2.log` 에 있다.
-- 예상 확인: 울브스 = 기계 보류 · 사바흐 = 기계 보류 · 카디프 = 확신 여부 · 밀월 = 보류 여부.
+### 2-7. 남은 구멍 넷 (우선순위 순)
+1. 🔴 **유효 불리 의심을 카드에서 세는 통로가 없다** — 지금 모든 카드가 **묶음
+   0** 칸으로 판정된다. H1(순위 동기 · 그 시즌 승점/경기)·J1(시장 괴리 ·
+   보드 디빅 ↔ 봇 10%p)은 **카드가 이미 쥔 재료**다 → `pipeline._doubt_of` 의
+   `bad=[]` 를 채운다. ⚠️ 채우면 묶음 1 칸으로 가고 그 칸은 **전부 보류**다
+   (61~92경기 · <100) — 그래서 **보정표 묶음 1 칸을 먼저 키워야** 한다.
+2. 🔴 **④ 보드 통로**(공개 비교 사이트) — ACLE 가 0/10 이다. ③ 에 AFC 가 없다.
+3. ⚠️ `보드 핸디`·`보드 언오버` 보정표는 **1,470경기**(백필 보드가 있는 리그)
+   에 묶여 있다 — `data/board_hist` 를 선언된 **12리그**로 넓히면(지금 4리그만
+   만들었다) 그 칸도 넓어진다(`tools/fit_board_hist.py` 는 이미 받는다).
+4. ⚠️ `tests/unit_v6_s5_s7.py` 는 `judge` 가 **없는 이름**이라 ruff F821 아홉 개
+   (파일명이 `test_` 로 안 시작해 pytest 는 안 줍는다 — **죽은 파일**이다).
 
 ---
 
 ## §3 함정 (전에 밟은 것)
-1. **미배선 주차 금지** — `NOT_WIRED` 는 선언 셋뿐이다(계약이 센다). 새 모듈은 **만든 턴에 배선**한다.
-2. `probmodel.home_mul(` 글자를 건드리면 계약 `test_v7_...열쇠를_본다` 가 빨개진다 — 후보 함수 이름은 `team_home` 처럼 **갈라** 쓴다.
-3. `competition.py` 에 `_words` 같은 **이미 있는 이름**을 또 쓰면 조용히 덮는다(`_stage_words` 로 갈랐다).
-4. 카드 글이 바뀌면 e2e 스냅샷이 빨개진다 — `V6_SNAPSHOT_UPDATE=1` 로 갱신하고 **까닭을 커밋에 적는다**.
-5. 파이프라인에서 `layers["divergence"] = said_div` 와 그 대입 사이에 코드를 끼우면 계약 DV2 가 빨개진다(400자 창).
+1. **미배선 주차 금지** — `NOT_WIRED` 는 선언 셋뿐이다(계약이 센다). 새 모듈은
+   **만든 턴에 배선**한다.
+2. `probmodel.home_mul(` 글자를 건드리면 계약 `test_v7_...열쇠를_본다` 가 빨개진다.
+3. `competition.py` 에 `_words` 같은 **이미 있는 이름**을 또 쓰면 조용히 덮는다.
+4. 카드 글이 바뀌면 e2e 스냅샷이 빨개진다 — `V6_SNAPSHOT_UPDATE=1` 로 갱신하고
+   **까닭을 커밋에 적는다**.
+5. 파이프라인에서 `layers["divergence"] = said_div` 와 그 대입 사이에 코드를
+   끼우면 계약 DV2 가 빨개진다(400자 창).
 6. 돌연변이·치환 뒤에는 `find . -name __pycache__ -not -path "./.venv/*" -exec rm -rf {} +`.
+7. 🔴 **파이썬으로 파일을 두 번 쓸 때 `s` 를 다시 받아라** — 이번에 `_doubt_of`
+   가 **두 번째 쓰기에 통째로 날아갔다**(두 치환이 같은 `s` 를 봤다). 치환 뒤엔
+   `grep -n` 으로 **그 줄을 출력해 보고** 넘어간다(CLAUDE.md #8).
+8. 🔴 **자를 섞지 마라** — 확신 문턱은 **의심 후 확률 자**(0.58)이고 단폴 문턱은
+   **봇 원확률 자**(0.88)다. 겹쳐 걸면 **아무것도 안 나온다**.
+9. 🔴 **같은 재생본으로 적합하고 거기서 문턱까지 고르면 표본 안이다** —
+   `--holdout` 으로 시즌을 빼고, 문턱·검증은 그 시즌에서만 센다.
 
 ## §4 지금 바로 쓰는 명령
 ```bash
-PYTHONPATH=. uv run pytest tests -q                  # 1905 passed · 17 skipped
-PYTHONPATH=. uv run python tools/slate_queue.py --comp league:ELC --hours 30        # 큐만
-PYTHONPATH=. uv run python tools/slate_queue.py --comp league:ELC --hours 30 --run  # 카드+칠 표
-PYTHONPATH=. uv run python tools/cut_curve.py --board-only    # 문턱 곡선(보드 줄만)
-PYTHONPATH=. uv run python tools/fit_attack2.py               # 의심 변수(체급 통제)
+PYTHONPATH=. uv run pytest tests -q                  # 1952 passed · 17 skipped
+PYTHONPATH=. uv run python tools/board_ladder.py --comp league:UCL --hours 36 --feed
+PYTHONPATH=. uv run python tools/fit_board_hist.py                      # 백필 보드
+PYTHONPATH=. uv run python tools/fit_doubt.py --wide --holdout 2026/2027  # 시험+보정표
+PYTHONPATH=. uv run python tools/cut_curve.py --after --board-only      # 문턱 곡선
+PYTHONPATH=. uv run python tools/doubt_verify.py                        # §5 검증
+PYTHONPATH=. uv run python tools/slate_queue.py --comp league:ELC --hours 30 --run
 ```
 보드 캡처는 `var/board/<날짜>.yaml` — `{"경기 이름": "승무패 2.15 3.25 3.40\n핸디 1.5 1.80 2.05\n언더오버 2.5 1.90 1.95"}`.
