@@ -1233,6 +1233,17 @@ def _b3c(card: Card) -> str:
         out.append(f"    출처 {b.source}({b.data_date}) · {b.why}")
     else:
         out.append(f"- ⬜ **기준 없음** — {b.why}")
+        # 🔴🔴 **리그 수준 대체**(사용자 지시 2026-10-14) — 🔴 **표시만**
+        #
+        #  > elo가 없는 리그는 그팀이 속한 리그를 쓰되 **봇 흐름에 영향을
+        #  > 주어서는 안된다**
+        #
+        #  ⚠️ 그래서 `기준 없음` 줄을 **그대로 두고** 그 아래에 적는다 — 세 열의
+        #     기준 칸은 여전히 `—` 다(확률이 안 섰다는 사실이 안 가려진다).
+        said_ll = str(dict(getattr(b, "league_level", None) or {}).get("said")
+                      or "")
+        if said_ll:
+            out.append(f"    {said_ll}")
         if b.we is not None:
             # 🔴 §3-3 — 무승부를 못 나누면 **We 만** 보인다(지어내지 않는다)
             out.append(f"    Elo 기대 득점률 `We` **{b.we:.3f}**"

@@ -157,6 +157,20 @@ async def _base(ref: MatchRef, facts: Facts, *, state: RunState, net,
                 state.note(f"s2b ① 대륙 바닥 없음 — {why_cc}")
     got = base.base_prob(kind=kind, home_elo=home_elo, away_elo=away_elo,
                          neutral=bool(neutral), source=source, data_date=day)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **리그 수준 대체**(사용자 지시 2026-10-14) — 🔴 **표시만**
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > elo가 없는 리그는 그팀이 속한 리그를 쓰되 **봇 흐름에 영향을 주어서는
+    #  > 안된다**
+    #
+    #  🔴 `probs` 를 **만들지 않는다** — Elo 를 못 받은 경기는 *"기준 없음"*
+    #     그대로이고(카드 열이 `—`), 이 칸만 글자를 든다.
+    #  ⚠️ 계약 LL2 가 그것을 센다: 이 자리가 `probs`·`dr`·`home_elo`·
+    #     `away_elo` 를 바꾸면 빨개진다(바꾸면 흐름에 영향을 준 것이다).
+    if home_elo is None or away_elo is None:
+        got = got.model_copy(update={
+            "league_level": league_level(ref, kind=kind, state=state)})
     if got.probs is None:
         state.note(f"s2b ① 기준 없음 — {got.why}"
                    + (f"(중립 판정: {why_n})" if neutral else ""))
@@ -165,6 +179,38 @@ async def _base(ref: MatchRef, facts: Facts, *, state: RunState, net,
                    f"dr {got.dr:+.0f} → 홈 {got.probs.home:.3f} 무 "
                    f"{got.probs.draw:.3f} 원정 {got.probs.away:.3f} · {got.why}")
     return got
+
+
+def league_level(ref: MatchRef, *, kind: str, state: RunState) -> dict:
+    """🔴🔴 **그 팀이 속한 리그의 수준** — 🔴 **표시만**(지시 2026-10-14).
+
+    > elo가 없는 리그는 그팀이 속한 리그를 쓰되 **봇 흐름에 영향을 주어서는
+    > 안된다**
+
+    🔴🔴 **글자를 만드는 곳은 `offsets.gap_said` 하나다**(사본 금지) — 카드 블록
+       3c 의 *"리그 간 전력 차(표시만)"* 가 쓰는 그 함수다.
+       ⚠️ 내가 처음엔 같은 일을 다시 짰다(팀→리그→판 조회) — 걷었다.
+    🔴 대륙은 `competition.row_of(열쇠)["confederation"]` 이다 —
+       `s2_facts` 가 그 값을 얻는 그 길과 **같다**.
+    ⚠️ 판에 **없는 리그**(J2·J3·태국 등)는 그 함수가 ⬜ 와 사유를 적는다 —
+       0 으로 메우지 않는다(#3 조용한 0 금지).
+    ⚠️ 돌려주는 것은 **글자뿐**이다 — 확률·Elo·dr 을 만들지 않는다(계약 LL2).
+    """
+    from app.core import competition as _cp3
+    from app.core import offsets as _off
+    conf = str(dict(_cp3.row_of(kind) or {}).get("confederation") or "")
+    if not conf:
+        said = f"⬜ **리그 수준 대체 못 함** — `{kind}` 의 대륙을 모른다"
+        state.note(f"s2b ① {said}")
+        return {"said": said}
+    got = _off.gap_said(
+        conf=conf,
+        home=str(getattr(ref, "home_name", "") or ""),
+        away=str(getattr(ref, "away_name", "") or ""))
+    said = ("🌐 **리그 수준 대체**(🔴 **표시만** · 확률에 안 들어간다 · Elo 를 "
+            f"못 받아 그 팀 리그를 썼다) — {got}")
+    state.note(f"s2b ① {said[:200]}")
+    return {"conf": conf, "gap": got, "said": said}
 
 
 async def continental_elo(ref: MatchRef, kind: str, *, day: str
