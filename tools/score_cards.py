@@ -38,6 +38,47 @@ ELO = re.compile(r"Elo:.*?→ 승 (\d+)% · 무 (\d+)% · 패 (\d+)%")
 #: 🔴 시장 — `| A 승 | … | 33% (2.75) |`
 MKT = re.compile(r"시장 홈 (\d+)% · 원정 (\d+)%")
 # ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **2단 의심 줄 + 배당 계기판**(후속 지시 2026-10-14 3번)
+# ══════════════════════════════════════════════════════════════════
+#
+#  > score_cards 에 확신/역배별로 "실측 적중 vs 배당 확률" 누적.
+#
+#  🔴 카드가 적어 둔 **그 글자**를 읽는다(다시 판정하지 않는다 · 카드가 그때의
+#     봇이다). 꼴은 `core/doubt.Row.said` 와 `core/doubt.gauge_said` 다.
+DOUBT = re.compile(
+    r"^\s+(.+?) — 봇 ([\d.]+)% → \*\*의심 후 ([\d.]+)%\*\*"
+    r".*?\*\*(확신|역배|보류)\*\*")
+#: 🔴 계기판 — `📈 계기판(판정 미사용) — 의심 후 **61.5%** ↔ 개시 배당 확률 **43.8%**`
+GAUGE = re.compile(
+    r"📈 계기판\(판정 미사용\) — 의심 후 \*\*([\d.]+)%\*\* ↔ "
+    r"개시 배당 확률 \*\*([\d.]+)%\*\*")
+#: 🔴 그 줄 이름 → 승무패 자리(홈 0 · 무 1 · 원정 2). 그 밖은 `None`(안 센다)
+WIN_SLOT = {"홈 승": 0, "무": 1, "원정 승": 2}
+
+
+def doubt_rows(text: str) -> list[dict]:
+    """🔴 카드의 **2단 줄**들 — `{줄, 봇, 의심후, 판정, 배당확률}`.
+
+    ⚠️ 계기판 줄은 그 **바로 다음 줄**에 온다(렌더러가 그렇게 찍는다) — 없으면
+       `배당확률` 이 `None` 이다(지어내지 않는다 · #3).
+    """
+    out: list[dict] = []
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        m = DOUBT.match(line)
+        if not m:
+            continue
+        got = {"line": m.group(1).strip(), "p_bot": float(m.group(2)) / 100,
+               "p_after": float(m.group(3)) / 100, "verdict": m.group(4),
+               "market": None}
+        for nxt in lines[i + 1:i + 3]:
+            g = GAUGE.search(nxt)
+            if g:
+                got["market"] = float(g.group(2)) / 100
+                break
+        out.append(got)
+    return out
+# ══════════════════════════════════════════════════════════════════
 # 🔴🔴 **§15 — 카드가 저장하는 새 열들**(지시서 2026-10-12(둘째))
 # ══════════════════════════════════════════════════════════════════
 #
@@ -200,6 +241,9 @@ def read_card(path: Path) -> dict | None:
     # 🔴🔴 **사후 카드 표시**(후속 지시 2026-10-13 밤 7번) — 적중 기록에서 뺀다
     #    🔴 카드가 스스로 적는 그 글자로 센다(`slate`·`s7_judge` 가 찍는다).
     out["post_hoc"] = ("이미 시작한 경기다" in text)
+    # 🔴 **2단 줄**(후속 지시 2026-10-14 3번) — 카드가 적은 그 글자를 그대로 둔다
+    #    ⚠️ 전문을 다 들고 있지 않는다(카드가 수만 자다) — **그 줄만** 뽑아 둔다.
+    out["doubt"] = doubt_rows(text)
     return out
 
 
@@ -328,6 +372,42 @@ async def main() -> None:
             for i in range(3)]
     print(f"리그 기본률(이 표본) — 홈 {base[0]:.0%} · 무 {base[1]:.0%} · "
           f"원정 {base[2]:.0%}")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **확신/역배별 — 실측 적중 vs 배당 확률**(후속 지시 2026-10-14 3번)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 **판정에 쓰지 않는다** — 쌓아서 보는 것뿐이다(기록만).
+    box: dict = {}
+    for one in scored:
+        for row in list(one.get("doubt") or []):
+            slot = WIN_SLOT.get(row["line"])
+            if slot is None:
+                continue            # 🔴 승무패가 아닌 줄은 **안 센다**
+            box.setdefault(row["verdict"], []).append(
+                {"ok": int(slot == int(one["hit"])),
+                 "after": row["p_after"], "market": row["market"]})
+    print()
+    print("**확신/역배 누적**(지시 2026-10-14 3번 · **판정 미사용 · 기록만**)")
+    print()
+    print("| 판정 | 줄 | 실측 적중 | 의심 후 평균 | 배당 확률 평균 | 차이 |")
+    print("|---|---|---|---|---|---|")
+    for key in ("확신", "역배", "보류"):
+        part = box.get(key) or []
+        if not part:
+            print(f"| {key} | 0 | ⬜ | ⬜ | ⬜ | ⬜ |")
+            continue
+        hit = sum(x["ok"] for x in part) / len(part)
+        aft = sum(x["after"] for x in part) / len(part)
+        mk = [x["market"] for x in part if x["market"] is not None]
+        print(f"| **{key}** | {len(part)} | **{hit:.1%}** | {aft:.1%} | "
+              + (f"{sum(mk) / len(mk):.1%}(줄 {len(mk)})" if mk else "⬜")
+              + " | "
+              + (f"**{(hit - sum(mk) / len(mk)) * 100:+.1f}%p**" if mk
+                 else "⬜") + " |")
+    if not box:
+        print()
+        print("- ⬜ **2단 줄이 적힌 카드가 없다** — 카드가 의심 블록을 찍기 "
+              "시작한 뒤부터 쌓인다(지어내지 않는다 · #3)")
     #: 🔴 1번 — **균등 기준**(33/33/33)을 더한다(사용자 지시 2026-10-12)
     even = [1 / 3, 1 / 3, 1 / 3]
     models = {

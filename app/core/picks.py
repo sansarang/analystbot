@@ -59,6 +59,10 @@ class Leg:
 class Out:
     singles: list = field(default_factory=list)
     parlays: list = field(default_factory=list)
+    #: 🔴🔴 **표시만 줄**(후속 지시 2026-10-14 2번) — 봇 원확률로는 후보가 안 되고
+    #:    의심 후 칸도 서지 않은 핸디·언오버 줄. **칠 표에 적되 고르지 않는다**.
+    #:    ⚠️ 조용히 버리면 *"그 줄을 안 봤다"* 와 구별되지 않는다(#3).
+    shown: list = field(default_factory=list)
     why: str = ""
 
 
@@ -171,15 +175,20 @@ def board_lines(board) -> tuple[set[str], str]:
                  "⬜ 보드에서 읽은 줄이 없다")
 
 
-def best_of(rows: list[dict]) -> list[Leg]:
+def best_of(rows: list[dict]) -> tuple[list[Leg], list[tuple]]:
     """🔴 경기마다 **한 줄만** 고른다(§4 *"경기당 1줄"*).
 
     🔴🔴 **보드에 있는 줄만** 후보다(§1) — `row["board_lines"]` 가 그 목록이고,
        비어 있으면 그 경기는 **칠 표에서 빠진다**(표시만).
     🔴🔴 **1단 기계 보류면 안 받는다**(의심 검증 v2 §2·§4) — 확신·역배 둘 다
        금지이고, 다폴 다리로도 못 쓴다(§5 *"기계 보류 다리 금지"*).
+
+    돌려주는 것은 `(다리들, 표시만 줄들)` 이다 — **표시만** 은 핸디·언오버 중
+    후보가 못 된 줄이고, 표 끝에 적되 **고르지 않는다**(지시 2026-10-14 2번).
     """
     out: list[Leg] = []
+    #: 🔴 **표시만** 으로 남길 줄(핸디·언오버 · 지시 2026-10-14 2번)
+    shown: list[tuple] = []
     for one in rows or []:
         if one.get("machine_hold"):
             continue
@@ -237,6 +246,10 @@ def best_of(rows: list[dict]) -> list[Leg]:
         #     실측 **51.0%** 였다. 🔴 그 수로 문턱을 넘기면 **거짓 확신**이다.
         #  🔴 그래서 핸디·총점 줄은 **의심 후 확률로만** 간다(위 `said_db` 길).
         #     칸이 없으면 **후보가 아니다**.
+        # 🔴 후보가 못 되는 핸디·언오버는 **표시만** 으로 남긴다(지시 2번) —
+        #    조용히 버리면 *"그 줄을 안 봤다"* 와 구별되지 않는다(#3).
+        shown += [(str(one.get("match") or ""), x[0], x[1]) for x in got
+                  if str(x[0]).startswith(("핸디", "오버", "언더"))]
         got = [x for x in got if not str(x[0]).startswith(
             ("핸디", "오버", "언더"))]
         if not got:
@@ -248,12 +261,12 @@ def best_of(rows: list[dict]) -> list[Leg]:
                        line=line, p=p, side=side_of(line),
                        verdict=str(one.get("verdict") or ""),
                        board=str(one.get("board") or "")))
-    return sorted(out, key=lambda x: -x.p)
+    return sorted(out, key=lambda x: -x.p), shown
 
 
 def of(rows: list[dict]) -> Out:
     """🔴🔴 **칠 표** — `(단폴, 다폴)`. 아무것도 없으면 그 사실을 적는다."""
-    legs = best_of(rows)
+    legs, shown = best_of(rows)
     # 🔴🔴 **자가 둘이다** — 2단 판정이 붙은 줄은 그 판정이 문턱을 이미 걸었고,
     #    붙지 않은 줄은 **봇 원확률 문턱**(`CUT_SINGLE`·`CUT_LEG`)을 쓴다.
     #    ⚠️ 한 자로 뭉개면 한쪽이 통째로 사라진다(그 까닭은 `best_of` 머리글).
@@ -299,7 +312,8 @@ def of(rows: list[dict]) -> Out:
         why += " · 🔴 **오늘 단폴 없음**"
     if not parlays:
         why += " · 🔴 **오늘 다폴 없음**"
-    return Out(singles=singles, parlays=parlays, why=why)
+    return Out(singles=singles, parlays=parlays, why=why,
+               shown=list(shown))
 
 
 def _pick_legs(pool: list[Leg], n: int) -> list[Leg]:
@@ -349,4 +363,12 @@ def said_of(out: Out) -> str:
         rows.append(f"- 🔄 **역배 단폴(표시만)** — {one.said()}")
     for got in out.parlays:
         rows.append(f"- {len(got)}폴 — " + " + ".join(x.said() for x in got))
+    # 🔴🔴 **표시만**(지시 2026-10-14 2번) — 봇 원확률로도 의심 후 칸으로도
+    #    후보가 못 된 핸디·언오버 줄. 조용히 버리지 않는다(#3).
+    if out.shown:
+        top = sorted(out.shown, key=lambda x: -float(x[2]))[:6]
+        rows.append("- 📋 **표시만**(핸디·언오버 — 봇 원확률은 판정에 안 쓰고 "
+                    f"의심 후 칸도 안 섰다 · {len(out.shown)}줄): "
+                    + " · ".join(f"{m} {ln} {100 * p:.0f}%"
+                                 for m, ln, p in top))
     return "\n".join(rows)

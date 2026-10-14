@@ -582,6 +582,7 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     from app.core import picks as _pk
     said_bl, said_bwhy = _pk.board_lines(got_board)
     said_feed = ""
+    got_feed = None
     if not said_bl:
         try:
             got_feed = await _bf.of(
@@ -595,6 +596,11 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
             said_feed = f"🔴 보드 사다리가 터졌다 — {exc!r:.120}"
     layers["board_feed"] = said_feed
     layers["board_lines"] = sorted(said_bl)
+    # 🔴 계기판이 쓰는 **줄 객체**(판정 미사용) — 사다리가 모은 것 그대로.
+    #    ⚠️ 사용자 보드(①)로 이미 줄이 섰으면 사다리를 안 돌았으므로 그 줄은
+    #       `got_board.lines` 에 있다 — 둘 다 본다(없으면 계기판이 ⬜ 다).
+    layers["board_rows"] = (list(getattr(got_feed, "rows", None) or [])
+                            or list(getattr(got_board, "lines", None) or []))
     if not said_bl:
         st.note(f"칠 표 — {said_bwhy}")
     # ══════════════════════════════════════════════════════════════════
@@ -1000,7 +1006,16 @@ def _doubt_of(ref: MatchRef, facts, layers: dict, edge: dict, machine):
     got_lines = _pk3.lines_of(_pk3.grid_of(dict(edge or {})))
     rows = {k: v for k, v in got_lines.items()
             if v is not None and (not want or k in want)}
-    said = _db.judge(rows, bad=[], machine_hold=machine.hold())
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **배당 계기판**(후속 지시 2026-10-14 3번) — **판정 미사용 · 기록만**
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 보드의 **승무패 셋**을 마진 제거해 우리 수 옆에 적는다. 이 수는 판정에
+    #     **안 들어간다**(계약: 시장 확률이 등급 계산에 직접 들어가는 것 금지) —
+    #     `core/doubt.judge` 는 그것을 **글자에만** 쓴다(계약 DB5 가 센다).
+    #  ⚠️ 보드는 사다리가 **예측 시점에** 모은 것이다 — 그것이 개시 배당 자리다.
+    said = _db.judge(rows, bad=[], machine_hold=machine.hold(),
+                     prices=_board_win_prices(layers))
     if not rows:
         said.why += ("\n    ⬜ **판정할 줄이 없다** — "
                      + ("보드 줄이 비었다(§1 수집 실패)" if not want
@@ -1008,6 +1023,27 @@ def _doubt_of(ref: MatchRef, facts, layers: dict, edge: dict, machine):
     said.why += ("\n    ⚠️ 유효 불리 의심을 **카드에서 세는 통로가 아직 없다** — "
                  "지금은 묶음 0 칸으로만 본다(백필 판정표는 H1·J1 을 센다)")
     return said
+
+
+def _board_win_prices(layers: dict) -> list:
+    """🔴 보드의 **승무패 셋 배당**(홈·무·원정). 하나라도 없으면 **빈 목록**.
+
+    🔴 계기판 전용이다(판정 미사용) — 마진을 빼려면 **셋이 다** 있어야 한다
+       (`core/devig` 의 그 규칙).
+    ⚠️ 보드 블록 글자를 되파싱하지 않는다 — `layers["board_rows"]` 가 줄 객체를
+       들고 있을 때만 쓴다(없으면 빈 목록이고 계기판이 ⬜ 로 적힌다).
+    """
+    rows = list(dict(layers or {}).get("board_rows") or [])
+    out: list = []
+    for side in ("home", "draw", "away"):
+        got = [float(getattr(r, "price", 0) or 0) for r in rows
+               if str(getattr(r, "market", "")) in ("win", "draw")
+               and str(getattr(r, "side", "") or "") == side
+               and getattr(r, "price", None)]
+        if not got:
+            return []
+        out.append(got[0])
+    return out
 
 
 def _gate_of(ref: MatchRef, facts, turn: dict, *, state: RunState):

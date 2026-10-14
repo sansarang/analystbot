@@ -73,9 +73,34 @@ ELC 59.4%, 센 쪽은 PPL 78.0% · BL1 75.3%.
 
 ---
 
+---
+
+## §1-b 후속 지시(2026-10-14 · 누설 점검) — **끝냈다**
+
+| 번호 | 무엇 | 결과 |
+|---|---|---|
+| 1 | 누설 점검 | 🔴 **백필 보드는 마감 배당이었다** → 개시도 담았다 · J1 을 **개시 기준으로 고정** · **확신 69.5% 는 J1 을 안 쓴다**(누설 아님) |
+| 2 | 확신 픽 구성표 | 🔴 **거짓 확신 1,698개**(BTTS 가 승무패 칸으로) 잡고 고쳤다 · 지금은 **승무패만** 251개 76.9% · 평균 개시 배당 **1.335** |
+| 3 | 핸디 처리 | AUC **0.511**(언오버 0.496 ↔ 승무패 0.622) · 보드 메인 커버율 **50.0%** · 분산·중심은 맞다 → **기준선이 반반이라 신호가 없다** · `core/picks` 가 **잠갔다** |
+| 4 | 문턱 운영 | 단폴 **0.63**(251건 76.9% 하루 1.44) · 다리 **0.75**(2폴 87.0%) · **`운영: 기록용`** |
+| 5 | 10-15 §6 시험 | ⏳ 슬레이트가 돌고 있다 → `tools/trial_table.py` 가 표를 찍는다 |
+
+🔴 **새 도구 넷** — `tools/j1_leak.py`(누설 세 판) · `tools/sure_mix.py`(구성표) ·
+`tools/ah_cause.py`(핸디 원인) · `tools/trial_table.py`(§6 시험표).
+
+🔴🔴 **이 셋을 꼭 기억한다**
+1. **마감 배당을 변수 재료로 쓰지 않는다** — `data/board_hist` 의 `win`·`ah`·`ou`
+   는 **마감**이고 `*_open` 이 **개시(예측 시점)** 다. 변수는 `*_open` 으로 잰다.
+2. **모르는 줄 종류는 승무패로 떨어뜨리지 않는다** — `doubt.kind_of` 가 빈 글자를
+   돌려주지 않으면 BTTS·더블찬스가 승무패 칸으로 들어가 **거짓 확신**이 선다.
+3. **핸디·총점은 봇 원확률로 판정하지 않는다** — 보드가 그 기준선을 **반반**으로
+   세우므로 그 줄에는 신호가 없다(AUC 0.511).
+
+---
+
 ## §2 남은 것 — **이 순서로** 잇는다
 
-### 2-6. §6 시험 — 🔴 **돌고 있다**
+### 2-6. §6 시험 — 🔴 **돌고 있다**(끝나면 `tools/trial_table.py`)
 ```bash
 PYTHONPATH=. uv run python tools/slate_queue.py \
     --comp league:ELC --comp league:UCL --comp league:ACLE --hours 30 --run \
@@ -131,6 +156,16 @@ PYTHONPATH=. uv run python tools/slate_queue.py \
 9. 🔴 **같은 재생본으로 적합하고 거기서 문턱까지 고르면 표본 안이다** —
    `--holdout` 으로 시즌을 빼고, 문턱·검증은 그 시즌에서만 센다.
 
+## §3-b 함정 (후속 지시에서 나온 것)
+10. 🔴 **변수 재료의 "시점"을 먼저 묻는다** — 백필 데이터셋은 기본이 **마감
+    배당**이다. 그것으로 변수를 재면 그 변수는 **미래를 본다**. 원천에 개시 칸이
+    있나 먼저 보고, 없으면 그 변수를 **끈다**.
+11. 🔴 **분류 함수의 마지막 줄을 본다** — `kind_of` 의 `return WIN if said else ""`
+    하나가 **확신 1,698개**를 거짓으로 세웠다. *"모르면 빈 글자"* 가 기본값이다.
+12. 🔴 **설정을 돌리는 중에 실행을 돌리지 않는다** — 10-15 슬레이트가 도는 동안
+    문턱을 0.58 → 0.63 으로 바꿔서 그 로그의 2단 판정이 **섞였다**. 그래서 표는
+    카드 로그가 아니라 **재료 줄**(`var/picks/*.yaml`)로 다시 판정해 찍는다.
+
 ## §4 지금 바로 쓰는 명령
 ```bash
 PYTHONPATH=. uv run pytest tests -q                  # 1952 passed · 17 skipped
@@ -139,6 +174,10 @@ PYTHONPATH=. uv run python tools/fit_board_hist.py                      # 백필
 PYTHONPATH=. uv run python tools/fit_doubt.py --wide --holdout 2025/2026  # 시험+보정표
 PYTHONPATH=. uv run python tools/cut_curve.py --after --board-only      # 문턱 곡선
 PYTHONPATH=. uv run python tools/doubt_verify.py                        # §5 검증
+PYTHONPATH=. uv run python tools/j1_leak.py                            # 누설 세 판
+PYTHONPATH=. uv run python tools/sure_mix.py                           # 확신 구성표
+PYTHONPATH=. uv run python tools/ah_cause.py                           # 핸디 원인
+PYTHONPATH=. uv run python tools/trial_table.py                        # §6 시험표
 PYTHONPATH=. uv run python tools/slate_queue.py --comp league:ELC --hours 30 --run
 ```
 보드 캡처는 `var/board/<날짜>.yaml` — `{"경기 이름": "승무패 2.15 3.25 3.40\n핸디 1.5 1.80 2.05\n언더오버 2.5 1.90 1.95"}`.

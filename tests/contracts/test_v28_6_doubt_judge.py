@@ -270,3 +270,61 @@ def test_J1_은_개시_배당으로_잰다():
                 if str(x.get("kind") or "").startswith("실보드")]
         if rows:
             assert "win_open" in rows[0], rows[0].keys()
+
+
+def test_계기판은_판정에_안_들어간다():
+    """🔴🔴 DB5(후속 지시 2026-10-14 3번) — 계기판은 **글자만** 만든다.
+
+    🔴 계약(네 층 §7)이 *"시장 확률이 등급 계산에 직접 들어가는 것"* 을 막는다.
+    ⚠️ 기대값·손익분기·켈리·금액은 **계산하지 않는다**(절대규칙 6 개정).
+    """
+    import ast
+    import inspect
+    # 🔴 `gauge`·`gauge_said` 는 **판정 글자를 안 만든다**
+    for fn in (db.gauge, db.gauge_said):
+        code = ast.unparse(ast.parse(inspect.getsource(fn)))
+        for banned in ("SURE", "FADE", "verdict ="):
+            assert banned not in code, f"{fn.__name__} 가 판정을 건드린다"
+        for money in ("kelly", "stake", "ev ", "expected_value", "손익분기"):
+            assert money not in code.lower(), f"{fn.__name__} 에 `{money}`"
+    # 🔴 배당을 넘겨도 **판정이 안 바뀐다**
+    cut = float(dict(db.table().get("cuts") or {}).get("확신"))
+    cell = _cell(cut + 0.05, cut, cut + 0.1)
+    a = db.judge({"홈 승": 0.52}, box=_box(cell))
+    b = db.judge({"홈 승": 0.52}, box=_box(cell),
+                 prices=[1.01, 100.0, 100.0])   # 🔴 시장이 홈을 99% 로 본다
+    c = db.judge({"홈 승": 0.52}, box=_box(cell),
+                 prices=[100.0, 100.0, 1.01])   # 🔴 시장이 홈을 1% 로 본다
+    assert a.rows[0].verdict == b.rows[0].verdict == c.rows[0].verdict
+    assert b.rows[0].p_after == c.rows[0].p_after == a.rows[0].p_after
+    # 🔴 그런데 **글자는 달라진다**(계기판이 적히니까)
+    assert "계기판" in b.why and "계기판" not in a.why
+    # 🔴 승무패가 아닌 줄에는 **안 붙는다**(자리가 없다)
+    got = db.judge({"핸디 home-0.5": 0.52}, box=_box(cell, kind=db.AH),
+                   prices=[2.0, 3.4, 3.5])
+    assert "계기판" not in got.why, got.why
+
+
+def test_표시만_줄은_버리지_않는다():
+    """🔴 지시 2026-10-14 2번 — 핸디·언오버가 후보가 못 되면 **표시만**."""
+    high = max(pk.CUT_SINGLE, pk.CUT_LEG) + 0.02
+    rows = [{"match": "A vs B", "league": "L", "kickoff": "1",
+             "board_lines": ["핸디 home+1.5", "오버 1.5", "홈 승"],
+             "lines": {"핸디 home+1.5": high + 0.03, "오버 1.5": high + 0.02,
+                       "홈 승": high}}]
+    out = pk.of(rows)
+    assert [x.line for x in out.singles] == ["홈 승"]
+    assert len(out.shown) == 2, out.shown
+    assert {x[1] for x in out.shown} == {"핸디 home+1.5", "오버 1.5"}
+    said = pk.said_of(out)
+    assert "표시만" in said and "핸디 home+1.5" in said, said
+
+
+def test_다리_참고값은_쓰지_않는다():
+    """🔴 지시 2026-10-14 2번 — *"0.75 는 표본 100 쌓일 때까지 참고"*."""
+    box = dict(db.table().get("cuts") or {})
+    assert float(box["다리"]) == 0.63, box
+    assert float(box["다리_참고"]) == 0.75
+    assert int(box["다리_참고_표본"]) == 100
+    # 🔴 `leg_cut` 이 **참고값이 아니라 그 값**을 돌려준다
+    assert db.leg_cut() == float(box["다리"])

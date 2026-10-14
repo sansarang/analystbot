@@ -93,6 +93,11 @@ async def main(argv: list[str]) -> int:
               + " | ".join(f"{t[k].astimezone(KST):%m-%d %H:%M}"
                            for k in ("기본", "갱신", "XI")) + " |")
     print()
+    # 🔴 큐 줄에 **대회**를 싣는다 — `_sl.queue` 는 그 칸을 안 들고 오므로
+    #    칠 표 재료의 `league` 가 **빈 글자**였다(실측 2026-10-14 시험표).
+    for one in box:
+        one["comp"] = next((r["comp"] for r in rows
+                            if r["name"] == one["name"]), "")
     due = [one for one in box if one["stage"] in ("기본", "갱신", "XI")]
     print(f"🔴 **지금 돌릴 경기 {len(due)}건** — "
           + (" · ".join(f"{x['name']}({x['stage']})" for x in due)
