@@ -189,34 +189,69 @@ async def main(argv: list[str]) -> int:
     for one in qs:
         print(f"    질의 `{one}`")
     # ── ⑦ 그 질의를 **우리 사슬**에 던진다
-    # 🔴🔴 **현지어 → 영어 순**으로 던진다(지시 2026-10-14) — 순서는 LLM 이
-    #    고른 것이다(`langs_of`). ⚠️ 같은 질의를 언어마다 던지지 않는다 —
-    #    통로에 주는 **힌트**라 첫 언어로 한 번, 0건이면 다음 언어로 간다.
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **⑦ 표적 질의 → 문서 → 추출 → 변수**(사용자 지시 2026-10-14)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 경기 정보를 **llm 서치**하고 llm 결과를 **변수에 넣어야 한다**
+    #
+    #  🔴 `s3_docs.gap_docs` 가 `run` 과 **같은 둘**(`_candidates`·`_fetch`)을
+    #     부른다 — 도메인 등급·신원·날짜·본문 받기가 1차와 같은 길이다.
+    #  🔴🔴 **그 질의의 언어를 먼저 쓴다**(실측 2026-10-14: 이탈리아어 질의 둘이
+    #     `nl` 로 던져졌다). ⚠️ 글자로는 nl·it 를 못 가린다(둘 다 ASCII) →
+    #     **팀 이름**으로 가린다: 그 질의가 어느 팀을 담았나.
     said_langs = s4b_gapsearch.langs_of()
     print(f"- 언어 순서 — {said_langs}")
-    hits = []
+    pairs: list = []
     for one in qs:
-        # 🔴🔴 **그 질의의 언어를 먼저 쓴다**(실측 2026-10-14: 이탈리아어 질의
-        #    둘이 `nl` 로 던져졌다 — 첫 언어에서 44건이 나와 멈췄기 때문이다).
-        #    ⚠️ 글자로는 nl·it 를 가릴 수 없다(둘 다 ASCII) → **팀 이름**으로
-        #    가린다: 그 질의가 어느 팀을 담았나.
-        mine = ([said_langs[1]] if (len(said_langs) > 1
-                                    and str(ref.away_name or "") in one)
-                else [])
-        for lg in (mine + [x for x in said_langs if x not in mine]):
-            try:
-                got = await chain.query(one, lang=lg)
-            except Exception as exc:                        # noqa: BLE001
-                print(f"    🔴 `{one}`({lg}) 실패 — {exc!r}")
-                continue
-            print(f"    `{one}`({lg}) → {len(got or [])}건")
-            hits += list(got or [])
-            if got:
-                break
-    print(f"- 표적 검색 결과 **{len(hits)}건**", flush=True)
-    for h in hits[:10]:
-        print(f"    · {str(getattr(h, 'title', '') or '')[:80]} — "
-              f"{str(getattr(h, 'url', '') or '')[:70]}")
+        lg = said_langs[0]
+        if len(said_langs) > 1 and str(ref.away_name or "") in one:
+            lg = said_langs[1]
+        pairs.append((one, lg))
+        print(f"    `{one}` → 언어 `{lg}`")
+    # 🔴 하위 묶음 — 어느 유형으로 추출할지가 여기 들어 있다(그 유형이 변수 type)
+    from app.research.subtasks import Budget, Subtask
+    gap_sub = Subtask(
+        name="GAP", group="F", label="표적(LLM 서치)",
+        kinds=("absence", "returning", "team_stats", "stakes", "fatigue",
+               "travel_schedule", "coach_intent", "coach_conflict",
+               "lineup_rotation", "coach_change"),
+        side="home", team=str(ref.home_name or ref.home),
+        opp=str(ref.away_name or ref.away),
+        team_key=str(ref.home), opp_key=str(ref.away),
+        seed="", rerank_query=("standings points round fixtures travel "
+                               "tactics formation manager record unrest"),
+        budget=Budget())
+    got_docs = await s3_docs.gap_docs(ref, state=st, chain=chain, net=net,
+                                      cache=cache, queries=pairs, sub=gap_sub)
+    print(f"- 표적 문서 **{len(got_docs)}건**")
+    for d in got_docs[:8]:
+        print(f"    · {str(getattr(d, 'title', '') or '')[:80]}")
+    # ── ⑧ 추출 → 검증 → **변수**
+    if got_docs:
+        more = await s4_extract.run(ref, got_docs, state=st, chain=chain,
+                                    net=net, cache=cache)
+        said_v2 = s5_verify.run(ref, facts, got_docs, more, state=st,
+                                turnover=turn)
+        print(f"## ⑧ 표적 추출·검증 — 후보 {len(more)} → 변수 **{len(said_v2)}개**")
+        for v in said_v2:
+            print(f"- `{v.id}` [{v.type}] {str(v.claim or '')[:110]}"
+                  + (f" · 원천 {v.n_sources}곳" if getattr(v, "n_sources", 0)
+                     else ""))
+        # 🔴 **자리**를 보인다 — 확률에 닿는가(축·λ상수)가 그 칸에서 보인다
+        from app.core import routing as _rt
+        box = _rt.place(list(variables) + list(said_v2))
+        AX = {"axis0", "axis1", "axis2", "axis3", "lambda_const"}
+        print("## ⑨ 배치 — 확률에 닿는가")
+        for row in box.rows:
+            hit = "✅ 닿는다" if (set(row.places) & AX) else "— 표시·검증·가설만"
+            print(f"- `{row.id}` [{row.type}] 자리 {row.places} {hit}")
+        for bad in box.fails[:4]:
+            print(f"- 🔴 {bad}")
+    else:
+        print("## ⑧ 표적 추출 — ⬜ **문서 0건이라 안 돌렸다**")
+    print(flush=True)
+
     mo, day = (0.0, 0.0)
     try:
         from app import solar

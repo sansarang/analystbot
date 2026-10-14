@@ -577,6 +577,35 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, chain: Any,
     return out
 
 
+async def gap_docs(ref: MatchRef, *, state: RunState, chain: Any, net: Any,
+                   cache: dict | None, queries: list[tuple[str, str]],
+                   sub: Any, tag: str = "gap") -> list[Doc]:
+    """🔴🔴 **LLM 표적 질의 → 문서** — 사용자 지시 2026-10-14.
+
+    > 경기 정보를 **llm 서치**하고 llm 결과를 **변수에 넣어야 한다**
+
+    🔴 `run` 이 쓰는 그 둘(`_candidates`·`_fetch`)을 **그대로** 부른다 — 도메인
+       등급·신원·날짜·재정렬·본문 받기가 전부 같은 길을 지난다(사본 금지).
+    ⚠️ 그래서 표적 검색 문서도 **1차와 같은 검문**을 받는다: 남의 경기 글은
+       신원에서 떨어지고, 7일 밖은 날짜에서 떨어진다.
+    🔴 `queries` 는 `[(질의, 언어)]` 다 — 언어를 **질의마다** 준다(현지어 우선).
+    ⚠️ `sub` 는 **부르는 쪽이 만든다** — 어느 하위 묶음의 유형으로 추출할지가
+       그 객체에 들어 있다(그 유형이 변수의 `type` 이 된다).
+    """
+    rows = await _candidates(sub, ref, state=state, chain=chain,
+                             queries=list(queries or []), tag=tag)
+    if not rows:
+        state.note(f"s3/{tag} — 표적 질의가 **지나간 문서 0건**"
+                   "(신원·날짜·도메인에서 다 떨어졌다)")
+        return []
+    got = await _fetch(sub, ref, rows, state=state, net=net,
+                       cache=dict(cache if cache is not None else {}),
+                       claimed=set(cache or {}), tag=tag)
+    state.note(f"s3/{tag} — 표적 질의 {len(queries)}개 → 후보 {len(rows)} → "
+               f"문서 **{len(got)}건**")
+    return got
+
+
 def _sid(sub: Any) -> str:
     """🔴 `A-홈` → `A-home` — `SubtaskId` 열거값이 원본이다."""
     name = str(getattr(sub, "name", ""))

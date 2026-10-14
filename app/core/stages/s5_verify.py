@@ -1531,6 +1531,8 @@ def _ir_soccer(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
                        f"(단판·1차전 아님)")
     elif rid == "IR11":                     # 일정 피로 — 7차 §6 로 문턱이 바뀌었다
         out += _ir_fatigue(rid, kind, row, ref, facts, state=state)
+    elif rid == "IR13":                     # 🔴 원정 이동 거리(지시 2026-10-14)
+        out += _ir_travel_away(rid, kind, row, ref, facts, state=state)
     elif rid == "IR12":                     # 연승·연패
         for key, raw in facts.recent.items():
             box = dict(raw) if isinstance(raw, dict) else {}
@@ -2103,6 +2105,64 @@ def _travel(said: dict, ref: MatchRef, key: str) -> tuple[float | None,
     tz = (lon2 - lon1) / 15.0            # ⚠️ 경도 어림(시간대 표가 없다)
     return (round(tz, 1), round(km, 0),
             f"시차 약 {abs(tz):.1f}시간(경도 어림) · 이동 {km:,.0f}km")
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **IR13 원정 이동 거리** — 사용자 지시 2026-10-14
+# ══════════════════════════════════════════════════════════════════
+#
+# > 이동이 멀면 원정이 불리하다... **상식이다... 내 지시다**
+#
+# 🔴🔴 **백필 측정과 충돌한다 — 그 사실을 여기에도 적는다.**
+#    의심 변수 `C3 이동 거리`(1,470경기 · 2026-10-14):
+#      *"4분위로 바꾸니 체급별로 **부호가 뒤집힌다**(중 −11.7%p · 강 +14.6%p)"*
+#    ⚠️ 즉 *"멀면 원정이 불리"* 는 백필에서 **서지 않았다**. 🔴 직접 지시가
+#       문서를 덮는다(CLAUDE.md 첫 줄) — 켜고, 충돌을 **코드에 남긴다**.
+#
+# 🔴 거리는 `_travel` **하나**가 센다(사본 금지) — IR11 이 쓰는 그 함수다.
+# 🔴 문턱도 `FATIGUE_KM` 을 **같이 쓴다**(새 수를 지어내지 않는다 · #4).
+# ⚠️ IR11 과 겹치지 않는다: IR11 은 *"4일 이내 + 이동"* 이고 이것은 **거리만**
+#    본다. 같은 경기에서 둘 다 걸릴 수 있고 그것이 맞다(피로와 이동은 다른 일이다).
+
+
+def _ir_travel_away(rid: str, kind: str, row: dict, ref: MatchRef,
+                    facts: Facts, *, state: RunState) -> list[Variable]:
+    """🔴🔴 **원정 팀의 이동 거리** — 문턱 이상이면 원정 불리. `[Variable]`.
+
+    🔴 **원정 팀만** 본다 — 홈 팀에게 *"이동"* 은 뜻이 없다(지시 2026-10-14:
+       *"이동거리 … 홈까지의 거리는 **원정팀에 대한 부담**"*).
+    ⚠️ 중립 경기에서는 **안 돈다** — 그 경기에는 홈이 없다.
+    ⚠️ 좌표가 없으면 **안 돈다** — 사유를 이름으로 남긴다(#3 조용한 0 금지).
+    """
+    from app.core import competition as _cp5
+    key = str(getattr(ref, "away", "") or "")
+    if not key:
+        state.note(f"s5 {rid} — 원정 팀 열쇠가 없다 · 안 돈다")
+        return []
+    # 🔴 중립 경기 판정은 `competition.neutral_of` 하나다(사본 금지)
+    got_key = _cp5.key_of(competition=str(getattr(ref, "competition", "") or ""),
+                          league_id=getattr(facts, "league_id", "") or None)[0]
+    if got_key:
+        is_neutral, why_n = _cp5.neutral_of(got_key, stage="")
+        if is_neutral:
+            state.note(f"s5 {rid} — **중립 경기**라 안 돈다({why_n})")
+            return []
+    said = dict(dict(facts.schedule or {}).get(key) or {})
+    if not said:
+        state.note(f"s5 {rid} `{key}` — 일정 칸이 비었다 · 안 돈다")
+        return []
+    _tz, km, why = _travel(said, ref, key)
+    if km is None:
+        state.note(f"s5 {rid} `{key}` — 거리를 못 셌다({why}) · 안 돈다")
+        return []
+    if km < FATIGUE_KM:
+        state.note(f"s5 {rid} `{key}` — 이동 {km:,.0f}km"
+                   f"(문턱 {FATIGUE_KM:,}km) · 안 돈다")
+        return []
+    claim = (f"{_name(ref, key)} 원정 이동 {km:,.0f}km — 원정 부담"
+             f"(문턱 {FATIGUE_KM:,}km · {why})")
+    state.note(f"s5 {rid} `{key}` **발동** — {why}")
+    return [_ir_var(_rid_for(rid, key, ref), kind, row, key, claim, ref)]
 
 
 #: 🔴 두 번째 조건의 창(일)과 경기 수 — 지시서 원문 *"최근 8일 안에 이번이 3번째"*

@@ -74,6 +74,52 @@ class ProbOut:
                 "share": dict(self.share), "why": self.why}
 
 
+def lambda_rules(varset, *, ref) -> tuple[dict, str]:
+    """🔴🔴 **이동·피로가 λ 를 깎는 배율** — `({"home":배율,"away":배율}, 글자)`.
+
+    > 이동이 멀면 원정이 불리하다 · 홈팀 원정팀의 피로도는 일정과 관련있다
+    > (사용자 지시 2026-10-14)
+
+    🔴 수는 `config/variable_routing.yaml: lambda_rules` 하나다(코드에 안 박는다).
+    🔴 **그 변수가 걸린 팀**의 λ 를 깎는다 — `row.subject` 가 그 팀이다.
+       ⚠️ `favors` 가 아니라 `subject` 다: IR13 은 `favors: opponent`(원정이
+          불리하니 홈에 유리)지만 **깎이는 쪽은 원정**이다.
+    ⚠️ 규칙 번호는 **id 앞토막**으로 센다(`IR13-away` → `IR13`) — `VarRow` 는
+       `from_rule` 칸을 안 들고 간다(실측 2026-10-14).
+    ⚠️ 겹치면 곱하되 `floor_mul` 아래로는 안 내려간다(폭주 방지).
+    ⚠️ 변수가 없으면 배율 **1.0** 이고 글자는 빈 것이다(없는 보정을 적지 않는다).
+    """
+    from app.core import routing as _rt
+    box = dict(_rt.table().get("lambda_rules") or {})
+    if not box:
+        return {"home": 1.0, "away": 1.0}, ""
+    floor = float(box.get("floor_mul") or 0.0) or 0.0
+    want = {str(dict(v).get("rule") or ""): (str(k), float(dict(v).get("mul") or 1.0))
+            for k, v in box.items() if isinstance(v, dict) and dict(v).get("rule")}
+    got = {"home": 1.0, "away": 1.0}
+    said: list[str] = []
+    for one in list(getattr(varset, "rows", None) or []):
+        rid = str(getattr(one, "id", "") or "").split("-", 1)[0]
+        if rid not in want:
+            continue
+        name, mul = want[rid]
+        key = str(getattr(one, "subject", "") or "")
+        side = ("home" if key == str(getattr(ref, "home", "") or "")
+                else "away" if key == str(getattr(ref, "away", "") or "") else "")
+        if not side:
+            continue
+        got[side] *= mul
+        said.append(f"[{rid}] {side} λ ×{mul:g}({name})")
+    for side in got:
+        if floor and got[side] < floor:
+            said.append(f"⚠️ {side} 배율이 상한에 걸렸다({got[side]:.3f} → {floor:g})")
+            got[side] = floor
+    if not said:
+        return got, ""
+    return got, ("🔴 **λ 보정**(사용자 지정 · 적합 아님) — " + " · ".join(said)
+                 + f" → 홈 ×{got['home']:.3f} · 원정 ×{got['away']:.3f}")
+
+
 def _kind(ref, facts) -> str:
     """🔴 대회 유형 열쇠 — `s5_verify.comp_kind` 하나가 만든다(사본 금지).
 
@@ -400,6 +446,7 @@ def run(ref, facts, mr, varset, *, edge: dict | None = None,
                + (f"(상한 ±{cap:.0%})"
                   if max(abs(move['home']), abs(move['away'])) >= cap else "")
                + (f" · 규칙(축 안에서 셌다) {why_rules}" if why_rules else "")
+
                + (" · 📜 **상태 배율**(실측 표 · T11 끔) "
                   + _state_said(facts) if said_state else "")
                + (f" · {_m.PROVISIONAL}" if got.provisional else ""))
@@ -483,6 +530,31 @@ def run(ref, facts, mr, varset, *, edge: dict | None = None,
     if said_m1 is not None and said_m1.ok():
         got.home, got.draw, got.away = (said_m1.home, said_m1.draw,
                                         said_m1.away)
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **λ 보정 — 이동 거리·피로도**(사용자 지시 2026-10-14)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > 이동이 멀면 원정이 불리하다... **상식이다... 내 지시다** ·
+        #  > 홈팀 원정팀의 피로도는 일정과 관련있다.. **변수에 닿게 해라**
+        #
+        #  🔴🔴 **얼린 파일 밖에서 곱한다**(사용자 결정 2026-10-14) — `old_engine`
+        #     은 K0 로 해시가 고정이다. 그가 낸 λ 에 **여기서** 배율을 걸고
+        #     격자를 그 λ 로 **다시 센다**. ⚠️ 무승부 보정(바로 아래)이 쓰는
+        #     그 방식과 같다 — 얼린 격자 **뒤**에 건다.
+        #  🔴 **왜 축이 아니라 λ 냐** — `matchup.axis2` 는 배치된 변수를
+        #     `refs`(이름표)에만 넣고 값에 안 쓴다. 게다가 `routing._fit_ok` 가
+        #     `fatigue`·`travel_schedule` 의 축 자리를 `T2` 적합까지 닫아 둔다.
+        #     ⚠️ 즉 "축에 꽂는다"는 확률에 **안 닿는다**(실측 2026-10-14).
+        #  🔴 배율은 `config/variable_routing.yaml: lambda_rules` 다 — 코드에
+        #     수를 박지 않는다. ⚠️ **적합된 수가 아니다**(사용자가 정했다 ·
+        #     백필 측정은 반대였고 그 사실을 설정 머리말에 적어 뒀다).
+        said_lr, why_lr = lambda_rules(varset, ref=ref)
+        if why_lr:
+            got.lam = {k: round(float(v) * float(said_lr.get(k) or 1.0), 4)
+                       for k, v in dict(said_m1.lam or {}).items()}
+            if got.lam.get("home") and got.lam.get("away"):
+                _fill(got, _sim.run(float(got.lam["home"]),
+                                    float(got.lam["away"])))
         # ══════════════════════════════════════════════════════════════
         # 🔴🔴 **5번 무승부 보정** — 얼린 격자 **뒤**에 건다(K0 를 안 건드린다)
         # ══════════════════════════════════════════════════════════════
@@ -583,12 +655,15 @@ def run(ref, facts, mr, varset, *, edge: dict | None = None,
                                             in mixed.items()), 4),
                           "away": round(sum(a * v for (_h, a), v
                                             in mixed.items()), 4)}
-        got.lam = dict(said_m1.lam or {})
+        # 🔴 λ 보정을 **되덮지 않는다** — 위에서 곱한 값이 운영 λ 다.
+        if not why_lr:
+            got.lam = dict(said_m1.lam or {})
         got.move = dict(said_m1.move or {})
         if said_m1.share:
             got.share = dict(said_m1.share)
         got.why = (f"🔴🔴 **운영 = M1 얼린 옛 경로**(legacy-4axis · 네 축) — "
                    f"{said_m1.why}"
+                   + (f" · {why_lr}" if why_lr else "")
                    + (f" · 🎯 **무승부 보정** ρ "
                       f"{float(got.draw_fix.get('rho') or 0.0):+.2f}"
                       f"({got.draw_fix.get('why')})"
