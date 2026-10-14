@@ -988,7 +988,9 @@ def _machine_of(ref: MatchRef, facts, layers: dict, prob, *,
         if token.count("-") == 2 and "T" in token:
             ages["board"] = token
             break
-    return _mc.check(box, ages=ages, now=now)
+    # 🔴 대회 유형을 넘긴다 — 컵은 Elo 바닥이 **필수 칸에서 빠진다**(지시 2번)
+    return _mc.check(box, ages=ages, now=now,
+                     kind=(_cp.kind_require(key)[0] if key else ""))
 
 
 def _doubt_of(ref: MatchRef, facts, layers: dict, edge: dict, machine):

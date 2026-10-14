@@ -133,6 +133,28 @@ async def _base(ref: MatchRef, facts: Facts, *, state: RunState, net,
                            f"{ref.away_name} {b:.0f}({how_a})")
             else:
                 state.note(f"s2b ① 리그 Elo 를 못 찾았다 — {how_a} / {how_b}")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **대륙 대회는 국내 Elo + 리그 오프셋**(수정 지시 2026-10-14 1번)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 대륙 대회에는 *"그 대회 등급표"* 가 **존재할 수 없다** — 18개 리그
+    #     클럽이 섞이고 클럽 등급은 각자의 **국내 리그** 파일에 산다. 그래서
+    #     `leagueelo.rating_of(이름, comps=["ACLE"])` 는 늘 비었고 바닥이 안 섰다.
+    #  🔴 입력은 **(국내 Elo + 리그 오프셋) 차**다 — 적합이 쓴 그 식 그대로다.
+    #  🔴🔴 **같은 함수·같은 날짜** — `core/domesticelo.ratings_at(경기일)`.
+    #     ⚠️ 적합과 운영이 각자 Elo 를 굴리던 때는 같은 팀에 최대 **73.1점** 다른
+    #        수가 붙었고, 그 오차가 모형이 잡으려는 리그 격차(≈70점)보다 **컸다**.
+    #  🔴 한쪽이라도 모르면 **만들지 않는다** — 반쪽 바닥은 지어낸 수다(#4).
+    if home_elo is None or away_elo is None:
+        from app.core import competition as _cp2
+        if _cp2.kind_require(kind)[0] == "club_continental":
+            said_cc, why_cc = await continental_elo(ref, kind, day=day)
+            if said_cc is not None:
+                home_elo, away_elo = said_cc
+                source = "국내 Elo + 리그 오프셋"
+                state.note(f"s2b ① 대륙 바닥 — {why_cc}")
+            else:
+                state.note(f"s2b ① 대륙 바닥 없음 — {why_cc}")
     got = base.base_prob(kind=kind, home_elo=home_elo, away_elo=away_elo,
                          neutral=bool(neutral), source=source, data_date=day)
     if got.probs is None:
@@ -143,6 +165,45 @@ async def _base(ref: MatchRef, facts: Facts, *, state: RunState, net,
                    f"dr {got.dr:+.0f} → 홈 {got.probs.home:.3f} 무 "
                    f"{got.probs.draw:.3f} 원정 {got.probs.away:.3f} · {got.why}")
     return got
+
+
+async def continental_elo(ref: MatchRef, kind: str, *, day: str
+                          ) -> tuple[tuple[float, float] | None, str]:
+    """🔴🔴 대륙 대회의 **(국내 Elo + 리그 오프셋)** 두 수. 못 만들면 `(None, 사유)`.
+
+    🔴 Elo 는 `core/domesticelo.ratings_at(경기일)` 하나다 — **적합이 쓰는 그
+       함수**이고 **그 경기 앞** 경기만 굴린다(누설 금지 · C11).
+    🔴 오프셋은 `core/offsets.latest_plate(대륙)` 이다(표시용 판과 같은 판).
+    ⚠️ 국내 리그를 모르거나 오프셋 칸이 ⬜ 면 **만들지 않는다**.
+    """
+    from app.core import competition as _cp3
+    from app.core import domesticelo as _de
+    from app.core import offsets as _off
+    conf = str(_cp3.row_of(kind).get("confederation") or "").upper()
+    plate, why_p = _off.latest_plate(conf)
+    box = dict((plate or {}).get("leagues") or {})
+    if not box:
+        return None, f"⬜ `{conf}` 오프셋 판이 없다 — {why_p}"
+    elo, why_e = _de.ratings_at(day)
+    out: list[float] = []
+    said: list[str] = []
+    for name in (str(ref.home_name or ""), str(ref.away_name or "")):
+        # 🔴 국내 리그 키는 `domesticelo.league_of` 하나다 — **적합이 쓴 그
+        #    매핑**이다(`league_index.league_of_team` 은 사람이 읽는 이름을 준다).
+        lg, why_lg = _de.league_of(name)
+        if not lg:
+            return None, f"⬜ `{name}` 의 국내 리그를 모른다 — {why_lg}"
+        if name not in elo:
+            return None, (f"⬜ `{name}` 의 국내 Elo 가 없다"
+                          f"(그 리그 재생·자동 판에 그 팀이 없다)")
+        got = dict(box.get(lg) or {})
+        if got.get("value") is None:
+            return None, f"⬜ `{lg}` 리그 오프셋이 ⬜ 다({why_p})"
+        out.append(float(elo[name]) + float(got["value"]))
+        said.append(f"{name} {elo[name]:.0f}{float(got['value']):+.1f}"
+                    f"(`{lg}`)")
+    return ((out[0], out[1]),
+            " ↔ ".join(said) + f" · {why_p} · as-of {day} 이전")
 
 
 def _code_of(key: str) -> str:

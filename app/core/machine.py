@@ -58,8 +58,17 @@ ROWS: tuple[tuple[str, str, str], ...] = (
     ("weight_renorm", "", "버그"),
     ("home_mul_a", "", "버그"),
     ("axis0_scale_decided", "", "버그"),
-    ("comp_record_verified", "", "버그"),
 )
+
+#: 🔴🔴 **대회 이력 대조는 `버그` 가 아니라 `입력` 이다**(수정 지시 2026-10-14 3번)
+#:
+#:  > 불일치 있으면 **대회 이력 칸만 ⬜**(1단 전체를 막지 않는다).
+#:
+#:  ⚠️ 종전엔 `comp_record_verified` 가 **버그 칸**이라 거짓이면 **고장**이 되고
+#:     1단이 통째로 멈췄다 — 실측 2026-10-14(10-15 슬레이트): UCL·ACLE **11경기**
+#:     가 그 한 칸 때문에 전부 보류였다. 🔴 외부 대조는 **대회 이력 칸의 신뢰도**
+#:     이지 기계의 고장이 아니다.
+ROWS = ROWS + (("comp_record_verified", "", "입력"),)
 
 
 def table() -> dict:
@@ -118,8 +127,21 @@ def age_hours(at: object, *, now: datetime | None = None) -> float | None:
     return (base - said).total_seconds() / 3600.0
 
 
+def hard_of(conf: dict, *, kind: str = "") -> set:
+    """🔴🔴 그 **대회 유형**의 필수 칸(수정 지시 2026-10-14 2번).
+
+    `hard` 에서 `hard_except[칸]` 에 그 유형이 적힌 칸을 뺀다.
+    🔴 면제는 **설정이 든다** — 코드에 대회 유형을 적지 않는다.
+    """
+    got = set(dict(conf or {}).get("hard") or ())
+    for key, kinds in dict(dict(conf or {}).get("hard_except") or {}).items():
+        if str(kind or "") in {str(x) for x in (kinds or [])}:
+            got.discard(str(key))
+    return got
+
+
 def check(box: dict, *, ages: dict | None = None,
-          now: datetime | None = None) -> Machine:
+          now: datetime | None = None, kind: str = "") -> Machine:
     """🔴🔴 §2 — 점검 한 번. `box` 는 칸마다 `True/False/None` 이다.
 
     `ages` 는 `{칸: 시각}`(또는 `{칸: 시간수}`) — 신선도 창을 그것으로 잰다.
@@ -132,7 +154,8 @@ def check(box: dict, *, ages: dict | None = None,
     """
     conf = table()
     names = dict(conf.get("bugs") or {})
-    hard = set(conf.get("hard") or ())
+    # 🔴 대회 유형이 오면 그 유형의 면제를 뺀 필수 칸을 쓴다(지시 2번)
+    hard = hard_of(conf, kind=str(kind or ""))
     said = dict(box or {})
     got = Machine()
     for key, name, group in ROWS:
@@ -182,6 +205,10 @@ def check(box: dict, *, ages: dict | None = None,
             if dict(rule).get("hold"):
                 got.missing.append(f"{key} 가 창을 넘었다({age:.1f}시간 전)")
     # ── 판정
+    # 🔴 면제가 걸렸으면 **그 사실을 적는다**(조용히 통과시키지 않는다 · #3)
+    said_free = set(conf.get("hard") or ()) - hard
+    if said_free:
+        got.na.append(f"필수 면제({kind}): " + " · ".join(sorted(said_free)))
     if got.broken:
         got.verdict = BROKEN
     elif got.missing:

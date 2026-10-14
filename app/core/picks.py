@@ -189,10 +189,15 @@ def best_of(rows: list[dict]) -> tuple[list[Leg], list[tuple]]:
     out: list[Leg] = []
     #: 🔴 **표시만** 으로 남길 줄(핸디·언오버 · 지시 2026-10-14 2번)
     shown: list[tuple] = []
+    #: 🔴 보드 없이 **표준 줄**로 고른 경기(칠 표가 그 사실을 적는다)
+    no_board_rows: list[str] = []
     for one in rows or []:
         if one.get("machine_hold"):
             continue
         want = {str(x) for x in (one.get("board_lines") or [])}
+        # 🔴 보드가 없으면 **어느 길로 가든** 그 사실을 적는다(지시 "보드없이 진행")
+        if not want:
+            no_board_rows.append(str(one.get("match") or ""))
         # ══════════════════════════════════════════════════════════════
         # 🔴🔴 **2단 판정이 있으면 확신·역배만 받는다**(의심 검증 v2 §4)
         # ══════════════════════════════════════════════════════════════
@@ -235,7 +240,17 @@ def best_of(rows: list[dict]) -> tuple[list[Leg], list[tuple]]:
         if want:
             got = [x for x in got if x[0] in want]
         else:
-            got = []            # 🔴 보드가 없으면 **후보가 없다**(§1)
+            # ══════════════════════════════════════════════════════════
+            # 🔴🔴 **보드가 없으면 표준 줄로 간다** — 사용자 지시 2026-10-14
+            #    *"보드없이 진행해라"*
+            # ══════════════════════════════════════════════════════════
+            #
+            #  ⚠️ §1 은 *"보드에 있는 줄 안에서만"* 이었다 — 직접 지시가 이긴다.
+            #  🔴 표준 줄은 `BOARD_COMMON`(국내 보드에 흔한 기준선) 이고, 그 중
+            #     **승무패만** 판정으로 간다 — 핸디·언오버 칸은 *그 경기 보드의
+            #     메인 라인 하나*로 쟀으므로 보드 없는 줄에 붙이면 거짓이 된다
+            #     (아래 핸디·총점 잠금이 그것을 막는다 · AUC 0.511).
+            got = [x for x in got if x[0] in BOARD_COMMON]
         # ══════════════════════════════════════════════════════════════
         # 🔴🔴 **봇 원래 핸디·총점 확률은 판정에 쓰지 않는다**(지시 3번)
         # ══════════════════════════════════════════════════════════════
@@ -261,12 +276,12 @@ def best_of(rows: list[dict]) -> tuple[list[Leg], list[tuple]]:
                        line=line, p=p, side=side_of(line),
                        verdict=str(one.get("verdict") or ""),
                        board=str(one.get("board") or "")))
-    return sorted(out, key=lambda x: -x.p), shown
+    return sorted(out, key=lambda x: -x.p), shown, no_board_rows
 
 
 def of(rows: list[dict]) -> Out:
     """🔴🔴 **칠 표** — `(단폴, 다폴)`. 아무것도 없으면 그 사실을 적는다."""
-    legs, shown = best_of(rows)
+    legs, shown, no_board_rows = best_of(rows)
     # 🔴🔴 **자가 둘이다** — 2단 판정이 붙은 줄은 그 판정이 문턱을 이미 걸었고,
     #    붙지 않은 줄은 **봇 원확률 문턱**(`CUT_SINGLE`·`CUT_LEG`)을 쓴다.
     #    ⚠️ 한 자로 뭉개면 한쪽이 통째로 사라진다(그 까닭은 `best_of` 머리글).
@@ -293,13 +308,13 @@ def of(rows: list[dict]) -> Out:
             if x.get("machine_hold")]
     # ⚠️ 보류 경기는 **보류로만** 센다 — 보드까지 못 모았다고 두 번 적으면
     #    까닭이 흐려진다(보류가 **먼저**이고 그것이 그 경기를 뺀 이유다).
-    no_board = [str(x.get("match") or "") for x in (rows or [])
-                if not (x.get("board_lines") or [])
-                and not x.get("machine_hold")]
+    # 🔴 보드 없는 경기는 이제 **빠지지 않는다**(표준 줄로 간다) — 그 사실만 적는다
+    no_board = list(dict.fromkeys(no_board_rows))
     why = (f"경기 {len(rows)}개 → 보드 있는 경기 {len(rows) - len(no_board)}개 "
+           f"· 보드 없이 표준 줄 {len(no_board)}개 "
            f"→ 줄 {len(legs)}개 · 단폴 **{len(singles)}개**(2단 판정 또는 봇 "
            f"원확률 {CUT_SINGLE:.2f} 이상) · 다리 후보 {len(pool)}개"
-           + (f" · 🔴 **보드 없어 뺀 경기 {len(no_board)}개**"
+           + (f" · ⚠️ **보드 없음 — 표준 줄로 골랐다 {len(no_board)}개**"
               f"({' · '.join(no_board[:4])})" if no_board else "")
            + (f" · 🔴 **1단 기계 보류로 뺀 경기 {len(held)}개**"
               f"({' · '.join(held[:4])})" if held else "")

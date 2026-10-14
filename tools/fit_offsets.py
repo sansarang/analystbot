@@ -200,54 +200,15 @@ async def _domestic_of(net, team_id: object, seen: dict) -> tuple[str, str]:
     return said, why
 
 
-def domestic_elo() -> tuple[dict, str]:
-    """🔴 국내 리그 **Elo**(그 리그 재생 덤프로 굴린다 · 리그 안에서만 비교)."""
-    # 🔴 덤프 목록은 `replays` 하나가 든다(손으로 들지 않는다 · #1)
-    from replays import load as _replays
-    rows, why = _replays()
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **P1 — 자동 등록 리그의 Elo 판도 읽는다**(수정 지시 2026-10-13 밤)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  🔴 `tools/fit_league_elo.py` 가 적은 `data/league_elo_auto/*.yaml` 이다
-    #     (사우디·중국·태국·V리그 등 **백필이 없는 리그**의 팀별 Elo).
-    #  ⚠️ 재생 덤프로 굴린 Elo 와 **같은 잣대가 아니다**(리그 안에서만 비교 가능).
-    #     오프셋이 하는 일이 바로 그 잣대 맞추기다.
-    auto: dict[str, float] = {}
-    said_auto: list[str] = []
-    box_auto = ROOT / "data/league_elo_auto"
-    if box_auto.is_dir():
-        import yaml
-        for path in sorted(box_auto.glob("*.yaml")):
-            got = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-            teams = dict(got.get("teams") or {})
-            for k, v in teams.items():
-                auto.setdefault(str(k), float(v))
-            said_auto.append(f"{got.get('league')} {len(teams)}팀")
-    elo: dict[str, float] = {}
-    n = 0
-    for r in sorted(rows, key=lambda x: str(x.get("day"))):
-        if r.get("hg") is None or r.get("ag") is None:
-            continue
-        home, away = str(r.get("home")), str(r.get("away"))
-        dr = float(elo.get(home, 1500.0)) - float(elo.get(away, 1500.0))
-        exp = 1.0 / (1.0 + 10 ** (-dr / 400.0))
-        got = (1.0 if int(r["hg"]) > int(r["ag"])
-               else (0.5 if int(r["hg"]) == int(r["ag"]) else 0.0))
-        elo[home] = float(elo.get(home, 1500.0)) + K_ELO * (got - exp)
-        elo[away] = float(elo.get(away, 1500.0)) - K_ELO * (got - exp)
-        n += 1
-    # 🔴 **재생 Elo 가 먼저**(같은 잣대의 표본이 크다) · 없는 팀만 자동 판으로
-    said_more = 0
-    for k, v in auto.items():
-        if k not in elo:
-            elo[k] = v
-            said_more += 1
-    return elo, (f"{why} → **국내 Elo** {n}경기로 굴렸다 · 팀 {len(elo)}개"
-                 f"(자동 등록 판에서 **{said_more}팀** 보탰다 — "
-                 + " · ".join(said_auto[:6])
-                 + (f" 외 {len(said_auto) - 6}" if len(said_auto) > 6 else "")
-                 + ")")
+def domestic_elo(day: str = "") -> tuple[dict, str]:
+    """🔴 국내 리그 **Elo** — 🔴 **원본은 `app/core/domesticelo.ratings_at` 다**.
+
+    `day` 를 주면 **그 날짜 앞** 경기만 굴린다(누설 금지 · 수정 지시 2026-10-14 1번).
+    ⚠️ 전에는 이 함수가 여기 있었고 `app/` 은 그것을 못 불러 **운영이 따로 Elo 를
+       굴렸다** — 같은 팀에 최대 **73.1점** 다른 수가 붙었다(실측). 그래서 옮겼다.
+    """
+    from app.core.domesticelo import ratings_at
+    return ratings_at(day)
 
 
 def fit(comp: str, *, as_of: str, ridge_k: float | None = None,

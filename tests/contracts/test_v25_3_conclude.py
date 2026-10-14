@@ -15,15 +15,32 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 
+#: 🔴🔴 **백필이 아직 안 끝난 대회**(CL2 의 예시 자리).
+#:
+#:  ⚠️ 전에는 `league:ACLE` 이 이 자리였다 — 2026-10-14 에 그 대회를 **310경기로
+#:     적합해서** 상한이 풀렸고(`간다`) 이 계약이 빨개졌다. 🔴 규칙은 그대로다 —
+#:     **예시가 낡았다**. 그래서 아직 적합이 없는 대회로 바꾼다.
+#:  🔴 이 대회도 적합되면 또 빨개진다 — 그때 **적합 없는 대회로 다시 바꾼다**
+#:    (`app.rules.base_model(키)` 가 비는 대회를 고른다). 그것이 이 계약이 사는 법이다.
+NO_FIT = "league:ACL2"
+
+
+def test_예시_대회가_정말_적합이_없다() -> None:
+    """🔴 아래 두 계약이 쓰는 예시가 **여전히 적합 없는 대회**인가."""
+    from app import rules
+    assert not rules.base_model(NO_FIT), (
+        f"`{NO_FIT}` 가 적합됐다 — `NO_FIT` 을 적합 없는 대회로 바꿔라")
+
+
 def test_cl1_outside_the_band_folds() -> None:
     from app.core import conclude
-    pick, why = conclude.of(0.422, kind="league:ACLE")
+    pick, why = conclude.of(0.422, kind=NO_FIT)
     assert pick == "접는다" and "구간 밖" in why, why
 
 
 def test_cl2_inside_with_cap_is_conditional() -> None:
     from app.core import conclude
-    pick, why = conclude.of(0.523, kind="league:ACLE")
+    pick, why = conclude.of(0.523, kind=NO_FIT)
     assert pick == "조건부" and "백필 미완" in why, why
 
 

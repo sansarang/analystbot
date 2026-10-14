@@ -26,40 +26,19 @@ BOX = ROOT / "var/judge"
 
 
 def files() -> list[Path]:
-    """🔴 `var/judge/replay_*.json` — **줄이 많은 덤프가 먼저**(그쪽이 이긴다)."""
-    out: list[tuple[int, Path]] = []
-    for path in sorted(BOX.glob("replay_*.json")):
-        try:
-            rows = json.loads(path.read_text(encoding="utf-8"))
-        except (ValueError, OSError):
-            continue
-        if isinstance(rows, list):
-            out.append((len(rows), path))
-    return [p for _n, p in sorted(out, key=lambda kv: (-kv[0], kv[1].name))]
+    """🔴 `var/judge/replay_*.json` — **줄이 많은 덤프가 먼저**(그쪽이 이긴다).
+
+    🔴 **원본은 `app/core/domesticelo` 다**(수정 지시 2026-10-14 1번) — 적합과
+       운영이 같은 함수를 써야 해서 `app/` 으로 옮겼다. 여기서 다시 짜지 않는다.
+    """
+    from app.core.domesticelo import files as _files
+    return _files()
 
 
 def load(*, league: str = "") -> tuple[list[dict], str]:
-    """🔴 서로 다른 경기만 담은 재생 줄 + **어느 덤프가 몇 줄을 보탰나**."""
-    seen: set[tuple] = set()
-    out: list[dict] = []
-    said: list[str] = []
-    for path in files():
-        rows = json.loads(path.read_text(encoding="utf-8"))
-        add = 0
-        for r in rows:
-            if not isinstance(r, dict):
-                continue
-            key = str(r.get("league") or "")
-            if league and key != str(league):
-                continue
-            box = (key, str(r.get("day")), str(r.get("home")),
-                   str(r.get("away")))
-            if box in seen:
-                continue
-            seen.add(box)
-            out.append(r)
-            add += 1
-        if add:
-            said.append(f"{path.stem} +{add}")
-    return out, (f"재생 **{len(out)}경기**(서로 다른 경기) — "
-                 + (" · ".join(said) if said else "🔴 **덤프가 없다**"))
+    """🔴 서로 다른 경기만 담은 재생 줄 + **어느 덤프가 몇 줄을 보탰나**.
+
+    🔴 **원본은 `app/core/domesticelo.load` 다**(사본 금지 · 위 `files` 머리말).
+    """
+    from app.core.domesticelo import load as _load
+    return _load(league=league)

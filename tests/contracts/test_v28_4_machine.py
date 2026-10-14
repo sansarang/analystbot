@@ -201,6 +201,9 @@ def test_보류_경기는_보류로만_센다():
 
     ⚠️ 실측 2026-10-14: 보류 경기가 *"보드 없어 뺀 경기"* 와 *"기계 보류로 뺀
        경기"* 에 **둘 다** 올라 까닭이 흐려졌다.
+    🔴 **보드 없음은 이제 "뺀다" 가 아니다** — 사용자 지시 2026-10-14
+       *"보드없이 진행해라"* 로 **표준 줄**로 간다. 그래서 보드 없는 경기는
+       `보드 없음 — 표준 줄로 골랐다` 에만 올라가고, **기계 보류는 여전히 뺀다**.
     """
     high = max(pk.CUT_SINGLE, pk.CUT_LEG) + 0.02
     rows = [{"match": "A vs B", "league": "L", "kickoff": "1",
@@ -209,11 +212,15 @@ def test_보류_경기는_보류로만_센다():
              "board_lines": [], "lines": {"홈 승": high}},
             {"match": "E vs F", "league": "L", "kickoff": "3",
              "board_lines": ["홈 승"], "lines": {"홈 승": high}}]
-    why = pk.of(rows).why
+    out = pk.of(rows)
+    why = out.why
     assert "기계 보류로 뺀 경기 1개" in why and "A vs B" in why, why
-    assert "보드 없어 뺀 경기 1개" in why and "C vs D" in why, why
-    # 🔴 보류 경기는 **보드 없음 목록에 안 들어간다**
-    head = why.split("보드 없어 뺀 경기")[1].split("·")[0]
+    # 🔴 보드 없는 경기는 **표준 줄로 간다**(뺀 것이 아니다)
+    assert "보드 없음 — 표준 줄로 골랐다" in why and "C vs D" in why, why
+    assert {x.match for x in out.singles} == {"C vs D", "E vs F"}, out.singles
+    # 🔴 **기계 보류는 여전히 빠진다** — 그 경기는 줄이 하나도 없다
+    assert all(x.match != "A vs B" for x in out.singles)
+    head = why.split("보드 없음 — 표준 줄로 골랐다")[1].split("·")[0]
     assert "A vs B" not in head, head
 
 
