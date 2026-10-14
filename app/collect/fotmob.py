@@ -1484,8 +1484,17 @@ def prev_match_urls(j: dict, q: Question, *, limit: int = PREV_MATCHES
         team = str((_side(j, side) or {}).get("name") or "").strip()
         if not team:
             continue
+        # 🔴🔴 **이름 맞추기 — 양방향**(실사고 2026-10-15 · 같은 고침이
+        #    `parse_form` 쪽에도 있다). ⚠️ `mentions_team` 은 한 방향만
+        #    본다: `('Feyenoord', 'Feyenoord Rotterdam')` → **False**.
+        #    그래서 Feyenoord 직전 경기가 **0개**였고(teamForm 에는 5개가
+        #    있었다) 과거 XI 0경기 → 평소 XI 없음 → 바뀐 자리·ΔA·ΔD·
+        #    자리별 교체가 **전부 ⬜** 가 됐다(연쇄 · 실측 2026-10-15).
+        #  🔴 `core/teamname.pick` 이 양방향으로 맞춘다(사본 금지).
         if q.team and not verify.mentions_team(team, q.team, q.local):
-            continue
+            from app.core import teamname as _tn3
+            if not _tn3.pick(str(q.team), [team])[0]:
+                continue
         games = [g for g in (tf[which] or []) if isinstance(g, dict)]
         dated = sorted(((_when_of(g), g) for g in games),
                        key=lambda x: (x[0] is not None, x[0]))
