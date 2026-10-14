@@ -2013,7 +2013,26 @@ def prob_block(card: Card) -> str:
                                    else "⬜ 없다"))
     said_e1 = _e1_of(box, pull, mk)
     said_sh.insert(1, f"E1 {said_e1}")
-    row("그림자", " · ".join(said_sh) + "  (홈/무/원정)")
+    # 🔴🔴 **옛 M1 그림자**(지시 2026-10-14e §4) — 후보 판으로 전환한 날부터
+    #    옛 판을 나란히 적는다(30경기 유지 · `score_cards` 가 두 판을 채점한다).
+    said_oldm1 = dict(box.get("shadow_old") or {})
+    if said_oldm1:
+        three = _three(said_oldm1)
+        said_sh.append("M1옛 " + (" / ".join(f"{float(x):.0%}" for x in three)
+                                  if three and all(x is not None
+                                                   for x in three)
+                                  else f"⬜ {said_oldm1.get('why') or '없다'}"))
+    # 🔴🔴 **각주**(지시 2026-10-14e §4) — 어떤 후보로 전환했고 **판정표가 어디**인가
+    from app.core import m1v2 as _c
+    said_note = ""
+    if _c.any_on():
+        box_f = dict(_c.table().get("flags") or {})
+        said_on = [k for k, v in box_f.items() if v is True] + (
+            [f"home_mul={box_f['home_mul']}"] if box_f.get("home_mul") else [])
+        said_note = (f" · 🔧 **M1v2 전환**({' · '.join(said_on)} · "
+                     f"{_c.table().get('switched_at')}) · 판정표 "
+                     f"`var/accept/judge_stage1.log`")
+    row("그림자", " · ".join(said_sh) + "  (홈/무/원정)" + said_note)
     # ── 역배 · 핸디 · 더블찬스 · DNB
     if mk:
         fav_home = mk["home"] >= mk["away"]

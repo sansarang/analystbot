@@ -256,9 +256,16 @@ def test_form_of_uses_the_side() -> None:
 # E — 팀별 홈 이점(수축)
 # ══════════════════════════════════════════════════════════════════
 
-def test_team_home_edge_from_games() -> None:
-    """🔴🔴 E — 그 팀의 **홈/원정 득실**로 홈 효과를 센다(표본 적으면 수축)."""
-    from app.core import probmodel
+def test_team_home_edge_from_games(monkeypatch) -> None:
+    """🔴🔴 E — 그 팀의 **홈/원정 득실**로 홈 효과를 센다(표본 적으면 수축).
+
+    ⚠️ **후보 ③a 로 전환했다**(2026-10-14e §4 · 백필에서 `③now` 가 유의하게
+       해로웠다 — 로그 손실 +0.0066 · 하한 +0.0037 · 방향 −1.57%p · p 0.0001).
+       🔴 그래서 지금 운영은 **리그값**을 쓴다. 이 계약은 그 식 자체가 **살아
+       있는지**를 지키므로 후보를 끈 상태에서 센다(식이 지워지면 빨개진다).
+    """
+    from app.core import m1v2, probmodel
+    monkeypatch.setattr(m1v2, "which", lambda name: "")
     games = ([{"gf": 3, "ga": 0, "side": "home"}] * 8
              + [{"gf": 1, "ga": 2, "side": "away"}] * 8)
     got, why = probmodel.team_home_mul(games, league=1.1)

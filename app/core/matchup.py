@@ -276,7 +276,22 @@ def axis0(ref, facts, varset, *, r: dict | None = None,
                   f"{miss['away']:.0%} → {miss_move(miss['away']):+.3f}"
                   f"(무게 {MISS_W:g} · 상한 {MISS_CAP:g} · {PROVISIONAL})"
                   if any(miss.values()) else " · 빠진 주전 없다(또는 핵심 아니다)"))
-    return _settle(got, scale=float(box.get("scale") or 1.0))
+    # 🔴🔴 **후보 ④a**(지시 2026-10-14e · 기본 꺼짐) — 리그 표준편차로 나눈다.
+    #    ⚠️ 지금(꺼짐)은 축0 원값이 17~19 라 다른 축보다 단위가 커서 종합을 혼자
+    #    정한다(백필 57.6%). 판은 `data/axis_scale/<리그>.yaml`(누설 금지).
+    from app.core import m1v2 as _c
+    said_scale = float(box.get("scale") or 1.0)
+    if _c.on("axis0_scale"):
+        from app.core import competition as _cp
+        key, _w = _cp.key_of(competition=str(getattr(ref, "competition", "")
+                                             or ""))
+        sd, said_sd = _c.axis_sd(key, "axis0")
+        if sd:
+            said_scale = said_scale * float(sd)
+            got.why += f" · **척도판 ④a** ÷{float(sd):.3f}({said_sd})"
+        else:
+            got.why += f" · ⬜ **척도판 ④a 미적용** — {said_sd}"
+    return _settle(got, scale=said_scale)
 
 
 def _xi_names(facts, key: str) -> list:
@@ -331,6 +346,15 @@ def combine(axes: dict) -> dict:
     """
     box = dict(table().get("weights") or {})
     fit = dict(table().get("fit") or {})
+    # 🔴🔴 **후보 ①b·②a**(지시 2026-10-14e · 기본 꺼짐)
+    from app.core import m1v2 as _c
+    if _c.on("axis3_off"):
+        box = {**box, "axis3": 0.0}
+    said_renorm = ""
+    if _c.on("weight_renorm"):
+        got_w, said_renorm = _c.weights_of(
+            box, [k for k, v in axes.items() if v.gap is not None])
+        box = {**box, **got_w}
     total = 0.0
     said: list[str] = []
     for name, one in axes.items():
@@ -340,6 +364,8 @@ def combine(axes: dict) -> dict:
         w = float(box.get(name) or 0.0)
         total += w * float(one.gap)
         said.append(f"{name} {one.gap:+.2f}×{w:g}")
+    if said_renorm:
+        said.append(said_renorm)
     got = Axis(name="종합", home=total, away=0.0)
     got = _settle(got, scale=1.0)
     return {"edge": got.edge, "strength": got.strength, "score": round(total, 4),
@@ -578,14 +604,25 @@ def axis3(box: dict, varset, *, r: dict) -> Axis:
         return got
     per = float(conf.get("per_rule") or 0.0)
     val = {"home": 0.0, "away": 0.0}
+    # 🔴🔴 **후보 ①a**(지시 2026-10-14e) — 규칙 **효과 부호**로 ±.
+    #    ⚠️ 지금(꺼짐)은 발동 **수**를 그 쪽 우위로 더한다 — T11(리드 유지력
+    #    낮음 · `own_win_logodds -0.08`)·T12(공격 할인)처럼 **불리한** 규칙도
+    #    그 팀을 올린다(백필 부호 적중 35.0% · 섞어 찍기 37.2% 보다 낮다).
+    from app.core import m1v2 as _c
+    said_sign = _c.on("axis3_sign")
+    signs: list[str] = []
     for f in fired:
-        val[str(f.side)] = val.get(str(f.side), 0.0) + per
+        mine = _c.rule_sign(dict(getattr(f, "effect", None) or {}))             if said_sign else 1
+        val[str(f.side)] = val.get(str(f.side), 0.0) + per * mine
+        if said_sign:
+            signs.append(f"{f.rule}/{f.side} {mine:+d}")
     for side in ("home", "away"):
         val[side] *= float(dict(r or {}).get(side, 1.0))
     got.home, got.away = round(val["home"], 4), round(val["away"], 4)
     got.refs = [one.id for one in varset.of("axis3")] if varset else []
     watch = [f.rule for f in (box.get("fired") or []) if f.watch_only]
     got.why = (f"발동 {len(fired)}건(규칙당 {per:g})"
+               + (f" · **부호판 ①a** [{' · '.join(signs)}]" if signs else "")
                + (f" · 관찰만 {watch}(λ 에 안 들어간다 · C9)" if watch else "")
                + f" · {PROVISIONAL}")
     return _settle(got, scale=1.0)

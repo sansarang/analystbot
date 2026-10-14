@@ -167,6 +167,16 @@ def features(j: dict, *, prior: dict, league_mean: float | None,
         box["fired"] = _goals.fire(prof["home"], prof["away"], rest={})
         gaps["axis2"] = _mu.axis2(box, None).gap or 0.0
         gaps["axis3"] = _mu.axis3(box, None, r={}).gap or 0.0
+        # 🔴🔴 **후보 ①a 의 재료를 함께 적는다**(지시 2026-10-14e) — 규칙 효과
+        #    부호로 센 축3. ⚠️ 가중표에 `axis3_sign` 이 없으니 **종합에는 0 으로**
+        #    들어간다(지금 판을 바꾸지 않는다) — 판정기가 이 칸을 읽는다.
+        from app.core import m1v2 as _c
+        per = float(dict(_mu.table().get("axis3") or {}).get("per_rule") or 0.0)
+        said = {"home": 0.0, "away": 0.0}
+        for f in [x for x in (box.get("fired") or []) if not x.watch_only]:
+            said[str(f.side)] = said.get(str(f.side), 0.0) + per * _c.rule_sign(
+                dict(getattr(f, "effect", None) or {}))
+        gaps["axis3_sign"] = round(said["home"] - said["away"], 4)
     else:
         why["axis2"] = why["axis3"] = "🔴 과거 경기가 모자라다"
     return gaps, why

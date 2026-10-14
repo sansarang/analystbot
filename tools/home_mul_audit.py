@@ -47,6 +47,11 @@ def rows_all() -> list[dict]:
 
 
 def main() -> int:
+    import argparse
+    ap = argparse.ArgumentParser()
+    # 🔴 후보별 분위 보정표(지시 2026-10-14e ③) — "" 지금 식 · b·c·d 후보
+    ap.add_argument("--variant", default="")
+    args = ap.parse_args(sys.argv[1:])
     rows = sorted(rows_all(), key=lambda r: str(r.get("day") or ""))
     print(f"# 🔴🔴 홈 배율 점검 — 백필 **{len(rows)}경기**")
     print()
@@ -71,22 +76,34 @@ def main() -> int:
         lg, se = str(r.get("league")), str(r.get("season"))
         h, a = str(r.get("home")), str(r.get("away"))
         hg, ag = int(r["hg"]), int(r["ag"])
-        kh = seen.setdefault((lg, se, h), {"hgf": 0, "hn": 0,
-                                           "agf": 0, "an": 0})
-        ka = seen.setdefault((lg, se, a), {"hgf": 0, "hn": 0,
-                                           "agf": 0, "an": 0})
+        kh = seen.setdefault((lg, se, h), {"hgf": 0, "hn": 0, "hga": 0,
+                                           "agf": 0, "an": 0, "aga": 0})
+        ka = seen.setdefault((lg, se, a), {"hgf": 0, "hn": 0, "hga": 0,
+                                           "agf": 0, "an": 0, "aga": 0})
         # 🔴 **그 경기 이전 기록만**으로 배율을 만든다(누설 금지)
         pair = min(kh["hn"], kh["an"])
         if pair >= 2 and kh["agf"] > 0:
             raw = min(CAP, (kh["hgf"] / kh["hn"]) / (kh["agf"] / kh["an"]))
             w = min(1.0, pair / FULL)
-            out.append({"mul": w * raw + (1 - w) * 1.120, "raw": raw,
+            mul = w * raw + (1 - w) * 1.120
+            if args.variant:
+                # 🔴 후보 식은 `core/m1v2.team_home` **하나**가 든다(사본 금지)
+                from app.core import m1v2 as _c
+                games = ([{"side": "home", "gf": kh["hgf"] / kh["hn"],
+                           "ga": kh["hga"] / kh["hn"]}] * kh["hn"]
+                         + [{"side": "away", "gf": kh["agf"] / kh["an"],
+                             "ga": kh["aga"] / kh["an"]}] * kh["an"])
+                mul, _why = _c.team_home(args.variant, games, league=1.120,
+                                         prior=1.120)
+            out.append({"mul": mul, "raw": raw,
                         "w": w, "n": pair,
                         "res": 0 if hg > ag else (1 if hg == ag else 2),
                         "league": lg, "home": h, "day": r.get("day")})
         kh["hgf"] += hg
+        kh["hga"] += ag
         kh["hn"] += 1
         ka["agf"] += ag
+        ka["aga"] += hg
         ka["an"] += 1
     print()
     print(f"## ② 팀별 홈 효과(이전 경기만) → **그 다음 홈 경기** "

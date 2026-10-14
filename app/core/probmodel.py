@@ -155,6 +155,13 @@ def team_home_mul(games: list[dict], *, league: float) -> tuple[float, str]:
     🔴 표본이 없으면 **리그 값 그대로**다(지어내지 않는다 · #4). 새 계수를 만들지
        않고 **표본 비율로 수축**한다.
     """
+    # 🔴🔴 **후보 ③**(지시 2026-10-14e · 기본 꺼짐) — a 끄기 · b 대칭식 ·
+    #    c 수축 강화 · d 이월. ⚠️ 지금 식은 **반예측**이다(백필: 상위 20% 홈 승
+    #    40.7% < 기준 43.4% · 시즌 초 −6.2%p · `tools/home_mul_audit.py`).
+    from app.core import m1v2 as _c
+    said_v = _c.which("home_mul")
+    if said_v:
+        return _c.team_home(said_v, games, league=league)
     rows = [dict(g) for g in (games or [])]
     at_home = [g for g in rows if str(g.get("side") or "") == "home"]
     at_away = [g for g in rows if str(g.get("side") or "") == "away"]

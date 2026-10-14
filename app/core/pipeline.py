@@ -386,6 +386,34 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #     않는다. 그 사실은 `prob.why` 에 적힌다.
     prob = _pm.run(ref, facts, mr, varset, edge=edge, state=st,
                    floor=base_p.probs)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **그림자 — 옛 M1**(수정·검증 지시 2026-10-14e §4)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 통과 조합을 설정 플래그 `M1v2` 로 운영 전환 · 기존 M1 은 **그림자로 30경기
+    #  > 유지** · score_cards 가 두 판 같이 채점.
+    #
+    #  🔴 통신 0건이다 — `matchup.report` 와 `probmodel.run` 은 **이미 받은 재료**로
+    #     도는 계산이다. ⚠️ 실패하면 ⬜ 와 사유를 남긴다(조용히 0 을 넣지 않는다).
+    from app.core import m1v2 as _c
+    said_old: dict | None = None
+    if _c.any_on():
+        try:
+            with _c.off():
+                mr_old = _mu.report(ref, facts, edge, varset, strategy=plan,
+                                    turnover=turn)
+                prob_old = _pm.run(ref, facts, mr_old, varset, edge=edge,
+                                   state=None, floor=base_p.probs)
+            said_old = {"home": prob_old.home, "draw": prob_old.draw,
+                        "away": prob_old.away,
+                        "why": f"옛 M1(후보 꺼짐) · {mr_old.verdict.get('why')}"}
+            st.note(f"S3 그림자 옛 M1 — 홈 {prob_old.home:.1%} · 무 "
+                    f"{prob_old.draw:.1%} · 원정 {prob_old.away:.1%}")
+        except Exception as exc:                            # noqa: BLE001
+            said_old = {"why": f"🔴 옛 M1 그림자를 못 셌다 — {exc!r:.120}"}
+    if said_old:
+        # 🔴 카드가 보는 것은 `card.matchup`(= `edge`)다 — 그 사전에 싣는다
+        edge["shadow_old"] = dict(said_old)
     edge["report"] = mr
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **xG 판을 한 번 더 센다**(사용자 결정 2026-10-12 — 3번 b)
