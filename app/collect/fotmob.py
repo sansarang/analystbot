@@ -2078,11 +2078,29 @@ def group_table(j: dict, names: list[str]) -> dict:
     🔴 `zone` 은 fotmob `legend` 의 **글자 그대로**다(`Promotion`·`Relegation`…) —
        우리가 뜻을 지어내지 않는다. ⚠️ 없는 리그가 있다(그때 `zone` 은 빈 글자).
     """
-    want = {str(n).strip().lower() for n in names if str(n).strip()}
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **이름을 `teamname.pick` 으로 맞춘다** — 실사고 2026-10-14
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 종전엔 **글자 그대로 소문자 비교**였다(`want <= got`). 그래서 UCL 표
+    #     36팀 안에 `Feyenoord`·`Como` 가 **있는데도** 우리 이름
+    #     (`Feyenoord Rotterdam`·`Como 1907`)과 안 맞아 *"두 팀이 든 표를 못
+    #     찾았다"* 가 됐다 → 순위·승점·라운드가 **전부 ⬜**(실측 2026-10-14
+    #     페예노르트–코모 UCL).
+    #  🔴 맞추는 규칙은 `core/teamname.pick` **하나**다(사본 금지) — 여기서 새
+    #     비교를 짓지 않는다. 그 함수가 속 낱말·별칭·발음기호를 본다.
+    from app.core import teamname as _tn
+    want = [str(n).strip() for n in names if str(n).strip()]
     for tb in _tables(j):
         rows = (tb.get("table") or {}).get("all") or []
-        got = {str(r.get("name") or "").strip().lower() for r in rows}
-        if not want or not want <= got:
+        keys = [str(r.get("name") or "") for r in rows]
+        # 🔴 **두 팀 다** 그 표에 있어야 한다(종전 규칙과 같다)
+        hit = {}
+        for one in want:
+            got_k, _why = _tn.pick(one, keys)
+            if got_k:
+                hit[one] = got_k
+        if want and len(hit) < len(want):
             continue
         zones = cut_lines(tb)
         band: dict[int, str] = {}

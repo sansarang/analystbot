@@ -47,6 +47,13 @@ async def main(argv: list[str]) -> int:
     st.deadline = _dl.Deadline(10.0)
     # 🔴 DB 풀은 봇이 쓰는 그것이다(`app/bot/main` 과 같은 길) — s1 이 슬레이트를
     #    읽고 적는다. ⚠️ `None` 을 주면 입구가 터진다(실측 2026-10-14).
+    # 🔴🔴 **재정렬기를 예열한다** — `app/bot/main.py:165` 가 운영에서 부르는 그것.
+    #    ⚠️ 실사고 2026-10-14: 러너가 이걸 빠뜨려 `rerank_unavailable` 이 났고,
+    #       후보 95개의 **순서가 뒤죽박죽**인 채 열기 상한 3개가 아무 문서나
+    #       집었다 → 표적 문서 **0건**. 🔴 검문이 좁은 게 아니라 **고르지
+    #       못한 것**이었다(사유 집계로 확인: STALE 48 · IDENTITY 31).
+    from app.core import rank as _rank
+    print(f"- 재정렬 예열 — {_rank.warm()}", flush=True)
     pool = await get_pool(_cfg.get_settings().database_url)
     net = Net(cache=True)
     # 🔴 사슬은 **운영이 쓰는 그 공장**으로 만든다(사본 금지)
@@ -245,8 +252,34 @@ async def main(argv: list[str]) -> int:
             ref, state=st, chain=chain, net=net, cache=cache,
             queries=mine, sub=sub, tag=f"gap-{side}")
     print(f"- 표적 문서 **{len(got_docs)}건**")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **0건이면 어디서 떨어졌나를 적는다**(규율 #3 조용한 0 금지)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실측 2026-10-14: 표적 질의가 265건을 받았는데 `gap_docs` 를 지나자
+    #     문서가 **0건**이 됐다. 🔴 어느 검문(도메인 등급·신원·날짜)에서
+    #     떨어졌는지 **세어** 보지 않으면 추측으로 고치게 된다(#4).
+    if not got_docs:
+        import collections as _c
+        tally = _c.Counter()
+        for d in (st.drops or []):
+            what = str(getattr(d, "what", "") or "")
+            if "gap" in what:
+                tally[str(getattr(d, "reason", "") or "?")] += 1
+        print(f"    🔴 **0건 — 버린 사유** {dict(tally) or '⬜ 기록 없음'}")
+        for one in [x for x in (st.notes or []) if "gap" in str(x)][-8:]:
+            print(f"    · {str(one)[:170]}")
     for d in got_docs[:8]:
-        print(f"    · {str(getattr(d, 'title', '') or '')[:80]}")
+        # 🔴🔴 **본문·발행일·등급을 함께 적는다**(규율 #3) — *"자료가 안 왔다"* 와
+        #    *"왔는데 못 뽑았다"* 를 가른다. ⚠️ 실측 2026-10-14: 표적 문서 5건이
+        #    왔는데 추출 후보가 **0개**였다 — 어느 쪽인지 수로 가린다.
+        body = str(getattr(d, "body", "") or getattr(d, "text", "") or "")
+        print(f"    · {str(getattr(d, 'title', '') or '')[:70]}")
+        print(f"        본문 {len(body):,}자 · 발행 "
+              f"{str(getattr(d, 'published', '') or '⬜')} "
+              f"· 날짜출처 {str(getattr(d, 'date_source', '') or '⬜')} "
+              f"· 등급 {str(getattr(d, 'tier', '') or '⬜')} "
+              f"· 하위 {str(getattr(d, 'subtask', '') or '⬜')}")
     # ── ⑧ 추출 → 검증 → **변수**
     if got_docs:
         more = await s4_extract.run(ref, got_docs, state=st, chain=chain,
@@ -254,6 +287,17 @@ async def main(argv: list[str]) -> int:
         said_v2 = s5_verify.run(ref, facts, got_docs, more, state=st,
                                 turnover=turn)
         print(f"## ⑧ 표적 추출·검증 — 후보 {len(more)} → 변수 **{len(said_v2)}개**")
+        # 🔴 후보 0 이면 **추출이 무엇을 말했나**를 그대로 적는다(#3)
+        if not more:
+            for one in [x for x in (st.notes or [])
+                        if "s4" in str(x) or "추출" in str(x)][-6:]:
+                print(f"    🔴 {str(one)[:200]}")
+            for d in (st.drops or [])[-6:]:
+                what = str(getattr(d, "what", "") or "")
+                if "s4" in what or "gap" in what:
+                    print(f"    🔴 버림 {what[:60]} — "
+                          f"{getattr(d, 'reason', '?')} · "
+                          f"{str(getattr(d, 'detail', '') or '')[:110]}")
         for v in said_v2:
             print(f"- `{v.id}` [{v.type}] {str(v.claim or '')[:110]}"
                   + (f" · 원천 {v.n_sources}곳" if getattr(v, "n_sources", 0)
