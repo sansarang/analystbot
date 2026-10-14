@@ -714,15 +714,27 @@ def line_hit(line: str, hg: int, ag: int) -> bool:
     if said == "무":
         return d == 0
     if said.startswith("핸디 "):
+        # 🔴🔴 **정수 기준선은 세 쪽**이다(국내 보드 · 후속 지시 2026-10-14h §1)
+        #    — 조정 뒤 동점이 `무` 로 따로 선다(밀어주기가 아니다). 그래서 이름이
+        #    `핸디 home+1 승`·`핸디 home+1 무` 로 **쪽까지** 적혀 온다.
         key = said.split(" ", 1)[1]
+        tail = ""
+        for mark in (" 승", " 무", " 패"):
+            if key.endswith(mark):
+                key, tail = key[: -len(mark)], mark.strip()
+                break
         side, num = ("home", key[4:]) if key.startswith("home") else (
             "away", key[4:])
         try:
             got = float(num)
         except ValueError:
             return False
-        mine = d if side == "home" else -d
-        return (mine + got) > 0
+        mine = (d if side == "home" else -d) + got
+        if tail == "무":
+            return mine == 0
+        if tail == "패":
+            return mine < 0
+        return mine > 0
     if said.startswith(("오버", "언더")):
         try:
             got = float(said.split(" ", 1)[1])

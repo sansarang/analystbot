@@ -51,17 +51,32 @@ def lines_of(lam: list[float], hg: int, ag: int) -> list[tuple]:
 
 
 def main() -> int:
+    import argparse
+
     import replays
+
+    ap = argparse.ArgumentParser()
+    # 🔴🔴 **보드 줄만**(후속 지시 2026-10-14h §1) — 국내 보드에 흔한 기준선
+    #    (승무패 · 핸디 ±0.5/±1.5 · 오버언더 2.5/3.5)만 남겨 곡선을 다시 그린다.
+    ap.add_argument("--board-only", action="store_true")
+    args = ap.parse_args(sys.argv[1:])
+    from app.core import picks as _pk
+    want = set(_pk.BOARD_COMMON) if args.board_only else None
 
     rows, said = replays.load()
     rows = [r for r in rows if r.get("lam") and r.get("hit") is not None]
-    print(f"# 🔴🔴 문턱 곡선 — {said}")
+    print(f"# 🔴🔴 문턱 곡선 — {said}"
+          + (" · **보드 줄만**" if want is not None else ""))
     print()
     days: dict[str, list] = {}
     best: list[tuple] = []
     for r in rows:
         got = lines_of([float(x) for x in r["lam"][:2]], int(r["hg"]),
                        int(r["ag"]))
+        if want is not None:
+            got = [x for x in got if x[0] in want]
+            if not got:
+                continue
         top = max(got, key=lambda x: x[1])
         best.append((top[1], top[2], str(r.get("day")), str(r.get("league")),
                      top[0]))
@@ -106,6 +121,8 @@ def main() -> int:
     for r in rows:
         for nm, p, ok in lines_of([float(x) for x in r["lam"][:2]],
                                   int(r["hg"]), int(r["ag"])):
+            if want is not None and nm not in want:
+                continue
             key = ("승무패" if nm in ("홈 승", "원정 승", "무")
                    else ("핸디" if nm.startswith("핸디")
                          else ("오버·언더" if nm.startswith(("오버", "언더"))

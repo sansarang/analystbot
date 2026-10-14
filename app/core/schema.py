@@ -1267,6 +1267,9 @@ class Card(Frozen):
     #  > 사라진 변수, 등급 변화, 방아쇠 중 걸린 것.
     changed: list[str] = Field(default_factory=list)
     #: 🔴 보드에서 **추가 옵션**으로 들어온 줄(§4) · 못 읽은 줄
+    #: 🔴🔴 **보드에 있는 줄 이름**(후속 지시 2026-10-14h §1) — 칠 표 후보는
+    #:    이 목록 **안에서만** 고른다. 비어 있으면 그 경기는 표에서 빠진다.
+    board_lines: list[str] = Field(default_factory=list)
     board_extra: list[str] = Field(default_factory=list)
     board_bad: list[str] = Field(default_factory=list)
     # ══════════════════════════════════════════════════════════════════

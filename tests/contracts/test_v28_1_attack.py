@@ -193,7 +193,8 @@ def test_at14_칠_표는_공격으로_걸러내지_않는다() -> None:
     for bad in ("verdict ==", "verdict !=", 'verdict in ('):
         assert bad not in said, bad
     rows = [{"match": "A vs B", "league": "L", "kickoff": "1",
-             "lines": {"핸디 home+1.5": 0.95}, "verdict": "무너짐"}]
+             "lines": {"핸디 home+1.5": 0.95}, "verdict": "무너짐",
+             "board_lines": ["핸디 home+1.5"]}]
     got = picks.of(rows)
     assert len(got.singles) == 1, "🔴 무너짐도 문턱을 넘으면 단폴에 든다"
 
@@ -202,13 +203,16 @@ def test_at15_다폴_규칙이_지켜진다() -> None:
     """🔴 §4 — 같은 경기 금지 · 전부 같은 방향 금지 · 같은 리그·킥오프 최대 2."""
     from app.core import picks
     same = [{"match": f"A{i} vs B{i}", "league": "L", "kickoff": "1",
-             "lines": {"핸디 home+1.5": 0.95}} for i in range(4)]
+             "lines": {"핸디 home+1.5": 0.95},
+             "board_lines": ["핸디 home+1.5"]} for i in range(4)]
     got = picks.of(same)
     assert not got.parlays, "🔴 전부 홈 쪽인데 다폴이 나왔다"
     mixed = [{"match": "A vs B", "league": "L1", "kickoff": "1",
-              "lines": {"핸디 home+1.5": 0.95}},
+              "lines": {"핸디 home+1.5": 0.95},
+              "board_lines": ["핸디 home+1.5"]},
              {"match": "C vs D", "league": "L2", "kickoff": "2",
-              "lines": {"핸디 away+1.5": 0.94}}]
+              "lines": {"핸디 away+1.5": 0.94},
+              "board_lines": ["핸디 away+1.5"]}]
     got2 = picks.of(mixed)
     assert got2.parlays and len(got2.parlays[0]) == 2
     assert len({x.match for x in got2.parlays[0]}) == 2
@@ -243,3 +247,49 @@ def test_at18_봇_명령이_같은_식으로_고른다() -> None:
     said = inspect.getsource(bm.cmd_picks)
     assert "_pk.of(" in said and "_pk.said_of(" in said
     assert "var/picks" in said
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **보드에 있는 줄만**(후속 지시 2026-10-14h §1 · AT19~AT21)
+# ══════════════════════════════════════════════════════════════════
+
+def test_at19_보드_없는_경기는_칠_표에서_빠진다() -> None:
+    from app.core import picks
+    rows = [{"match": "A vs B", "league": "L", "kickoff": "1",
+             "lines": {"핸디 home+1.5": 0.97}},            # 🔴 보드 없다
+            {"match": "C vs D", "league": "L", "kickoff": "1",
+             "lines": {"핸디 home+1.5": 0.95, "오버 1.5": 0.99},
+             "board_lines": ["핸디 home+1.5"]}]            # 🔴 보드에 한 줄만
+    got = picks.of(rows)
+    assert [x.match for x in got.singles] == ["C vs D"], got.singles
+    # 🔴 보드에 **없는 줄**(오버 1.5 · 0.99)은 더 높아도 안 고른다
+    assert got.singles[0].line == "핸디 home+1.5"
+    assert "보드 없어 뺀 경기 1개" in got.why
+
+
+def test_at20_보드_줄_이름이_파서와_맞는다() -> None:
+    """🔴 보드 → 줄 이름 — 승무패·핸디(**왼쪽=홈 기준**)·오버언더."""
+    from app.core import board, picks
+    got, _extra, _bad = board.parse(
+        "승무패 2.15 3.25 3.40\n핸디 1.5 1.80 2.05\n언더오버 2.5 1.90 1.95")
+    said, why = picks.board_lines(got)
+    assert {"홈 승", "무", "원정 승", "핸디 home+1.5", "핸디 away-1.5",
+            "오버 2.5", "언더 2.5"} <= said, (said, why)
+    # 🔴 **정수 기준선은 세 쪽**(승·무·패) — 국내 보드 규칙
+    got2, _e2, _b2 = board.parse("핸디 1 1.80 1.95")
+    said2, _w2 = picks.board_lines(got2)
+    assert {"핸디 home+1 승", "핸디 home+1 무"} <= said2, said2
+    # 🔴 보드가 없으면 **빈 집합과 사유**
+    none, why2 = picks.board_lines(None)
+    assert not none and "⬜" in why2
+
+
+def test_at21_카드가_보드_줄을_든다() -> None:
+    """🔴 배선 — 파이프라인이 `picks.board_lines` 를 세어 카드 칸에 싣는다."""
+    from app.core.schema import Card
+    assert "board_lines" in Card.model_fields
+    said = (ROOT / "app/core/pipeline.py").read_text(encoding="utf-8")
+    assert "_pk.board_lines(got_board)" in said
+    assert 'layers["board_lines"]' in said
+    got = (ROOT / "tools/slate_queue.py").read_text(encoding="utf-8")
+    assert 'getattr(card, "board_lines"' in got and "board_text_of(" in got

@@ -170,17 +170,33 @@ def main() -> int:
             box = box_of(r, prior, scales, said_ppg)
             got = atk.of(box)
             lam = atk.lam_of(box, got)
-            best = max(lines_of(lam, int(r["hg"]), int(r["ag"])),
-                       key=lambda x: x[1])
-            base_best = max(lines_of([float(x) for x in r["lam"][:2]],
-                                     int(r["hg"]), int(r["ag"])),
-                            key=lambda x: x[1])
+            # 🔴🔴 **보드 줄만**(후속 지시 2026-10-14h §1)
+            from app.core import picks as _pk
+            want = set(_pk.BOARD_COMMON)
+            got_l = [x for x in lines_of(lam, int(r["hg"]), int(r["ag"]))
+                     if x[0] in want]
+            got_b = [x for x in lines_of([float(x) for x in r["lam"][:2]],
+                                         int(r["hg"]), int(r["ag"]))
+                     if x[0] in want]
+            if not got_l or not got_b:
+                for key in ((lg, str(r.get("home"))),
+                            (lg, str(r.get("away")))):
+                    prior.setdefault(key, []).append(r)
+                continue
+            best = max(got_l, key=lambda x: x[1])
+            base_best = max(got_b, key=lambda x: x[1])
             out.append({"day": str(r.get("day")), "league": lg,
                         "verdict": got.verdict(),
                         "broken": [s.key for s in got.broken()],
                         "p": best[1], "ok": bool(best[2]), "line": best[0],
                         "p0": base_best[1], "ok0": bool(base_best[2]),
-                        "line0": base_best[0]})
+                        "line0": base_best[0],
+                        # 🔴 H1 단독 시험용 — 그 경기에서 H1 이 깨졌나
+                        "h1": "H1" in [s.key for s in got.broken()],
+                        "fam": ("승무패" if base_best[0] in ("홈 승", "무",
+                                                             "원정 승")
+                                else ("핸디" if base_best[0].startswith("핸디")
+                                      else "오버·언더"))})
         hg, ag = int(r["hg"]), int(r["ag"])
         for team, mine_home in ((home, True), (away, False)):
             prior.setdefault((lg, team), []).append(r)
@@ -224,6 +240,43 @@ def main() -> int:
                  else f"**{100*d:+.1f}%p**")
               + " | " + ("—" if name.startswith("(가)")
                          else f"[{100*lo:+.1f}, {100*hi:+.1f}]") + " |")
+    # ── §2 **H1 단독 시험** — (가) vs (라) H1 깨짐 줄 제외 ──────────
+    print()
+    print("| 판 | 단폴 수 | 적중 | 하루 | (가) 대비 | 95% 구간 |")
+    print("|---|---|---|---|---|---|")
+    base = [x for x in out if x["p0"] >= CUT_SINGLE]
+    la = [x for x in base if not x["h1"]]
+    for name, part, key in (("(가) 문턱만", base, "ok0"),
+                            ("(라) 문턱 + H1 깨짐 제외", la, "ok0")):
+        ok = [int(x[key]) for x in part]
+        d, lo, hi = ci(ok, [int(x["ok0"]) for x in base])
+        print(f"| **{name}** | {len(part)} | **{100*sum(ok)/len(ok):.1f}%** | "
+              f"{len(part)/days:.2f} | "
+              + ("—" if name.startswith("(가)") else f"**{100*d:+.1f}%p**")
+              + " | " + ("—" if name.startswith("(가)")
+                         else f"[{100*lo:+.1f}, {100*hi:+.1f}]") + " |")
+    print()
+    print("| 줄 종류 | (가) 수 | (가) 적중 | (라) 수 | (라) 적중 | 차이 "
+          "| 95% 구간 |")
+    print("|---|---|---|---|---|---|---|")
+    for fam in ("승무패", "핸디", "오버·언더"):
+        a = [int(x["ok0"]) for x in base if x["fam"] == fam]
+        b = [int(x["ok0"]) for x in la if x["fam"] == fam]
+        if len(a) < 10:
+            print(f"| {fam} | {len(a)} | ⬜ | {len(b)} | ⬜ | ⬜ | 표본 부족 |")
+            continue
+        d, lo, hi = ci(b, a)
+        print(f"| {fam} | {len(a)} | {100*sum(a)/len(a):.1f}% | {len(b)} | "
+              f"{100*sum(b)/len(b):.1f}% | **{100*d:+.1f}%p** | "
+              f"[{100*lo:+.1f}, {100*hi:+.1f}] |")
+    # 🔴 H1 이 깨뜨린 줄의 **실제 적중률**
+    gone_h1 = [x for x in base if x["h1"]]
+    if gone_h1:
+        print()
+        print(f"- H1 이 뺀 줄 **{len(gone_h1)}개** 의 실제 적중률 — "
+              f"**{100*sum(1 for x in gone_h1 if x['ok0'])/len(gone_h1):.1f}%**"
+              f"(남긴 줄 {100*sum(1 for x in la if x['ok0'])/max(1,len(la)):.1f}%)")
+
     # 🔴 공격으로 **빠진 줄**의 실제 적중률(공격이 틀린 결론을 걸렀나)
     gone = [x for x in out if x["p0"] >= CUT_SINGLE
             and not (x["p"] >= CUT_SINGLE and x["verdict"] == "살아남음")]

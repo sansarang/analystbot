@@ -572,6 +572,12 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     # 🔴 카드 줄도 **이 글자**를 쓴다(렌더러가 다시 세지 않는다)
     if said_div:
         layers["divergence"] = said_div
+    # 🔴🔴 **보드에 있는 줄**(§1) — 칠 표가 그 안에서만 고른다(`core/picks` 하나)
+    from app.core import picks as _pk
+    said_bl, said_bwhy = _pk.board_lines(got_board)
+    layers["board_lines"] = sorted(said_bl)
+    if not said_bl:
+        st.note(f"칠 표 — {said_bwhy}")
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **공격형 검증**(지시 2026-10-14f §1·§3) — 결론을 변수로 공격한다
     # ══════════════════════════════════════════════════════════════════
@@ -1025,6 +1031,7 @@ def card_of(ref: MatchRef, facts: Facts, variables: list[Variable],
         user_market=box.get("user_market") or MarketProb(),
         divergence=str(box.get("divergence") or ""),
         attack=dict(box.get("attack") or {}),
+        board_lines=[str(x) for x in (box.get("board_lines") or [])],
         our_prob=box.get("ours"),
         compare=str(box.get("compare") or ""),
         compare_lines=[str(x) for x in (box.get("compare_lines") or [])],

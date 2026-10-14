@@ -117,8 +117,12 @@ async def main(argv: list[str]) -> int:
         clock = _dl.Deadline(_sl.CARD_CAP_MIN)
         try:
             # 🔴 **실제 핸들러**를 쓰면서 카드를 **받는다**(칠 표 재료가 필요하다)
-            body, card = await _bm._v6_card(pool, said=said, again=False,
-                                            deep=True, want_ref=True)
+            body, card = await _bm._v6_card(
+                pool, said=said, again=False, deep=True, want_ref=True,
+                # 🔴🔴 **보드 캡처**(후속 지시 2026-10-14h §1) — 있으면 넘긴다.
+                #    칠 표 후보는 **보드에 있는 줄만**이므로 이것이 없으면 그
+                #    경기는 표에서 빠진다(표시만).
+                board_text=board_text_of(said))
             for chunk in _bm._split(body):
                 print(chunk)
             got = pick_row(said, one, card)
@@ -140,6 +144,31 @@ async def main(argv: list[str]) -> int:
         print(_pk.said_of(out))
         save_picks(out, rows_pick)
     return 0
+
+
+def board_text_of(name: str) -> str:
+    """🔴 `var/board/<날짜>.yaml` 에서 그 경기 보드 글을 찾는다(없으면 빈 글자).
+
+    🔴 꼴 — `{경기 이름: "승무패 2.15 3.25 3.40\n핸디 1.5 1.80 2.05\n…"}`.
+    ⚠️ 이름은 **느슨하게** 맞춘다(`core/teamname.share`) — 보드를 손으로 적을 때
+       약칭을 쓰기 때문이다. 못 찾으면 **빈 글자**다(지어내지 않는다).
+    """
+    import yaml
+    from datetime import date as _date
+
+    from app.core import teamname as _tn
+    for day in (_date.today(), _date.today().replace(
+            day=_date.today().day)):
+        path = ROOT / "var/board" / f"{day.isoformat()}.yaml"
+        if not path.is_file():
+            continue
+        box = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        if name in box:
+            return str(box[name])
+        for key, val in box.items():
+            if _tn.share(str(key), name) >= 0.5:
+                return str(val)
+    return ""
 
 
 def pick_row(name: str, one: dict, card) -> dict | None:
@@ -165,7 +194,12 @@ def pick_row(name: str, one: dict, card) -> dict | None:
     for key, val in dict(mk.get("over") or {}).items():
         lines[f"오버 {key}"] = val
         lines[f"언더 {key}"] = 1.0 - float(val)
+    # 🔴 보드 줄은 **파이프라인이 센 칸**을 읽는다(사본 금지 · `core/picks`)
+    said_board = [str(x) for x in (getattr(card, "board_lines", None) or [])]
     return {"match": name, "league": str(one.get("comp") or ""),
+            "board_lines": said_board,
+            "board_why": ("보드 줄 %d개" % len(said_board) if said_board
+                          else "⬜ 보드가 없다 — 칠 표에서 뺀다"),
             "kickoff": f"{one['kickoff'].astimezone(KST):%H:%M}",
             "lines": lines,
             "verdict": str(dict(getattr(card, "attack", None) or {})
