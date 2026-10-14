@@ -157,3 +157,116 @@ def test_줄_이름을_세는_곳은_하나다():
     assert "홈 승" in got and "무" in got and "원정 승" in got
     assert any(k.startswith("핸디 ") for k in got)
     assert any(k.startswith("오버 ") for k in got)
+
+
+def test_모르는_줄_종류는_확신이_안_선다():
+    """🔴🔴 실사고 2026-10-14(구성표 2번): `kind_of` 의 마지막 줄이
+    `return WIN if said else ""` 였다 — **`BTTS 예`** 가 승무패 칸으로 들어가
+    **확신 1,698개**가 섰고 적중은 **55.8%** 였다(승무패 확신 69.5%).
+    보정표는 BTTS 를 **잰 적이 없다**."""
+    for bad in ("BTTS 예", "더블찬스 1X", "DNB 홈", "정확한 스코어 2-1", "x"):
+        assert db.kind_of(bad) == "", bad
+    cut = float(dict(db.table().get("cuts") or {}).get("확신"))
+    got = db.judge({"BTTS 예": 0.52},
+                   box=_box(_cell(cut + 0.2, cut + 0.1, cut + 0.3)))
+    assert got.rows[0].verdict == db.HOLD, got.why
+    assert "안 다루는 줄 종류" in got.rows[0].why
+    assert got.picks() == []
+
+
+def test_핸디_총점은_봇_원확률_자로_못_지나간다():
+    """🔴🔴 지시 2026-10-14 3번 — 봇 원래 핸디 확률은 **판정에 쓰지 않는다**.
+
+    ⚠️ 실측(`var/accept/ah_cause.log`): 보드 메인 핸디의 실제 커버율은
+       **50.0%**(1,321줄)이고 봇 확률의 **AUC 가 0.511** 이다(언오버 0.496) —
+       줄을 **못 세운다**. 그 수로 문턱을 넘기면 **거짓 확신**이다.
+    """
+    high = max(pk.CUT_SINGLE, pk.CUT_LEG) + 0.02
+    rows = [{"match": "A vs B", "league": "L", "kickoff": "1",
+             "board_lines": ["핸디 home+1.5", "오버 1.5", "원정 승"],
+             "lines": {"핸디 home+1.5": high + 0.03, "오버 1.5": high + 0.02,
+                       "원정 승": high}}]
+    out = pk.of(rows)
+    # 🔴 핸디·오버가 더 높은데도 **승무패**가 뽑힌다
+    assert [x.line for x in out.singles] == ["원정 승"], out.singles
+    # 🔴 승무패가 없으면 **후보가 아예 없다**(핸디로 떨어지지 않는다)
+    rows2 = [dict(rows[0], board_lines=["핸디 home+1.5", "오버 1.5"],
+                  lines={"핸디 home+1.5": high, "오버 1.5": high})]
+    assert pk.of(rows2).singles == []
+    # 🔴 2단 판정이 붙으면 핸디도 **의심 후 자**로는 갈 수 있다
+    rows3 = [dict(rows[0], board_lines=["핸디 home+1.5"],
+                  lines={"핸디 home+1.5": high},
+                  doubt_picks={"핸디 home+1.5": {"판정": db.SURE,
+                                                "의심후": 0.80, "칸": "x"}})]
+    assert [x.line for x in pk.of(rows3).singles] == ["핸디 home+1.5"]
+
+
+def test_다리_문턱도_자가_둘이다():
+    """🔴 §5 다폴 — 2단 줄은 `다리`(의심 후 자) · 나머지는 `CUT_LEG`."""
+    leg = db.leg_cut()
+    assert leg is not None and 0.5 <= leg <= 0.95, leg
+    assert leg < pk.CUT_LEG, "두 자가 섞였다"
+    cut = float(dict(db.table().get("cuts") or {}).get("확신"))
+    assert leg >= cut, "다리 문턱이 단폴보다 낮다(다리는 곱으로 깎인다)"
+    rows = [{"match": "A vs B", "league": "L", "kickoff": "1",
+             "board_lines": ["홈 승"], "lines": {"홈 승": 0.52},
+             "doubt_picks": {"홈 승": {"판정": db.SURE, "의심후": leg + 0.05,
+                                     "칸": "x"}}},
+            {"match": "C vs D", "league": "L", "kickoff": "2",
+             "board_lines": ["원정 승"], "lines": {"원정 승": 0.52},
+             "doubt_picks": {"원정 승": {"판정": db.SURE,
+                                       "의심후": leg - 0.05, "칸": "x"}}}]
+    out = pk.of(rows)
+    assert len(out.singles) == 2, out.singles
+    # 🔴 다리 문턱을 못 넘은 줄은 **다폴에 안 들어간다** → 2폴이 안 선다
+    assert not out.parlays, out.parlays
+
+
+def test_기록용이면_표_첫_줄에_찍힌다():
+    """🔴 지시 2026-10-14 4번 — *"실전 표시 '기록용'"*."""
+    ok, said = db.live()
+    assert isinstance(ok, bool)
+    if not ok:
+        assert "실전 금지" in said and len(said.splitlines()) == 1, said
+        rows = [{"match": "A vs B", "league": "L", "kickoff": "1",
+                 "board_lines": ["홈 승"], "lines": {"홈 승": 0.52},
+                 "doubt_picks": {"홈 승": {"판정": db.SURE, "의심후": 0.82,
+                                         "칸": "x"}}}]
+        head = pk.said_of(pk.of(rows)).splitlines()[0]
+        assert "실전 금지" in head, head
+    # 🔴 `운영` 을 봇이 스스로 바꾸지 않는다 — 코드가 그 칸에 **쓰지 않는다**
+    import ast
+    import inspect
+    code = ast.unparse(ast.parse(inspect.getsource(db)))
+    assert "운영" in code and "write_text" not in code, "2단이 설정을 쓴다"
+
+
+def test_J1_은_개시_배당으로_잰다():
+    """🔴🔴 지시 2026-10-14 1번 — 마감 배당은 **예측 시점에 못 보는 수**다.
+
+    ⚠️ 실측(`var/accept/j1_leak.log`): 개시 배당에서도 J1 은 유효하고 **더 세다**
+       (−20.7%p [−31.4, −10.0] ↔ 마감 −17.6%p) — 결과가 같아도 마감은 쓰면 안 된다.
+    """
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
+    import fit_doubt as fd
+    import inspect
+    # 🔴 기본값이 `open` 이다
+    src = inspect.getsource(fd.main)
+    assert 'default="open"' in src, src[src.index("j1-odds") - 200:]
+    # 🔴 등록표가 기준 시점을 **못 박고** 있다
+    import yaml
+    reg = yaml.safe_load(
+        (Path(__file__).resolve().parents[2] / "config/doubt_vars.yaml")
+        .read_text(encoding="utf-8"))
+    assert str(reg["vars"]["J1"].get("기준_시점")) == "개시"
+    # 🔴 백필 보드가 **개시 칸을 들고 있다**(없으면 개시로 못 잰다)
+    box = sorted((Path(__file__).resolve().parents[2]
+                  / "data/board_hist").glob("*/*.yaml"))
+    if box:
+        got = yaml.safe_load(box[0].read_text(encoding="utf-8")) or {}
+        rows = [x for x in (got.get("lines") or [])
+                if str(x.get("kind") or "").startswith("실보드")]
+        if rows:
+            assert "win_open" in rows[0], rows[0].keys()

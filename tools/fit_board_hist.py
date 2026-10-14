@@ -108,11 +108,27 @@ async def _rows_extra(net, file: str, league: str, season: str
 
 
 def _line_mmz(r: dict) -> dict:
-    """🔴 mmz4281 한 줄 → 보드 한 줄(마감 배당). 못 읽은 칸은 `None` 으로 남는다."""
+    """🔴🔴 mmz4281 한 줄 → 보드 한 줄. **개시와 마감을 둘 다** 담는다.
+
+    ══════════════════════════════════════════════════════════════════
+    🔴🔴 **왜 둘을 다 담나 — 누설**(후속 지시 2026-10-14 1번)
+    ══════════════════════════════════════════════════════════════════
+
+    `B365C*`·`AHCh` 는 **마감**(킥오프 직전)이다 — 예측 시점(T−24h·T−3h)에는
+    **볼 수 없는 수**다. 그것으로 **J1 시장 괴리**를 재면 그 변수는 미래를 본다.
+    🔴 `B365H`·`AHh` 는 football-data 가 *"가능한 한 일찍"* 받은 값이다(주중) —
+       그것이 **예측 시점에 가까운 배당**이다.
+    ⚠️ 둘은 실제로 다르다(실측 2026-10-14 · E1 552줄):
+       평균 차 **0.144** · 중앙값 0.100 · 최대 1.15 · 완전 동일은 **80줄뿐** ·
+       아시안 **기준선 자체가 190/552(34%)** 에서 움직였다.
+    🔴 그래서 `win`·`ah`·`ou` 는 **마감**(보드의 정본)이고 `*_open` 이
+       **개시**다 — 어느 것으로 변수를 재는지는 **쓰는 쪽이 고른다**.
+    """
     ah = _num(r.get("AHCh"))
-    if ah is None:                      # ⚠️ 마감 칸이 비면 개장 칸을 **적어 둔다**
+    if ah is None:
         ah = _num(r.get("AHh"))
     return {
+        # ── 마감(보드의 정본 · 줄 종류와 기준선은 이것으로 정한다)
         "win": [_num(r.get("B365CH")) or _num(r.get("B365H")),
                 _num(r.get("B365CD")) or _num(r.get("B365D")),
                 _num(r.get("B365CA")) or _num(r.get("B365A"))],
@@ -122,17 +138,36 @@ def _line_mmz(r: dict) -> dict:
         "ou": {"point": 2.5,
                "over": _num(r.get("B365C>2.5")) or _num(r.get("B365>2.5")),
                "under": _num(r.get("B365C<2.5")) or _num(r.get("B365<2.5"))},
+        # ── 🔴 개시(예측 시점에 **볼 수 있던** 수) — 없으면 `None` 으로 남는다
+        "win_open": [_num(r.get("B365H")), _num(r.get("B365D")),
+                     _num(r.get("B365A"))],
+        "ah_open": {"point": _num(r.get("AHh")),
+                    "home": _num(r.get("B365AHH")),
+                    "away": _num(r.get("B365AHA"))},
+        "ou_open": {"point": 2.5, "over": _num(r.get("B365>2.5")),
+                    "under": _num(r.get("B365<2.5"))},
+        "시점": "마감+개시",
     }
 
 
 def _line_extra(r: dict) -> dict:
-    """🔴 `new/<국가>.csv` 한 줄 — **승무패뿐이다**(피나클 마감 우선)."""
+    """🔴 `new/<국가>.csv` 한 줄 — **승무패뿐이다**.
+
+    🔴🔴 그 파일은 **마감 배당만** 든다(`PSCH`·`B365CH` — `C` 가 closing) —
+       **개시 배당 칸이 없다**(실측 2026-10-14: 열 25개가 전부 `*C*` 다).
+    ⚠️ 그래서 이 원천의 줄은 **예측 시점 배당을 못 준다** → `win_open` 이 비고,
+       J1 을 `open` 으로 재면 그 줄은 **빠진다**(지어내지 않는다 · #4).
+    """
     return {
         "win": [_num(r.get("PSCH")) or _num(r.get("B365CH")),
                 _num(r.get("PSCD")) or _num(r.get("B365CD")),
                 _num(r.get("PSCA")) or _num(r.get("B365CA"))],
         "ah": {"point": None, "home": None, "away": None},
         "ou": {"point": None, "over": None, "under": None},
+        "win_open": [None, None, None],
+        "ah_open": {"point": None, "home": None, "away": None},
+        "ou_open": {"point": None, "over": None, "under": None},
+        "시점": "마감만(개시 칸이 없는 원천)",
     }
 
 

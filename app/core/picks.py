@@ -16,6 +16,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 #: 🔴 문턱 곡선(6,696경기 · 533일)에서 고른 수 — 단폴 0.88 → 백필 94.7%
+#:
+#:  ⚠️ 이 둘은 **봇 원확률 자**다 — 2단 판정이 붙은 줄은 `config/doubt_judge.yaml`
+#:     의 **의심 후 확률 자**(0.58)로 간다. 두 자를 겹쳐 걸면 아무것도 안 나온다.
+#:  🔴 그리고 **핸디·총점 줄은 이 자를 쓰지 못한다**(지시 2026-10-14 3번) —
+#:     봇 핸디 확률의 AUC 가 0.511 이라 줄을 못 세운다(`tools/ah_cause.py`).
 CUT_SINGLE = 0.88
 #: 🔴 다리 0.90 → 2폴 92.1% · 3폴 87.8%
 CUT_LEG = 0.90
@@ -222,6 +227,18 @@ def best_of(rows: list[dict]) -> list[Leg]:
             got = [x for x in got if x[0] in want]
         else:
             got = []            # 🔴 보드가 없으면 **후보가 없다**(§1)
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **봇 원래 핸디·총점 확률은 판정에 쓰지 않는다**(지시 3번)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 실측 2026-10-14(`var/accept/ah_cause.log`): 보드 메인 핸디의 실제
+        #     커버율은 **50.0%**(1,321줄)이고 봇 확률의 **AUC 가 0.511** 이다 —
+        #     **줄을 세우지 못한다**(언오버는 0.496). 보정표에서도 70%+ 칸이
+        #     실측 **51.0%** 였다. 🔴 그 수로 문턱을 넘기면 **거짓 확신**이다.
+        #  🔴 그래서 핸디·총점 줄은 **의심 후 확률로만** 간다(위 `said_db` 길).
+        #     칸이 없으면 **후보가 아니다**.
+        got = [x for x in got if not str(x[0]).startswith(
+            ("핸디", "오버", "언더"))]
         if not got:
             continue
         line, p = max(got, key=lambda x: x[1])
@@ -244,8 +261,14 @@ def of(rows: list[dict]) -> Out:
                if (x.after is not None or x.p >= CUT_SINGLE)]
     # 🔴 **역배는 다리로 쓰지 않는다**(§7 — 표시만이다)
     from app.core import doubt as _db2
+    # 🔴🔴 **다리 문턱도 자가 둘이다** — 2단 줄은 `config/doubt_judge.yaml` 의
+    #    `다리`(의심 후 자 · 0.75)이고 나머지는 `CUT_LEG`(봇 원확률 자 · 0.90)다.
+    #    ⚠️ 곡선 실측(홀드아웃 2,865경기): 다리 0.58 → 2폴 54.8% ·
+    #       0.63 → 65.2% · **0.75 → 87.0%**(23묶음 · 3폴 70.0%).
+    leg_db = _db2.leg_cut()
     pool = [x for x in legs
-            if (x.after is not None or x.p >= CUT_LEG)
+            if ((x.p >= leg_db if (x.after is not None and leg_db is not None)
+                 else (x.after is not None or x.p >= CUT_LEG)))
             and x.verdict != _db2.FADE]
     parlays: list[list[Leg]] = []
     for n in LEGS:
@@ -313,7 +336,11 @@ def said_of(out: Out) -> str:
     🔴 역배는 **표시만** 한다(§7 의 그 글자) — 확신과 한 줄에 섞지 않는다.
     """
     from app.core import doubt as _db
+    ok, said_live = _db.live()
     rows = [f"🎯 **칠 표**(§4 판정 · 역배는 표시만) — {out.why}"]
+    if not ok:
+        # 🔴 머리에 **먼저** 찍는다 — 표를 읽는 사람이 제일 먼저 볼 줄이다
+        rows.insert(0, said_live)
     sure = [x for x in out.singles if x.verdict != _db.FADE]
     fade = [x for x in out.singles if x.verdict == _db.FADE]
     for one in sure:

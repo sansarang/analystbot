@@ -42,15 +42,27 @@ WIN, AH, OU = "승무패 방향", "보드 핸디", "보드 언오버"
 
 
 def kind_of(name: str) -> str:
-    """🔴 줄 이름이 어느 **줄 종류**인가. 모르면 빈 글자(그 줄은 보류다)."""
-    said = str(name or "")
+    """🔴🔴 줄 이름이 어느 **줄 종류**인가. 모르면 **빈 글자**(그 줄은 보류다).
+
+    ══════════════════════════════════════════════════════════════════
+    🔴🔴 **모르는 줄을 승무패로 떨어뜨리면 거짓 확신이 선다**
+    ══════════════════════════════════════════════════════════════════
+
+    ⚠️ 실사고 2026-10-14(구성표 2번): 마지막 줄이 `return WIN if said else ""`
+       였다 — 그래서 **`BTTS 예`** 가 승무패 칸으로 들어가 **확신 1,698개**가
+       섰고 그 적중은 **55.8%** 였다(승무패 확신은 69.5%). 보정표는 BTTS 를
+       **잰 적이 없다**.
+    🔴 보정표가 덮는 줄은 **셋뿐**이다(`tools/fit_doubt.KINDS`) — 그 밖은
+       *"모른다"* 이고, 모르는 자리에서 확신하지 않는다(#4).
+    """
+    said = str(name or "").strip()
     if said.startswith("핸디"):
         return AH
     if said.startswith(("오버", "언더")):
         return OU
-    if said in ("홈 승", "원정 승", "무") or said.startswith("핸디 "):
+    if said in ("홈 승", "원정 승", "무"):
         return WIN
-    return WIN if said else ""
+    return ""
 
 
 def table() -> dict:
@@ -59,6 +71,26 @@ def table() -> dict:
     if not CONF.is_file():
         return {}
     return dict(yaml.safe_load(CONF.read_text(encoding="utf-8")) or {})
+
+
+def leg_cut() -> float | None:
+    """🔴 **다폴 다리 문턱**(의심 후 자 · §5 다폴 규칙). 없으면 `None`."""
+    got = dict(table().get("cuts") or {}).get("다리")
+    return float(got) if got is not None else None
+
+
+def live() -> tuple[bool, str]:
+    """🔴🔴 **실전인가 기록용인가**(후속 지시 2026-10-14 4번). `(실전, 글자)`.
+
+    🔴 `config/doubt_judge.yaml` 의 `운영` 칸 하나가 정한다 — 봇이 스스로
+       바꾸지 않는다(사용자 지시로만). ⚠️ 발송 스위치와는 **다른 칸**이다.
+    """
+    got = str(table().get("운영") or "기록용")
+    if got == "실전":
+        return True, ""
+    # ⚠️ 한 줄로 짧게 — 표의 **첫 줄**이다(까닭 전문은 설정 파일에 있다)
+    return False, (f"🔴🔴 **{got} — 실전 금지** · 기록만 쌓는다"
+                   f"(`config/doubt_judge.yaml` 의 `운영`)")
 
 
 def plates() -> dict:
@@ -164,6 +196,12 @@ def judge(lines: dict, *, bad: list | None = None, machine_hold: bool = False,
             continue
         if not said:
             row.why = "⬜ 보정표가 없다 — `tools/fit_doubt.py` 가 아직 안 돌았다"
+            got.rows.append(row)
+            continue
+        if not kind:
+            # 🔴 보정표가 **안 덮는 줄 종류**다(BTTS·더블찬스·DNB …) → 보류
+            row.why = (f"⬜ `{row.name}` 은 보정표가 **안 다루는 줄 종류**다"
+                       f"(덮는 것은 {WIN}·{AH}·{OU} 셋뿐) → 보류")
             got.rows.append(row)
             continue
         cell = cell_for(said, kind, float(p or 0.0), n_bad)

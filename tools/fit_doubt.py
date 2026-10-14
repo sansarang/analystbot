@@ -226,8 +226,13 @@ def line_rows(r: dict, board: dict | None) -> list[dict]:
 # §3-2 — 아직 안 잰 의심 변수의 깃발(누설 금지 · 그 경기 **앞**만)
 # ══════════════════════════════════════════════════════════════════
 
-def flags_of(rows: list[dict], book: dict) -> list[dict]:
-    """🔴🔴 경기마다 깃발 묶음. 돌려주는 것은 원래 줄 + `flag`·`dr`·`tier`."""
+def flags_of(rows: list[dict], book: dict, *,
+             j1_odds: str = "close") -> list[dict]:
+    """🔴🔴 경기마다 깃발 묶음. 돌려주는 것은 원래 줄 + `flag`·`dr`·`tier`.
+
+    `j1_odds` — J1 을 **어느 시점 배당**으로 재나: `close`(마감 · 누설) ·
+    `open`(개시 · 예측 시점) · `off`(안 센다).
+    """
     from app.core import devig as _dv
     from app.core import goals as _gl
     prior: dict[tuple, list] = {}
@@ -272,10 +277,19 @@ def flags_of(rows: list[dict], book: dict) -> list[dict]:
                             n_luck += 1
                 if n_goal >= 5:
                     flag["B3"] = (n_luck / n_goal) >= B3_SHARE
-        # ── J1 시장 괴리 — 보드 승무패를 디빅해 **봇과 10%p 반대**인가
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **J1 시장 괴리** — 어느 시점 배당으로 재나(누설 점검 1번)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  `close` = 마감(`win`) · `open` = 개시(`win_open`) · `off` = 안 센다.
+        #  🔴 마감 배당은 **킥오프 직전** 수다 — 예측 시점(T−24h·T−3h)에는 볼 수
+        #     없으므로 그것으로 변수를 재면 **미래를 본다**(누설).
+        #  ⚠️ `open` 이면 개시 칸이 없는 원천(`new/*.csv`)의 줄은 **빠진다**(⬜).
         got_board = book.get((lg, se, home, away))
-        prices = [x for x in list((got_board or {}).get("win") or [])
-                  if isinstance(x, (int, float)) and float(x) > 1.0]
+        key_win = {"close": "win", "open": "win_open"}.get(j1_odds)
+        prices = ([x for x in list((got_board or {}).get(key_win) or [])
+                   if isinstance(x, (int, float)) and float(x) > 1.0]
+                  if key_win else [])
         if side and len(prices) == 3:
             fair, _vig = _dv.proportional([float(x) for x in prices])
             if fair:
@@ -552,6 +566,22 @@ def say_cell(got: dict) -> dict:
             "보류": n < CELL_MIN}
 
 
+def plates_of(box: dict) -> dict:
+    """🔴🔴 §3-3 — **칸 묶음만** 만든다(파일을 안 쓴다 · 안 찍는다).
+
+    돌려주는 꼴은 `core/doubt.plates()` 와 **같다** — `{줄종류: {묶음: [칸…]}}`.
+    🔴 그래서 누설 점검(`tools/j1_leak.py`)이 판을 **디스크에 쓰지 않고** 그대로
+       `core/doubt.cell_for` 에 넘길 수 있다(사본 금지).
+    """
+    out: dict = {}
+    for kind in KINDS:
+        said: dict = {}
+        for bucket in ("0", "1", "2+"):
+            said[bucket] = [say_cell(one) for one in merged(box, kind, bucket)]
+        out[kind] = said
+    return out
+
+
 def build_cal(box: dict, live: list[str], *,
               holdout: list[str] | None = None) -> dict:
     """🔴 §3-3 — 판 셋을 만든다. 돌려주는 것은 `{줄종류: 묶음}`."""
@@ -613,8 +643,11 @@ def build_cal(box: dict, live: list[str], *,
     return out
 
 
-def live_vars(fits: dict) -> list[str]:
-    """🔴 **유효**로 판정된 의심 변수 — 이미 올라간 것(`의심.유효`) + 이번 판정."""
+def live_vars(fits: dict, *, drop: list[str] | None = None) -> list[str]:
+    """🔴 **유효**로 판정된 의심 변수 — 이미 올라간 것(`의심.유효`) + 이번 판정.
+
+    `drop` — 이번 판에서 **빼는** 변수(누설 점검의 `--j1-odds off`).
+    """
     import yaml
     path = ROOT / "config/doubt_vars.yaml"
     got = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
@@ -622,7 +655,7 @@ def live_vars(fits: dict) -> list[str]:
     for key, said in dict(fits or {}).items():
         if said.get("유효") and key not in out:
             out.append(key)
-    return out
+    return [x for x in out if x not in set(drop or ())]
 
 
 def save_fits(fits: dict) -> None:
@@ -667,21 +700,36 @@ def main(argv: list[str]) -> int:
     #     적합하고, 검증·문턱은 **그 시즌에서만** 센다.
     ap.add_argument("--holdout", action="append", default=[],
                     help="적합에서 뺄 시즌(여러 번 줄 수 있다 · 예 `2026/2027`)")
+    # 🔴🔴 누설 점검(후속 지시 1번) — J1 을 어느 시점 배당으로 재나
+    # 🔴🔴 **기본은 `open`** — 마감 배당은 예측 시점에 **볼 수 없는 수**다.
+    #    실측 2026-10-14(`var/accept/j1_leak.log`): 개시 배당에서도 J1 은 유효하고
+    #    오히려 **더 세다**(−20.7%p [−31.4, −10.0] ↔ 마감 −17.6%p) — 그래서
+    #    고를 이유가 없다. `close` 는 **누설 점검 전용**이다.
+    ap.add_argument("--j1-odds", choices=("close", "open", "off"),
+                    default="open",
+                    help="open=개시(예측 시점 · 기본) · close=마감(누설 점검 전용)"
+                         " · off=J1 끔")
     args = ap.parse_args(argv[1:])
     rows = rows_all()
     book = boards()
     if not book:
         print("🔴 백필 보드가 없다 — `tools/fit_board_hist.py` 를 먼저 돌려라")
         return 1
-    box = flags_of(rows, book)
+    box = flags_of(rows, book, j1_odds=args.j1_odds)
+    said_j1 = {"close": "🔴 **마감 배당**(예측 시점에 못 보는 수 · **누설**)",
+               "open": "✅ **개시 배당**(예측 시점에 볼 수 있던 수)",
+               "off": "⬜ **J1 을 끈다**"}[args.j1_odds]
     print(f"# 🔴🔴 2단 의심 — **{len(box)}경기** · 백필 보드 {len(book)}줄")
+    print()
+    print(f"- **J1 기준 시점** — {said_j1}")
     print()
     fits: dict = {}
     if args.only != "cal":
         fits = test_vars(box)
         if not args.no_save:
             save_fits(fits)
-    live = live_vars(fits)
+    live = live_vars(fits, drop=(["J1"] if args.j1_odds == "off" else []))
+    print(f"- **이번 판의 유효 불리 의심** — {', '.join(live) or '없다'}")
     if args.only != "vars":
         wide = None
         if args.wide:
