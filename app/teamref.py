@@ -143,7 +143,18 @@ def bare(name: str) -> str:
     🔴 전부 걷으면 빈 문자열이 된다(`FC`) — 그때는 **안 걷은 것**을 돌려준다.
        빈 열쇠는 모든 이름과 겹쳐 이름표를 통째로 망가뜨린다.
     """
-    flat = _plain(name).replace("&", " and ").replace(".", " ")
+    # 🔴🔴 **이음줄은 띄어쓰기와 같다**(실측 2026-10-14 · PSG).
+    #    ⚠️ `norm` 은 `-` 를 **지운다**(`parissaintgermain`)는데 여기선 토막 안에
+    #       남아 `parissaint-germain` 이 됐다 — 그래서 배당 피드가 주는
+    #       `Paris Saint Germain`(이음줄 없음)이 **이름표에 없는 이름**이 되어
+    #       맨시티–PSG 의 ③ 보드가 통째로 비었다(사다리 실측 2026-10-14).
+    #    🔴 걷는 글자는 `norm` 과 **같은 집합**이어야 한다 — 두 꼴이 다르게
+    #       정규화하면 같은 이름이 서로 다른 열쇠가 된다(이 파일 `norm` 머리말).
+    flat = (_plain(name).replace("&", " and ")
+            .replace(".", " ").replace("-", " ")
+            .replace("\u2010", " ").replace("\u2011", " ")
+            .replace("\u2012", " ").replace("\u2013", " ")
+            .replace("\u2014", " "))
     toks = [t for t in flat.split() if t]
     kept = []
     for t in toks:
@@ -156,7 +167,12 @@ def bare(name: str) -> str:
         if low.isdigit():
             continue
         kept.append(low)
-    return "".join(kept) if kept else "".join(t.lower() for t in toks)
+    # 🔴 남는 기호(어포스트로피 ’ ')도 걷는다 — `norm` 이 걷는 것과 같은
+    #    집합이다(`Nott'm Forest` · `Queen's Park`).
+    def _alnum(said: str) -> str:
+        return "".join(c for c in said if c.isalnum())
+    got = "".join(_alnum(t) for t in kept)
+    return got or "".join(_alnum(t.lower()) for t in toks)
 
 
 #: 🔴 **코드 별칭의 꼴** — `iso:HR` · `fa:ENG` · `tsdb:137708` · `team:000273`.

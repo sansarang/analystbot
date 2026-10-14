@@ -445,12 +445,34 @@ def sport_key_of(feed: dict, ref: MatchRef) -> tuple[str, str]:
     ⚠️ 실측 2026-10-06: 이 피드에는 **대표팀 친선·CONCACAF·AFC 가 없다**. 그 경기에
        열쇠를 억지로 붙여 부르면 크레딧만 쓰고 0건이 온다 — 그래서 **안 부른다**.
     """
-    said = f"{ref.competition} {ref.competition_short}".lower()
+    return sport_key_for(feed, f"{ref.competition} {ref.competition_short}",
+                         label=str(ref.competition))
+
+
+def sport_key_for(feed: dict, said: str, *, label: str = ""
+                  ) -> tuple[str, str]:
+    """🔴 **대회 이름 글자**로 종목 열쇠를 찾는다. `sport_key_of` 의 속이다.
+
+    ⚠️ ref 없이도 *"이 피드가 그 대회를 다루나"* 를 물어야 하는 곳이 있다
+       (`tools/board_ladder.py` — 사후와 **대회 미지원**을 가르려면). 🔴 그래서
+       표를 보는 곳은 **여기 하나**로 둔다(사본 금지).
+
+    ⚠️ `said` 는 **찾는 글자**(대회명 + 약칭)이고 `label` 은 **사유에 적는 이름**
+       이다. 둘을 섞으면 사유가 `Friendlies Friendlies` 가 된다(실측 10-14).
+    """
+    low = str(said or "").lower()
+    name = str(label or said or "").strip()
+    # 🔴 **먼저 거른다**(§2-1 `sport_excludes`) — 낱말이 겹치는 다른 대륙 대회가
+    #    UEFA 열쇠를 받는 것을 막는다(`AFC Champions League Elite` · 실측 10-14).
+    for bad in (feed.get("sport_excludes") or []):
+        if str(bad).lower() in low:
+            return "", (f"`{name}` 는 이 피드가 다루지 않는다 — "
+                        f"`{bad}` 가 제외 낱말이다(실측 2026-10-06 `scope_note`)")
     for skey, words in (feed.get("sport_words") or {}).items():
         for w in (words or []):
-            if str(w).lower() in said:
+            if str(w).lower() in low:
                 return str(skey), f"대회명에 `{w}` 가 있다"
-    return "", (f"`{ref.competition}` 에 맞는 종목 열쇠가 표에 없다 — 이 피드는 "
+    return "", (f"`{name}` 에 맞는 종목 열쇠가 표에 없다 — 이 피드는 "
                 f"대표팀 친선·CONCACAF·AFC 를 다루지 않는다(실측 2026-10-06)")
 
 

@@ -236,3 +236,22 @@ def test_한글을_자모로_쪼개지_않는다():
     for ref in reg.teams.values():
         for lang, names in ref.names.items():
             assert len(names) == len(set(names)), (ref.key, lang, names)
+
+
+def test_bare_는_norm_과_같은_글자를_걷는다():
+    """🔴🔴 **이음줄·어포스트로피는 `norm` 과 같이 걷는다**(실측 2026-10-14).
+
+    ⚠️ `bare` 가 `-` 를 토막 안에 남겨 `Paris Saint-Germain` 이
+       `parissaint-germain` 이 됐고, 배당 피드가 주는 `Paris Saint Germain`
+       (이음줄 없음)이 **이름표에 없는 이름**이 되어 맨시티–PSG 의 ③ 보드가
+       통째로 비었다(보드 사다리 실측 · `var/accept/board_ladder2.log`).
+    🔴 두 꼴이 다르게 정규화하면 같은 이름이 서로 다른 열쇠가 된다.
+    """
+    for said in ("Paris Saint-Germain", "Nott'm Forest", "Queen's Park",
+                 "Bodø/Glimt", "Brighton & Hove Albion"):
+        got = teamref.bare(said)
+        assert got.isalnum() or not got, f"{said!r} → {got!r} 에 기호가 남았다"
+    assert (teamref.bare("Paris Saint-Germain")
+            == teamref.bare("Paris Saint Germain")), "이음줄이 열쇠를 갈랐다"
+    # 🔴 전부 걷으면 빈 글자가 된다 → **안 걷은 것**을 돌려준다(이 함수 머리말)
+    assert teamref.bare("FC") == "fc"

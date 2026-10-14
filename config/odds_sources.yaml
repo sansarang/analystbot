@@ -70,7 +70,7 @@ feeds:
     sport_words:
       soccer_epl: ["premier league", "epl", "프리미어"]
       soccer_korea_kleague1: ["k league", "k리그", "kleague"]
-      soccer_japan_j_league: ["j1 league", "j league", "j리그"]
+      soccer_japan_j_league: ["j1 league", "j league", "j. league", "j리그"]
       soccer_uefa_nations_league: ["uefa nations", "네이션스리그"]
       # 🔴 `primera` 두 꼴 — 실측 2026-10-11(엘체–셀타 재현): 이름 없는 열쇠를
       #    합치자 대회명이 `LaLiga` → **`Primera Division`** 으로 바뀌어 종목
@@ -86,6 +86,36 @@ feeds:
       soccer_usa_mls: ["mls", "major league soccer"]
       soccer_china_superleague: ["super league - china", "중국 슈퍼리그"]
       soccer_saudi_arabia_pro_league: ["saudi pro", "사우디"]
+      # ══════════════════════════════════════════════════════════════
+      # 🔴🔴 **실측 2026-10-14 로 메운 칸** — 종목 목록(축구 46개)을 다시 받아
+      #    *우리가 다루는 대회*에 맞는 열쇠를 **눈으로 확인하고** 적었다.
+      #    ⚠️ 그 전에는 다섯 칸만 있어서 **챔피언십·J리그·에레디비시에·포르투갈·
+      #       아르헨티나·브라질**이 ③ 사다리에서 통째로 빠졌다(보드 수집 실패).
+      #    🔴 `/v4/sports/` 는 **0 크레딧**이다(실측: `x-requests-last: 0`).
+      # ══════════════════════════════════════════════════════════════
+      #    ⚠️ `Championship` 과 `Champions League` 는 서로를 품지 않는다 — 두
+      #       낱말이 섞일 자리가 없다(확인했다).
+      soccer_efl_champ: ["championship", "챔피언십"]
+      soccer_netherlands_eredivisie: ["eredivisie", "에레디비시에"]
+      soccer_portugal_primeira_liga: ["liga portugal", "primeira liga",
+                                      "프리메이라"]
+      soccer_argentina_primera_division: ["liga profesional",
+                                          "리가 프로페시오날"]
+      #    ⚠️ 브라질은 `Série A`(악센트)다 — 이탈리아 `serie a` 와 **다른 글자**라
+      #       서로 안 걸린다(그래서 둘을 따로 적는다).
+      soccer_brazil_campeonato: ["série a", "brasileirao", "brasileirão",
+                                 "브라질"]
+      #    ⚠️ fotmob 이 주는 이름은 `J. League`(점이 있다) — 점 없는 `j league`
+      #       만 적혀 있어 **안 걸렸다**(실측 2026-10-14) → 위 `soccer_japan_j_league`
+      #       줄에 `j. league` 를 더했다.
+    # 🔴🔴 **먼저 거르는 낱말** — 그 대회명에 이것이 있으면 위 표를 **보지 않는다.**
+    #    ⚠️ 실측 2026-10-14: `AFC Champions League Elite` 가 `champions league`
+    #       에 걸려 **UEFA 종목 열쇠**를 받았다. 크레딧은 안 썼지만(이벤트 목록은
+    #       0 크레딧이고 매칭이 실패한다) 카드와 실측 보고가 사유를 **"매칭 실패"**
+    #       로 적어 *"이 피드엔 AFC 가 아예 없다"* 는 사실을 가렸다.
+    #    🔴 `scope_note` 가 이미 말하는 사실을 **기계가 지키게** 둔다.
+    sport_excludes: ["afc ", "concacaf", "copa libertadores", "sudamericana",
+                     "women", "여자"]
     credit_cost:
       events: 0        # 🔴 **실측** — `x-requests-last: 0`(남은 수가 안 줄었다)
       event_odds: 1    # 🔴 **실측** — 지역 1(eu) · 마켓 h2h 에서 1

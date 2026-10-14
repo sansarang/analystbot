@@ -29,8 +29,14 @@ sys.path.insert(0, str(ROOT / "tools"))
 KST = timezone(timedelta(hours=9))
 
 
-async def fixtures(comp: str, *, hours: float) -> tuple[list[dict], str]:
-    """🔴 그 대회의 **다가오는 경기**(지금부터 `hours` 안) — 일정 한 장에서."""
+async def fixtures(comp: str, *, hours: float, back: float = 3.0
+                   ) -> tuple[list[dict], str]:
+    """🔴 그 대회의 **다가오는 경기**(지금부터 `hours` 안) — 일정 한 장에서.
+
+    ⚠️ `back` 은 **뒤로 얼마까지** 볼지다(기본 3시간 — 돌고 있는 경기). 실측에
+       쓰는 도구는 **이미 끝난 그날 슬레이트**를 다시 세야 해서 늘려 부른다
+       (`tools/board_ladder.py`) — 🔴 큐는 기본값 그대로다(사후 카드 금지).
+    """
     from app.collect import fotmob as fm
     from app.core import competition as _cp
     from app.net import Net
@@ -47,7 +53,7 @@ async def fixtures(comp: str, *, hours: float) -> tuple[list[dict], str]:
         if not said:
             continue
         when = datetime.fromisoformat(said.replace("Z", "+00:00"))
-        if not (now - timedelta(hours=3) <= when
+        if not (now - timedelta(hours=back) <= when
                 <= now + timedelta(hours=hours)):
             continue
         out.append({"name": f"{r.get('home')} vs {r.get('away')}",

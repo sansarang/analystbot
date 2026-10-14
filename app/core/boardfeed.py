@@ -134,7 +134,10 @@ async def fixtures_rows(net) -> tuple[list[dict], str]:
     text = getattr(got, "text", "") or ""
     if not text:
         return [], f"🔴 `fixtures.csv` 를 못 받았다({getattr(got, 'reason', '')})"
-    rows = list(csv.DictReader(io.StringIO(text)))
+    # 🔴 첫 열 이름에 **BOM**(`\ufeffDiv`)이 붙어 온다(실측 2026-10-14) —
+    #    떼지 않으면 `row["Div"]` 가 조용히 `None` 이다.
+    rows = [{str(k or "").lstrip("\ufeff"): v for k, v in r.items()}
+            for r in csv.DictReader(io.StringIO(text))]
     return rows, f"`fixtures.csv` {len(rows)}줄"
 
 
