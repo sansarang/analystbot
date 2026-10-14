@@ -107,10 +107,26 @@ def _strictify(node: Any, enums: dict, *, key: str = "") -> Any:
         for name, sub in props.items():
             if name in enums:
                 # 🔴 **그 요청만의 열거값** — 설명은 지킨다(모델이 읽는다)
-                sub = {"type": "string", "enum": list(enums[name]),
-                       **({"description": sub["description"]}
-                          if isinstance(sub, dict) and "description" in sub
-                          else {})}
+                said_desc = ({"description": sub["description"]}
+                             if isinstance(sub, dict) and "description" in sub
+                             else {})
+                # ══════════════════════════════════════════════════════
+                # 🔴🔴 **배열 칸이면 `items` 에 넣는다** — 실사고 2026-10-14
+                # ══════════════════════════════════════════════════════
+                #
+                #  ⚠️ 종전엔 열거 칸을 **무조건 `string`** 으로 갈아끼웠다. 그래서
+                #     `list[str]` 칸(`langs`)이 **스칼라가 됐고**, 모델이
+                #     `["nl","it"]` 를 내면 strict 스키마가 거부했다 —
+                #     `solar` 가 `LLM_SCHEMA` 로 떨어진 그 까닭이다(실측).
+                #  🔴 배열인지는 **원래 스키마의 `type`** 으로 가린다(추측 금지).
+                if isinstance(sub, dict) and str(sub.get("type")) == "array":
+                    sub = {"type": "array",
+                           "items": {"type": "string",
+                                     "enum": list(enums[name])},
+                           **said_desc}
+                else:
+                    sub = {"type": "string", "enum": list(enums[name]),
+                           **said_desc}
             new_props[name] = sub
         box["properties"] = new_props
         box["additionalProperties"] = False

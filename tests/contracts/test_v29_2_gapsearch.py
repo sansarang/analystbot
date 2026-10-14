@@ -273,3 +273,31 @@ def test_gs13_home_form_reads_real_field() -> None:
     # 🔴 빈 칸은 터지지 않고 사유를 돌려준다
     assert g.home_form({}, "X")[0] == 0, "GS13 🔴 빈 칸에서 0 이 아니다"
     assert "⬜" in g.home_form({}, "X")[2], "GS13 🔴 사유를 안 적는다(#3)"
+
+
+def test_gs14_array_enum_stays_array() -> None:
+    """GS14 🔴🔴 — 열거를 **배열 칸**에 넣으면 배열이 유지돼야 한다.
+
+    ⚠️ 실사고 2026-10-14: `llm._strictify` 가 열거 칸을 **무조건 `string`** 으로
+       갈아끼웠다. 그래서 `list[str]` 칸(`langs`)이 스칼라가 됐고, 모델이
+       `["nl","it"]` 를 내면 strict 스키마가 거부했다 — `solar` 가
+       `LLM_SCHEMA` 로 떨어진 그 까닭이다.
+    🔴 배열인지는 **원래 스키마의 `type`** 으로 가린다(추측 금지).
+    """
+    import sys
+    sys.path.insert(0, str(ROOT))
+    from app.core import llm
+    from app.core.stages.s4b_gapsearch import GapQueries, LANGS
+
+    got = llm.strict_schema(GapQueries, enums={"langs": list(LANGS)})
+    box = dict(dict(got.get("properties") or {}).get("langs") or {})
+    assert box.get("type") == "array", (
+        f"GS14 🔴🔴 `langs` 가 배열이 아니다 — {box.get('type')!r}. 열거를 "
+        "스칼라로 갈아끼우면 모델이 목록을 낼 수 없다")
+    items = dict(box.get("items") or {})
+    assert items.get("enum") == list(LANGS), (
+        f"GS14 🔴 `items.enum` 이 비었거나 다르다 — {items}")
+    # 🔴 스칼라 칸은 **그대로 스칼라**여야 한다(되돌려 깨지 않았나)
+    got2 = llm.strict_schema(GapQueries, enums={"queries": ["a", "b"]})
+    box2 = dict(dict(got2.get("properties") or {}).get("queries") or {})
+    assert box2.get("type") == "array", "GS14 🔴 배열 칸이 스칼라가 됐다"

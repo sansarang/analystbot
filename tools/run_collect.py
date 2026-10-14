@@ -210,20 +210,40 @@ async def main(argv: list[str]) -> int:
         pairs.append((one, lg))
         print(f"    `{one}` → 언어 `{lg}`")
     # 🔴 하위 묶음 — 어느 유형으로 추출할지가 여기 들어 있다(그 유형이 변수 type)
-    from app.research.subtasks import Budget, Subtask
-    gap_sub = Subtask(
-        name="GAP", group="F", label="표적(LLM 서치)",
-        kinds=("absence", "returning", "team_stats", "stakes", "fatigue",
-               "travel_schedule", "coach_intent", "coach_conflict",
-               "lineup_rotation", "coach_change"),
-        side="home", team=str(ref.home_name or ref.home),
-        opp=str(ref.away_name or ref.away),
-        team_key=str(ref.home), opp_key=str(ref.away),
-        seed="", rerank_query=("standings points round fixtures travel "
-                               "tactics formation manager record unrest"),
-        budget=Budget())
-    got_docs = await s3_docs.gap_docs(ref, state=st, chain=chain, net=net,
-                                      cache=cache, queries=pairs, sub=gap_sub)
+    #  🔴🔴 **쪽별로 쪼갠다** — 운영 하위가 `A-home`·`A-away` 로 갈리는 그 모양이다.
+    #     ⚠️ 예산은 하위마다 `search_cap=3` 이다(설정) — 질의 6개를 한 하위에
+    #        넣으면 **3개만 던져진다**(실측 2026-10-14). 쪽으로 쪼개면 각 3개다.
+    #  🔴 질의를 **그 팀 것으로** 가른다 — 팀 이름이 든 쪽에 붙인다.
+    from app.research.subtasks import Subtask, _budget
+    KINDS = ("absence", "returning", "team_stats", "stakes", "fatigue",
+             "travel_schedule", "coach_intent", "coach_conflict",
+             "lineup_rotation", "coach_change")
+    RERANK = ("standings points round fixtures travel tactics formation "
+              "manager record unrest")
+    got_docs: list = []
+    for side in ("home", "away"):
+        nm = str(getattr(ref, f"{side}_name", "") or "")
+        mine = [x for x in pairs if nm and nm.split()[0] in x[0]]
+        if not mine:
+            print(f"- {side} — ⬜ 그 팀을 담은 질의가 없다")
+            continue
+        sub = Subtask(
+            # 🔴🔴 **이름은 `F-home`·`F-away` 다** — `schema.SubtaskId` 가
+            #    열거로 잠겨 있다(*"여기 없으면 터진다 — 그 쪽이 맞다"*).
+            #    ⚠️ 실측 2026-10-14: `GAP-away` 로 넣었더니 `Doc` 이 거부했다.
+            #    🔴 열거를 늘리지 않는다 — 하위 **F**(새 사실 72시간)가 이 일에
+            #       맞는 묶음이고, 표적 검색도 "오늘 사실"을 긷는다.
+            name=f"F-{side}", group="F", label="표적(LLM 서치)",
+            kinds=KINDS, side=side, team=nm,
+            opp=str(getattr(ref, f"{'away' if side == 'home' else 'home'}_name",
+                            "") or ""),
+            team_key=str(getattr(ref, side, "")),
+            opp_key=str(getattr(ref, "away" if side == "home" else "home", "")),
+            seed="", rerank_query=RERANK, budget=_budget())
+        print(f"- {side} 질의 {len(mine)}개 → 던진다(상한 {sub.budget.search_cap})")
+        got_docs += await s3_docs.gap_docs(
+            ref, state=st, chain=chain, net=net, cache=cache,
+            queries=mine, sub=sub, tag=f"gap-{side}")
     print(f"- 표적 문서 **{len(got_docs)}건**")
     for d in got_docs[:8]:
         print(f"    · {str(getattr(d, 'title', '') or '')[:80]}")

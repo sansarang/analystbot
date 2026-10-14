@@ -648,6 +648,11 @@ TOOL_ONLY: dict[str, str] = {
     #    수집 러너뿐이다(운영 `pipeline` 은 2차 수확을 아직 안 이었다).
     #    ⚠️ 운영에 2차 수확을 이으면 **이 줄을 지워야** 계약이 초록이 된다.
     "app.core.stages.s4b_gapsearch.langs_of": "tools/run_collect.py",
+    # 🔴🔴 **표적 질의 → 문서**(지시 2026-10-14) — `run` 이 쓰는 그 둘
+    #    (`_candidates`·`_fetch`)을 재사용한다. 지금 부르는 쪽은 수집 러너뿐이고
+    #    **운영 `pipeline` 배선은 다음 순서**다(사용자: *"순서대로 해라"*).
+    #    ⚠️ 운영에 이으면 **이 줄을 지워야** 계약이 초록이 된다.
+    "app.core.stages.s3_docs.gap_docs": "tools/run_collect.py",
     "app.core.picks.grid_of": "tools/slate_queue.py",
     "app.core.picks.lines_of": "tools/slate_queue.py",
     # 🔴 모듈째 — `compare_paths` 가 `old_engine` 을 부른다(위 설명)
