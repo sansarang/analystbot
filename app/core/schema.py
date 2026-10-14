@@ -1267,6 +1267,9 @@ class Card(Frozen):
     #  > 사라진 변수, 등급 변화, 방아쇠 중 걸린 것.
     changed: list[str] = Field(default_factory=list)
     #: 🔴 보드에서 **추가 옵션**으로 들어온 줄(§4) · 못 읽은 줄
+    #: 🔴🔴 **보드 블록**(의심 검증 v2 §1·§7) — 사다리가 모은 줄과 출처·시각.
+    #:    수집 실패면 🔴 경보 글자가 들어온다(보드 없는 경기는 정상이 아니다).
+    board_feed: str = ""
     #: 🔴🔴 **보드에 있는 줄 이름**(후속 지시 2026-10-14h §1) — 칠 표 후보는
     #:    이 목록 **안에서만** 고른다. 비어 있으면 그 경기는 표에서 빠진다.
     board_lines: list[str] = Field(default_factory=list)
@@ -1282,9 +1285,6 @@ class Card(Frozen):
     #: 🔴 피드에서 받은 시장 · 🔴 사용자 보드 시장 — **섞지 않는다**(§2-6 불변식)
     market: MarketProb = Field(default_factory=MarketProb)
     user_market: MarketProb = Field(default_factory=MarketProb)
-    #: 🔴🔴 **공격형 검증 결과**(지시 2026-10-14f) — 버팀/깨짐/반격과 살아남은
-    #:    결론. ⚠️ 운영 확률은 **안 바뀐다**(이 칸은 나란히 적는 판이다).
-    attack: dict = Field(default_factory=dict)
     #: 🔴🔴 **P5 시장 괴리 줄**(표시만) — `core/divergence.said_of` 가 만든 글자
     #:    하나를 그대로 들고 온다. ⚠️ 실사고 2026-10-14: 렌더러가 **공정 확률을
     #:    되뒤집어** 원 배당이라 적고(마진 0.0%) ⬜ 목록도 `gaps=[]` 로 비워,

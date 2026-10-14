@@ -1853,48 +1853,19 @@ def prob_summary(card: Card) -> str:
         out.append(f"- **역배** — ⬜ 격자가 없다 — {why}")
     # ── ⑤ 무 구간 실측(표시 전용 · 확률 불변)
     out.append(f"- **무 신뢰** — {_db.said_of(mk.get('draw') if mk else None)}")
+    # ── ⑥-0 🔴🔴 **보드 블록**(의심 검증 v2 §7) — 사다리가 모은 줄·출처·시각
+    said_feed = str(getattr(card, "board_feed", "") or "")
+    if said_feed:
+        out.append(said_feed)
     # ── ⑥ **보드(사용자 캡처 · 표시만)** — 마진 제거 확률 나란히 · 괴리
     said_board = _board_line(card, mk)
     if said_board:
         out.append(said_board)
-    # ── ⑦ 🗡 **공격표**(지시 2026-10-14f) — [확정] 변수로 결론을 공격한 결과
-    said_atk = _attack_line(card)
-    if said_atk:
-        out.append(said_atk)
     if not mk:
         out.append(f"🔴 **칸이 비었다** — {why}")
     said = "\n".join(out)
     check(said)
     return said
-
-
-def _attack_line(card: Card) -> str:
-    """🔴🔴 **공격표 줄** — 버팀/깨짐/반격과 **살아남은 결론**(표시만).
-
-    🔴 수를 여기서 만들지 않는다 — `core/attack` 이 센 것을 그대로 적는다.
-    ⚠️ 운영 확률은 **안 바뀐다**(§0) — 살아남은 결론은 **나란히** 적는 수다.
-    """
-    box = dict(getattr(card, "attack", None) or {})
-    if not box:
-        return ""
-    if not box.get("shots"):
-        return f"- 🗡 **공격** — ⬜ {box.get('why') or '못 돌렸다'}"
-    rows = [str(x) for x in (box.get("shots") or [])]
-    broken = [x for x in rows if "깨짐" in x]
-    counter = [x for x in rows if "반격" in x]
-    lam = [float(x) for x in (box.get("lam") or [0.0, 0.0])]
-    said_new = ""
-    if all(lam):
-        from app.core import sim as _sim
-        got = _sim.run(lam[0], lam[1])
-        said_new = (f" · 살아남은 결론 **{100 * got.home:.1f} / "
-                    f"{100 * got.draw:.1f} / {100 * got.away:.1f}%**")
-    return ("- 🗡 **공격표**(표시만 · [확정] 변수만 판정) — "
-            f"{box.get('why')}{said_new}\n"
-            + "\n".join(f"    {x}" for x in rows)
-            + (f"\n    🧷 이 결론은 **깨짐 {len(broken)} / 반격 "
-               f"{len(counter)} / 버팀 {len(rows) - len(broken) - len(counter)}"
-               f"** 에 걸려 있다"))
 
 
 def _board_line(card: Card, mk: dict) -> str:

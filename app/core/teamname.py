@@ -35,13 +35,43 @@ WEAK = {"united", "city", "sporting", "racing", "athletic", "club", "al"}
 CUT = 0.5
 
 
+#: 🔴🔴 **별칭표**(의심 검증 v2 §1-3) — 보드·CSV 의 약칭을 우리 이름 쪽 낱말로.
+#:
+#:  ⚠️ 실측 2026-10-14: `football-data` 의 `Wolves` 가 `Wolverhampton Wanderers`
+#:     와 **한 낱말도 안 겹쳐** 보드 수집이 실패했다(울브스–볼턴). 약칭은 추측이
+#:     아니라 **그 파일이 쓰는 표기**다(받아서 확인했다).
+#:  🔴 여자팀은 `(W)`·`women` 으로 **갈라 둔다** — 같은 이름의 남자팀과 섞이면
+#:     보드가 다른 경기 것이 된다.
+ALIAS = {
+    "wolves": "wolverhampton", "spurs": "tottenham",
+    "man": "manchester", "utd": "united", "weds": "wednesday",
+    "brom": "bromwich", "wba": "bromwich", "qpr": "queens",
+    "forest": "nottingham", "nott": "nottingham", "sheff": "sheffield",
+    "boro": "middlesbrough", "psg": "paris", "inter": "internazionale",
+    "atleti": "atletico", "gladbach": "monchengladbach",
+    "dortmund": "dortmund", "bayern": "bayern", "leverkusen": "leverkusen",
+    "frankfurt": "frankfurt", "sociedad": "sociedad", "betis": "betis",
+    "zvezda": "crvena", "cska": "cska", "psv": "psv", "ajax": "ajax",
+}
+#: 🔴 여자팀 꼬리표 — 이 낱말이 한쪽에만 있으면 **다른 팀**이다
+WOMEN = {"w", "women", "feminine", "femenino", "여자"}
+
+
 def _core(said: str) -> set[str]:
     """🔴 속 낱말 — 소문자·꼬리말 제거."""
     # ⚠️ 한 글자 토막은 버린다(`F.C.` → `f`·`c` 가 남아 겹침을 어지럽힌다)
-    got = {w for w in str(said or "").lower().replace(".", " ")
-           .replace("-", " ").split()
+    got = {ALIAS.get(w, w) for w in
+           str(said or "").lower().replace(".", " ").replace("-", " ")
+           .replace("(", " ").replace(")", " ").replace("'", " ").split()
            if w and len(w) > 1 and w not in NOISE}
     return got or {w for w in str(said or "").lower().split() if w}
+
+
+def is_women(said: str) -> bool:
+    """🔴 그 이름이 **여자팀**인가(`(W)`·`Women`…) — 원문 토막으로 본다."""
+    got = {w for w in str(said or "").lower()
+           .replace("(", " ").replace(")", " ").replace(".", " ").split()}
+    return bool(got & WOMEN)
 
 
 def share(a: str, b: str, *, weak: bool = True) -> float:
@@ -52,6 +82,11 @@ def share(a: str, b: str, *, weak: bool = True) -> float:
     """
     mine, yours = _core(a), _core(b)
     if not mine or not yours:
+        return 0.0
+    # 🔴 **여자팀/남자팀이 섞이면 0 이다**(§1-3) — 한쪽에만 꼬리표가 있으면 다른 팀
+    #    ⚠️ 꼬리표는 **원문에서** 본다 — `(W)` 의 `w` 는 한 글자라 `_core` 가
+    #       버린다(실측 2026-10-14: `Arsenal` ↔ `Arsenal (W)` 가 1.00 이었다).
+    if is_women(a) != is_women(b):
         return 0.0
     if weak:
         x, y = mine - WEAK, yours - WEAK
