@@ -301,3 +301,50 @@ def test_gs14_array_enum_stays_array() -> None:
     got2 = llm.strict_schema(GapQueries, enums={"queries": ["a", "b"]})
     box2 = dict(dict(got2.get("properties") or {}).get("queries") or {})
     assert box2.get("type") == "array", "GS14 🔴 배열 칸이 스칼라가 됐다"
+
+
+def test_gs15_standings_rows_not_just_dict() -> None:
+    """GS15 🔴🔴 — 순위·승점은 `standings["group"]["rows"]` 로 센다.
+
+    ⚠️ 실사고 2026-10-14(코모): 내가 *"`facts.standings` 가 비지 않으면 순위가
+       있다"* 로 봤다. 그런데 그 표의 열쇠는 `team_ids`·`home_advantage`·
+       `comp_record`·`comp_history`·`league_gap` 뿐이고 **순위도 승점도 라운드도
+       없었다** — `팀 순위` 가 *"못 찾은 칸"* 에서 **거짓으로 빠졌다**.
+    🔴 빈 칸 판정이 거짓 통과하면 LLM 이 그 칸을 **안 찾는다**.
+    """
+    import sys
+    sys.path.insert(0, str(ROOT))
+    from app.core.schema import Coach
+    from app.core.stages import s4b_gapsearch as g
+
+    class _F:
+        # 🔴 실측 그대로 — 순위표가 **없는** standings
+        standings = {"team_ids": {"A": "1"}, "home_advantage": {"x": 1},
+                     "comp_record": "글자", "comp_history": "⬜",
+                     "league_gap": "글자"}
+        schedule = {"H": {"x": 1}, "A": {"x": 1}}
+        past_xi = {"H": [1, 2, 3], "A": [1, 2, 3]}
+        xi = {}
+        context = {"venue": 1}
+        recent = {"H": {"sequence": [{"side": "home", "result": "W"}] * 5}}
+        coach = {"H": Coach(name="있다", record="1-0-0"),
+                 "A": Coach(name="있다", record="1-0-0")}
+    got = g.need(_F(), keys=["H", "A"], conflict_docs=1,
+                 sides={"H": "home", "A": "away"})
+    for side in ("H", "A"):
+        assert any("순위" in x for x in got.get(side, [])), (
+            f"GS15 🔴🔴 순위표가 없는데 *찾았다*고 봤다 — {side}: {got.get(side)}")
+        assert any("라운드" in x for x in got.get(side, [])), (
+            f"GS15 🔴 라운드가 없는데 안 물었다 — {side}: {got.get(side)}")
+
+    # 🔴 반대쪽 — 순위표가 **있으면** 묻지 않는다
+    class _G(_F):
+        standings = {"group": {"rows": [{"name": "H", "pts": 10}],
+                               "round": 9}}
+    got2 = g.need(_G(), keys=["H", "A"], conflict_docs=1,
+                  sides={"H": "home", "A": "away"})
+    for side in ("H", "A"):
+        assert not any("순위" in x for x in got2.get(side, [])), (
+            f"GS15 🔴 순위표가 있는데 또 물었다 — {side}: {got2.get(side)}")
+        assert not any("라운드" in x for x in got2.get(side, [])), (
+            f"GS15 🔴 라운드가 있는데 또 물었다 — {side}: {got2.get(side)}")

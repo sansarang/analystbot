@@ -64,7 +64,13 @@ logger = logging.getLogger(__name__)
 #
 #  꼴: (칸 이름, 어느 쪽, 어디서 보나)
 GAPS: tuple[tuple[str, str, str], ...] = (
-    ("팀 순위", "both", "standings"),
+    # 🔴🔴 **라운드·승점**(지시 2026-10-14: *"지금 몇라운드인데 승점이 필요하다"*)
+    #    ⚠️ `facts.standings` 에 **순위표가 없다** — 그 표의 열쇠는 `team_ids`·
+    #       `home_advantage`·`comp_record`·`comp_history`·`league_gap` 뿐이고
+    #       **라운드도 승점도 순위도 없다**(실측 2026-10-14 코모).
+    #    🔴 진짜 순위표는 `standings["group"]["rows"]` 다 — 그것으로 센다.
+    ("팀 순위·승점", "both", "standings_rows"),
+    ("지금 몇 라운드", "both", "round_no"),
     ("피로도(최근 3경기)", "both", "schedule"),
     ("기본 전술", "both", "past_xi"),
     ("포메이션", "both", "xi"),
@@ -148,8 +154,19 @@ def need(facts, *, keys: list[str], conflict_docs: int = 0,
             # 🔴 그 쪽에 해당하는 칸만 본다
             if want_side != "both" and want_side != side:
                 continue
-            if name == "팀 순위" and not (std.get(key) or std):
-                miss.append(name)
+            if name == "팀 순위·승점":
+                # 🔴🔴 **거짓 통과를 고쳤다** — 종전엔 `std` 가 비지 않았으면
+                #    *"순위가 있다"* 로 봤다. 그런데 `standings` 는 대회 홈
+                #    이점·이력만 담고 **순위표가 없을 수 있다**(실측 2026-10-14
+                #    코모: 열쇠 다섯 중 순위·승점이 하나도 없었다).
+                #    🔴 진짜 줄은 `standings["group"]["rows"]` 다.
+                if not list(dict(std.get("group") or {}).get("rows") or []):
+                    miss.append(name)
+            elif name == "지금 몇 라운드":
+                # 🔴 라운드 수를 담은 칸 — 순위표 판이나 그 칸에 있다
+                if not (dict(std.get("group") or {}).get("round")
+                        or std.get("round") or std.get("round_no")):
+                    miss.append(name)
             elif name == "피로도(최근 3경기)" and not sched.get(key):
                 miss.append(name)
             elif name == "기본 전술" and len(list(past.get(key) or [])) < 3:
@@ -292,7 +309,10 @@ def ask(ref: MatchRef, facts, *, state: RunState, want: dict,
                if dict(thin or {}) else "")
             + f"쓸 언어: {', '.join(langs or ['en'])}\n\n"
             f"🔴 `queries` — 위 **못 찾은 칸을 겨냥한** 검색어 {MAX_Q}개 이하.\n"
-            "   · 팀 순위 → `{팀} standings` · `{팀} classifica` 꼴\n"
+            "   · 팀 순위·승점 → `{팀} standings points` · `{팀} classifica "
+            "punti`\n"
+            "   · 지금 몇 라운드 → `{대회} matchday` · `{대회} giornata` · "
+            "`{대회} speelronde`\n"
             "   · 피로도 → `{팀} fixtures schedule` · `{팀} rotation rest`\n"
             "   · 홈까지 거리 → `{팀} away travel` · `{팀} trasferta`\n"
             "   · 기본 전술 → `{팀} tactics style` · `{팀} modulo`\n"
