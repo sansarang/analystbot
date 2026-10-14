@@ -597,6 +597,17 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     layers["board_lines"] = sorted(said_bl)
     if not said_bl:
         st.note(f"칠 표 — {said_bwhy}")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **1단 기계 점검**(의심 검증 v2 §2) — 2단(의심) 앞의 첫 관문
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 입력 완전성 · 버그 반영 · 신선도 → 정상 / 고장 / **기계 보류**.
+    #  🔴 보드 블록 **뒤**다 — 보드 출처·시각이 점검 칸이기 때문이다(§2).
+    #  🔴 확률은 **안 바뀐다**(계약 MC4) — 보류 깃발과 글자만 만든다.
+    said_mc = _machine_of(ref, facts, layers, prob, now=now)
+    layers["machine"] = said_mc.why
+    layers["machine_hold"] = said_mc.hold()
+    st.note(f"[1단] {said_mc.why[:200]}")
 
     said = s7_judge.run(ref, facts, variables, state=st, board=got_board,
                         board_source=board_src, now=now,
@@ -878,6 +889,88 @@ def _infoq_of(ref: MatchRef, facts, layers: dict, edge: dict):
 
 
 
+def _machine_of(ref: MatchRef, facts, layers: dict, prob, *,
+                now: datetime | None = None):
+    """🔴🔴 §2 1단 — 점검 칸을 **이 실행이 이미 아는 것**에서 모은다(새로 안 받는다).
+
+    🔴 값 규약은 `core/machine` 하나다 — `True` 정상 · `False` 빠짐 · `None` ⬜.
+    ⚠️ **⬜ 와 빠짐을 가른다**(#3): 그 칸을 *잴 수 없었던 것*(재현·백필)과
+       *재료가 안 온 것*을 섞으면 재현 카드가 늘 보류가 된다.
+    """
+    from app.core import comprecord as _cr
+    from app.core import machine as _mc
+    box = dict(_mc.bug_box())
+    said_std = dict(getattr(facts, "standings", None) or {})
+    # ── 버그: 0-0 집계·대회 이력 기간은 **그 대회 판의 `verified` 칸**이 말한다
+    # 🔴 대회 키를 세는 곳은 `competition.key_of` 하나다(사본 금지)
+    from app.core import competition as _cp
+    key = _cp.key_of(competition=str(getattr(ref, "competition", "") or ""),
+                     league_id=getattr(facts, "league_id", "") or None)[0]
+    # 🔴🔴 **대륙 대회에서만 서는 칸 셋**(`s2_facts` 의 `club_continental` 분기)
+    #    — 국내 리그 카드에서는 **해당 없음(➖)** 이다. ⚠️ ⬜ 로 적으면 모든
+    #    국내 카드가 *"못 쟨 칸 둘"* 을 달아 **진짜 못 잰 칸이 묻힌다**(실측 10-14).
+    said_cont = _cp.kind_require(key)[0] == "club_continental" if key else None
+    if not said_cont:
+        box["comp_record_verified"] = _mc.NA
+    elif _cr.latest(key) is not None:
+        box["comp_record_verified"] = bool(_cr.verified_of(key)[0])
+    else:
+        # 🔴 그 대회에 판 자체가 **없다** — 못 쟀다(⬜)이고 고장이 아니다
+        box["comp_record_verified"] = None
+    # ── 입력: Elo 바닥
+    said_base = dict(layers or {}).get("base")
+    box["elo_floor"] = bool(getattr(said_base, "probs", None))
+    # ── 입력: 축 네 개(기여가 0 이면 그 축이 안 들어갔다)
+    said_share = dict(getattr(prob, "share", None) or {})
+    for axis in ("axis0", "axis1", "axis2", "axis3"):
+        if axis not in said_share:
+            box[axis] = None
+        else:
+            box[axis] = abs(float(said_share.get(axis) or 0.0)) > 1e-9
+    # ── 입력: 폼 표본 · XI · 결장 등급 · 감독
+    said_recent = dict(getattr(facts, "recent", None) or {})
+    box["form_n"] = (bool(said_recent) and
+                     all(len(list(said_recent.get(str(getattr(ref, side, "")
+                                                       or "")) or [])) >= 3
+                         for side in ("home", "away"))) or None \
+        if said_recent else None
+    xi = dict(getattr(facts, "xi", None) or {})
+    box["xi"] = (all(str(getattr(xi.get(str(getattr(ref, side, "") or "")),
+                                 "state", "none") or "none") != "none"
+                     for side in ("home", "away")) if xi else None)
+    rungs = list(getattr(facts, "absence_rungs", None) or [])
+    box["absence_rung"] = bool(rungs) if rungs else None
+    coach = dict(getattr(facts, "coach", None) or {})
+    box["coach"] = (all(getattr(coach.get(str(getattr(ref, side, "") or "")),
+                                "name", "") for side in ("home", "away"))
+                    if coach else None)
+    # ── 입력: 리그 오프셋 · 대회 이력 · 보드
+    said_gap = str(said_std.get("league_gap") or "")
+    said_hist = str(said_std.get("comp_history") or "")
+    if not said_cont:
+        box["league_offset"] = _mc.NA
+        box["comp_history"] = _mc.NA
+    else:
+        box["league_offset"] = (bool(said_gap) and "⬜" not in said_gap) \
+            if said_gap else None
+        box["comp_history"] = (("⬜" not in said_hist and "🟡" not in said_hist)
+                               if said_hist else None)
+    box["board_lines"] = bool(dict(layers or {}).get("board_lines"))
+    # ── 신선도: 그 실행이 들고 있는 **시각**만 쓴다(없으면 ⬜ → 안 센다)
+    ages: dict = {}
+    got_xi = [getattr(xi.get(str(getattr(ref, side, "") or "")), "fetched_at",
+                      None) for side in ("home", "away")]
+    got_xi = [x for x in got_xi if x is not None]
+    if got_xi:
+        ages["xi"] = min(got_xi)
+    said_feed = str(dict(layers or {}).get("board_feed") or "")
+    for token in said_feed.split():
+        if token.count("-") == 2 and "T" in token:
+            ages["board"] = token
+            break
+    return _mc.check(box, ages=ages, now=now)
+
+
 def _gate_of(ref: MatchRef, facts, turn: dict, *, state: RunState):
     """🔴🔴 ③ — **검문을 돌린다**. 신원표를 만들고 id 로만 견준다.
 
@@ -945,9 +1038,15 @@ def _gate_card(ref: MatchRef, facts, variables: list, gate, *,
     #       신원 검문이 걸릴 때만 도는 **퇴로**라서 여태 한 번도 안 지났다.
     #    🔴 사유는 **결론 줄**에 적는다(그 자리가 *"왜 확률이 없나"* 를 말한다) ·
     #       같은 글은 `state.note` 로도 남는다(위 줄).
+    # 🔴🔴 **1단 기계 점검은 여기서도 적는다**(의심 검증 v2 §2) — 이 퇴로는
+    #    점검 **앞**에서 돌아 나가므로, 그대로 두면 카드에 점검 줄이 없고 칠 표는
+    #    이 경기를 *"보드 없음"* 으로만 뺀다(까닭이 달라진다).
+    from app.core import machine as _mc
+    said_mc = _mc.held(f"라인업 신원 미확정 — {gate.why}")
     return _C(match=ref, facts=facts, variables=list(variables or []),
               funnel=state.counted_box() if hasattr(state, "counted_box")
               else _C(match=ref, facts=facts).funnel,
+              machine=said_mc.why, machine_hold=True,
               conclusion=gate.card(), stance="🔴 확률 미산출(신원 검문)")
 
 
@@ -1040,6 +1139,8 @@ def card_of(ref: MatchRef, facts: Facts, variables: list[Variable],
         divergence=str(box.get("divergence") or ""),
         board_lines=[str(x) for x in (box.get("board_lines") or [])],
         board_feed=str(box.get("board_feed") or ""),
+        machine=str(box.get("machine") or ""),
+        machine_hold=bool(box.get("machine_hold")),
         our_prob=box.get("ours"),
         compare=str(box.get("compare") or ""),
         compare_lines=[str(x) for x in (box.get("compare_lines") or [])],

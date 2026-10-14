@@ -208,8 +208,13 @@ def pick_row(name: str, one: dict, card) -> dict | None:
                           else "⬜ 보드가 없다 — 칠 표에서 뺀다"),
             "kickoff": f"{one['kickoff'].astimezone(KST):%H:%M}",
             "lines": lines,
-            "verdict": str(dict(getattr(card, "attack", None) or {})
-                           .get("verdict") or ""),
+            # 🔴🔴 **1단 기계 점검**(의심 검증 v2 §2) — 보류면 `core/picks` 가
+            #    그 경기를 **안 받는다**(확신·역배 둘 다 금지 · 다리도 금지).
+            #    ⚠️ 옛 `card.attack`(공격 계층)은 **지웠다** — 그 칸을 읽던
+            #       `verdict` 는 늘 빈 글자였다(죽은 줄이었다).
+            "machine_hold": bool(getattr(card, "machine_hold", False)),
+            "machine": str(getattr(card, "machine", "") or ""),
+            "verdict": "",
             "board": str(getattr(card, "board_source", "") or "")}
 
 

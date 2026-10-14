@@ -1273,6 +1273,12 @@ class Card(Frozen):
     #: 🔴🔴 **보드에 있는 줄 이름**(후속 지시 2026-10-14h §1) — 칠 표 후보는
     #:    이 목록 **안에서만** 고른다. 비어 있으면 그 경기는 표에서 빠진다.
     board_lines: list[str] = Field(default_factory=list)
+    #: 🔴🔴 **1단 기계 점검**(의심 검증 v2 §2) — 의심 블록 **머리 줄**이 이 글자다.
+    #:    `core/machine.said_of` 하나가 만든다(사본 금지).
+    machine: str = ""
+    #: 🔴🔴 **기계 보류인가**(§2 판정) — 참이면 확신·역배 **둘 다 금지**이고
+    #:    `core/picks` 가 그 경기를 **안 받는다**(칠 표에서 빠진다 · §4).
+    machine_hold: bool = False
     board_extra: list[str] = Field(default_factory=list)
     board_bad: list[str] = Field(default_factory=list)
     # ══════════════════════════════════════════════════════════════════

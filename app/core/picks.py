@@ -125,9 +125,13 @@ def best_of(rows: list[dict]) -> list[Leg]:
 
     🔴🔴 **보드에 있는 줄만** 후보다(§1) — `row["board_lines"]` 가 그 목록이고,
        비어 있으면 그 경기는 **칠 표에서 빠진다**(표시만).
+    🔴🔴 **1단 기계 보류면 안 받는다**(의심 검증 v2 §2·§4) — 확신·역배 둘 다
+       금지이고, 다폴 다리로도 못 쓴다(§5 *"기계 보류 다리 금지"*).
     """
     out: list[Leg] = []
     for one in rows or []:
+        if one.get("machine_hold"):
+            continue
         want = {str(x) for x in (one.get("board_lines") or [])}
         got = [(str(k), float(v)) for k, v in
                dict(one.get("lines") or {}).items()
@@ -160,11 +164,16 @@ def of(rows: list[dict]) -> Out:
             parlays.append(got)
     no_board = [str(x.get("match") or "") for x in (rows or [])
                 if not (x.get("board_lines") or [])]
+    # 🔴 §2 — **기계 보류**로 빠진 경기도 **이름으로** 적는다(조용히 빼지 않는다)
+    held = [str(x.get("match") or "") for x in (rows or [])
+            if x.get("machine_hold")]
     why = (f"경기 {len(rows)}개 → 보드 있는 경기 {len(rows) - len(no_board)}개 "
            f"→ 줄 {len(legs)}개 · 단폴 문턱 {CUT_SINGLE:.2f} 통과 "
            f"{len(singles)}개 · 다리 문턱 {CUT_LEG:.2f} 통과 {len(pool)}개"
            + (f" · 🔴 **보드 없어 뺀 경기 {len(no_board)}개**"
-              f"({' · '.join(no_board[:4])})" if no_board else ""))
+              f"({' · '.join(no_board[:4])})" if no_board else "")
+           + (f" · 🔴 **1단 기계 보류로 뺀 경기 {len(held)}개**"
+              f"({' · '.join(held[:4])})" if held else ""))
     if not singles:
         why += " · 🔴 **오늘 단폴 없음**"
     if not parlays:

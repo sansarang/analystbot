@@ -1857,6 +1857,11 @@ def prob_summary(card: Card) -> str:
     said_feed = str(getattr(card, "board_feed", "") or "")
     if said_feed:
         out.append(said_feed)
+    # ── ⑥-0b 🔴🔴 **의심 블록 머리 = 1단 기계 점검**(의심 검증 v2 §2·§7)
+    #        🔴 글자는 `core/machine.said_of` 가 만든다 — 여기서 다시 세지 않는다.
+    said_mc = str(getattr(card, "machine", "") or "")
+    if said_mc:
+        out.append(said_mc)
     # ── ⑥ **보드(사용자 캡처 · 표시만)** — 마진 제거 확률 나란히 · 괴리
     said_board = _board_line(card, mk)
     if said_board:
