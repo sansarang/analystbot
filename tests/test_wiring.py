@@ -643,6 +643,11 @@ TOOL_ONLY: dict[str, str] = {
     #    지금은 **슬레이트 도구만** 부른다.
     #    ⚠️ 이름 꼴을 여기서 다시 짜지 않는다 — 보드 줄(`board_lines`)과 맞물려야
     #       하므로 원본은 `core/picks` 하나다(사본 금지).
+    # 🔴🔴 **언어 순서**(지시 2026-10-14: *"검색은 현지어 영어등 순으로"*) —
+    #    LLM 이 고른 코드 순서를 **던지는 쪽**이 읽는다. 지금 던지는 쪽은
+    #    수집 러너뿐이다(운영 `pipeline` 은 2차 수확을 아직 안 이었다).
+    #    ⚠️ 운영에 2차 수확을 이으면 **이 줄을 지워야** 계약이 초록이 된다.
+    "app.core.stages.s4b_gapsearch.langs_of": "tools/run_collect.py",
     "app.core.picks.grid_of": "tools/slate_queue.py",
     "app.core.picks.lines_of": "tools/slate_queue.py",
     # 🔴 모듈째 — `compare_paths` 가 `old_engine` 을 부른다(위 설명)
