@@ -34,8 +34,29 @@ GONE: tuple[str, ...] = (
 #     그 길의 이름 후보 LLM 을 지우면 그 지시를 깬다.
 #  🔴 그래서 **판정·서술 LLM 은 전부 지우고**(⑩⑭㉔ 처분 완료), 질의 글자만 남겼다.
 #     그 사실을 여기 적어 둔다(조용히 예외를 만들지 않는다).
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **처분이 **되돌려졌다** — 사용자 지시 2026-10-14
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 예전에 있던 포메이션 전략 재개 · llm 호출추가 · **전술예상도 해야 한다** ·
+#  > **전술 전문가다 … 자료로만 … 지어내지 않는다**
+#
+#  🔴 지시서 2026-10-12(셋째) §1 이 ㉔(최종 평·전술 예측)을 지웠다. **직접 지시가
+#     그것을 덮는다**(CLAUDE.md 첫 줄: *"지시문이 이 파일과 충돌하면 지시문이
+#     이긴다"* · 그리고 사용자 지시는 문서보다 위다).
+#  🔴 그래서 `s9_say`(전술 예측·최종 평)과 `s9_audit`(검열)을 **되살렸다**.
+#  ⚠️ 지운 까닭은 하나였다 — 광주 재현에서 평이 근거에 없는 **4-3** 을 적었다.
+#     검열 (r)(수치 대조)은 그것을 **못 잡았다**(`4`·`3` 낱개로 쪼개진다).
+#     🔴 되살리며 검열 **(w) 스코어 꼴**을 더했다(`s9_say._SCORE`) — 묶음 글에
+#     그 **글자**가 없으면 위반이다. 계약은 아래 `test_w_score_check` 가 센다.
+#  🔴🔴 **확률·등급에는 못 닿는다**(사용자 결정 2026-10-14: *"안 된다 — 쓰기만
+#     한다"*) — `pipeline.with_say` 는 글 칸만 `model_copy` 하고, 절대 규칙
+#     (`direction`·`weight`·`strength`·`survival`·`verdict`)은 그대로 산다.
 LLM_OK: tuple[str, ...] = (
     "app/core/stages/s4_extract.py",   # ⑥ 기사 → 결장·복귀·라인업 **사실**
+    # 🔴 되살린 둘(지시 2026-10-14) — 전술 전문가 예측 · 그 검열
+    "app/core/stages/s9_say.py",
+    "app/core/stages/s9_audit.py",
     "app/core/ocr.py",                 # 라인업 캡처 판독
     "app/core/llm.py",                 # 통로 자체
     "app/core/rank.py",                # 재정렬(검색 순서 · 사실 추출의 입력)
@@ -101,3 +122,55 @@ def test_card_has_no_llm_prose_blocks() -> None:
     said = _code("app/core/render.py")
     for bad in ("say", "tactic_long", "verdict_long"):
         assert bad not in said, bad
+
+
+def test_w_score_check_exists() -> None:
+    """🔴🔴 **(w) 스코어 꼴** — 되살린 까닭의 핵심. 이게 없으면 되살리면 안 된다.
+
+    지운 사고 그대로다(커밋 `a7448733`): 평이 근거에 없는 `4-3` 을 적었고 검열
+    (r) 은 낱개 숫자로 쪼개 통과시켰다. 🔴 꼴 그대로 대조하는 검사가 **있어야**
+    한다.
+    """
+    said = (ROOT / "app/core/stages/s9_say.py").read_text(encoding="utf-8")
+    assert "_SCORE" in said, (
+        "(w) 🔴🔴 스코어 꼴 검사가 없다 — `4-3` 을 지어내도 안 걸린다"
+        "(이 단계를 지운 그 사고다)")
+    assert "_scores_of" in said and "_scores_in" in said, (
+        "(w) 🔴 묶음의 스코어와 문장의 스코어를 둘 다 뽑아야 대조가 된다")
+    import sys
+    sys.path.insert(0, str(ROOT))
+    from app.core.stages import s9_say
+    assert s9_say._scores_in("전반에 4-3 으로 앞선다") == ["4-3"], (
+        "(w) 🔴 스코어를 못 뽑는다")
+    assert s9_say._scores_in("최근 5경기 득점 2.4골") == [], (
+        "(w) 🔴 무해한 소수를 스코어로 잡는다 — 거짓 위반이 난다")
+
+
+def test_say_does_not_touch_probability() -> None:
+    """🔴🔴 사용자 결정 2026-10-14 — LLM 전술 단계는 **쓰기만** 한다.
+
+    `pipeline.with_say` 가 덮는 칸이 **글 칸뿐**인지 센다. 확률·등급 칸을 덮으면
+    절대 규칙(LLM 출력이 `direction`·`weight`·`strength`·`survival`·`verdict` 에
+    닿으면 실패)을 깬다.
+    """
+    import ast as _ast
+    said = (ROOT / "app/core/pipeline.py").read_text(encoding="utf-8")
+    i = said.index("def with_say(")
+    body = said[i:]
+    tree = _ast.parse(_ast.unparse(_ast.parse(body).body[0]))
+    keys: set[str] = set()
+    for node in _ast.walk(tree):
+        if isinstance(node, _ast.Call) and isinstance(node.func, _ast.Attribute) \
+                and node.func.attr == "model_copy":
+            for kw in node.keywords:
+                if kw.arg == "update" and isinstance(kw.value, _ast.Dict):
+                    for k in kw.value.keys:
+                        if isinstance(k, _ast.Constant):
+                            keys.add(str(k.value))
+    assert keys, "🔴 `with_say` 가 `model_copy(update=…)` 를 안 쓴다"
+    banned = {"our_prob", "adj_prob", "market", "judgement", "grade",
+              "survival", "verdict", "matchup", "sim", "prob"}
+    bad = keys & banned
+    assert not bad, (
+        f"🔴🔴 `with_say` 가 확률·판정 칸을 덮는다: {sorted(bad)} — LLM 전술 단계는 "
+        "**쓰기만** 한다(사용자 결정 2026-10-14)")
