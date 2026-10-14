@@ -1862,6 +1862,10 @@ def prob_summary(card: Card) -> str:
     said_mc = str(getattr(card, "machine", "") or "")
     if said_mc:
         out.append(said_mc)
+    # ── ⑥-0c 🔴🔴 **2단 의심 블록**(의심 검증 v2 §4·§7) — 줄마다 판정
+    said_db = str(getattr(card, "doubt", "") or "")
+    if said_db:
+        out.append(said_db)
     # ── ⑥ **보드(사용자 캡처 · 표시만)** — 마진 제거 확률 나란히 · 괴리
     said_board = _board_line(card, mk)
     if said_board:

@@ -137,4 +137,12 @@ def test_만든_판이_규격을_지킨다():
                 assert 0.0 <= float(one["실측"]) <= 1.0
                 assert float(one["lo"]) <= float(one["실측"]) \
                     <= float(one["hi"])
-                assert int(one["실보드"]) + int(one["근사"]) == int(one["n"])
+                assert (int(one["실보드"]) + int(one["근사"])
+                        + int(one.get("보드무관") or 0)) == int(one["n"])
+                # 🔴 §5 — **시즌 교차**가 칸마다 적혀 있고, 뒤집힌다고 적었으면
+                #    **시즌별 수**도 함께 있다(그것 없이는 무너짐인지 모른다)
+                assert "시즌교차" in one, one
+                if one["시즌교차"] is not None:
+                    assert dict(one.get("시즌별") or {}), one
+                # 🔴 기계가 읽는 경계가 있다(`core/doubt.cell_for` 가 본다)
+                assert float(one["p_lo"]) < float(one["p_hi"])

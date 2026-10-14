@@ -186,18 +186,10 @@ def pick_row(name: str, one: dict, card) -> dict | None:
           **보류로 빠진 경기가 어디에도 안 남았다**(조용한 0). 🔴 격자가 없어도
           깃발만 실은 줄을 내면 `core/picks.of` 가 **이름으로** 적는다.
     """
-    from app.core import probfloor as _pf
+    from app.core import picks as _pk2
     held = bool(getattr(card, "machine_hold", False))
-    box = dict(getattr(card, "matchup", None) or {})
-    grid: dict = {}
-    for key, val in dict((box.get("sim") or {}).get("scores")
-                         or getattr(box.get("prob"), "scores", None)
-                         or {}).items():
-        if isinstance(key, str) and "-" in key:
-            h, a = key.split("-", 1)
-            grid[(int(h), int(a))] = float(val)
-        elif isinstance(key, (tuple, list)) and len(key) == 2:
-            grid[(int(key[0]), int(key[1]))] = float(val)
+    # 🔴 격자·줄 이름을 세는 곳은 `core/picks` **하나**다(사본 금지)
+    grid = _pk2.grid_of(dict(getattr(card, "matchup", None) or {}))
     if not grid:
         # 🔴 격자가 없다 — 보류 경기면 **그 사실을 적은 줄**을 낸다
         if not held:
@@ -210,14 +202,7 @@ def pick_row(name: str, one: dict, card) -> dict | None:
                 "machine": str(getattr(card, "machine", "") or ""),
                 "verdict": "",
                 "board": str(getattr(card, "board_source", "") or "")}
-    mk = _pf.markets_of(grid)
-    lines = {"홈 승": mk.get("home"), "무": mk.get("draw"),
-             "원정 승": mk.get("away")}
-    for key, val in dict(mk.get("ah") or {}).items():
-        lines[f"핸디 {key}"] = val
-    for key, val in dict(mk.get("over") or {}).items():
-        lines[f"오버 {key}"] = val
-        lines[f"언더 {key}"] = 1.0 - float(val)
+    lines = _pk2.lines_of(grid)
     # 🔴 보드 줄은 **파이프라인이 센 칸**을 읽는다(사본 금지 · `core/picks`)
     said_board = [str(x) for x in (getattr(card, "board_lines", None) or [])]
     return {"match": name, "league": str(one.get("comp") or ""),
@@ -232,6 +217,9 @@ def pick_row(name: str, one: dict, card) -> dict | None:
             #       `verdict` 는 늘 빈 글자였다(죽은 줄이었다).
             "machine_hold": bool(getattr(card, "machine_hold", False)),
             "machine": str(getattr(card, "machine", "") or ""),
+            # 🔴🔴 **2단 판정**(의심 검증 v2 §4) — 칠 표는 **확신·역배만** 받는다
+            "doubt_picks": dict(getattr(card, "doubt_picks", None) or {}),
+            "doubt": str(getattr(card, "doubt", "") or ""),
             "verdict": "",
             "board": str(getattr(card, "board_source", "") or "")}
 

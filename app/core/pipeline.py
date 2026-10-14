@@ -608,6 +608,20 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     layers["machine"] = said_mc.why
     layers["machine_hold"] = said_mc.hold()
     st.note(f"[1단] {said_mc.why[:200]}")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **2단 의심 판정**(의심 검증 v2 §4) — 확신 · 보류 · 역배
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 의심 후 확률 = **그 경기 칸의 실측**이다(보정표 `data/doubt_cal`).
+    #  🔴 **확률을 고치지 않는다**(계약 DB4) — 봇 확률 **옆에** 적는다.
+    #  🔴 보드에 있는 줄만 본다(§1) — 칠 표 후보가 그 목록 안에서만 나온다.
+    said_db = _doubt_of(ref, facts, layers, edge, said_mc)
+    layers["doubt"] = said_db.why
+    layers["doubt_picks"] = {
+        r.name: {"판정": r.verdict, "의심후": r.p_after, "하한": r.lo,
+                 "상한": r.hi, "경기수": r.n, "칸": r.cell}
+        for r in said_db.picks()}
+    st.note(f"[2단] {said_db.why[:200]}")
 
     said = s7_judge.run(ref, facts, variables, state=st, board=got_board,
                         board_source=board_src, now=now,
@@ -971,6 +985,31 @@ def _machine_of(ref: MatchRef, facts, layers: dict, prob, *,
     return _mc.check(box, ages=ages, now=now)
 
 
+def _doubt_of(ref: MatchRef, facts, layers: dict, edge: dict, machine):
+    """🔴🔴 §4 2단 — **보드에 있는 줄**을 보정표로 다시 재서 판정한다.
+
+    🔴 줄 이름·확률을 세는 곳은 `core/picks.lines_of` 하나다(사본 금지) — 보드
+       줄 이름(`board_lines`)과 **같은 꼴**이어야 맞물린다.
+    🔴 유효 불리 의심은 `config/doubt_vars.yaml` 의 `의심.유효` 중 **그 경기에서
+       불리로 걸린 것**이다. ⚠️ 그 상태를 카드 실행에서 세는 통로는 아직 없다 —
+       지금은 **빈 목록**(묶음 0)이고 그 사실을 사유에 적는다(#3 조용한 0 금지).
+    """
+    from app.core import doubt as _db
+    from app.core import picks as _pk3
+    want = [str(x) for x in (dict(layers or {}).get("board_lines") or [])]
+    got_lines = _pk3.lines_of(_pk3.grid_of(dict(edge or {})))
+    rows = {k: v for k, v in got_lines.items()
+            if v is not None and (not want or k in want)}
+    said = _db.judge(rows, bad=[], machine_hold=machine.hold())
+    if not rows:
+        said.why += ("\n    ⬜ **판정할 줄이 없다** — "
+                     + ("보드 줄이 비었다(§1 수집 실패)" if not want
+                        else "격자가 없다"))
+    said.why += ("\n    ⚠️ 유효 불리 의심을 **카드에서 세는 통로가 아직 없다** — "
+                 "지금은 묶음 0 칸으로만 본다(백필 판정표는 H1·J1 을 센다)")
+    return said
+
+
 def _gate_of(ref: MatchRef, facts, turn: dict, *, state: RunState):
     """🔴🔴 ③ — **검문을 돌린다**. 신원표를 만들고 id 로만 견준다.
 
@@ -1047,7 +1086,14 @@ def _gate_card(ref: MatchRef, facts, variables: list, gate, *,
               funnel=state.counted_box() if hasattr(state, "counted_box")
               else _C(match=ref, facts=facts).funnel,
               machine=said_mc.why, machine_hold=True,
+              doubt=_mc_doubt_held(),
               conclusion=gate.card(), stance="🔴 확률 미산출(신원 검문)")
+
+
+def _mc_doubt_held() -> str:
+    """🔴 퇴로 카드의 2단 줄 — **1단이 보류라 줄이 없다**(§2·§4)."""
+    from app.core import doubt as _db
+    return _db.said_of(_db.judge({}, machine_hold=True))
 
 
 def _moved(before: Card, layers: dict, mr: object) -> list[str]:
@@ -1141,6 +1187,8 @@ def card_of(ref: MatchRef, facts: Facts, variables: list[Variable],
         board_feed=str(box.get("board_feed") or ""),
         machine=str(box.get("machine") or ""),
         machine_hold=bool(box.get("machine_hold")),
+        doubt=str(box.get("doubt") or ""),
+        doubt_picks=dict(box.get("doubt_picks") or {}),
         our_prob=box.get("ours"),
         compare=str(box.get("compare") or ""),
         compare_lines=[str(x) for x in (box.get("compare_lines") or [])],

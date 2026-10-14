@@ -35,12 +35,18 @@ class Leg:
     line: str = ""
     p: float = 0.0
     side: str = ""            # 🔴 홈·원정·무·총골 — "전부 같은 방향" 금지에 쓴다
-    verdict: str = ""         # 🔴 공격 판정(표시만)
+    verdict: str = ""         # 🔴 2단 판정(확신·역배) · 없으면 빈 글자
     board: str = ""           # 🔴 보드 배당(계기판 · 판정 미사용)
+    #: 🔴🔴 **의심 후 확률**(§4) — 있으면 `p` 가 이 수다(자가 다르다)
+    after: float | None = None
+    #: 🔴 그 칸(구간·경기 수) — 어디서 온 수인지 표에 적는다
+    cell: str = ""
 
     def said(self) -> str:
         return (f"{self.match} **{self.line}** {100 * self.p:.1f}%"
-                + (f" · 공격 {self.verdict}" if self.verdict else "")
+                + (f"(의심 후 · 칸 {self.cell})" if self.after is not None
+                   else "")
+                + (f" · **{self.verdict}**" if self.verdict else "")
                 + (f" · 보드 {self.board}" if self.board else ""))
 
 
@@ -49,6 +55,46 @@ class Out:
     singles: list = field(default_factory=list)
     parlays: list = field(default_factory=list)
     why: str = ""
+
+
+def grid_of(box: dict) -> dict:
+    """🔴🔴 상성 묶음 → **스코어 격자**. 열쇠 꼴이 두 가지라 둘 다 받는다.
+
+    ⚠️ 판에 적힐 때는 `"2-1"` 이고 메모리에서는 `(2, 1)` 이다 — 한 꼴만 받으면
+       한쪽 길에서 조용히 **빈 격자**가 된다.
+    """
+    said = dict(box or {})
+    rows = dict((said.get("sim") or {}).get("scores")
+                or getattr(said.get("prob"), "scores", None) or {})
+    out: dict = {}
+    for key, val in rows.items():
+        if isinstance(key, str) and "-" in key:
+            h, a = key.split("-", 1)
+            out[(int(h), int(a))] = float(val)
+        elif isinstance(key, (tuple, list)) and len(key) == 2:
+            out[(int(key[0]), int(key[1]))] = float(val)
+    return out
+
+
+def lines_of(grid: dict) -> dict:
+    """🔴🔴 격자 → **줄 이름 → 확률**. 이름 꼴은 `board_lines` 와 같아야 한다.
+
+    🔴 이 함수가 **하나**인 까닭 — 슬레이트(`tools/slate_queue`)와 파이프라인
+       (2단 의심)이 **같은 이름**으로 줄을 불러야 보드 줄과 맞물린다(사본 금지).
+    ⚠️ 마켓은 `probfloor.markets_of` 그 격자에서 센다.
+    """
+    from app.core import probfloor as _pf
+    if not grid:
+        return {}
+    mk = _pf.markets_of(dict(grid))
+    out = {"홈 승": mk.get("home"), "무": mk.get("draw"),
+           "원정 승": mk.get("away")}
+    for key, val in dict(mk.get("ah") or {}).items():
+        out[f"핸디 {key}"] = val
+    for key, val in dict(mk.get("over") or {}).items():
+        out[f"오버 {key}"] = val
+        out[f"언더 {key}"] = 1.0 - float(val)
+    return out
 
 
 def side_of(line: str) -> str:
@@ -133,6 +179,42 @@ def best_of(rows: list[dict]) -> list[Leg]:
         if one.get("machine_hold"):
             continue
         want = {str(x) for x in (one.get("board_lines") or [])}
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **2단 판정이 있으면 확신·역배만 받는다**(의심 검증 v2 §4)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  🔴 `doubt_picks` 는 그 경기에서 **확신·역배로 살아남은 줄**이다.
+        #     ⚠️ 칸이 **없거나 보류**인 줄은 거기 안 들어 있다 → 후보도 아니다.
+        #  ⚠️ 그 칸이 **비어 있으면**(보정표가 아직 없거나 2단이 안 돌았으면)
+        #     옛 길대로 **문턱만** 쓴다 — 판정을 못 했다고 표를 비우지 않는다.
+        said_db = dict(one.get("doubt_picks") or {})
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **2단이 있으면 그 자를 쓴다**(의심 검증 v2 §4)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 두 자를 겹쳐 쓰면 **아무것도 안 나온다** — 확신 문턱은 **의심 후
+        #     확률 자**(0.58)에 있고 단폴 문턱(0.88)은 **봇 원확률 자**에 있다.
+        #     승무패 `50%+` 칸은 원확률 52% 라 0.88 에 걸려 전부 떨어진다.
+        #  🔴 그래서 2단 판정이 있는 줄은 **그 판정으로 통과**하고(문턱은 이미
+        #     `core/doubt` 가 걸었다) `p` 에 **의심 후 확률**을 담는다.
+        if said_db:
+            rows_db = [(str(k), dict(v)) for k, v in said_db.items()
+                       if dict(v).get("의심후") is not None
+                       and (not want or str(k) in want)]
+            if not rows_db:
+                continue
+            line, box = max(rows_db,
+                            key=lambda kv: float(kv[1]["의심후"]))
+            out.append(Leg(match=str(one.get("match") or ""),
+                           league=str(one.get("league") or ""),
+                           kickoff=str(one.get("kickoff") or ""),
+                           line=line, p=float(box["의심후"]),
+                           after=float(box["의심후"]),
+                           cell=str(box.get("칸") or ""),
+                           side=side_of(line),
+                           verdict=str(box.get("판정") or ""),
+                           board=str(one.get("board") or "")))
+            continue
         got = [(str(k), float(v)) for k, v in
                dict(one.get("lines") or {}).items()
                if v is not None and (not want or str(k) in want)]
@@ -155,8 +237,16 @@ def best_of(rows: list[dict]) -> list[Leg]:
 def of(rows: list[dict]) -> Out:
     """🔴🔴 **칠 표** — `(단폴, 다폴)`. 아무것도 없으면 그 사실을 적는다."""
     legs = best_of(rows)
-    singles = [x for x in legs if x.p >= CUT_SINGLE]
-    pool = [x for x in legs if x.p >= CUT_LEG]
+    # 🔴🔴 **자가 둘이다** — 2단 판정이 붙은 줄은 그 판정이 문턱을 이미 걸었고,
+    #    붙지 않은 줄은 **봇 원확률 문턱**(`CUT_SINGLE`·`CUT_LEG`)을 쓴다.
+    #    ⚠️ 한 자로 뭉개면 한쪽이 통째로 사라진다(그 까닭은 `best_of` 머리글).
+    singles = [x for x in legs
+               if (x.after is not None or x.p >= CUT_SINGLE)]
+    # 🔴 **역배는 다리로 쓰지 않는다**(§7 — 표시만이다)
+    from app.core import doubt as _db2
+    pool = [x for x in legs
+            if (x.after is not None or x.p >= CUT_LEG)
+            and x.verdict != _db2.FADE]
     parlays: list[list[Leg]] = []
     for n in LEGS:
         got = _pick_legs(pool, n)
@@ -171,12 +261,17 @@ def of(rows: list[dict]) -> Out:
                 if not (x.get("board_lines") or [])
                 and not x.get("machine_hold")]
     why = (f"경기 {len(rows)}개 → 보드 있는 경기 {len(rows) - len(no_board)}개 "
-           f"→ 줄 {len(legs)}개 · 단폴 문턱 {CUT_SINGLE:.2f} 통과 "
-           f"{len(singles)}개 · 다리 문턱 {CUT_LEG:.2f} 통과 {len(pool)}개"
+           f"→ 줄 {len(legs)}개 · 단폴 **{len(singles)}개**(2단 판정 또는 봇 "
+           f"원확률 {CUT_SINGLE:.2f} 이상) · 다리 후보 {len(pool)}개"
            + (f" · 🔴 **보드 없어 뺀 경기 {len(no_board)}개**"
               f"({' · '.join(no_board[:4])})" if no_board else "")
            + (f" · 🔴 **1단 기계 보류로 뺀 경기 {len(held)}개**"
-              f"({' · '.join(held[:4])})" if held else ""))
+              f"({' · '.join(held[:4])})" if held else "")
+           # 🔴 §4 — 2단 판정을 **쓴 경기**와 **못 쓴 경기**를 가른다(#3)
+           + (f" · 🧪 2단 판정을 쓴 경기 {n_db}개"
+              if (n_db := sum(1 for x in (rows or [])
+                              if x.get("doubt_picks"))) else
+              " · ⚠️ **2단 판정 칸이 비었다 — 문턱만으로 골랐다**"))
     if not singles:
         why += " · 🔴 **오늘 단폴 없음**"
     if not parlays:
@@ -213,10 +308,18 @@ def _pick_legs(pool: list[Leg], n: int) -> list[Leg]:
 
 
 def said_of(out: Out) -> str:
-    """🔴 슬레이트 끝에 찍는 글 — 표 두 줄과 사유."""
-    rows = [f"🎯 **칠 표**(문턱만 · 공격은 표시) — {out.why}"]
-    for one in out.singles:
+    """🔴🔴 슬레이트 끝에 찍는 글(§7) — **확신 단폴 · 역배 단폴(표시) · 다폴**.
+
+    🔴 역배는 **표시만** 한다(§7 의 그 글자) — 확신과 한 줄에 섞지 않는다.
+    """
+    from app.core import doubt as _db
+    rows = [f"🎯 **칠 표**(§4 판정 · 역배는 표시만) — {out.why}"]
+    sure = [x for x in out.singles if x.verdict != _db.FADE]
+    fade = [x for x in out.singles if x.verdict == _db.FADE]
+    for one in sure:
         rows.append(f"- 단폴 — {one.said()}")
+    for one in fade:
+        rows.append(f"- 🔄 **역배 단폴(표시만)** — {one.said()}")
     for got in out.parlays:
         rows.append(f"- {len(got)}폴 — " + " + ".join(x.said() for x in got))
     return "\n".join(rows)

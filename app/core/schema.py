@@ -1279,6 +1279,13 @@ class Card(Frozen):
     #: 🔴🔴 **기계 보류인가**(§2 판정) — 참이면 확신·역배 **둘 다 금지**이고
     #:    `core/picks` 가 그 경기를 **안 받는다**(칠 표에서 빠진다 · §4).
     machine_hold: bool = False
+    #: 🔴🔴 **2단 의심 블록**(의심 검증 v2 §4·§7) — 줄마다 봇 확률 · 유효 의심 ·
+    #:    의심 후 확률(칸·경기 수·구간) · **확신/보류/역배**.
+    #:    글자는 `core/doubt.said_of` 하나가 만든다(사본 금지).
+    doubt: str = ""
+    #: 🔴 그 경기에서 **확신·역배로 살아남은 줄**(§4) — 칠 표가 이것만 받는다.
+    #:    꼴: `{"줄 이름": {"판정", "의심후", "하한", "상한", "경기수"}}`.
+    doubt_picks: dict = Field(default_factory=dict)
     board_extra: list[str] = Field(default_factory=list)
     board_bad: list[str] = Field(default_factory=list)
     # ══════════════════════════════════════════════════════════════════

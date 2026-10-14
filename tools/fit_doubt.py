@@ -102,6 +102,34 @@ def grid_of(lam: list) -> dict | None:
     return _pf.score_grid(lam_home=float(got[0]), lam_away=float(got[1]))
 
 
+def wide_rows() -> list[dict]:
+    """🔴🔴 **승무패 방향 칸을 넓은 표본으로** — 재생본 전부(6,985경기).
+
+    ## 왜 넓히나 — 실측 2026-10-14(§5 검증)
+    1,470경기로 적합한 `승무패 방향` 의 맨 위 칸은 `50%~100%` **하나**(228경기)로
+    뭉쳤고, 그 값 **67.1%** 가 표본 밖에서 이렇게 갈렸다:
+    ```
+    봇 50~54% → 실측 62.3%   봇 55~59% → 72.2%   봇 60~69% → 81.4%
+    ```
+    🔴 칸이 **포화**해 위쪽을 못 가른다 — 그래서 확신 줄의 의심 후 확률이
+    체계적으로 **낮게** 나온다(§5 보정 곡선의 그 줄).
+
+    🔴 **승무패 방향은 보드가 필요 없다** — 봇이 앞세운 쪽이 맞았나뿐이다.
+       그래서 백필 보드가 없는 리그·시즌도 **그대로 쓸 수 있다**.
+    ⚠️ `보드 핸디`·`보드 언오버` 는 **보드 기준선이 있어야** 하므로 넓히지 않는다.
+    ⚠️ 재생본에는 `extra`(골 시각·선발·xG)가 없어 **의심 깃발을 못 센다** →
+       넓힌 줄은 **묶음 0** 칸에만 들어간다(그 사실을 판에 적는다).
+    """
+    import replays
+    rows, why = replays.load()
+    out = []
+    for r in rows:
+        if not (r.get("lam") and r.get("ours") and r.get("hit") is not None):
+            continue
+        out.append(dict(r))
+    return out, why
+
+
 def line_rows(r: dict, board: dict | None) -> list[dict]:
     """🔴🔴 그 경기의 **줄 종류별 한 줄** — `{kind, p, hit, side, real}`.
 
@@ -120,7 +148,8 @@ def line_rows(r: dict, board: dict | None) -> list[dict]:
         pick = max(range(3), key=lambda i: ours[i])
         out.append({"kind": "승무패 방향", "p": ours[pick],
                     "hit": int(pick == int(r["hit"])),
-                    "side": ("홈", "무", "원정")[pick], "real": real})
+                    "side": ("홈", "무", "원정")[pick], "real": real,
+                    "season": str(r.get("season") or "")})
     grid = grid_of(list(r.get("lam") or []))
     if grid is None or not board:
         return out
@@ -137,7 +166,8 @@ def line_rows(r: dict, board: dict | None) -> list[dict]:
             side = "홈" if a >= b else "원정"
             out.append({"kind": "보드 핸디", "p": max(a, b),
                         "hit": int((margin > 0) == (side == "홈")),
-                        "side": f"{side} {hp:+g}", "real": real})
+                        "side": f"{side} {hp:+g}", "real": real,
+                        "season": str(r.get("season") or "")})
     # ── ③ 보드 언오버
     t = (dict(board.get("ou") or {})).get("point")
     if t is not None:
@@ -150,7 +180,8 @@ def line_rows(r: dict, board: dict | None) -> list[dict]:
             p = over if side == "오버" else 1.0 - over
             out.append({"kind": "보드 언오버", "p": p,
                         "hit": int((tot > tp) == (side == "오버")),
-                        "side": f"{side} {tp:g}", "real": real})
+                        "side": f"{side} {tp:g}", "real": real,
+                        "season": str(r.get("season") or "")})
     return out
 
 
@@ -350,19 +381,37 @@ def band_of(p: float) -> tuple | None:
     return None
 
 
-def cells(box: list[dict], book: dict, live: list[str]) -> dict:
+def cells(box: list[dict], book: dict, live: list[str], *,
+          wide: list[dict] | None = None) -> dict:
     """🔴 줄 종류 × 구간 × 의심 개수 → 그 칸의 줄들."""
     out: dict = {}
+    seen: set = set()
     for x in box:
         r_board = book.get((str(x.get("league")), str(x.get("season")),
                             str(x.get("home")), str(x.get("away"))))
         n_bad = eff_bad(dict(x.get("flag") or {}), live)
         bucket = "0" if n_bad == 0 else ("1" if n_bad == 1 else "2+")
+        seen.add((str(x.get("league")), str(x.get("day")),
+                  str(x.get("home")), str(x.get("away"))))
         for one in line_rows(x, r_board):
             band = band_of(one["p"])
             if band is None:
                 continue
             out.setdefault((one["kind"], band, bucket), []).append(one)
+    # ── 🔴 넓힌 표본은 **승무패 방향 · 묶음 0** 에만 더한다
+    for x in (wide or []):
+        key = (str(x.get("league")), str(x.get("day")),
+               str(x.get("home")), str(x.get("away")))
+        if key in seen:
+            continue        # 🔴 **같은 경기를 두 번 세지 않는다**
+        for one in line_rows(x, None):
+            if one["kind"] != "승무패 방향":
+                continue
+            band = band_of(one["p"])
+            if band is None:
+                continue
+            one["real"] = None      # 🔴 승무패는 **보드와 무관**하다
+            out.setdefault((one["kind"], band, "0"), []).append(one)
     return out
 
 
@@ -398,17 +447,51 @@ def say_cell(got: dict) -> dict:
     hits = sum(int(x["hit"]) for x in rows)
     p, lo, hi = wilson(hits, n)
     mean = sum(float(x["p"]) for x in rows) / n if n else float("nan")
-    real = sum(1 for x in rows if x["real"])
+    real = sum(1 for x in rows if x["real"] is True)
+    # 🔴 `None` = **보드 무관**(승무패 방향) — 실보드도 근사도 아니다
+    free = sum(1 for x in rows if x["real"] is None)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **시즌 교차**(§4·§5) — 역배는 **다른 시즌에서도 유지**돼야 한다
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 그 칸 안에서 시즌으로 쪼개 **봇 대비 편차 부호**가 같나 본다.
+    #     시즌이 둘 미만이거나 한쪽이 30경기 미만이면 **확인 못 했다**(`None`).
+    #  ⚠️ `core/doubt` 는 이 칸이 참이 아니면 **역배를 내지 않는다**(추측 금지).
+    by_season: dict = {}
+    for x in rows:
+        by_season.setdefault(str(x.get("season") or ""), []).append(x)
+    parts = [(k, v) for k, v in by_season.items() if len(v) >= 30]
+    cross = None
+    detail: dict = {}
+    if len(parts) >= 2:
+        signs = set()
+        for k, v in parts:
+            got_p = sum(int(y["hit"]) for y in v) / len(v)
+            got_b = sum(float(y["p"]) for y in v) / len(v)
+            signs.add(1 if got_p >= got_b else -1)
+            # 🔴 **시즌마다의 수를 적어 둔다** — "뒤집힌다" 가 무너짐인지
+            #    잡음인지는 이 수를 봐야 정한다(§5 *"무너지는 칸 폐기"*).
+            detail[str(k)] = {"n": len(v), "실측": round(got_p, 4),
+                              "봇평균": round(got_b, 4)}
+        cross = len(signs) == 1
     band = got["bands"]
     return {"구간": f"{band[0][0]:.0%}~{band[-1][1] - 0.01:.0%}",
+            # 🔴 **기계가 읽는 경계**도 같이 적는다 — `core/doubt` 가 그 경기의
+            #    봇 확률로 칸을 찾아야 한다(글자를 되파싱하지 않는다 · 사본 금지).
+            "p_lo": round(float(band[0][0]), 4),
+            "p_hi": round(float(band[-1][1]), 4),
             "n": n, "봇평균": round(mean, 4), "실측": round(p, 4),
             "lo": round(lo, 4), "hi": round(hi, 4),
             "반대쪽실측": round(1.0 - p, 4),
-            "실보드": real, "근사": n - real,
+            "실보드": real, "근사": n - real - free, "보드무관": free,
+            "시즌교차": cross,
+            "시즌": {k: len(v) for k, v in sorted(by_season.items())},
+            "시즌별": dict(sorted(detail.items())),
             "보류": n < CELL_MIN}
 
 
-def build_cal(box: dict, live: list[str]) -> dict:
+def build_cal(box: dict, live: list[str], *,
+              holdout: list[str] | None = None) -> dict:
     """🔴 §3-3 — 판 셋을 만든다. 돌려주는 것은 `{줄종류: 묶음}`."""
     import yaml
     OUT.mkdir(parents=True, exist_ok=True)
@@ -423,8 +506,8 @@ def build_cal(box: dict, live: list[str]) -> dict:
         print(f"### {kind}")
         print()
         print("| 의심 | 구간 | 경기 | 봇 평균 | 실측 | 95% 구간 | 반대쪽 | "
-              "실보드/근사 | 판정 |")
-        print("|---|---|---|---|---|---|---|---|---|")
+              "실보드/근사 | 시즌교차 | 판정 |")
+        print("|---|---|---|---|---|---|---|---|---|---|")
         said: dict = {}
         for bucket in ("0", "1", "2+"):
             got = merged(box, kind, bucket)
@@ -437,16 +520,24 @@ def build_cal(box: dict, live: list[str]) -> dict:
                       f"{cell['봇평균']:.1%} | **{cell['실측']:.1%}** | "
                       f"[{cell['lo']:.1%}, {cell['hi']:.1%}] | "
                       f"{cell['반대쪽실측']:.1%} | "
-                      f"{cell['실보드']}/{cell['근사']} | {mark} |")
+                      f"{cell['실보드']}/{cell['근사']}"
+                      + (f"/보드무관 {cell['보드무관']}"
+                         if cell["보드무관"] else "") + " | "
+                      + ("✅" if cell["시즌교차"] is True
+                         else ("🔴 뒤집힌다" if cell["시즌교차"] is False
+                               else "⬜ 못 쟀다"))
+                      + f" | {mark} |")
             if not got:
-                print(f"| {bucket} | — | 0 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | "
+                print(f"| {bucket} | — | 0 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | "
                       f"🔴 줄이 없다 |")
             said[bucket] = rows
         out[kind] = said
         path = OUT / f"{kind.replace(' ', '_')}.yaml"
         path.write_text(yaml.safe_dump(
             {"meta": {"줄종류": kind, "유효_의심": list(live),
-                      "칸_최소": CELL_MIN, "구간": [list(x) for x in BANDS]},
+                      "칸_최소": CELL_MIN, "구간": [list(x) for x in BANDS],
+                      # 🔴 적합에서 **뺀 시즌** — 검증·문턱은 거기서만 센다
+                      "홀드아웃": list(holdout or [])},
              "칸": said}, allow_unicode=True, sort_keys=False),
             encoding="utf-8")
     print()
@@ -497,6 +588,17 @@ def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", choices=("vars", "cal"))
     ap.add_argument("--no-save", action="store_true")
+    ap.add_argument("--wide", action="store_true",
+                    help="승무패 방향 칸을 **재생본 전부**로 넓힌다(위 `wide_rows`)")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **홀드아웃** — 적합에서 **뺀 시즌**(§5 검증이 그 시즌만 센다)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ `--wide` 는 보정표를 **재생본으로** 적합한다. 그 재생본으로 문턱을
+    #     고르고 검증까지 하면 **표본 안**이다(누설). 🔴 그래서 한 시즌을 빼고
+    #     적합하고, 검증·문턱은 **그 시즌에서만** 센다.
+    ap.add_argument("--holdout", action="append", default=[],
+                    help="적합에서 뺄 시즌(여러 번 줄 수 있다 · 예 `2026/2027`)")
     args = ap.parse_args(argv[1:])
     rows = rows_all()
     book = boards()
@@ -513,8 +615,23 @@ def main(argv: list[str]) -> int:
             save_fits(fits)
     live = live_vars(fits)
     if args.only != "vars":
+        wide = None
+        if args.wide:
+            wide, why_w = wide_rows()
+            cut_out = {str(x) for x in (args.holdout or [])}
+            if cut_out:
+                before = len(wide)
+                wide = [x for x in wide
+                        if str(x.get("season") or "") not in cut_out]
+                why_w += (f" · 🔴 **홀드아웃 {sorted(cut_out)} 를 뺐다**"
+                          f"({before - len(wide)}경기)")
+            print()
+            print(f"- 🔴 **승무패 방향 칸을 넓혔다** — {why_w}")
+            print("  ⚠️ 재생본에는 `extra` 가 없어 **의심 깃발을 못 센다** → "
+                  "넓힌 줄은 **묶음 0** 칸에만 들어간다.")
         print()
-        build_cal(cells(box, book, live), live)
+        build_cal(cells(box, book, live, wide=wide), live,
+                  holdout=sorted(str(x) for x in (args.holdout or [])))
     return 0
 
 
