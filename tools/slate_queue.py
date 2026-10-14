@@ -104,24 +104,91 @@ async def main(argv: list[str]) -> int:
     import app.bot.main as _bm
     from app import cassette
     import os
+    # 🔴 카드를 **받아야** 칠 표를 세울 수 있다 → 연결을 하나 연다
+    from app.config import get_settings
+    from app.db import get_pool
+    pool = await get_pool(get_settings().database_url)
+    rows_pick: list[dict] = []
     for one in due:
         said = one["name"]
         print(f"\n▶ {said} — {one['stage']} 단계 시작 "
               f"{datetime.now(KST):%H:%M:%S} KST", flush=True)
         os.environ[cassette.MATCH_ENV] = said
         clock = _dl.Deadline(_sl.CARD_CAP_MIN)
-
-        class _Msg:
-            text = f"/자세히 {said}"
-
-            async def answer(self, text: str, **kw) -> None:
-                print(text)
         try:
-            await _bm.cmd_deep(_Msg())
+            # 🔴 **실제 핸들러**를 쓰면서 카드를 **받는다**(칠 표 재료가 필요하다)
+            body, card = await _bm._v6_card(pool, said=said, again=False,
+                                            deep=True, want_ref=True)
+            for chunk in _bm._split(body):
+                print(chunk)
+            got = pick_row(said, one, card)
+            if got:
+                rows_pick.append(got)
         except Exception as exc:                            # noqa: BLE001
             print(f"🔴 {said} — 카드가 터졌다: {exc!r:.200}")
         print(f"◀ {said} — {clock.said_of()}", flush=True)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **슬레이트 끝 — 칠 표**(후속 지시 2026-10-14g §5)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 고르는 것은 **문턱만**이다(공격 계층은 실효 측정에서 문턱을 못 이겼다 ·
+    #     `core/picks` 머리글). 공격 판정은 **표에 적기만** 한다.
+    if rows_pick:
+        from app.core import picks as _pk
+        out = _pk.of(rows_pick)
+        print()
+        print(_pk.said_of(out))
+        save_picks(out, rows_pick)
     return 0
+
+
+def pick_row(name: str, one: dict, card) -> dict | None:
+    """🔴 카드 하나 → 칠 표 한 줄(줄 확률은 **격자 하나**에서 · 사본 금지)."""
+    from app.core import probfloor as _pf
+    box = dict(getattr(card, "matchup", None) or {})
+    grid: dict = {}
+    for key, val in dict((box.get("sim") or {}).get("scores")
+                         or getattr(box.get("prob"), "scores", None)
+                         or {}).items():
+        if isinstance(key, str) and "-" in key:
+            h, a = key.split("-", 1)
+            grid[(int(h), int(a))] = float(val)
+        elif isinstance(key, (tuple, list)) and len(key) == 2:
+            grid[(int(key[0]), int(key[1]))] = float(val)
+    if not grid:
+        return None
+    mk = _pf.markets_of(grid)
+    lines = {"홈 승": mk.get("home"), "무": mk.get("draw"),
+             "원정 승": mk.get("away")}
+    for key, val in dict(mk.get("ah") or {}).items():
+        lines[f"핸디 {key}"] = val
+    for key, val in dict(mk.get("over") or {}).items():
+        lines[f"오버 {key}"] = val
+        lines[f"언더 {key}"] = 1.0 - float(val)
+    return {"match": name, "league": str(one.get("comp") or ""),
+            "kickoff": f"{one['kickoff'].astimezone(KST):%H:%M}",
+            "lines": lines,
+            "verdict": str(dict(getattr(card, "attack", None) or {})
+                           .get("verdict") or ""),
+            "board": str(getattr(card, "board_source", "") or "")}
+
+
+def save_picks(out, rows: list[dict]) -> None:
+    """🔴 칠 표를 **적어 둔다** — `score_cards` 가 적중률을 누적한다(§5)."""
+    import yaml
+    from datetime import date as _date
+    path = ROOT / "var/picks" / f"{_date.today().isoformat()}.yaml"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    said = {"singles": [vars(x) for x in out.singles],
+            "parlays": [[vars(x) for x in got] for got in out.parlays],
+            "why": out.why, "n_matches": len(rows),
+            # 🔴 **재료 줄도 적는다** — 봇 `/칠표` 가 `core/picks.of` 로 **같은
+            #    식으로 다시** 고른다(사본 금지 · 문턱이 바뀌면 그대로 따라온다)
+            "rows": [dict(x) for x in rows]}
+    path.write_text(yaml.safe_dump(said, allow_unicode=True,
+                                   sort_keys=False), encoding="utf-8")
+    print(f"🔴 **칠 표를 적었다** — `{path.relative_to(ROOT)}`"
+          f"(단폴 {len(out.singles)} · 다폴 {len(out.parlays)})")
 
 
 if __name__ == "__main__":

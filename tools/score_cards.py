@@ -605,6 +605,131 @@ async def main() -> None:
              if said else None)
         print(f"| {lg} | {len(box)} | {b:.4f} | "
               + (f"{e:.4f} |" if e is not None else "— |"))
+    # 🔴 §5 — 칠 표 누적(같은 실행에서 이어 찍는다)
+    await score_picks(net)
+
+
+async def score_picks(net) -> None:
+    """🔴🔴 **칠 표 누적**(후속 지시 2026-10-14g §5) — 단폴·다폴·줄 종류별 적중률.
+
+    🔴 재료는 슬레이트가 적어 둔 `var/picks/<날짜>.yaml` 다(그 자리에서 고른 줄).
+    🔴 결과는 이 도구가 이미 쓰는 길(`result_of`)로 받는다(사본 금지).
+    ⚠️ 아직 결과가 없는 날은 **건너뛴다**(0 으로 세지 않는다 · #3).
+    """
+    import yaml
+    box = ROOT / "var/picks"
+    rows = sorted(box.glob("*.yaml")) if box.is_dir() else []
+    if not rows:
+        print()
+        print("- 🎯 칠 표 — ⬜ **적어 둔 표가 없다**(`var/picks/` 가 비었다)")
+        return
+    singles: list[dict] = []
+    parlays: list[list[dict]] = []
+    for path in rows:
+        got = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        for one in (got.get("singles") or []):
+            singles.append({**one, "day": path.stem})
+        for legs in (got.get("parlays") or []):
+            parlays.append([{**x, "day": path.stem} for x in legs])
+    print()
+    print(f"## 🎯 칠 표 누적 — 표 {len(rows)}일 · 단폴 {len(singles)} · "
+          f"다폴 {len(parlays)}")
+    # 🔴 **줄을 스코어로 채점한다** — 결과는 `result_of`(이 도구의 그 길)로.
+    got_cache: dict[tuple, tuple | None] = {}
+
+    async def score_of(one: dict) -> tuple[int, int] | None:
+        key = (str(one.get("day")), str(one.get("match")))
+        if key not in got_cache:
+            name = str(one.get("match") or "")
+            part = [x.strip() for x in name.replace("–", "vs")
+                    .replace("-", "vs").split("vs") if x.strip()]
+            if len(part) < 2:
+                got_cache[key] = None
+            else:
+                got_cache[key] = await result_of(
+                    net, {"home": part[0], "away": part[1],
+                          "day": str(one.get("day"))})
+        said = got_cache[key]
+        if not said:
+            return None
+        try:
+            h, a = (int(x) for x in str(said[1]).split("-"))
+        except (ValueError, IndexError):
+            return None
+        return h, a
+
+    print()
+    print("| 날 | 경기 | 줄 | 확률 | 공격 판정 | 스코어 | 맞았나 |")
+    print("|---|---|---|---|---|---|---|")
+    done: list[dict] = []
+    for one in singles[-30:]:
+        got = await score_of(one)
+        ok = (line_hit(str(one.get("line")), *got) if got else None)
+        if ok is not None:
+            done.append({**one, "ok": ok})
+        print(f"| {one.get('day')} | {one.get('match')} | {one.get('line')} | "
+              f"{100 * float(one.get('p') or 0):.1f}% | "
+              f"{one.get('verdict') or '—'} | "
+              + (f"{got[0]}-{got[1]}" if got else "⬜ 결과 못 받았다")
+              + " | " + ("✅" if ok else ("🔴" if ok is False else "⬜"))
+              + " |")
+    if done:
+        print()
+        print(f"- 단폴 실측 — **{sum(1 for x in done if x['ok'])}/{len(done)} "
+              f"= {100 * sum(1 for x in done if x['ok']) / len(done):.1f}%**"
+              f"(백필 기대 **94.7%** · 문턱 0.88)")
+        fam: dict[str, list] = {}
+        for x in done:
+            key = ("핸디" if str(x["line"]).startswith("핸디")
+                   else ("오버·언더" if str(x["line"]).startswith(("오버",
+                                                                   "언더"))
+                         else "승무패"))
+            fam.setdefault(key, []).append(int(x["ok"]))
+        print("- 줄 종류별 — " + " · ".join(
+            f"{k} {sum(v)}/{len(v)}({100 * sum(v) / len(v):.0f}%)"
+            for k, v in sorted(fam.items())))
+    ok2 = n2 = 0
+    for legs in parlays:
+        got = [await score_of(x) for x in legs]
+        if any(x is None for x in got):
+            continue
+        n2 += 1
+        ok2 += int(all(line_hit(str(x["line"]), *g)
+                       for x, g in zip(legs, got)))
+    print(f"- 다폴 실측 — " + (f"**{ok2}/{n2} = {100 * ok2 / n2:.1f}%**"
+                              f"(백필 기대 2폴 92.1% · 문턱 0.90)" if n2
+                              else "⬜ 채점할 다폴이 없다"))
+    print(f"- §6 — **30픽마다** 실측과 백필 기대를 견준다(지금 "
+          f"{len(done)}픽)")
+
+
+def line_hit(line: str, hg: int, ag: int) -> bool:
+    """🔴🔴 그 줄이 **맞았나** — 스코어로 센다(이름 하나하나 뜻을 적는다)."""
+    said = str(line or "")
+    d, tot = hg - ag, hg + ag
+    if said == "홈 승":
+        return d > 0
+    if said == "원정 승":
+        return d < 0
+    if said == "무":
+        return d == 0
+    if said.startswith("핸디 "):
+        key = said.split(" ", 1)[1]
+        side, num = ("home", key[4:]) if key.startswith("home") else (
+            "away", key[4:])
+        try:
+            got = float(num)
+        except ValueError:
+            return False
+        mine = d if side == "home" else -d
+        return (mine + got) > 0
+    if said.startswith(("오버", "언더")):
+        try:
+            got = float(said.split(" ", 1)[1])
+        except (ValueError, IndexError):
+            return False
+        return tot > got if said.startswith("오버") else tot < got
+    return False
 
 
 if __name__ == "__main__":

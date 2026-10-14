@@ -84,15 +84,26 @@ class Out:
     def counters(self) -> list:
         return [s for s in self.shots if s.verdict == "반격"]
 
+    #: 🔴🔴 **결론을 무너뜨리는 깨짐** — 시장이 반대이거나(J1) 홈 근거가
+    #:   사라지거나(C2) 핵심이 빠졌거나(E1) **표와 반대 결론**(H1)일 때.
+    #:   ⚠️ H1 은 측정이 가장 센 공격이다(걸린 경기 적중 40.2% vs 53.1%).
+    HARD = ("J1", "C2", "E1", "H1")
+
     def verdict(self) -> str:
-        """🔴 판정 — 살아남음 · 약해짐 · 무너짐(§3)."""
-        if not self.broken():
+        """🔴 판정 — 살아남음 · 약해짐 · 무너짐(§3).
+
+        ⚠️ 실사고 2026-10-14: **Σ 를 안 움직이는 깨짐**(H1 처럼 축이 없는 변수)이
+           `gone == 0` 이라 **"살아남음"** 으로 남았다 — 깨졌는데 살아남는 판정은
+           거짓말이다. 🔴 깨짐이 하나라도 있으면 **최소 약해짐**이다.
+        """
+        broken = self.broken()
+        if not broken:
             return "살아남음"
-        gone = abs(self.sigma0 - self.sigma) + abs(self.mul0 - self.mul)
         flip = (self.sigma0 * self.sigma) < 0
-        if flip or any(s.key in ("J1", "C2", "E1") for s in self.broken()):
-            return "무너짐" if flip else "약해짐"
-        return "약해짐" if gone > 0 else "살아남음"
+        hard = [s for s in broken if s.key in self.HARD]
+        if flip or len(hard) >= 2:
+            return "무너짐"
+        return "약해짐"
 
 
 def of(box: dict) -> Out:
@@ -218,6 +229,22 @@ def of(box: dict) -> Out:
         src = box.get("discipline")
         fire("G3", "버팀" if src else "표시만",
              "연맹 공시 확인" if src else "⬜ 공시 통로가 없다(추측 안 한다)")
+
+    # ── H1 순위 동기(승점/경기 표와 반대 결론) ───────────────────
+    if "H1" in want:
+        ppg = dict(box.get("ppg") or {})
+        other = "away" if side == "home" else "home"
+        if side and ppg.get(side) is not None and ppg.get(other) is not None:
+            if float(ppg[side]) < float(ppg[other]):
+                fire("H1", "깨짐",
+                     f"결론 쪽 승점/경기 {float(ppg[side]):.2f} < 상대 "
+                     f"{float(ppg[other]):.2f} — **표와 반대 결론**"
+                     f"(측정: 걸린 경기 적중 40.2% vs 53.1%)")
+            else:
+                fire("H1", "버팀", f"승점/경기 {float(ppg[side]):.2f} ≥ 상대 "
+                                   f"{float(ppg[other]):.2f}")
+        else:
+            fire("H1", "표시만", "⬜ 누적 승점/경기를 못 셌다")
 
     # ── J1 시장 괴리 ────────────────────────────────────────────
     if "J1" in want:

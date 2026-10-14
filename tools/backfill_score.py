@@ -111,10 +111,12 @@ def attack_box(j: dict, *, home: str, away: str, starters: dict) -> dict:
 
     rows = []
     for g in (fm.goals_of(j) or []):
-        rows.append({k: g.get(k) for k in
-                     ("minute", "added", "home", "before", "after",
-                      "own_goal", "xg", "kind", "header", "lucky")
-                     if k in g})
+        # ⚠️ 실측 2026-10-14: `kind`·`header`·`lucky` 는 `goals_of` 의 열쇠가
+        #    아니다(**0건** 담겼다) — 실제 이름은 `situation`·`shot_type` 쪽이다.
+        #    🔴 그래서 **있는 열쇠를 다 담는다**(골 한 줄은 작다).
+        rows.append({k: (list(v) if isinstance(v, tuple) else v)
+                     for k, v in dict(g).items()
+                     if k not in ("player", "assist")})
     return {
         "venue": {"name": said_v.get("name"), "city": said_v.get("city"),
                   "lat": said_v.get("lat"), "lon": said_v.get("long"),

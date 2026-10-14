@@ -167,3 +167,79 @@ def test_at12_파이프라인이_공격을_돈다() -> None:
     assert "attack=dict(box.get(\"attack\") or {})" in said
     from app.core.schema import Card
     assert "attack" in Card.model_fields
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **공격 계층은 "표시만"이다**(후속 지시 2026-10-14g §1 마지막 줄)
+# ══════════════════════════════════════════════════════════════════
+
+def test_at13_공격_계층_상태가_등록표에_적혀_있다() -> None:
+    """🔴 실효 측정이 문턱을 못 이겼다 → `layer.state == 표시만` · 근거가 함께."""
+    from app.core import attack
+    box = dict(attack.table().get("layer") or {})
+    assert box.get("state") == "표시만", box
+    assert "92.8" in str(box.get("why")) and "93.2" in str(box.get("why"))
+    assert (ROOT / str(box.get("판정표"))).exists()
+
+
+def test_at14_칠_표는_공격으로_걸러내지_않는다() -> None:
+    """🔴 §1·§5 — 단폴·다폴은 **문턱만**으로 고른다(판정은 표에 적기만)."""
+    import inspect
+
+    from app.core import picks
+    said = inspect.getsource(picks)
+    assert "CUT_SINGLE = 0.88" in said and "CUT_LEG = 0.90" in said
+    # 🔴 `verdict` 로 **거르는 코드가 없다**(적기만 한다)
+    for bad in ("verdict ==", "verdict !=", 'verdict in ('):
+        assert bad not in said, bad
+    rows = [{"match": "A vs B", "league": "L", "kickoff": "1",
+             "lines": {"핸디 home+1.5": 0.95}, "verdict": "무너짐"}]
+    got = picks.of(rows)
+    assert len(got.singles) == 1, "🔴 무너짐도 문턱을 넘으면 단폴에 든다"
+
+
+def test_at15_다폴_규칙이_지켜진다() -> None:
+    """🔴 §4 — 같은 경기 금지 · 전부 같은 방향 금지 · 같은 리그·킥오프 최대 2."""
+    from app.core import picks
+    same = [{"match": f"A{i} vs B{i}", "league": "L", "kickoff": "1",
+             "lines": {"핸디 home+1.5": 0.95}} for i in range(4)]
+    got = picks.of(same)
+    assert not got.parlays, "🔴 전부 홈 쪽인데 다폴이 나왔다"
+    mixed = [{"match": "A vs B", "league": "L1", "kickoff": "1",
+              "lines": {"핸디 home+1.5": 0.95}},
+             {"match": "C vs D", "league": "L2", "kickoff": "2",
+              "lines": {"핸디 away+1.5": 0.94}}]
+    got2 = picks.of(mixed)
+    assert got2.parlays and len(got2.parlays[0]) == 2
+    assert len({x.match for x in got2.parlays[0]}) == 2
+
+
+def test_at16_칠_표가_슬레이트에_배선됐다() -> None:
+    """🔴 §5 — 슬레이트 끝이 칠 표를 찍고 **적어 둔다** · `score_cards` 가 센다."""
+    said = (ROOT / "tools/slate_queue.py").read_text(encoding="utf-8")
+    assert "picks as _pk" in said and "_pk.said_of(out)" in said
+    assert "save_picks(" in said and "var/picks" in said
+    got = (ROOT / "tools/score_cards.py").read_text(encoding="utf-8")
+    assert "score_picks(net)" in got and "line_hit(" in got
+
+
+def test_at17_줄_채점이_스코어와_맞는다() -> None:
+    """🔴 §5 — 줄 적중은 **스코어**로 센다(0-1 경기로 전부 확인)."""
+    import sys
+    sys.path.insert(0, str(ROOT / "tools"))
+    from score_cards import line_hit
+    for line, want in (("핸디 home+1.5", True), ("핸디 home-0.5", False),
+                       ("핸디 away+1.5", True), ("핸디 away-0.5", True),
+                       ("오버 2.5", False), ("언더 2.5", True),
+                       ("홈 승", False), ("원정 승", True), ("무", False)):
+        assert line_hit(line, 0, 1) is want, line
+
+
+def test_at18_봇_명령이_같은_식으로_고른다() -> None:
+    """🔴 §5 — `/칠표` 는 `core/picks.of` 를 부른다(문턱을 고치면 따라온다)."""
+    import inspect
+
+    from app.bot import main as bm
+    said = inspect.getsource(bm.cmd_picks)
+    assert "_pk.of(" in said and "_pk.said_of(" in said
+    assert "var/picks" in said

@@ -22,6 +22,8 @@ import os
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 from datetime import datetime, timedelta
 
+from pathlib import Path
+
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
@@ -187,6 +189,31 @@ async def cmd_deep(m: Message) -> None:
     pool = await get_pool(s.database_url)
     for chunk in _split(await _v6_card(pool, said=arg, again=True, deep=True)):
         await m.answer(chunk)
+
+
+@dp.message(Command("picks", "칠표"))
+async def cmd_picks(m: Message) -> None:
+    """🔴🔴 **칠 표**(후속 지시 2026-10-14g §5) — 오늘 슬레이트의 단폴·다폴.
+
+    🔴 고르는 식은 `core/picks.of` **하나다**(사본 금지) — 슬레이트가 적어 둔
+       **재료 줄**로 다시 고른다. 그래서 문턱을 고치면 이 명령도 따라온다.
+    🔴 공격 판정(살아남음·약해짐·무너짐)은 **표에 적기만** 한다 — 실효 측정에서
+       공격 계층이 문턱을 못 이겼다(`config/attack_vars.yaml` 의 `layer`).
+    ⚠️ 적어 둔 표가 없으면 **그 사실을 말한다**(지어내지 않는다).
+    """
+    import yaml
+
+    from app.core import picks as _pk
+    box = Path("var/picks")
+    rows = sorted(box.glob("*.yaml")) if box.is_dir() else []
+    if not rows:
+        await m.answer("🔴 **칠 표가 없다** — 슬레이트를 돌린 적이 없다"
+                       "(`tools/slate_queue.py --run`)")
+        return
+    said = yaml.safe_load(rows[-1].read_text(encoding="utf-8")) or {}
+    got = _pk.of([dict(x) for x in (said.get("rows") or [])])
+    await m.answer(f"🗓 **{rows[-1].stem}** · 경기 {said.get('n_matches')}개\n"
+                   + _pk.said_of(got))
 
 
 @dp.message(Command("debug", "디버그"))
