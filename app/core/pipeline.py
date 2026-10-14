@@ -1016,15 +1016,95 @@ def _doubt_of(ref: MatchRef, facts, layers: dict, edge: dict, machine):
     #     **안 들어간다**(계약: 시장 확률이 등급 계산에 직접 들어가는 것 금지) —
     #     `core/doubt.judge` 는 그것을 **글자에만** 쓴다(계약 DB5 가 센다).
     #  ⚠️ 보드는 사다리가 **예측 시점에** 모은 것이다 — 그것이 개시 배당 자리다.
-    said = _db.judge(rows, bad=[], machine_hold=machine.hold(),
-                     prices=_board_win_prices(layers))
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **유효 불리 의심을 센다** — H1(순위 동기) · J1(시장 괴리)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 지시 2026-10-14 — *"순위 및 승률을 가지고 와서 의심 단계를 만들어봐라"*.
+    #  🔴 전까지는 `bad=[]` 로 박혀 있었다 — 즉 **묶음 0 칸만** 읽었다. 10-14
+    #     슬레이트 10경기가 전부 `유효 불리 의심 없다` 로 지나갔다.
+    #  🔴 H1 은 `core/standings`(적합과 같은 원천 · 경기일 앞까지만)가 센다.
+    #  ⚠️ J1 은 **보드가 있어야** 센다 — 없으면 ⬜ 로 적고 묶음에 넣지 않는다.
+    prices = _board_win_prices(layers)
+    bad, said_bad = _bad_doubts(ref, facts, rows, prices)
+    said = _db.judge(rows, bad=bad, machine_hold=machine.hold(),
+                     prices=prices)
     if not rows:
         said.why += ("\n    ⬜ **판정할 줄이 없다** — "
                      + ("보드 줄이 비었다(§1 수집 실패)" if not want
                         else "격자가 없다"))
-    said.why += ("\n    ⚠️ 유효 불리 의심을 **카드에서 세는 통로가 아직 없다** — "
-                 "지금은 묶음 0 칸으로만 본다(백필 판정표는 H1·J1 을 센다)")
+    said.why += "\n" + said_bad
     return said
+
+
+def _bad_doubts(ref: MatchRef, facts, lines: dict,
+                prices: list) -> tuple[list, str]:
+    """🔴🔴 **그 경기에서 불리로 걸린 유효 의심**과 그 근거 글자.
+
+    🔴 유효 목록은 `config/doubt_vars.yaml` 의 `의심.유효` 다 — 코드에 박지 않는다.
+    🔴 못 쟨 것은 **이름으로** 남긴다(#3 조용한 0 금지) — "걸리지 않았다"와
+       "셀 수 없었다"를 가른다.
+    """
+    from app.core import competition as _cp3
+    from app.core import doubt as _db2
+    from app.core import standings as _st
+    want = _db2.valid()
+    bad: list[str] = []
+    rows: list[str] = []
+    p3 = [lines.get("홈 승"), lines.get("무"), lines.get("원정 승")]
+    pick = ""
+    if all(x is not None for x in p3):
+        p3 = [float(x) for x in p3]
+        top = max(range(3), key=lambda i: p3[i])
+        pick = "home" if top == 0 else ("away" if top == 2 else "")
+    else:
+        p3 = []
+    day = str(getattr(ref, "starts_at", "") or getattr(ref, "day", "") or "")[:10]
+    key = _cp3.key_of(competition=str(getattr(ref, "competition", "") or ""),
+                      league_id=getattr(facts, "league_id", "") or None)[0]
+    if "H1" in want:
+        got = _st.h1_of(home=str(getattr(ref, "home", "") or ""),
+                        away=str(getattr(ref, "away", "") or ""),
+                        pick=pick, day=day, league=str(key or ""))
+        if got.bad():
+            bad.append("H1")
+        rows.append(f"    `H1` 순위 동기 — {got.why}")
+        rows += [f"        {x}" for x in got.rows]
+    if "J1" in want:
+        if not prices:
+            rows.append("    `J1` 시장 괴리 — ⬜ **보드가 없다** — 셀 수 없다"
+                        "(걸리지 않은 것이 아니다)")
+        else:
+            said_j1, flag = _j1_of(prices, p3, pick)
+            if flag:
+                bad.append("J1")
+            rows.append(f"    `J1` 시장 괴리 — {said_j1}")
+    head = (f"🧪 **유효 불리 의심 {len(bad)}개**"
+            + (f" — {', '.join(bad)}" if bad else " — 없다")
+            + f" (유효 목록 {', '.join(want) or '⬜ 비었다'})")
+    return bad, "\n".join([head] + rows)
+
+
+def _j1_of(prices: list, ours: list, pick: str) -> tuple[str, bool]:
+    """🔴 J1 — 마진 제거한 시장과 봇이 **10%p 이상** 반대면 불리.
+
+    ⚠️ 판정에 쓰는 것은 **괴리 깃발**이고 시장 확률 자체가 등급 계산에 들어가는
+       것은 아니다(계약: 세 열 규칙은 등급을 내리기만 한다).
+    """
+    from app.core import devig
+    if len(prices) != 3 or len(ours) != 3 or pick not in ("home", "away"):
+        return "⬜ 봇이 **무**를 앞세웠거나 보드 셋이 모자라다", False
+    got = list(devig.shin(prices) or [])
+    if len(got) != 3:
+        return ("⬜ 마진을 못 뺐다 — `devig.shin` 이 셋을 안 돌려줬다"
+                f"(배당 {prices})"), False
+    i = 0 if pick == "home" else 2
+    d = float(ours[i]) - float(got[i])
+    bad = d <= -0.10
+    return (f"{'🔴 **불리**' if bad else '✅ 중립'} — 봇 {ours[i]*100:.1f}% ↔ "
+            f"시장 {got[i]*100:.1f}% (차 {d*100:+.1f}%p · 문턱 −10%p)"
+            + (" → 과거 이런 경기에서 봇 적중 **30.3%**(안 걸린 경기 51.0%)"
+               if bad else ""), bad)
 
 
 def _board_win_prices(layers: dict) -> list:

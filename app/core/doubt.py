@@ -112,6 +112,23 @@ def plates() -> dict:
     return out
 
 
+def valid() -> list[str]:
+    """🔴🔴 **유효 불리 의심 목록** — `config/doubt_vars.yaml` 의 `의심.유효`.
+
+    > 지시 2026-10-14i §3-1 — **측정된 것만** 쓴다. (가)만 유효하고 (나)·(다)는
+    > 제거한다. 등급은 `tools/fit_doubt.py` 가 적는다.
+
+    🔴 코드에 이름을 박지 않는다 — 측정이 변수를 올리거나 내리면 그 파일만 바뀐다.
+    ⚠️ 비면 **빈 목록**이다(묶음 0) — 그 사실은 부르는 쪽이 카드에 적는다.
+    """
+    import yaml
+    path = ROOT / "config/doubt_vars.yaml"
+    if not path.is_file():
+        return []
+    got = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    return [str(x) for x in (dict(got.get("의심") or {}).get("유효") or [])]
+
+
 def bucket_of(n_bad: int) -> str:
     """🔴 §3-3 — 유효 불리 의심 개수를 **0·1·2+** 로 묶는다."""
     got = int(n_bad or 0)
