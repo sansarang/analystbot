@@ -614,20 +614,17 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     layers["machine"] = said_mc.why
     layers["machine_hold"] = said_mc.hold()
     st.note(f"[1단] {said_mc.why[:200]}")
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **2단 의심 판정**(의심 검증 v2 §4) — 확신 · 보류 · 역배
-    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **2단 의심은 걷혔다**(지시 2026-10-14 *"의심 단계 삭제"*)
     #
-    #  > 의심 후 확률 = **그 경기 칸의 실측**이다(보정표 `data/doubt_cal`).
-    #  🔴 **확률을 고치지 않는다**(계약 DB4) — 봇 확률 **옆에** 적는다.
-    #  🔴 보드에 있는 줄만 본다(§1) — 칠 표 후보가 그 목록 안에서만 나온다.
-    said_db = _doubt_of(ref, facts, layers, edge, said_mc)
-    layers["doubt"] = said_db.why
-    layers["doubt_picks"] = {
-        r.name: {"판정": r.verdict, "의심후": r.p_after, "하한": r.lo,
-                 "상한": r.hi, "경기수": r.n, "칸": r.cell}
-        for r in said_db.picks()}
-    st.note(f"[2단] {said_db.why[:200]}")
+    #  > 재서 나온 셋 — ① 역배 줄은 같은 격자를 다시 더한 **숫자놀이**였다
+    #    ② J1(시장 괴리)은 **시장을 베끼는 것**이었다(엇갈릴 때마다 시장이 이겼다)
+    #    ③ H1(순위 동기)은 **컵에서 쟨 적이 없다**(디비전을 넘나들어 자가 다르다).
+    #  🔴 즉 **봇 자기 것으로 검증된 의심이 0개**였다 — 44개 중 42개가 탈락하고
+    #     남은 둘 중 하나는 시장, 하나는 쓸 데가 없었다.
+    #  🔴 판정은 **봇 확률**로 돌아간다(확신 구간 + 문턱 · `core/picks`).
+    #  🔴 보정표·측정 기록은 `docs/fable/archive/doubt_v2/` 에 남겼다 —
+    #     **핸디·언오버를 칠 표에서 빼는 규칙은 그대로 둔다**(근거는 보정표가
+    #     아니라 AUC 0.511 실측이다 · `archive/doubt_v2/ah_cause.log`).
 
     said = s7_judge.run(ref, facts, variables, state=st, board=got_board,
                         board_source=board_src, now=now,
@@ -834,6 +831,57 @@ def _upset_of(ref: MatchRef, facts, layers: dict, edge: dict, *, infoq):
     got = _up.score_of(said, model=dict(model), adopted=set())
     got.why = f"{got.why} · 판 {why}"
     return got
+def _gate_of(ref: MatchRef, facts, turn: dict, *, state: RunState):
+    """🔴🔴 ③ — **검문을 돌린다**. 신원표를 만들고 id 로만 견준다.
+
+    🔴 `꺼진 무기` 는 이 자리에서 **아직 없다**(축2 가 상성 안에서 만든다) — 그
+       목록은 **결장·명단 제외에서 파생**되므로 그 둘이 깨끗하면 함께 깨끗하다.
+       ⚠️ 그 사실을 여기 적어 둔다(없는 검사를 했다고 말하지 않는다 · #3).
+    """
+    from app import rules as _rules
+    from app.core import lineupgate as _gate
+    from app.core import playerid as _pid
+    ko = dict(_rules.names_ko().get("players") or {})
+    ids: dict = {}
+    pos: dict = {}
+    boxes: dict = {}
+    said_rows: list[str] = []
+    for side in ("home", "away"):
+        key = str(getattr(ref, side, "") or "")
+        box = _pid.build(rows=_id_rows(facts, key), ko=ko)
+        one = (facts.xi or {}).get(key)
+        rows = list(getattr(one, "lineup", None) or [])
+        got_ids: list[str] = []
+        got_pos: list[str] = []
+        for p in rows:
+            ident, why = _pid.resolve(
+                box, said=str(getattr(p, "name", "") or ""),
+                number=getattr(p, "number", None))
+            got_ids.append(ident)
+            if str(getattr(p, "pos", "") or "").upper() == "GK":
+                got_pos.append("GK")
+            said_rows.append(f"{side} `{getattr(p, 'name', '')}`"
+                             f"({getattr(p, 'number', None)}) → "
+                             f"`{ident or '🔴 못 풀었다'}` · {why}")
+        # 🔴 번호가 없어 GK 를 못 읽었으면 **신원표의 포지션**으로 한 번 더 본다
+        if not got_pos:
+            got_pos = ["GK" for ident in got_ids
+                       if ident and str(box[ident].pos or "").upper() == "GK"]
+        ids[side] = got_ids
+        pos[side] = got_pos
+        # 🔴 "누구"는 **사람이 읽는 이름**으로 적는다(`playerid.said_of`)
+        state.note(f"신원표({side}) — "
+                   + " · ".join(_pid.said_of(box, x) for x in got_ids if x))
+        # ── (c) 의 목록들 — **id 로** 담는다
+        miss = [_pid.resolve(box, said=getattr(m, "name", ""))[0]
+                for m in ((facts.missing or {}).get(key) or [])]
+        offs = [_pid.resolve(box, said=str(nm))[0]
+                for nm in (dict(turn.get(side) or {}).get("off_squad") or [])]
+        boxes[side] = {"결장 명단": [x for x in miss if x],
+                       "없는 선수(명단 제외)": [x for x in offs if x]}
+    state.note("신원 풀이 — " + " / ".join(said_rows[:24]))
+    return _gate.check(ids=ids, pos=pos,
+                       clash=_gate.clash_of(xi_ids=ids, boxes=boxes))
 
 
 def _upset_apply(said, got, *, ref: MatchRef, layers: dict):
@@ -906,7 +954,6 @@ def _infoq_of(ref: MatchRef, facts, layers: dict, edge: dict):
         "context": said_ctx,
         "bench_ids": said_bench,
     })
-
 
 
 def _machine_of(ref: MatchRef, facts, layers: dict, prob, *,
@@ -993,194 +1040,6 @@ def _machine_of(ref: MatchRef, facts, layers: dict, prob, *,
                      kind=(_cp.kind_require(key)[0] if key else ""))
 
 
-def _doubt_of(ref: MatchRef, facts, layers: dict, edge: dict, machine):
-    """🔴🔴 §4 2단 — **보드에 있는 줄**을 보정표로 다시 재서 판정한다.
-
-    🔴 줄 이름·확률을 세는 곳은 `core/picks.lines_of` 하나다(사본 금지) — 보드
-       줄 이름(`board_lines`)과 **같은 꼴**이어야 맞물린다.
-    🔴 유효 불리 의심은 `config/doubt_vars.yaml` 의 `의심.유효` 중 **그 경기에서
-       불리로 걸린 것**이다. ⚠️ 그 상태를 카드 실행에서 세는 통로는 아직 없다 —
-       지금은 **빈 목록**(묶음 0)이고 그 사실을 사유에 적는다(#3 조용한 0 금지).
-    """
-    from app.core import doubt as _db
-    from app.core import picks as _pk3
-    want = [str(x) for x in (dict(layers or {}).get("board_lines") or [])]
-    got_lines = _pk3.lines_of(_pk3.grid_of(dict(edge or {})))
-    rows = {k: v for k, v in got_lines.items()
-            if v is not None and (not want or k in want)}
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **배당 계기판**(후속 지시 2026-10-14 3번) — **판정 미사용 · 기록만**
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  🔴 보드의 **승무패 셋**을 마진 제거해 우리 수 옆에 적는다. 이 수는 판정에
-    #     **안 들어간다**(계약: 시장 확률이 등급 계산에 직접 들어가는 것 금지) —
-    #     `core/doubt.judge` 는 그것을 **글자에만** 쓴다(계약 DB5 가 센다).
-    #  ⚠️ 보드는 사다리가 **예측 시점에** 모은 것이다 — 그것이 개시 배당 자리다.
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **유효 불리 의심을 센다** — H1(순위 동기) · J1(시장 괴리)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  > 지시 2026-10-14 — *"순위 및 승률을 가지고 와서 의심 단계를 만들어봐라"*.
-    #  🔴 전까지는 `bad=[]` 로 박혀 있었다 — 즉 **묶음 0 칸만** 읽었다. 10-14
-    #     슬레이트 10경기가 전부 `유효 불리 의심 없다` 로 지나갔다.
-    #  🔴 H1 은 `core/standings`(적합과 같은 원천 · 경기일 앞까지만)가 센다.
-    #  ⚠️ J1 은 **보드가 있어야** 센다 — 없으면 ⬜ 로 적고 묶음에 넣지 않는다.
-    prices = _board_win_prices(layers)
-    bad, said_bad = _bad_doubts(ref, facts, rows, prices)
-    said = _db.judge(rows, bad=bad, machine_hold=machine.hold(),
-                     prices=prices)
-    if not rows:
-        said.why += ("\n    ⬜ **판정할 줄이 없다** — "
-                     + ("보드 줄이 비었다(§1 수집 실패)" if not want
-                        else "격자가 없다"))
-    said.why += "\n" + said_bad
-    return said
-
-
-def _bad_doubts(ref: MatchRef, facts, lines: dict,
-                prices: list) -> tuple[list, str]:
-    """🔴🔴 **그 경기에서 불리로 걸린 유효 의심**과 그 근거 글자.
-
-    🔴 유효 목록은 `config/doubt_vars.yaml` 의 `의심.유효` 다 — 코드에 박지 않는다.
-    🔴 못 쟨 것은 **이름으로** 남긴다(#3 조용한 0 금지) — "걸리지 않았다"와
-       "셀 수 없었다"를 가른다.
-    """
-    from app.core import competition as _cp3
-    from app.core import doubt as _db2
-    from app.core import standings as _st
-    want = _db2.valid()
-    bad: list[str] = []
-    rows: list[str] = []
-    p3 = [lines.get("홈 승"), lines.get("무"), lines.get("원정 승")]
-    pick = ""
-    if all(x is not None for x in p3):
-        p3 = [float(x) for x in p3]
-        top = max(range(3), key=lambda i: p3[i])
-        pick = "home" if top == 0 else ("away" if top == 2 else "")
-    else:
-        p3 = []
-    day = str(getattr(ref, "starts_at", "") or getattr(ref, "day", "") or "")[:10]
-    key = _cp3.key_of(competition=str(getattr(ref, "competition", "") or ""),
-                      league_id=getattr(facts, "league_id", "") or None)[0]
-    if "H1" in want:
-        got = _st.h1_of(home=str(getattr(ref, "home", "") or ""),
-                        away=str(getattr(ref, "away", "") or ""),
-                        pick=pick, day=day, league=str(key or ""))
-        if got.bad():
-            bad.append("H1")
-        rows.append(f"    `H1` 순위 동기 — {got.why}")
-        rows += [f"        {x}" for x in got.rows]
-    if "J1" in want:
-        if not prices:
-            rows.append("    `J1` 시장 괴리 — ⬜ **보드가 없다** — 셀 수 없다"
-                        "(걸리지 않은 것이 아니다)")
-        else:
-            said_j1, flag = _j1_of(prices, p3, pick)
-            if flag:
-                bad.append("J1")
-            rows.append(f"    `J1` 시장 괴리 — {said_j1}")
-    head = (f"🧪 **유효 불리 의심 {len(bad)}개**"
-            + (f" — {', '.join(bad)}" if bad else " — 없다")
-            + f" (유효 목록 {', '.join(want) or '⬜ 비었다'})")
-    return bad, "\n".join([head] + rows)
-
-
-def _j1_of(prices: list, ours: list, pick: str) -> tuple[str, bool]:
-    """🔴 J1 — 마진 제거한 시장과 봇이 **10%p 이상** 반대면 불리.
-
-    ⚠️ 판정에 쓰는 것은 **괴리 깃발**이고 시장 확률 자체가 등급 계산에 들어가는
-       것은 아니다(계약: 세 열 규칙은 등급을 내리기만 한다).
-    """
-    from app.core import devig
-    if len(prices) != 3 or len(ours) != 3 or pick not in ("home", "away"):
-        return "⬜ 봇이 **무**를 앞세웠거나 보드 셋이 모자라다", False
-    got = list(devig.shin(prices) or [])
-    if len(got) != 3:
-        return ("⬜ 마진을 못 뺐다 — `devig.shin` 이 셋을 안 돌려줬다"
-                f"(배당 {prices})"), False
-    i = 0 if pick == "home" else 2
-    d = float(ours[i]) - float(got[i])
-    bad = d <= -0.10
-    return (f"{'🔴 **불리**' if bad else '✅ 중립'} — 봇 {ours[i]*100:.1f}% ↔ "
-            f"시장 {got[i]*100:.1f}% (차 {d*100:+.1f}%p · 문턱 −10%p)"
-            + (" → 과거 이런 경기에서 봇 적중 **30.3%**(안 걸린 경기 51.0%)"
-               if bad else ""), bad)
-
-
-def _board_win_prices(layers: dict) -> list:
-    """🔴 보드의 **승무패 셋 배당**(홈·무·원정). 하나라도 없으면 **빈 목록**.
-
-    🔴 계기판 전용이다(판정 미사용) — 마진을 빼려면 **셋이 다** 있어야 한다
-       (`core/devig` 의 그 규칙).
-    ⚠️ 보드 블록 글자를 되파싱하지 않는다 — `layers["board_rows"]` 가 줄 객체를
-       들고 있을 때만 쓴다(없으면 빈 목록이고 계기판이 ⬜ 로 적힌다).
-    """
-    rows = list(dict(layers or {}).get("board_rows") or [])
-    out: list = []
-    for side in ("home", "draw", "away"):
-        got = [float(getattr(r, "price", 0) or 0) for r in rows
-               if str(getattr(r, "market", "")) in ("win", "draw")
-               and str(getattr(r, "side", "") or "") == side
-               and getattr(r, "price", None)]
-        if not got:
-            return []
-        out.append(got[0])
-    return out
-
-
-def _gate_of(ref: MatchRef, facts, turn: dict, *, state: RunState):
-    """🔴🔴 ③ — **검문을 돌린다**. 신원표를 만들고 id 로만 견준다.
-
-    🔴 `꺼진 무기` 는 이 자리에서 **아직 없다**(축2 가 상성 안에서 만든다) — 그
-       목록은 **결장·명단 제외에서 파생**되므로 그 둘이 깨끗하면 함께 깨끗하다.
-       ⚠️ 그 사실을 여기 적어 둔다(없는 검사를 했다고 말하지 않는다 · #3).
-    """
-    from app import rules as _rules
-    from app.core import lineupgate as _gate
-    from app.core import playerid as _pid
-    ko = dict(_rules.names_ko().get("players") or {})
-    ids: dict = {}
-    pos: dict = {}
-    boxes: dict = {}
-    said_rows: list[str] = []
-    for side in ("home", "away"):
-        key = str(getattr(ref, side, "") or "")
-        box = _pid.build(rows=_id_rows(facts, key), ko=ko)
-        one = (facts.xi or {}).get(key)
-        rows = list(getattr(one, "lineup", None) or [])
-        got_ids: list[str] = []
-        got_pos: list[str] = []
-        for p in rows:
-            ident, why = _pid.resolve(
-                box, said=str(getattr(p, "name", "") or ""),
-                number=getattr(p, "number", None))
-            got_ids.append(ident)
-            if str(getattr(p, "pos", "") or "").upper() == "GK":
-                got_pos.append("GK")
-            said_rows.append(f"{side} `{getattr(p, 'name', '')}`"
-                             f"({getattr(p, 'number', None)}) → "
-                             f"`{ident or '🔴 못 풀었다'}` · {why}")
-        # 🔴 번호가 없어 GK 를 못 읽었으면 **신원표의 포지션**으로 한 번 더 본다
-        if not got_pos:
-            got_pos = ["GK" for ident in got_ids
-                       if ident and str(box[ident].pos or "").upper() == "GK"]
-        ids[side] = got_ids
-        pos[side] = got_pos
-        # 🔴 "누구"는 **사람이 읽는 이름**으로 적는다(`playerid.said_of`)
-        state.note(f"신원표({side}) — "
-                   + " · ".join(_pid.said_of(box, x) for x in got_ids if x))
-        # ── (c) 의 목록들 — **id 로** 담는다
-        miss = [_pid.resolve(box, said=getattr(m, "name", ""))[0]
-                for m in ((facts.missing or {}).get(key) or [])]
-        offs = [_pid.resolve(box, said=str(nm))[0]
-                for nm in (dict(turn.get(side) or {}).get("off_squad") or [])]
-        boxes[side] = {"결장 명단": [x for x in miss if x],
-                       "없는 선수(명단 제외)": [x for x in offs if x]}
-    state.note("신원 풀이 — " + " / ".join(said_rows[:24]))
-    return _gate.check(ids=ids, pos=pos,
-                       clash=_gate.clash_of(xi_ids=ids, boxes=boxes))
-
-
 def _gate_card(ref: MatchRef, facts, variables: list, gate, *,
                state: RunState, docs: list, before: Card | None):
     """🔴🔴 ③ — **"라인업 신원 미확정" 카드**. 상성·확률 칸을 **비운 채** 낸다.
@@ -1204,16 +1063,7 @@ def _gate_card(ref: MatchRef, facts, variables: list, gate, *,
               funnel=state.counted_box() if hasattr(state, "counted_box")
               else _C(match=ref, facts=facts).funnel,
               machine=said_mc.why, machine_hold=True,
-              doubt=_mc_doubt_held(),
               conclusion=gate.card(), stance="🔴 확률 미산출(신원 검문)")
-
-
-def _mc_doubt_held() -> str:
-    """🔴 퇴로 카드의 2단 줄 — **1단이 보류라 줄이 없다**(§2·§4)."""
-    from app.core import doubt as _db
-    return _db.said_of(_db.judge({}, machine_hold=True))
-
-
 def _moved(before: Card, layers: dict, mr: object) -> list[str]:
     """🔴🔴 **F1 — 바뀐 것: 상성 축(전→후)·확률(전→후)·등급(전→후)**.
 
@@ -1305,8 +1155,6 @@ def card_of(ref: MatchRef, facts: Facts, variables: list[Variable],
         board_feed=str(box.get("board_feed") or ""),
         machine=str(box.get("machine") or ""),
         machine_hold=bool(box.get("machine_hold")),
-        doubt=str(box.get("doubt") or ""),
-        doubt_picks=dict(box.get("doubt_picks") or {}),
         our_prob=box.get("ours"),
         compare=str(box.get("compare") or ""),
         compare_lines=[str(x) for x in (box.get("compare_lines") or [])],

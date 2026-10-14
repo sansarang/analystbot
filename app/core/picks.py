@@ -17,10 +17,10 @@ from dataclasses import dataclass, field
 
 #: 🔴 문턱 곡선(6,696경기 · 533일)에서 고른 수 — 단폴 0.88 → 백필 94.7%
 #:
-#:  ⚠️ 이 둘은 **봇 원확률 자**다 — 2단 판정이 붙은 줄은 `config/doubt_judge.yaml`
-#:     의 **의심 후 확률 자**(0.58)로 간다. 두 자를 겹쳐 걸면 아무것도 안 나온다.
-#:  🔴 그리고 **핸디·총점 줄은 이 자를 쓰지 못한다**(지시 2026-10-14 3번) —
-#:     봇 핸디 확률의 AUC 가 0.511 이라 줄을 못 세운다(`tools/ah_cause.py`).
+#:  🔴 **핸디·총점 줄은 이 자를 쓰지 못한다**(지시 2026-10-14 3번) — 봇 핸디
+#:     확률의 AUC 가 0.511 이라 줄을 못 세운다(`tools/ah_cause.py`).
+#:     ⚠️ 이 잠금은 **의심 단계가 걷힌 뒤에도 유지한다** — 근거는 보정표가
+#:        아니라 그 실측이다(`docs/fable/archive/doubt_v2/ah_cause.log`).
 CUT_SINGLE = 0.88
 #: 🔴 다리 0.90 → 2폴 92.1% · 3폴 87.8%
 CUT_LEG = 0.90
@@ -198,42 +198,6 @@ def best_of(rows: list[dict]) -> tuple[list[Leg], list[tuple]]:
         # 🔴 보드가 없으면 **어느 길로 가든** 그 사실을 적는다(지시 "보드없이 진행")
         if not want:
             no_board_rows.append(str(one.get("match") or ""))
-        # ══════════════════════════════════════════════════════════════
-        # 🔴🔴 **2단 판정이 있으면 확신·역배만 받는다**(의심 검증 v2 §4)
-        # ══════════════════════════════════════════════════════════════
-        #
-        #  🔴 `doubt_picks` 는 그 경기에서 **확신·역배로 살아남은 줄**이다.
-        #     ⚠️ 칸이 **없거나 보류**인 줄은 거기 안 들어 있다 → 후보도 아니다.
-        #  ⚠️ 그 칸이 **비어 있으면**(보정표가 아직 없거나 2단이 안 돌았으면)
-        #     옛 길대로 **문턱만** 쓴다 — 판정을 못 했다고 표를 비우지 않는다.
-        said_db = dict(one.get("doubt_picks") or {})
-        # ══════════════════════════════════════════════════════════════
-        # 🔴🔴 **2단이 있으면 그 자를 쓴다**(의심 검증 v2 §4)
-        # ══════════════════════════════════════════════════════════════
-        #
-        #  ⚠️ 두 자를 겹쳐 쓰면 **아무것도 안 나온다** — 확신 문턱은 **의심 후
-        #     확률 자**(0.58)에 있고 단폴 문턱(0.88)은 **봇 원확률 자**에 있다.
-        #     승무패 `50%+` 칸은 원확률 52% 라 0.88 에 걸려 전부 떨어진다.
-        #  🔴 그래서 2단 판정이 있는 줄은 **그 판정으로 통과**하고(문턱은 이미
-        #     `core/doubt` 가 걸었다) `p` 에 **의심 후 확률**을 담는다.
-        if said_db:
-            rows_db = [(str(k), dict(v)) for k, v in said_db.items()
-                       if dict(v).get("의심후") is not None
-                       and (not want or str(k) in want)]
-            if not rows_db:
-                continue
-            line, box = max(rows_db,
-                            key=lambda kv: float(kv[1]["의심후"]))
-            out.append(Leg(match=str(one.get("match") or ""),
-                           league=str(one.get("league") or ""),
-                           kickoff=str(one.get("kickoff") or ""),
-                           line=line, p=float(box["의심후"]),
-                           after=float(box["의심후"]),
-                           cell=str(box.get("칸") or ""),
-                           side=side_of(line),
-                           verdict=str(box.get("판정") or ""),
-                           board=str(one.get("board") or "")))
-            continue
         got = [(str(k), float(v)) for k, v in
                dict(one.get("lines") or {}).items()
                if v is not None and (not want or str(k) in want)]
@@ -259,8 +223,7 @@ def best_of(rows: list[dict]) -> tuple[list[Leg], list[tuple]]:
         #     커버율은 **50.0%**(1,321줄)이고 봇 확률의 **AUC 가 0.511** 이다 —
         #     **줄을 세우지 못한다**(언오버는 0.496). 보정표에서도 70%+ 칸이
         #     실측 **51.0%** 였다. 🔴 그 수로 문턱을 넘기면 **거짓 확신**이다.
-        #  🔴 그래서 핸디·총점 줄은 **의심 후 확률로만** 간다(위 `said_db` 길).
-        #     칸이 없으면 **후보가 아니다**.
+        #  🔴 그래서 핸디·총점 줄은 **후보가 아니다** — 표시만으로 남긴다.
         # 🔴 후보가 못 되는 핸디·언오버는 **표시만** 으로 남긴다(지시 2번) —
         #    조용히 버리면 *"그 줄을 안 봤다"* 와 구별되지 않는다(#3).
         shown += [(str(one.get("match") or ""), x[0], x[1]) for x in got
@@ -283,21 +246,8 @@ def of(rows: list[dict]) -> Out:
     """🔴🔴 **칠 표** — `(단폴, 다폴)`. 아무것도 없으면 그 사실을 적는다."""
     legs, shown, no_board_rows = best_of(rows)
     # 🔴🔴 **자가 둘이다** — 2단 판정이 붙은 줄은 그 판정이 문턱을 이미 걸었고,
-    #    붙지 않은 줄은 **봇 원확률 문턱**(`CUT_SINGLE`·`CUT_LEG`)을 쓴다.
-    #    ⚠️ 한 자로 뭉개면 한쪽이 통째로 사라진다(그 까닭은 `best_of` 머리글).
-    singles = [x for x in legs
-               if (x.after is not None or x.p >= CUT_SINGLE)]
-    # 🔴 **역배는 다리로 쓰지 않는다**(§7 — 표시만이다)
-    from app.core import doubt as _db2
-    # 🔴🔴 **다리 문턱도 자가 둘이다** — 2단 줄은 `config/doubt_judge.yaml` 의
-    #    `다리`(의심 후 자 · 0.75)이고 나머지는 `CUT_LEG`(봇 원확률 자 · 0.90)다.
-    #    ⚠️ 곡선 실측(홀드아웃 2,865경기): 다리 0.58 → 2폴 54.8% ·
-    #       0.63 → 65.2% · **0.75 → 87.0%**(23묶음 · 3폴 70.0%).
-    leg_db = _db2.leg_cut()
-    pool = [x for x in legs
-            if ((x.p >= leg_db if (x.after is not None and leg_db is not None)
-                 else (x.after is not None or x.p >= CUT_LEG)))
-            and x.verdict != _db2.FADE]
+    singles = [x for x in legs if x.p >= CUT_SINGLE]
+    pool = [x for x in legs if x.p >= CUT_LEG]
     parlays: list[list[Leg]] = []
     for n in LEGS:
         got = _pick_legs(pool, n)
@@ -318,11 +268,7 @@ def of(rows: list[dict]) -> Out:
               f"({' · '.join(no_board[:4])})" if no_board else "")
            + (f" · 🔴 **1단 기계 보류로 뺀 경기 {len(held)}개**"
               f"({' · '.join(held[:4])})" if held else "")
-           # 🔴 §4 — 2단 판정을 **쓴 경기**와 **못 쓴 경기**를 가른다(#3)
-           + (f" · 🧪 2단 판정을 쓴 경기 {n_db}개"
-              if (n_db := sum(1 for x in (rows or [])
-                              if x.get("doubt_picks"))) else
-              " · ⚠️ **2단 판정 칸이 비었다 — 문턱만으로 골랐다**"))
+)
     if not singles:
         why += " · 🔴 **오늘 단폴 없음**"
     if not parlays:
@@ -360,30 +306,22 @@ def _pick_legs(pool: list[Leg], n: int) -> list[Leg]:
 
 
 def said_of(out: Out) -> str:
-    """🔴🔴 슬레이트 끝에 찍는 글(§7) — **확신 단폴 · 역배 단폴(표시) · 다폴**.
+    """🔴🔴 슬레이트 끝에 찍는 글 — **단폴 · 다폴**.
 
-    🔴 역배는 **표시만** 한다(§7 의 그 글자) — 확신과 한 줄에 섞지 않는다.
+    🔴 **의심 단계는 걷혔다**(지시 2026-10-14) — 확신/보류/역배 등급도 함께
+       사라졌다. 문턱은 **봇 원확률 자** 하나다(`CUT_SINGLE`·`CUT_LEG`).
     """
-    from app.core import doubt as _db
-    ok, said_live = _db.live()
-    rows = [f"🎯 **칠 표**(§4 판정 · 역배는 표시만) — {out.why}"]
-    if not ok:
-        # 🔴 머리에 **먼저** 찍는다 — 표를 읽는 사람이 제일 먼저 볼 줄이다
-        rows.insert(0, said_live)
-    sure = [x for x in out.singles if x.verdict != _db.FADE]
-    fade = [x for x in out.singles if x.verdict == _db.FADE]
-    for one in sure:
+    rows = [f"🎯 **칠 표** — {out.why}"]
+    for one in out.singles:
         rows.append(f"- 단폴 — {one.said()}")
-    for one in fade:
-        rows.append(f"- 🔄 **역배 단폴(표시만)** — {one.said()}")
     for got in out.parlays:
         rows.append(f"- {len(got)}폴 — " + " + ".join(x.said() for x in got))
-    # 🔴🔴 **표시만**(지시 2026-10-14 2번) — 봇 원확률로도 의심 후 칸으로도
-    #    후보가 못 된 핸디·언오버 줄. 조용히 버리지 않는다(#3).
+    # 🔴🔴 **표시만**(지시 2026-10-14 2번) — 봇 원확률을 판정에 쓸 수 없는
+    #    핸디·언오버 줄(AUC 0.511). 조용히 버리지 않는다(#3).
     if out.shown:
         top = sorted(out.shown, key=lambda x: -float(x[2]))[:6]
-        rows.append("- 📋 **표시만**(핸디·언오버 — 봇 원확률은 판정에 안 쓰고 "
-                    f"의심 후 칸도 안 섰다 · {len(out.shown)}줄): "
+        rows.append("- 📋 **표시만**(핸디·언오버 — 봇 원확률은 판정에 안 쓴다 · "
+                    f"{len(out.shown)}줄): "
                     + " · ".join(f"{m} {ln} {100 * p:.0f}%"
                                  for m, ln, p in top))
     return "\n".join(rows)

@@ -638,6 +638,13 @@ TOOL_ONLY: dict[str, str] = {
     # 🔴🔴 **§0 얼린 옛 경로**(비교 시험 지시서 2026-10-12) — **비교 도구만**
     #    부른다. ⚠️ 운영이 부르면 그것은 *"옛 경로로 돌아간 것"* 이다(§7 판정 전).
     "app.core.legacy.old_engine.sides_move": "tools/compare_paths.py",
+    # 🔴🔴 **의심 단계가 걷힌 뒤**(지시 2026-10-14 *"의심 단계 삭제"*) — 격자 →
+    #    줄 이름을 세는 둘은 운영 `pipeline` 이 2단에서 불렀다. 2단이 사라져
+    #    지금은 **슬레이트 도구만** 부른다.
+    #    ⚠️ 이름 꼴을 여기서 다시 짜지 않는다 — 보드 줄(`board_lines`)과 맞물려야
+    #       하므로 원본은 `core/picks` 하나다(사본 금지).
+    "app.core.picks.grid_of": "tools/slate_queue.py",
+    "app.core.picks.lines_of": "tools/slate_queue.py",
     # 🔴 모듈째 — `compare_paths` 가 `old_engine` 을 부른다(위 설명)
     # ⚠️ 나머지 공개 함수(`run`·`league_mean`·`home_mul` …)는 **그 파일 안에서**
     #    쓰인다 — 얼린 코드라 고아 검사에서 빠질 수 없다. 🔴 그래서 모듈째

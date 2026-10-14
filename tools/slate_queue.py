@@ -223,7 +223,6 @@ def pick_row(name: str, one: dict, card) -> dict | None:
             "machine_hold": bool(getattr(card, "machine_hold", False)),
             "machine": str(getattr(card, "machine", "") or ""),
             # 🔴🔴 **2단 판정**(의심 검증 v2 §4) — 칠 표는 **확신·역배만** 받는다
-            "doubt_picks": dict(getattr(card, "doubt_picks", None) or {}),
             "doubt": str(getattr(card, "doubt", "") or ""),
             "verdict": "",
             "board": str(getattr(card, "board_source", "") or "")}
