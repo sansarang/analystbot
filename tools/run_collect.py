@@ -32,8 +32,9 @@ async def main(argv: list[str]) -> int:
     from app import rules  # noqa: F401  (설정을 먼저 읽힌다)
     from app.core import absence as _ab
     from app.core import deadline as _dl
-    from app.core.stages import (s1_resolve, s2_facts, s3_docs, s4_extract,
-                                 s4b_gapsearch, s5_verify)
+    from app.core import turnover as _turn
+    from app.core.stages import (s1_resolve, s2_facts, s2d_strategy, s3_docs,
+                                 s4_extract, s4b_gapsearch, s5_verify)
     from app.core.pipeline import _question
     from app.core.state import RunState
     from app.db import get_pool
@@ -106,6 +107,15 @@ async def main(argv: list[str]) -> int:
     print("    🪜 사다리 — " + " / ".join(
         f"{r.get('rung')} {r.get('got')}건" for r in rungs) + "\n", flush=True)
 
+    # ── ②-b 선수단 교체 — 🔴 s3 **앞**이다(파이프라인 순서 그대로 · 지시
+    #    2026-10-10 ③). 재료는 `facts` 뿐이다(새 통신 0건).
+    turn = {side: _turn.read(ref, facts, side=side) for side in ("home", "away")}
+    print("## ②-b 선수단 교체")
+    for side, one in turn.items():
+        print(f"- {side} — " + ("🔴 **켜졌다** · " if one.get("on") else "")
+              + str(one.get("why") or "")[:160])
+    print(flush=True)
+
     # ── ③ 딥서치
     cache: dict = {}
     docs = await s3_docs.run(ref, facts, state=st, chain=chain, net=net,
@@ -121,6 +131,34 @@ async def main(argv: list[str]) -> int:
     for v in variables[:12]:
         print(f"- `{v.id}` [{v.type}] {str(v.claim or '')[:100]}"
               + (f" · 원천 {v.n_sources}곳" if getattr(v, "n_sources", 0) else ""))
+    print(flush=True)
+
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **포메이션·전략 판정**(지시 2026-10-14: *"지금 단계에 포메이션 전략이
+    #    끝나있어야 한다"*)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 `s2d_strategy.run` 은 **확률을 안 받는다**(`ref · facts · turnover`
+    #     뿐) — 그래서 이 단계에서 끝낼 수 있다.
+    #  ⚠️ 전술 **예측**(`s9_say`)은 다르다: `saybundle` 이 `our_prob`·`matchup`·
+    #     `shape` 를 읽으므로 확률·상성 뒤에 선다.
+    plan = s2d_strategy.run(ref, facts, state=st, news=variables, turnover=turn)
+    print("## ⑤-b 포메이션·전략 판정")
+    print(f"- 판정 `{getattr(plan, 'audit', '') or '?'}`"
+          + (f" · 양상 **{plan.shape}**" if str(getattr(plan, "shape", "") or "")
+             else " · 양상 ⬜"))
+    for one in list(getattr(plan, "lines", None) or []):
+        side = str(getattr(one, "side", "") or "")
+        name = str(getattr(ref, f"{side}_name", "") or "") or side
+        print(f"- **{name}** — `{getattr(one, 'strategy', '') or '?'}`"
+              f" · 근거 {list(getattr(one, 'fact_refs', None) or [])}")
+        print(f"    {str(getattr(one, 'why', '') or '')[:230]}")
+    box = dict(getattr(plan, "facts", None) or {})
+    print(f"- §2-1 사실 **{len(box)}개**")
+    for fid, txt in list(box.items())[:16]:
+        print(f"    `{fid}` {str(txt)[:110]}")
+    for bad in list(getattr(plan, "violations", None) or [])[:4]:
+        print(f"- 🔴 {bad}")
     print(flush=True)
 
     # ── 3+5 통합 — 사다리 칸 4 를 기사로 다시 센다
@@ -142,21 +180,28 @@ async def main(argv: list[str]) -> int:
     print("## ⑥ LLM 표적 검색")
     print(f"- 못 찾은 칸 — {want or '없다'}")
     print(f"- 변수 0개인 묶음 — {list(thin) or '없다'}", flush=True)
-    qs, why_q = s4b_gapsearch.ask(ref, facts, state=st, want=want, thin=thin,
-                                  langs=["en", "it", "nl"])
+    qs, why_q = s4b_gapsearch.ask(ref, facts, state=st, want=want, thin=thin)
     print(f"- {why_q}")
     for one in qs:
         print(f"    질의 `{one}`")
     # ── ⑦ 그 질의를 **우리 사슬**에 던진다
+    # 🔴🔴 **현지어 → 영어 순**으로 던진다(지시 2026-10-14) — 순서는 LLM 이
+    #    고른 것이다(`langs_of`). ⚠️ 같은 질의를 언어마다 던지지 않는다 —
+    #    통로에 주는 **힌트**라 첫 언어로 한 번, 0건이면 다음 언어로 간다.
+    said_langs = s4b_gapsearch.langs_of()
+    print(f"- 언어 순서 — {said_langs}")
     hits = []
     for one in qs:
-        try:
-            got = await chain.query(one, lang="en")
-        except Exception as exc:                            # noqa: BLE001
-            print(f"    🔴 `{one}` 실패 — {exc!r}")
-            continue
-        print(f"    `{one}` → {len(got or [])}건")
-        hits += list(got or [])
+        for lg in said_langs:
+            try:
+                got = await chain.query(one, lang=lg)
+            except Exception as exc:                        # noqa: BLE001
+                print(f"    🔴 `{one}`({lg}) 실패 — {exc!r}")
+                continue
+            print(f"    `{one}`({lg}) → {len(got or [])}건")
+            hits += list(got or [])
+            if got:
+                break
     print(f"- 표적 검색 결과 **{len(hits)}건**", flush=True)
     for h in hits[:10]:
         print(f"    · {str(getattr(h, 'title', '') or '')[:80]} — "

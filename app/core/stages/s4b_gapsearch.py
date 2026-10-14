@@ -48,23 +48,62 @@ from app.core.state import RunState
 
 logger = logging.getLogger(__name__)
 
-#: 🔴 이 단계가 메우려는 칸(그 순서로 질의를 묶는다)
-GAPS: tuple[str, ...] = ("감독 이름", "부임 후 성적", "팀내 불화")
+#: 🔴🔴 **LLM 서치에서 찾을 것**(사용자 지시 2026-10-14) — 그 순서로 묶는다
+#
+#  > 1. 경기에 따른 **팀순위** · 2. 각팀의 **최근 3경기 일정에 따른 피로도** ·
+#  > 3. **홈까지의 거리** · 4. **기본팀의 전술** · 5. **포메이션**
+#
+#  ⚠️ 앞서 받던 셋(감독 이름·부임 후 성적·팀내 불화)도 **그대로** 둔다.
+#  🔴 칸 이름 → 그 칸을 **어디서 보나**(이미 있으면 LLM 에 안 묻는다).
+GAPS: tuple[tuple[str, str], ...] = (
+    ("팀 순위", "standings"),
+    ("피로도(최근 3경기)", "schedule"),
+    ("홈까지 거리", "venue"),
+    ("기본 전술", "past_xi"),
+    ("포메이션", "xi"),
+    ("감독 이름", "coach"),
+    ("부임 후 성적", "coach_record"),
+    ("팀내 불화", "conflict"),
+)
+
+#: 🔴 공급자 둘 — **순서대로 시도**한다(사용자 지시 2026-10-14: *"deepseek,
+#   solar pro 둘다 api가 있다"*). 앞이 0개를 내면 뒤로 간다.
+PROVIDERS: tuple[str, ...] = ("deepseek", "solar")
+
+#: 🔴🔴 **검색 언어 순서** — *"현지어 영어등 순으로"*(지시 2026-10-14).
+#   ⚠️ 코드를 **열거로 잠근다** — 모델이 낼 수 있는 것은 이 글자들뿐이다.
+LANGS: tuple[str, ...] = ("nl", "it", "es", "de", "fr", "pt", "ja", "ko",
+                          "zh", "tr", "ru", "ar", "en")
 
 #: 🔴 질의 상한 — `querywriter.MAX_QUERIES` 와 **따로** 둔다(이쪽은 표적이라 적다)
 MAX_Q = 6
 #: 🔴 질의 글자 상한(`app/llm.query_ok` 의 1~6낱말 규칙과 맞춘다)
 MAX_LEN = 80
 
+#: 🔴 마지막 호출이 고른 **언어 순서** — 부르는 쪽이 사슬에 그 순서로 던진다.
+#   ⚠️ 글자(코드)뿐이다 — 사실이 아니다.
+_LAST_LANGS: list[str] = []
+
+
+def langs_of() -> list[str]:
+    """🔴 마지막 `ask` 가 고른 언어 순서(현지어 먼저). 없으면 `["en"]`."""
+    return list(_LAST_LANGS) or ["en"]
+
 
 class GapQueries(BaseModel):
-    """🔴🔴 LLM 이 내는 것 — **질의 글자뿐**이다.
+    """🔴🔴 LLM 이 내는 것 — **질의 글자와 언어 코드뿐**이다.
 
     ⚠️ 사실·수·이름 칸을 두지 않는다. 두는 순간 모델 기억이 사실로 들어온다
        (사용자가 바로잡은 그 지점이다).
+    🔴 `langs` 는 **사실이 아니다** — 검색 통로에 줄 **언어 힌트**다. 그래도
+       `enums` 로 `LANGS` 안에 **잠근다**(모델이 아무 글자나 못 넣는다).
+       사용자 지시 2026-10-14: *"검색은 현지어 영어등 순으로 해라"* — 현지어를
+       **아는 것이 모델이고**(코모=이탈리아어·페예노르트=네덜란드어), 우리
+       `queries.langs_for` 는 클럽의 나라를 모른다(실측: UCL 은 `('en',)` 만).
     """
 
     queries: list[str] = Field(default_factory=list)
+    langs: list[str] = Field(default_factory=list)
 
 
 def need(facts, *, keys: list[str], conflict_docs: int = 0,
@@ -72,18 +111,43 @@ def need(facts, *, keys: list[str], conflict_docs: int = 0,
     """🔴🔴 **무엇이 비었나** — 팀마다 못 받은 칸. 전부 찼으면 빈 표다.
 
     🔴 이 함수가 *"딥서치가 못 찾았다"* 의 **단일 판정**이다(사본 금지).
+    🔴 칸은 `GAPS` 여덟이고, **이미 받은 칸은 묻지 않는다**(지시 2026-10-14:
+       1 팀순위 · 2 피로도 · 3 홈까지 거리 · 4 기본 전술 · 5 포메이션 + 감독 셋).
     ⚠️ 열쇠가 아니라 **이름**으로 적는다 — 카드·프롬프트가 사람 글자를 쓴다.
     """
     out: dict[str, list[str]] = {}
-    box = dict(getattr(facts, "coach", None) or {})
     said = dict(names or {})
+    coach = dict(getattr(facts, "coach", None) or {})
+    std = dict(getattr(facts, "standings", None) or {})
+    sched = dict(getattr(facts, "schedule", None) or {})
+    past = dict(getattr(facts, "past_xi", None) or {})
+    xi = dict(getattr(facts, "xi", None) or {})
+    ctx = dict(getattr(facts, "context", None) or {})
     for key in keys:
-        one = box.get(key)
+        one = coach.get(key)
         miss: list[str] = []
+        # ① 팀 순위 — 그 대회 순위표
+        if not std.get(key) and not std.get("rows") and not std:
+            miss.append("팀 순위")
+        # ② 피로도 — 최근 3경기 일정(휴식일·14일 내 경기 수)
+        if not sched.get(key):
+            miss.append("피로도(최근 3경기)")
+        # ③ 홈까지 거리 — 경기장 좌표·이동
+        if not ctx.get("venue") and not ctx.get("travel"):
+            miss.append("홈까지 거리")
+        # ④ 기본 전술 — 평소 XI(그 팀이 늘 쓰는 꼴)
+        if len(list(past.get(key) or [])) < 3:
+            miss.append("기본 전술")
+        # ⑤ 포메이션 — 오늘 XI 의 꼴
+        got_xi = xi.get(key)
+        if got_xi is None or not str(getattr(got_xi, "formation", "") or ""):
+            miss.append("포메이션")
+        # ⑥⑦ 감독 이름 · 부임 후 성적
         if one is None or not str(getattr(one, "name", "") or ""):
             miss.append("감독 이름")
         if one is None or not str(getattr(one, "record", "") or ""):
             miss.append("부임 후 성적")
+        # ⑧ 팀내 불화
         if not conflict_docs:
             miss.append("팀내 불화")
         if miss:
@@ -177,23 +241,52 @@ def ask(ref: MatchRef, facts, *, state: RunState, want: dict,
                if dict(thin or {}) else "")
             + f"쓸 언어: {', '.join(langs or ['en'])}\n\n"
             f"🔴 `queries` — 위 **못 찾은 칸을 겨냥한** 검색어 {MAX_Q}개 이하.\n"
-            "   · 감독 이름 → `{팀} manager` · `{팀} head coach` 꼴\n"
-            "   · 부임 후 성적 → `{팀} {감독} record since` 꼴(감독을 알 때만)\n"
+            "   · 팀 순위 → `{팀} standings` · `{팀} classifica` 꼴\n"
+            "   · 피로도 → `{팀} fixtures schedule` · `{팀} rotation rest`\n"
+            "   · 홈까지 거리 → `{팀} away travel` · `{팀} trasferta`\n"
+            "   · 기본 전술 → `{팀} tactics style` · `{팀} modulo`\n"
+            "   · 포메이션 → `{팀} formation` · `{팀} formazione`\n"
+            "   · 감독 이름 → `{팀} manager` · `{팀} head coach`\n"
+            "   · 부임 후 성적 → `{팀} {감독} record since`(감독을 알 때만)\n"
             "   · 팀내 불화 → `{팀} row with coach` · 현지어 표현\n"
             "   · **검색이 얇은 자리** → 그 유형을 찾을 검색어(예 `absence` →\n"
             "     `{팀} injury news`, `stakes` → `{팀} qualification race`)\n"
             "🔴 각 질의에 **위 팀 표기 중 하나를 반드시** 넣는다.\n"
+            "🔴🔴 **현지어를 먼저** 쓴다 — 그 팀 나라의 말이다(네가 안다). 그다음\n"
+            "   영어다. `langs` 에 **그 순서로** 언어 코드를 적는다(예 "
+            "`[\"it\", \"nl\", \"en\"]`).\n"
+            f"   ⚠️ 쓸 수 있는 코드: {', '.join(LANGS)}\n"
             "🔴 1~6낱말 · 연산자(`site:`·따옴표·마이너스) 금지 · **연도 금지**.\n"
             "⚠️ 숫자·이름·상태를 **답으로** 쓰지 마라 — 질의 글자만 낸다.")),
     ]
-    got = llm.ask(provider="deepseek", purpose="query", messages=msgs,
-                  out=GapQueries, state=state)
-    if not isinstance(got, GapQueries):
-        why = (f"🔴 LLM 질의 쓰기 실패({getattr(got, 'reason', '?')}) — "
-               "표적 검색을 **안 돌린다**")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **공급자 둘을 순서대로**(지시 2026-10-14: *"deepseek, solar pro 둘다
+    #    api가 있다"*)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실측 2026-10-14(페예노르트–코모): `deepseek` 가 질의를 **0개** 냈다.
+    #     🔴 그래서 앞 공급자가 비면 **뒤로 간다** — 한 공급자에 매달지 않는다.
+    rows: list[str] = []
+    langs_got: list[str] = []
+    tried: list[str] = []
+    for pv in PROVIDERS:
+        got = llm.ask(provider=pv, purpose="query", messages=msgs,
+                      out=GapQueries, state=state,
+                      enums={"langs": list(LANGS)})
+        if not isinstance(got, GapQueries):
+            tried.append(f"{pv} 🔴 실패({getattr(got, 'reason', '?')})")
+            continue
+        rows = [str(x).strip()[:MAX_LEN] for x in (got.queries or [])
+                if str(x).strip()]
+        langs_got = [str(x) for x in (got.langs or []) if str(x) in set(LANGS)]
+        tried.append(f"{pv} 질의 {len(rows)}개")
+        if rows:
+            break
+    if not rows:
+        why = ("🔴 **두 공급자 다 질의를 못 냈다** — " + " · ".join(tried)
+               + " · 표적 검색을 안 돌린다")
         state.note(f"s4b 표적 검색 — {why}")
         return [], why
-    rows = [str(x).strip()[:MAX_LEN] for x in (got.queries or []) if str(x).strip()]
     kept, bad = querywriter.keep(rows, aliases=aliases)
     # 🔴 글자 규칙은 `app.llm.query_ok` 하나다(사본 금지)
     from app import llm as _lq
@@ -205,6 +298,10 @@ def ask(ref: MatchRef, facts, *, state: RunState, want: dict,
            + f"**{len(ok)}개**를 쓴다"
            + (f" · 🔴 팀 표기 없어 버림 {len(bad)}" if bad else "")
            + (f" · 🔴 글자 규칙에서 버림 {n_cut}" if n_cut else "")
+           + f" · 공급자 {' → '.join(tried)}"
+           + f" · 언어 순서 {langs_got or list(langs or ['en'])}"
            + " · 🔴 사실은 **문서에서만** 온다(모델 기억 안 씀)")
     state.note(f"s4b 표적 검색 — {why}")
+    _LAST_LANGS.clear()
+    _LAST_LANGS.extend(langs_got or list(langs or ["en"]))
     return ok[:MAX_Q], why

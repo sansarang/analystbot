@@ -16,6 +16,7 @@
   GS6 빈 칸 판정은 **한 곳**(`need`) · 얇은 묶음은 **설정**에서 읽는다
   GS7 확률 경로가 이 모듈을 **안 부른다**
   GS8 **s5 뒤**에 부른다
+  GS9 공급자 **둘을 순서대로** 시도한다(한쪽이 0개를 내도 멈추지 않는다)
 """
 from __future__ import annotations
 
@@ -54,10 +55,16 @@ def test_gs1_output_has_no_fact_fields() -> None:
     sys.path.insert(0, str(ROOT))
     from app.core.stages.s4b_gapsearch import GapQueries
     got = set(GapQueries.model_fields)
-    assert got == {"queries"}, (
-        f"GS1 🔴🔴 LLM 출력 칸이 {sorted(got)} 다 — `queries` 하나여야 한다. "
-        "칸을 더하는 순간 모델 **기억**이 사실로 들어온다(사용자가 바로잡은 그 "
-        "지점이다)")
+    assert got == {"queries", "langs"}, (
+        f"GS1 🔴🔴 LLM 출력 칸이 {sorted(got)} 다 — `queries`·`langs` 둘만 "
+        "허용한다. 칸을 더하는 순간 모델 **기억**이 사실로 들어온다(사용자가 "
+        "바로잡은 그 지점이다)")
+    # 🔴 `langs` 는 **열거로 잠겨** 있어야 한다 — 아무 글자나 들어오면 그 칸이
+    #    사실을 나르는 통로가 된다.
+    code = _code(MOD)
+    assert 'enums={"langs": list(LANGS)}' in code, (
+        "GS1 🔴🔴 `langs` 를 `enums` 로 안 잠갔다 — 모델이 그 칸에 아무 글자나 "
+        "넣을 수 있다(언어 코드만 받아야 한다)")
 
 
 def test_gs2_prompt_forbids_facts() -> None:
@@ -145,3 +152,39 @@ def test_gs8_after_s5() -> None:
             continue
         assert i < j, (
             f"GS8 🔴🔴 {rel} 에서 표적 검색이 `s5_verify` **앞**에 있다")
+
+
+def test_gs9_both_providers() -> None:
+    """GS9 — 공급자 둘(지시 2026-10-14: *"deepseek, solar pro 둘다 api가 있다"*).
+
+    ⚠️ 실측 2026-10-14(페예노르트–코모): `deepseek` 가 질의를 **0개** 냈다.
+       🔴 한 공급자에 매달면 그 단계가 통째로 죽는다.
+    """
+    import sys
+    sys.path.insert(0, str(ROOT))
+    from app.core import llm
+    from app.core.stages import s4b_gapsearch as g
+    assert len(g.PROVIDERS) >= 2, (
+        f"GS9 🔴 공급자가 {g.PROVIDERS} 하나뿐이다")
+    ok = set(getattr(llm.Provider, "__args__", ()))
+    bad = [p for p in g.PROVIDERS if ok and p not in ok]
+    assert not bad, f"GS9 🔴 설정에 없는 공급자다: {bad} (쓸 수 있는 것 {sorted(ok)})"
+    code = _code(MOD)
+    assert "for pv in PROVIDERS" in code, (
+        "GS9 🔴 공급자를 **순서대로** 돌지 않는다")
+    assert "if rows:\n            break" in code, (
+        "GS9 🔴 앞 공급자가 질의를 냈을 때 멈추지 않는다 — 둘 다 불러 돈을 "
+        "두 번 쓴다")
+
+
+def test_gs10_local_language_first() -> None:
+    """GS10 — *"검색은 현지어 영어등 순으로 해라"*(지시 2026-10-14)."""
+    said = _src(MOD)
+    assert "현지어를 먼저" in said, (
+        "GS10 🔴 프롬프트가 현지어 우선을 안 적는다")
+    import sys
+    sys.path.insert(0, str(ROOT))
+    from app.core.stages import s4b_gapsearch as g
+    assert g.LANGS[-1] == "en", (
+        f"GS10 🔴 언어 열거의 **끝**이 `en` 이어야 한다(현지어가 앞) — {g.LANGS}")
+    assert g.langs_of() == ["en"] or g.langs_of(), "GS10 🔴 기본 언어가 없다"
