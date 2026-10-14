@@ -63,6 +63,9 @@ def card_text(card: Card, *, debug: bool = False) -> str:
         # 🔴🔴 §3-4 — **🆕 새 사실(72시간)** 은 결장 블록(2b) 바로 뒤다
         #    ⚠️ 왜 거기인가: 새 사실의 대부분이 **결장·복귀**라 같이 읽힌다.
         if num == "2b":
+            # 🔴🔴 **팀 상황**(지시 2026-10-14) — 결장자·뉴스·감독·
+            #    부임 후 성적·팀내 불화를 **한 자리**에 모은다.
+            out.append("\n" + teamctx_block(card))
             out.append("\n" + new_facts_block(card))
             # 🔴🔴 ② **손실 표**(사용자 지시 2026-10-11) — 새 사실 0건의 까닭이
             #    *"버린 것: identity_mismatch 7건"* 한 줄로만 적혀 있었다
@@ -1475,6 +1478,97 @@ def loss_table(card: Card) -> str:
     out.append("- 합계 — " + " · ".join(f"`{k}` {v}건"
                                        for k, v in sorted(by.items())))
     return "\n".join(out)
+
+
+TEAMCTX_HEAD = "🗂 팀 상황 (라인업 확인 뒤)"
+
+
+def teamctx_block(card: Card) -> str:
+    """🔴🔴 **라인업 확인 뒤 한 자리에 모은다**(지시 2026-10-14).
+
+    > 라인업 확인후 **결장자 · 팀관련뉴스 · 감독이름 · 감독부임후 성적 ·
+    > 팀내 불화** 같은 내용들이 전부 다 이 단계에서 나와야 한다.
+
+    🔴 이 블록은 **수를 세지 않는다** — 앞 단계가 센 것을 한자리에 모은다
+       (사본 금지: 결장은 `absence`, 뉴스는 `s3_docs`·`s5`, 감독은 `s2_facts`
+       또는 `s4b_recall`).
+    🔴 **원천을 그대로 보인다** — `🔴 LLM 기억` 은 그 글자로 찍혀야 사람이
+       검증 여부를 가린다.
+    ⚠️ 못 받은 칸은 **이름으로** 남긴다(#3 조용한 0 금지).
+    """
+    m = card.match
+    rows = [f"**{TEAMCTX_HEAD}**"]
+    xi = dict(getattr(card.facts, "xi", None) or {})
+    coach = dict(getattr(card.facts, "coach", None) or {})
+    miss = dict(getattr(card.facts, "missing", None) or {})
+    for side in ("home", "away"):
+        key = str(getattr(m, side, "") or "")
+        name = str(getattr(m, f"{side}_name", "") or "") or key
+        rows.append(f"- **{name}**")
+        # ── ① 라인업 상태
+        one = xi.get(key)
+        said_xi = (f"{getattr(one, 'formation', '') or '⬜ 포메이션 없음'} "
+                   f"[{getattr(one, 'kind', '') or getattr(one, 'state', '') or '?'}]"
+                   if one is not None else "⬜ **XI 미확보**")
+        rows.append(f"    라인업 — {said_xi}")
+        # ── ② 감독 이름 · 부임 후 성적 · 원천
+        got = coach.get(key)
+        if got is None or not str(getattr(got, "name", "") or ""):
+            rows.append("    감독 — ⬜ **미확보**(경기 페이지 `isCoach` 비었고 "
+                        "LLM 회상도 못 냈다)")
+        else:
+            said = f"    감독 — **{got.name}**"
+            if getattr(got, "interim", False):
+                said += " (임시)"
+            if str(getattr(got, "since", "") or ""):
+                said += f" · 부임 {got.since}"
+            src = str(getattr(got, "source", "") or "")
+            if src:
+                said += f" · 원천 {src}"
+            rows.append(said)
+            rec = str(getattr(got, "record", "") or "")
+            n_g = getattr(got, "games", None)
+            if rec:
+                rows.append(f"    부임 후 성적 — **{rec}**"
+                            + (f" ({n_g}경기)" if n_g else "")
+                            + (f" · 원천 {src}" if src else ""))
+            else:
+                rows.append("    부임 후 성적 — ⬜ **못 받았다**(받는 통로가 "
+                            "없고 LLM 회상도 비었다)")
+        # ── ③ 결장자
+        got_m = list(miss.get(key) or [])
+        if got_m:
+            said = " · ".join(
+                f"{getattr(x, 'name', '') or '?'}"
+                f"({getattr(x, 'reason', '') or '사유 미상'})" for x in got_m[:6])
+            rows.append(f"    결장 {len(got_m)}명 — {said}"
+                        + (" …" if len(got_m) > 6 else ""))
+        else:
+            rows.append("    결장 — ⬜ **0명**(사다리 네 칸이 다 비었다)")
+    # ── ④ 팀 관련 뉴스 — 72시간 새 사실에서 온다
+    news = [v for v in (card.variables or [])
+            if str(getattr(v, "subtask", "") or "")]
+    rows.append(f"- 팀 관련 뉴스 — 기사 변수 **{len(news)}개**"
+                if news else
+                "- 팀 관련 뉴스 — ⬜ **0개**(딥서치가 기사에서 사실을 못 건졌다)")
+    for v in news[:5]:
+        rows.append(f"    `{v.id}` [{v.type}] {str(v.claim or '')[:90]}"
+                    + (f" · 원천 {v.n_sources}곳" if getattr(v, "n_sources", 0)
+                       else " · ⬜ 원천 수 미측정"))
+    # ── ⑤ 팀내 불화
+    conf = [v for v in (card.variables or [])
+            if str(getattr(v, "type", "")) in ("coach_conflict", "coach_intent")]
+    said_rc = str(getattr(card, "recall", "") or "")
+    if conf:
+        for v in conf:
+            rows.append(f"- 팀내 불화 — `{v.id}` {str(v.claim or '')[:110]}")
+    else:
+        rows.append("- 팀내 불화 — ⬜ **없다**(딥서치 0건"
+                    + (" · LLM 회상도 비었다" if "불화 ⬜ 0건" in said_rc else "")
+                    + ")")
+    if said_rc:
+        rows.append(f"- 🔎 회상 — {said_rc}")
+    return "\n".join(rows)
 
 
 def new_facts_block(card: Card) -> str:

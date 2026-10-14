@@ -51,6 +51,23 @@
 - **South Korea**
     Jens Castrop(?) — 부상 · 복귀 Mid October 2026 · www.fotmob.com
 
+**🗂 팀 상황 (라인업 확인 뒤)**
+- **South Korea**
+    라인업 — ⬜ 포메이션 없음 [none]
+    감독 — ⬜ **미확보**(경기 페이지 `isCoach` 비었고 LLM 회상도 못 냈다)
+    결장 1명 — Jens Castrop(injury)
+- **Uzbekistan**
+    라인업 — ⬜ **XI 미확보**
+    감독 — ⬜ **미확보**(경기 페이지 `isCoach` 비었고 LLM 회상도 못 냈다)
+    결장 — ⬜ **0명**(사다리 네 칸이 다 비었다)
+- 팀 관련 뉴스 — 기사 변수 **5개**
+    `R1` [absence] Kim Min-jae is unlikely to play in Tuesday's friendly against Uzbekistan after missing tea · 원천 3곳
+    `R2` [individual_title] Son Heung-min scored his 59th goal, surpassing Cha Bum-keun to rank No. 1 in the most A-ma · 원천 2곳
+    `R3` [team_stats] The Korean national team started under interim coach Moreno and made a fresh start with a  · 원천 1곳
+    `R5` [stakes] 한국은 우즈베키스탄전에서 Son Heung-min이 한 골만 넣으면 남자 대표팀 최다 득점 단독 1위 기록을 달성할 수 있다. · 원천 1곳
+    `R6` [regression] 한국은 9월 두 경기에서 4-4-2로 1-1을 기록했으며, 로베르토 모레노 감독이 이번 두 경기에서 전술·선수 구성 또는 둘 다의 변화를 줄지 주목된다. · 원천 1곳
+- 팀내 불화 — ⬜ **없다**(딥서치 0건)
+
 🆕 **새 사실(72시간)** — 🔴 **0건** · 기사 변수 5개(F 하위에서 온 것 0개) · docs 8 · hits 199 · kept_date 131 · queries 20
 
 🧾 **손실 표**(버린 단계 · 사유 · 제목)

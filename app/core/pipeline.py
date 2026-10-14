@@ -198,6 +198,19 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #  🔴 여기가 둘이 만나는 자리다 — 기사 변수는 **지금** 존재한다.
     #  ⚠️ 칸 1~3 은 건드리지 않는다(구조 사실은 s2 가 센 그대로다).
     facts = _absence_merge(ref, facts, variables, state=st)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **딥서치가 못 찾으면 LLM 이 찾는다**(지시 2026-10-14)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 3번(감독 이름)·4번(감독 부임후 성적)·5번(팀내 불화)은 딥서치에서 못
+    #  > 찾으면 **llm 이 찾게 한다**.
+    #
+    #  🔴 **빈 칸만** 묻는다 — 판정은 `s4b_recall.need` 하나다(사본 금지).
+    #  🔴 원천이 `🔴 LLM 기억` 으로 박히고 **확률·등급에 못 닿는다**.
+    #  ⚠️ 여기가 자리인 까닭 — 딥서치(③)·추출(⑤)·검증이 **끝난 뒤**여야
+    #     *"못 찾았다"* 를 말할 수 있다.
+    facts, said_recall = _recall_fill(ref, facts, variables, state=st)
+
     # 🔴🔴 **② 전역 새 사실로 깃발을 덮는다**(사용자 결정 2026-10-10 (a)②) —
     #    변수가 생긴 **뒤**에만 볼 수 있다(새 사실이 변수로 온다).
     for side in ("home", "away"):
@@ -320,6 +333,7 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #       뜻을 바꾸지 않는다.
     layers = _layers(ref, facts, variables, base_p, adj_p, feed_mk,
                      user_mk, state=st, outlook=look, strategy=plan)
+    layers["recall"] = said_recall
     layers["strategy"] = plan
     layers["matchup"] = edge
     # ══════════════════════════════════════════════════════════════════
@@ -894,6 +908,27 @@ def _gate_of(ref: MatchRef, facts, turn: dict, *, state: RunState):
                        clash=_gate.clash_of(xi_ids=ids, boxes=boxes))
 
 
+def _recall_fill(ref: MatchRef, facts, variables, *, state: RunState):
+    """🔴🔴 **LLM 회상으로 빈 칸을 메운다**(지시 2026-10-14). `(facts, 사유)`.
+
+    🔴 딥서치가 찾은 칸은 **안 덮는다** — `s4b_recall.run` 이 그것을 지킨다.
+    ⚠️ 회상이 실패하거나 빈 글자여도 **facts 를 그대로** 돌려준다(0 으로 메우지
+       않는다 · #3) — 그 사실만 사유에 적는다.
+    """
+    from app.core.stages import s4b_recall as _rc
+    keys = [str(getattr(ref, "home", "") or ""), str(getattr(ref, "away", "") or "")]
+    # 🔴 불화 문서 수 — 하위 B 가 나른 `coach_conflict` 변수가 있나
+    n_conf = sum(1 for v in (variables or [])
+                 if str(getattr(v, "type", "")) == "coach_conflict")
+    got, why = _rc.run(ref, facts, state=state, keys=keys, conflict_docs=n_conf)
+    box = dict(dict(got or {}).get("coach") or {})
+    if not box:
+        return facts, why
+    coach = dict(getattr(facts, "coach", None) or {})
+    coach.update(box)
+    return facts.model_copy(update={"coach": coach}), why
+
+
 def _absence_merge(ref: MatchRef, facts, variables, *, state: RunState):
     """🔴🔴 **단계 3+5 통합** — 사다리 칸 4 를 검증된 기사 변수로 다시 센 `facts`.
 
@@ -1182,6 +1217,7 @@ def card_of(ref: MatchRef, facts: Facts, variables: list[Variable],
         board_feed=str(box.get("board_feed") or ""),
         machine=str(box.get("machine") or ""),
         machine_hold=bool(box.get("machine_hold")),
+        recall=str(box.get("recall") or ""),
         our_prob=box.get("ours"),
         compare=str(box.get("compare") or ""),
         compare_lines=[str(x) for x in (box.get("compare_lines") or [])],
