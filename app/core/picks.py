@@ -162,11 +162,14 @@ def of(rows: list[dict]) -> Out:
         got = _pick_legs(pool, n)
         if got:
             parlays.append(got)
-    no_board = [str(x.get("match") or "") for x in (rows or [])
-                if not (x.get("board_lines") or [])]
     # 🔴 §2 — **기계 보류**로 빠진 경기도 **이름으로** 적는다(조용히 빼지 않는다)
     held = [str(x.get("match") or "") for x in (rows or [])
             if x.get("machine_hold")]
+    # ⚠️ 보류 경기는 **보류로만** 센다 — 보드까지 못 모았다고 두 번 적으면
+    #    까닭이 흐려진다(보류가 **먼저**이고 그것이 그 경기를 뺀 이유다).
+    no_board = [str(x.get("match") or "") for x in (rows or [])
+                if not (x.get("board_lines") or [])
+                and not x.get("machine_hold")]
     why = (f"경기 {len(rows)}개 → 보드 있는 경기 {len(rows) - len(no_board)}개 "
            f"→ 줄 {len(legs)}개 · 단폴 문턱 {CUT_SINGLE:.2f} 통과 "
            f"{len(singles)}개 · 다리 문턱 {CUT_LEG:.2f} 통과 {len(pool)}개"

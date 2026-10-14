@@ -178,8 +178,16 @@ def board_text_of(name: str) -> str:
 
 
 def pick_row(name: str, one: dict, card) -> dict | None:
-    """🔴 카드 하나 → 칠 표 한 줄(줄 확률은 **격자 하나**에서 · 사본 금지)."""
+    """🔴 카드 하나 → 칠 표 한 줄(줄 확률은 **격자 하나**에서 · 사본 금지).
+
+    🔴🔴 **기계 보류 경기도 줄을 낸다**(의심 검증 v2 §2 · CLAUDE.md #3).
+       ⚠️ 실측 2026-10-14(노리치–사우샘프턴): 그 카드는 격자가 없어서 이 함수가
+          `None` 을 돌려줬고, 그래서 칠 표가 *"경기 3개"* 라고만 적었다 —
+          **보류로 빠진 경기가 어디에도 안 남았다**(조용한 0). 🔴 격자가 없어도
+          깃발만 실은 줄을 내면 `core/picks.of` 가 **이름으로** 적는다.
+    """
     from app.core import probfloor as _pf
+    held = bool(getattr(card, "machine_hold", False))
     box = dict(getattr(card, "matchup", None) or {})
     grid: dict = {}
     for key, val in dict((box.get("sim") or {}).get("scores")
@@ -191,7 +199,17 @@ def pick_row(name: str, one: dict, card) -> dict | None:
         elif isinstance(key, (tuple, list)) and len(key) == 2:
             grid[(int(key[0]), int(key[1]))] = float(val)
     if not grid:
-        return None
+        # 🔴 격자가 없다 — 보류 경기면 **그 사실을 적은 줄**을 낸다
+        if not held:
+            return None
+        return {"match": name, "league": str(one.get("comp") or ""),
+                "board_lines": [], "lines": {},
+                "board_why": "⬜ 격자가 없다(1단 기계 보류)",
+                "kickoff": f"{one['kickoff'].astimezone(KST):%H:%M}",
+                "machine_hold": True,
+                "machine": str(getattr(card, "machine", "") or ""),
+                "verdict": "",
+                "board": str(getattr(card, "board_source", "") or "")}
     mk = _pf.markets_of(grid)
     lines = {"홈 승": mk.get("home"), "무": mk.get("draw"),
              "원정 승": mk.get("away")}

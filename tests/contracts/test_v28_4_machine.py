@@ -194,3 +194,43 @@ def test_국내_리그는_대륙_칸을_해당_없음으로_둔다():
     code = ast.unparse(ast.parse(inspect.getsource(_pl._machine_of)))
     assert "club_continental" in code
     assert "NA" in code
+
+
+def test_보류_경기는_보류로만_센다():
+    """🔴 CLAUDE.md #3 — 까닭을 **한 번만** 적는다(보류가 먼저다).
+
+    ⚠️ 실측 2026-10-14: 보류 경기가 *"보드 없어 뺀 경기"* 와 *"기계 보류로 뺀
+       경기"* 에 **둘 다** 올라 까닭이 흐려졌다.
+    """
+    high = max(pk.CUT_SINGLE, pk.CUT_LEG) + 0.02
+    rows = [{"match": "A vs B", "league": "L", "kickoff": "1",
+             "board_lines": [], "lines": {}, "machine_hold": True},
+            {"match": "C vs D", "league": "L", "kickoff": "2",
+             "board_lines": [], "lines": {"홈 승": high}},
+            {"match": "E vs F", "league": "L", "kickoff": "3",
+             "board_lines": ["홈 승"], "lines": {"홈 승": high}}]
+    why = pk.of(rows).why
+    assert "기계 보류로 뺀 경기 1개" in why and "A vs B" in why, why
+    assert "보드 없어 뺀 경기 1개" in why and "C vs D" in why, why
+    # 🔴 보류 경기는 **보드 없음 목록에 안 들어간다**
+    head = why.split("보드 없어 뺀 경기")[1].split("·")[0]
+    assert "A vs B" not in head, head
+
+
+def test_보류_경기도_칠_표_줄을_낸다():
+    """🔴🔴 조용한 0 금지 — 격자가 없어도 **깃발만 실은 줄**을 낸다.
+
+    ⚠️ 실측 2026-10-14(노리치–사우샘프턴): `slate_queue.pick_row` 가 격자가
+       없다고 `None` 을 돌려줘 칠 표가 *"경기 3개"* 라고만 적었고 **보류로 빠진
+       경기가 어디에도 안 남았다**.
+    """
+    import ast
+    import inspect
+    import sys
+    sys.path.insert(0, str(__import__("pathlib").Path(__file__)
+                           .resolve().parents[2] / "tools"))
+    import slate_queue as sq
+    code = ast.unparse(ast.parse(inspect.getsource(sq.pick_row)))
+    assert "machine_hold" in code
+    # 🔴 격자가 없을 때 **보류면** `None` 이 아니다
+    assert "if not held" in code, code[:600]
