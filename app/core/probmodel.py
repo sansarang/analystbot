@@ -108,8 +108,22 @@ def lambda_rules(varset, *, ref) -> tuple[dict, str]:
                 else "away" if key == str(getattr(ref, "away", "") or "") else "")
         if not side:
             continue
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **어느 쪽을 깎나** — 설정의 `side` 가 정한다(지시 2026-10-14)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  🔴 뜻이 유형마다 반대다:
+        #     · 이동·피로 → 걸린 팀이 **불리** → 그 팀을 깎는다(`subject`)
+        #     · 순위 동기 → 급한 팀이 **유리** → **상대**를 깎는다(`opponent`)
+        #  ⚠️ `side` 칸이 없으면 `subject` 다(종전 두 규칙이 그 꼴이다).
+        want_side = str(box.get(name, {}).get("side") or "subject") \
+            if isinstance(box.get(name), dict) else "subject"
+        if want_side == "opponent":
+            side = "away" if side == "home" else "home"
         got[side] *= mul
-        said.append(f"[{rid}] {side} λ ×{mul:g}({name})")
+        said.append(f"[{rid}] {side} λ ×{mul:g}({name}"
+                    + (" · 상대를 깎는다" if want_side == "opponent" else "")
+                    + ")")
     for side in got:
         if floor and got[side] < floor:
             said.append(f"⚠️ {side} 배율이 상한에 걸렸다({got[side]:.3f} → {floor:g})")

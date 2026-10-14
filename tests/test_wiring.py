@@ -653,6 +653,13 @@ TOOL_ONLY: dict[str, str] = {
     #    **운영 `pipeline` 배선은 다음 순서**다(사용자: *"순서대로 해라"*).
     #    ⚠️ 운영에 이으면 **이 줄을 지워야** 계약이 초록이 된다.
     "app.core.stages.s3_docs.gap_docs": "tools/run_collect.py",
+    # 🔴🔴 **리그·컵 분석**(지시 2026-10-14) — fotmob 표를 LLM 이 읽고 변수로
+    #    만든다. 지금 부르는 쪽은 수집 러너뿐이고 **운영 배선은 다음 순서**다.
+    #    ⚠️ 운영에 이으면 **이 네 줄을 지워야** 계약이 초록이 된다.
+    "app.core.stages.s4c_leagueread.ask": "tools/run_collect.py",
+    "app.core.stages.s4c_leagueread.variable": "tools/run_collect.py",
+    # ⚠️ `_table_of`·`_rows_for`·`_said_of` 는 **비공개**다(`ask` 안에서만 쓴다) —
+    #    여기 적지 않는다.
     "app.core.picks.grid_of": "tools/slate_queue.py",
     "app.core.picks.lines_of": "tools/slate_queue.py",
     # 🔴 모듈째 — `compare_paths` 가 `old_engine` 을 부른다(위 설명)

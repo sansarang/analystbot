@@ -272,6 +272,31 @@ ir_table:
     goals: none
     source: "사용자 지시 2026-10-14 (상식 · 백필 측정과 충돌함을 위에 적었다)"
 
+  # ══════════════════════════════════════════════════════════════════
+  # 🔴🔴 IR14 **순위 동기** — 사용자 지시 2026-10-14
+  # ══════════════════════════════════════════════════════════════════
+  #
+  # > 리그 관련 정보가 있어야 한다 · 지금 몇라운드인데 **승점이 필요하다** ·
+  # > fotmob에 받아서 llm이 그 리그정보 **분석만** 해서 **변수에 넣는다**
+  #
+  # 🔴 이 규칙은 **`s5_verify` 가 아니라 `s4c_leagueread.variable` 이 만든다** —
+  #    재료가 LLM 의 **판단**이라 해석 규칙 표의 `when` 으로는 셀 수 없다.
+  #    ⚠️ 그래서 여기에는 **선언만** 둔다(배치표·λ 보정이 이 번호를 읽는다).
+  # 🔴 입력은 fotmob `group_table` 이 준 **그 표뿐**이다 — 웹 검색·모델 기억을
+  #    쓰지 않는다(실측 2026-10-14: 웹 검색 길은 오류만 많았다).
+  # ⚠️ `모르겠다` 판단은 변수를 **만들지 않는다**.
+  - id: IR14
+    type: stakes
+    sports: [soccer]
+    when: fotmob 순위표로 LLM 이 "어느 팀이 더 급한가" 를 판단했을 때
+    needs: [standings.group]
+    claim: "{team} 순위 동기 — {rank}위 · {round}라운드 {points}점 · {urgency}"
+    #: 🔴 **급한 팀이 유리하다** — λ 보정은 상대를 깎는다(`side: opponent`)
+    favors: subject
+    goals: none
+    made_by: "app/core/stages/s4c_leagueread.py:variable"
+    source: "사용자 지시 2026-10-14 · 🔴 크기는 적합 아님(이동·피로와 같은 −5%)"
+
   - id: IR12
     type: team_stats
     sports: [soccer]

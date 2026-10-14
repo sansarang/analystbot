@@ -173,6 +173,25 @@ async def main(argv: list[str]) -> int:
                                keys=[str(ref.home), str(ref.away)])
     print(f"## 3+5 통합\n- {why_r}\n", flush=True)
 
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **⑤-c 리그·컵 정보 분석**(지시 2026-10-14) — fotmob 표를 LLM 이 읽는다
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > fotmob에 받아서 llm이 그컵이나 리그정보 **분석만** 해서 변수에 넣는다
+    #
+    #  🔴 표적 검색(⑥)보다 **먼저**다 — 순위·승점·라운드는 fotmob 이 주므로
+    #     웹에서 긷지 않는다(그 길은 오류만 많았다 · 실측 2026-10-14).
+    from app.core.stages import s4c_leagueread as _lr
+    said_lr, why_lr = _lr.ask(ref, facts, state=st)
+    print("## ⑤-c 리그·컵 분석")
+    print(f"- {why_lr}")
+    var_lr = _lr.variable(ref, said_lr)
+    for v in var_lr:
+        print(f"- 변수 `{v.id}` [{v.type}] {str(v.claim or '')[:150]}")
+    if not var_lr:
+        print("- ⬜ **변수 없다** — 판단이 `모르겠다` 거나 표를 못 받았다")
+    print(flush=True)
+
     # ── ⑥ LLM 이 **질의를 쓴다**(못 찾은 칸만)
     n_conf = sum(1 for v in variables
                  if str(getattr(v, "type", "")) == "coach_conflict")
@@ -304,7 +323,7 @@ async def main(argv: list[str]) -> int:
                      else ""))
         # 🔴 **자리**를 보인다 — 확률에 닿는가(축·λ상수)가 그 칸에서 보인다
         from app.core import routing as _rt
-        box = _rt.place(list(variables) + list(said_v2))
+        box = _rt.place(list(variables) + list(said_v2) + list(var_lr))
         AX = {"axis0", "axis1", "axis2", "axis3", "lambda_const"}
         print("## ⑨ 배치 — 확률에 닿는가")
         for row in box.rows:
