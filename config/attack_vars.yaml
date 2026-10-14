@@ -1,0 +1,352 @@
+# 🔴 `tools/fit_attack.py --write` 가 `fit`·`grade` 를 적는다 (손으로 올리지 않는다)
+grades:
+- 확정
+- 관찰
+- 가설
+vars:
+  A1:
+    name: Elo 차
+    grade: 확정
+    judge: true
+    재료: 국내 Elo(football-data·fotmob) · 대륙은 리그 오프셋
+    공격: 오프셋 ⬜ 이면 체급 근거 0
+  A2:
+    name: 축0 선수 가치
+    grade: 확정
+    judge: true
+    재료: fotmob 선수 가치 로그합 + 호흡 + 빠진 주전
+    공격: 강등·승격팀 착시(지난 시즌 리그) · 확정 XI 기준 · 가치 메운 수 · 리그 표준화 값으로 재계산
+  A3:
+    name: 스쿼드 깊이
+    grade: 관찰
+    judge: false
+    재료: 벤치 가치 합
+  A4:
+    name: 이적·임대 직후
+    grade: 가설
+    judge: false
+    재료: ⬜ 이적 창 날짜 통로 없음
+  B1:
+    name: 축1 폼
+    grade: 확정
+    judge: true
+    재료: 최근 5·10경기 득실(쪽 폼 수축)
+    공격: 표본 경기 수 · 시즌 초 수축
+  B2:
+    name: xG 차이(득점−xG · 실점−xGA)
+    grade: 관찰
+    judge: false
+    우선: 1
+    재료: 경기 페이지 팀 xG(extra.xg)
+    공격: 최근 10경기 xG 대비 +1.5골 이상 과대면 깨짐 후보 · 10경기 미만 표본은 안 쓴다
+    cut:
+      games: 10
+      over: 1.5
+    fit:
+      n_on: 360
+      n_off: 647
+      hit_on: 0.5444
+      hit_off: 0.493
+      diff: 0.0514
+      lo: -0.0129
+      hi: 0.1157
+      promote: false
+      at: '2026-10-14'
+      표본: 1470경기
+  B3:
+    name: 운 요소 골
+    grade: 확정
+    judge: true
+    재료: T12(자책·굴절·xG<0.05)
+    공격: 운 요소 골 제거 후 폼 재계산
+  B4:
+    name: 골키퍼 선방 과대(PSxG−실점)
+    grade: 관찰
+    judge: false
+    우선: 1
+    재료: ⬜ PSxG 통로 없음 — 상대 xG 대 실점으로 대용
+    fit:
+      n_on: 377
+      n_off: 630
+      hit_on: 0.5093
+      hit_off: 0.5127
+      diff: -0.0034
+      lo: -0.0672
+      hi: 0.0604
+      promote: false
+      at: '2026-10-14'
+      표본: 1470경기
+  B5:
+    name: 연승·연패
+    grade: 관찰
+    judge: false
+    재료: 연속 기록
+    공격: 연승 자체를 근거로 쓰지 않는다(평균 회귀)
+  C1:
+    name: 리그 홈 이점
+    grade: 확정
+    judge: true
+    재료: 리그·시즌 실측
+    공격: 실측(1.20~1.24)과 대조
+  C2:
+    name: 팀별 홈 효과
+    grade: 확정
+    judge: true
+    재료: 그 팀 홈/원정 득실(③ 반영판 — 지금은 끔)
+    공격: 분위 보정표의 그 분위 실측이 기준(43.4%) 이하면 깨짐
+  C3:
+    name: 이동 거리
+    grade: 관찰
+    judge: false
+    우선: 1
+    재료: 경기장 좌표(extra.venue.lat/lon) · 원정 팀 직전 경기장
+    공격: 100km 문턱 · 원정 쪽 · 대륙은 시차 포함
+    cut:
+      km: 100
+    fit:
+      n_on: 1174
+      n_off: 249
+      hit_on: 0.4881
+      hit_off: 0.498
+      diff: -0.0099
+      lo: -0.0783
+      hi: 0.0585
+      promote: false
+      at: '2026-10-14'
+      표본: 1470경기
+  C4:
+    name: 중립 경기
+    grade: 확정
+    judge: true
+    재료: 대회 형식 표(CC3)
+    공격: 홈 이점 0
+  C5:
+    name: 관중 규모·무관중
+    grade: 관찰
+    judge: false
+    우선: 2
+    재료: extra.attendance · venue.capacity
+  C6:
+    name: 인조잔디·고지대·구장 크기
+    grade: 가설
+    judge: false
+    우선: 3
+    재료: ⬜ 표면·고도 통로 없음
+  D1:
+    name: 휴식일
+    grade: 관찰
+    judge: false
+    우선: 1
+    재료: 그 팀 직전 경기 날짜(덤프 순서로 계산)
+    공격: 3일 미만 쪽 · 체급별(상위/하위)로 따로 측정
+    cut:
+      days: 3
+  D2:
+    name: 14일 내 경기 수
+    grade: 관찰
+    judge: false
+    우선: 2
+    재료: 덤프 날짜
+    cut:
+      games: 3
+  D3:
+    name: 대륙 대회 전후
+    grade: 관찰
+    judge: false
+    우선: 2
+    재료: ⬜ 국내 백필엔 대륙 일정이 없다
+  D4:
+    name: 로테이션
+    grade: 관찰
+    judge: false
+    우선: 1
+    재료: extra.starters(직전 경기 선발과 겹침)
+    공격: 직전 대비 바뀐 선발 수
+    cut:
+      changed: 4
+    fit:
+      n_on: 496
+      n_off: 927
+      hit_on: 0.502
+      hit_off: 0.4865
+      diff: 0.0155
+      lo: -0.039
+      hi: 0.07
+      promote: false
+      at: '2026-10-14'
+      표본: 1470경기
+  D5:
+    name: A매치 복귀
+    grade: 가설
+    judge: false
+    우선: 3
+  D6:
+    name: 킥오프 시간 · 시즌 초/말
+    grade: 가설
+    judge: false
+    우선: 3
+    재료: extra.kickoff(시각은 있다 · 효과 미측정)
+  E1:
+    name: 확정 XI 핵심 빠짐
+    grade: 확정
+    judge: true
+    재료: 축0 상위 3 · 결장 사다리
+    공격: 빠짐이 결론 반대 방향이면 깨짐
+  E2:
+    name: 결장 사다리 원천 등급
+    grade: 확정
+    judge: true
+    재료: 사다리 칸(S/A/B/C)
+    공격: S·A 확인만 판정 · B·C 단독은 표시
+  E3:
+    name: 포지션 구멍
+    grade: 관찰
+    judge: false
+    재료: 포지션별 대체 가치
+  E4:
+    name: 예상 XI 판
+    grade: 확정
+    judge: true
+    공격: 확정 XI 전이면 E1~E3 판정 보류
+  F1:
+    name: 리드 유지력
+    grade: 관찰
+    judge: false
+    우선: 1
+    재료: extra.goals(before/after 스코어로 리드 뒤 실점)
+    공격: 결론이 "지킨다"(승·−0.5·−1.5)에 걸렸고 리드 후 막판 실점 ≥2 면 그 줄 깨짐
+    cut:
+      late_min: 75
+      times: 2
+    fit:
+      n_on: 406
+      n_off: 1064
+      hit_on: 0.5345
+      hit_off: 0.4718
+      diff: 0.0627
+      lo: 0.0056
+      hi: 0.1197
+      promote: false
+      at: '2026-10-14'
+      표본: 1470경기
+  F2:
+    name: 추격력
+    grade: 관찰
+    judge: false
+    우선: 1
+    재료: 같은 재료(뒤진 뒤 득점)
+    공격: 결론이 "따라잡는다"면 역으로 확인
+    fit:
+      n_on: 367
+      n_off: 1103
+      hit_on: 0.4659
+      hit_off: 0.4968
+      diff: -0.0309
+      lo: -0.0898
+      hi: 0.0281
+      promote: false
+      at: '2026-10-14'
+      표본: 1470경기
+  F3:
+    name: 막판 득실 시간대
+    grade: 관찰
+    judge: false
+    우선: 2
+  F4:
+    name: 교체 영향
+    grade: 관찰
+    judge: false
+    우선: 2
+    재료: ⬜ 교체 투입 득점 통로 없음
+  F5:
+    name: 세트피스 의존도
+    grade: 관찰
+    judge: false
+    우선: 2
+    재료: 골 유형(kind)
+  G1:
+    name: 퇴장 빈도
+    grade: 관찰
+    judge: false
+    우선: 2
+    재료: ⬜ 퇴장 통로 미확인
+  G2:
+    name: 심판 성향
+    grade: 관찰
+    judge: false
+    우선: 2
+    재료: extra.referee(이름은 있다 · 카드 수는 ⬜)
+  G3:
+    name: 출장정지 누적 경고
+    grade: 확정
+    judge: true
+    재료: 연맹 공시(config/league_discipline.yaml) · 챔피언십은 ⬜
+  H1:
+    name: 순위 동기
+    grade: 관찰
+    judge: false
+    우선: 2
+    재료: 순위표·남은 경기
+  H2:
+    name: 감독 교체·부임 경기 수
+    grade: 관찰
+    judge: false
+    공격: 새 감독 효과는 근거로 쓰지 않는다 · 부임 후 경기 수만 표시
+  H3:
+    name: 감독 거취 압박
+    grade: 가설
+    judge: false
+    우선: 3
+  H4:
+    name: 더비·라이벌
+    grade: 가설
+    judge: false
+    우선: 3
+  H5:
+    name: 컵·대륙 우선순위
+    grade: 관찰
+    judge: false
+    우선: 2
+  I1:
+    name: 기온·습도·바람·강수
+    grade: 관찰
+    judge: false
+    우선: 2
+    재료: 좌표 + 킥오프 시각(축구 날씨 통로는 ⬜)
+  I2:
+    name: 혹서·혹한·우천 취소
+    grade: 가설
+    judge: false
+    우선: 3
+  J1:
+    name: 시장 괴리
+    grade: 확정
+    judge: true
+    재료: 보드·피드 마진 제거(Shin)
+    공격: 봇과 ≥10%p 반대 + 결론 쪽 ⬜ 있으면 깨짐
+  J2:
+    name: 배당 움직임
+    grade: 가설
+    judge: false
+    우선: 3
+    재료: ⬜ 캡처 시각별 기록 없음
+  K1:
+    name: 무 과소 구간
+    grade: 관찰
+    judge: false
+    우선: 1
+    재료: 무 구간 백필 편차(data/draw_bands)
+    공격: 결론이 "무가 아니다"에 걸린 줄은 편차만큼 감점 후 재판정
+    fit:
+      at: '2026-10-14'
+      표본: 1470경기
+      bands:
+        20~25%: -0.0408
+        25~30%: 0.0052
+      demote: true
+      why: 무 구간 편차 부호가 표본 사이에서 뒤집힌다
+  K2:
+    name: 저득점 두 팀
+    grade: 관찰
+    judge: false
+    우선: 2

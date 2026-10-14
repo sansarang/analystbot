@@ -572,6 +572,18 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     # 🔴 카드 줄도 **이 글자**를 쓴다(렌더러가 다시 세지 않는다)
     if said_div:
         layers["divergence"] = said_div
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **공격형 검증**(지시 2026-10-14f §1·§3) — 결론을 변수로 공격한다
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 [확정] 변수만 깨짐·반격에 쓴다(등급표 `config/attack_vars.yaml`) ·
+    #     [관찰]은 표시만. 🔴 **확률 경로를 안 바꾼다** — 카드의 운영 확률은
+    #     그대로고, 공격 결과는 **살아남은 결론**으로 나란히 적는다.
+    try:
+        layers["attack"] = _attack_of(ref, facts, mr, prob, layers, got_board)
+    except Exception as exc:                                # noqa: BLE001
+        layers["attack"] = {"why": f"🔴 공격을 못 돌렸다 — {exc!r:.120}"}
+
     said = s7_judge.run(ref, facts, variables, state=st, board=got_board,
                         board_source=board_src, now=now,
                         fold_why=said_fold,
@@ -1012,6 +1024,7 @@ def card_of(ref: MatchRef, facts: Facts, variables: list[Variable],
         market=box.get("market") or MarketProb(why="④ 를 안 돌렸다"),
         user_market=box.get("user_market") or MarketProb(),
         divergence=str(box.get("divergence") or ""),
+        attack=dict(box.get("attack") or {}),
         our_prob=box.get("ours"),
         compare=str(box.get("compare") or ""),
         compare_lines=[str(x) for x in (box.get("compare_lines") or [])],
@@ -1216,6 +1229,87 @@ def _layers(ref: MatchRef, facts: Facts, variables: list[Variable],
             "user_market": user_mk, "ours": ours, "compare": verdict,
             "compare_lines": [*lines, (f"시장 열 — {label}" if label else "")],
             "tilt": tilt, "market_why": reasons}
+
+
+def _attack_of(ref, facts, mr, prob, layers, board) -> dict:
+    """🔴🔴 공격 한 경기 — 재료를 모아 `core/attack.of` 에 넘긴다(새 통신 0건).
+
+    🔴 재료는 **이미 센 것들**이다 — 축 차(`mr`) · 홈 배율(`prob.why` 가 아닌
+       `prob.mul`) · 기준(Elo) · 시장(보드·피드) · XI 상태 · 결장 · 무 구간.
+    ⚠️ 못 모은 칸은 **빈 칸으로 넘긴다** — 공격이 "⬜ 라서 깨졌다"고 적는다.
+    """
+    from app.core import attack as _atk
+    if prob is None or not prob.ok():
+        return {"why": "🔴 확률이 없어 공격할 결론이 없다"}
+    ours = [prob.home, prob.draw, prob.away]
+    pick = max(range(3), key=lambda i: ours[i])
+    gaps = {k: (None if v is None else float(v))
+            for k, v in dict(mr.gaps() if hasattr(mr, "gaps") else {}).items()}
+    box_std = dict(getattr(facts, "standings", None) or {})
+    said_base = dict(layers or {}).get("base")
+    elo = None
+    if said_base is not None and getattr(said_base, "probs", None):
+        elo = [float(x) for x in said_base.probs]
+    mk = None
+    for key in ("user_market", "market"):
+        one = dict(layers or {}).get(key)
+        box_p = dict(getattr(one, "shin", None) or
+                     getattr(one, "probs", None) or {})
+        if box_p:
+            from app.core.odds import key_of
+            got = [box_p.get(key_of("win", s)) for s in ("home", "draw",
+                                                         "away")]
+            if all(x is not None for x in got):
+                mk = [float(x) for x in got]
+                break
+    said_xi = "확정" if any(
+        getattr((facts.xi or {}).get(str(getattr(ref, s, ""))), "state", "")
+        == "confirmed" for s in ("home", "away")) else "예상"
+    from app.core import competition as _cp3
+    key_lg, _w = _cp3.key_of(competition=str(ref.competition or ""))
+    from app.core import m1v2 as _c
+    sd, _w2 = _c.axis_sd(key_lg, "axis0")
+    # 🔴 배율은 **운영이 쓰는 그 표**에서 다시 읽는다(사본 금지) — `ProbOut` 은
+    #    배율을 칸으로 들고 있지 않다(λ 만 든다).
+    from app import rules as _rules
+    from app.core import probmodel as _pm2
+    box_base = dict(_rules.goal_baseline(key_lg) or {})
+    per = _rules.goal_share(key_lg)
+    mul_h = (float(box_base["home_share"]) / float(per)
+             if box_base.get("home_share") and per else 1.0)
+    mul_a, _wa = _pm2.away_mul(home_share=box_base.get("home_share"),
+                               per_team=per)
+    said_lam = dict(prob.lam or {})
+    lam_pair = [float(said_lam.get("home") or 0.0),
+                float(said_lam.get("away") or 0.0)]
+    sigma_now = sum({"axis0": .3, "axis1": .3, "axis2": .2, "axis3": .2}
+                    .get(k, 0.0) * (v or 0.0) for k, v in gaps.items())
+    import math as _math
+    base_pair = ([lam_pair[0] / max(mul_h * _math.exp(0.25 * sigma_now), 1e-9),
+                  lam_pair[1] / max(float(mul_a or 0.88)
+                                    * _math.exp(-0.25 * sigma_now), 1e-9)]
+                 if all(lam_pair) else [1.0, 1.0])
+    box = {"pick": pick, "ours": ours, "gaps": gaps,
+           "mul": mul_h, "league_mul": mul_h,
+           "away_mul": float(mul_a or 0.88),
+           # 🔴 ③a 를 켠 뒤엔 팀 배율을 **안 쓴다** → C2 는 버팀으로 적힌다
+           "team_mul": 0.0 if _c.which("home_mul") == "a" else mul_h,
+           "base": base_pair,
+           "elo": elo, "market": mk,
+           "xi_state": said_xi,
+           "absence_src": str(box_std.get("absence_src") or ""),
+           "key_missing": [], "gaps_missing": [], "neutral": bool(
+               _cp3.neutral_of(key_lg, stage=str(getattr(ref, "round_name",
+                                                         "") or ""))[0]),
+           "band_dev": None, "t12": "", "form_games": None,
+           "axis_why": {}, "axis0_sd": sd, "discipline": None}
+    got = _atk.of(box)
+    return {"shots": [s.said() for s in got.shots],
+            "verdict": got.verdict(), "sigma0": got.sigma0,
+            "sigma": got.sigma, "mul0": got.mul0, "mul": got.mul,
+            "lam": _atk.lam_of(box, got),
+            "why": (f"공격 {len(got.shots)}발 · 깨짐 {len(got.broken())} · "
+                    f"반격 {len(got.counters())} · 판정 **{got.verdict()}**")}
 
 
 def _divergence_of(ref, facts, prob, board, layers) -> tuple[str, str]:

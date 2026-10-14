@@ -82,6 +82,58 @@ def elo_probs(dr: float, *, kind: str) -> list[float]:
     return [float(got.home), float(got.draw), float(got.away)]
 
 
+
+def attack_box(j: dict, *, home: str, away: str, starters: dict) -> dict:
+    """🔴🔴 그 경기에서 **공격 변수의 재료**만 뽑는다(측정 전용 · 확률 경로 밖).
+
+    🔴 담는 것 —
+      · `venue` 경기장 이름·좌표(**C3 이동 거리**)
+      · `xg` 두 팀 xG(**B2 xG 차이**) · `sog` 유효 슈팅
+      · `starters` 양 팀 선발 이름(**D4 로테이션**)
+      · `goals` 골 시각·자책·운 요소(**F1 리드 유지력** · F3 · B3)
+      · `attendance` 관중(**C5**) · `referee` 심판(**G2**) · `kickoff` 킥오프
+    ⚠️ 수를 **만들지 않는다** — 그 경기 페이지에 적힌 것만 옮긴다(#3·#4).
+    """
+    from app.collect import fotmob as fm
+    page = fm._page(j)
+    info = ((page.get("content") or {}).get("matchFacts") or {}).get(
+        "infoBox") or {}
+    said_v = dict(info.get("Stadium") or {})
+    stats = fm.stats_of(j)
+
+    def _pair(*names) -> list:
+        for nm in names:
+            got = stats.get(nm)
+            if got:
+                return [((x or {}).get("n") if isinstance(x, dict) else x)
+                        for x in got]
+        return [None, None]
+
+    rows = []
+    for g in (fm.goals_of(j) or []):
+        rows.append({k: g.get(k) for k in
+                     ("minute", "added", "home", "before", "after",
+                      "own_goal", "xg", "kind", "header", "lucky")
+                     if k in g})
+    return {
+        "venue": {"name": said_v.get("name"), "city": said_v.get("city"),
+                  "lat": said_v.get("lat"), "lon": said_v.get("long"),
+                  "capacity": said_v.get("capacity")},
+        "xg": _pair("expected_goals", "Expected goals (xG)", "xG"),
+        "sog": _pair("shots_on_target", "Shots on target"),
+        "attendance": (info.get("Attendance") if not isinstance(
+            info.get("Attendance"), dict) else
+            (info.get("Attendance") or {}).get("value")),
+        "referee": ((info.get("Referee") or {}).get("text")
+                    if isinstance(info.get("Referee"), dict) else None),
+        "kickoff": str((page.get("general") or {}).get("matchTimeUTCDate")
+                       or (page.get("general") or {}).get("matchTimeUTC")
+                       or ""),
+        "starters": {"home": list(starters.get("home") or []),
+                     "away": list(starters.get("away") or [])},
+        "goals": rows,
+    }
+
 async def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--league", action="append", required=True,
@@ -158,6 +210,14 @@ async def main() -> None:
                 continue
             h, a = score
             home, away = str(one.get("home") or ""), str(one.get("away") or "")
+            # 🔴🔴 **선발을 채운다**(공격형 검증 v2 · D4 로테이션의 재료) —
+            #    ⚠️ 종전엔 `"starters": []` 였다(빈 칸) → 로테이션을 백필에서
+            #    **못 셌다**. 경기 페이지에 이미 들어 있다.
+            said_lu = ((fm._page(j).get("content") or {}).get("lineup") or {})
+            said_xi = {}
+            for side, which in (("home", "homeTeam"), ("away", "awayTeam")):
+                said_xi[side] = [str(r.get("name") or "") for r in
+                                 fm.players_of(dict(said_lu.get(which) or {}))]
             # ── 🔴 **그 경기 앞**의 자료로만 특징을 만든다(C11)
             gaps, why = bf.features(
                 j, prior={"home": prior.get(home, []),
@@ -192,7 +252,12 @@ async def main() -> None:
                              "league": name, "day": str(one.get("utc"))[:10],
                              "hit": hit, "ours": ours, "dr": dr, "lam": lam,
                              "gaps": dict(gaps), "why": why,
-                             "diff": h - a})
+                             "diff": h - a,
+                             # 🔴🔴 **공격형 검증 v2 재료**(지시 2026-10-14f §5)
+                             #    — 경기장 좌표(C3) · 팀 xG(B2) · 선발(D4) ·
+                             #    골 시각·운 요소(F1·F3·B3) · 관중(C5) · 심판(G2)
+                             "extra": attack_box(j, home=home, away=away,
+                                                 starters=said_xi)})
             # ── 🔴 Elo 를 **경기 뒤** 굴린다(다음 경기의 "경기 전 등급")
             exp_h = 1.0 / (1.0 + 10 ** (-dr / 400.0))
             got = 1.0 if h > a else (0.5 if h == a else 0.0)
@@ -205,7 +270,7 @@ async def main() -> None:
                      "gf": (h if mine else a), "ga": (a if mine else h),
                      "opp": (away if mine else home),
                      "goals": fm.goals_of(j), "stats": fm.stats_of(j),
-                     "starters": []})
+                     "starters": said_xi["home" if mine else "away"]})
     if args.dump:
         # 🔴🔴 **판정 시험은 같은 재생을 읽는다**(사용자 지시 2026-10-12 판정 시험).
         #    ⚠️ 다시 재생하면 Elo 굴림·난수가 미세하게 달라 두 모형 비교가
