@@ -188,6 +188,16 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     docs = list(cache.values()) or docs
     variables = s5_verify.run(ref, facts, docs, cands, state=st,
                               turnover=turn)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **단계 3+5 통합 — 결장 사다리 칸 4 를 기사 수로 다시 센다**
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 지시 2026-10-14 — *"3,5 통합"*.
+    #  🔴 칸 4(국내 기사)는 `s2_facts`(단계 3)가 **딥서치(단계 5)보다 먼저** 돌아
+    #     영원히 `⏸ 변수 단계에서 센다` 로 남았다 — 10-14 슬레이트 10장 **전부**.
+    #  🔴 여기가 둘이 만나는 자리다 — 기사 변수는 **지금** 존재한다.
+    #  ⚠️ 칸 1~3 은 건드리지 않는다(구조 사실은 s2 가 센 그대로다).
+    facts = _absence_merge(ref, facts, variables, state=st)
     # 🔴🔴 **② 전역 새 사실로 깃발을 덮는다**(사용자 결정 2026-10-10 (a)②) —
     #    변수가 생긴 **뒤**에만 볼 수 있다(새 사실이 변수로 온다).
     for side in ("home", "away"):
@@ -882,6 +892,23 @@ def _gate_of(ref: MatchRef, facts, turn: dict, *, state: RunState):
     state.note("신원 풀이 — " + " / ".join(said_rows[:24]))
     return _gate.check(ids=ids, pos=pos,
                        clash=_gate.clash_of(xi_ids=ids, boxes=boxes))
+
+
+def _absence_merge(ref: MatchRef, facts, variables, *, state: RunState):
+    """🔴🔴 **단계 3+5 통합** — 사다리 칸 4 를 검증된 기사 변수로 다시 센 `facts`.
+
+    🔴 세는 규칙은 `core/absence.recount` 하나다(사본 금지).
+    ⚠️ 사다리가 비었으면 `facts` 를 **그대로** 돌려준다 — 없는 칸을 만들지 않는다.
+    """
+    from app.core import absence as _ab2
+    rungs = list(getattr(facts, "absence_rungs", None) or [])
+    if not rungs:
+        state.note("3+5 통합 — ⬜ 사다리를 안 돌렸다(칸 4 를 다시 셀 자리가 없다)")
+        return facts
+    keys = [str(getattr(ref, "home", "") or ""), str(getattr(ref, "away", "") or "")]
+    got, why = _ab2.recount(rungs, variables, keys=keys)
+    state.note(f"3+5 통합 — {why}")
+    return facts.model_copy(update={"absence_rungs": got})
 
 
 def _upset_apply(said, got, *, ref: MatchRef, layers: dict):

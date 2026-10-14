@@ -14,6 +14,18 @@ fotmob 경기 페이지의 `lineup.*.unavailable` 칸 **하나**에 결장이 �
 
 🔴 **이 파일은 결장을 '찾는' 곳이다 — 등급을 정하지 않는다.** 등급(soft/hard)은
    변수 단계가 `Missing.source` 를 보고 정한다(사본 금지).
+
+## 🔴🔴 **단계 3+5 통합**(지시 2026-10-14 *"3,5 통합"*)
+칸 4(**국내 기사**)는 이 사다리를 부르는 `s2_facts` 가 **딥서치보다 먼저** 돌아
+영원히 못 채워졌다 — 모든 카드에 `⏸ **변수 단계에서 센다**` 가 찍혔다(실측
+2026-10-14 슬레이트 10장 **전부**). 🔴 매달린 포인터였다.
+
+> 즉 *결장 사다리*(단계 3)와 *딥서치*(단계 5)는 **같은 일**을 둘로 쪼갠 것이다 —
+> "누가 못 나오나"를 구조 사실로 묻고(1~3칸), 기사로 묻는다(4칸).
+
+🔴 그래서 `recount` 가 **검증된 기사 결장 변수**로 칸 4 를 다시 센다. 부르는 곳은
+   `pipeline` 이고 **s5(변수 검증) 뒤**다 — 그때 비로소 기사 수가 존재한다.
+⚠️ 규칙으로 지은 변수(`from_rule`)는 **기사가 아니다** — 세지 않는다.
 """
 from __future__ import annotations
 
@@ -211,6 +223,71 @@ def ladder(facts, *, keys: list[str], league: str = "",
                             "⏸ **변수 단계에서 센다** — 기사 결장 변수(F 하위)의 "
                             "매체 수를 카드가 적는다")})
     return {"add": add, "rungs": rows}
+
+
+#: 🔴 **기사 결장**으로 셀 변수 유형(카탈로그의 결장 계열). ⚠️ 규칙 변수는 뺀다.
+ARTICLE_TYPES: tuple[str, ...] = ("absence", "def_absence", "absence_att",
+                                  "suspension", "injury", "return",
+                                  "doubtful")
+
+#: 🔴 지시서의 *"국내 기사 **2매체**"* — 그 수를 넘겨야 칸이 **찼다**고 적는다
+MEDIA_MIN = 2
+
+
+def articles_of(variables, *, keys: list[str] | None = None) -> dict:
+    """🔴🔴 **칸 4 — 검증된 기사 결장 변수**를 센다. `{"n", "why", "rows"}`.
+
+    🔴 `variables` 는 **s5 를 지난 것**이다(신원·날짜·유형 검사 통과).
+    ⚠️ `from_rule` 이 있는 변수는 **구조 사실에서 규칙이 지은 것**이라 기사가
+       아니다 — 세면 칸 1~3 을 두 번 세는 셈이다.
+    ⚠️ `n_sources` 는 §6-5 가 적은 **원천 수**다. 없으면(0) 세되 매체 수는
+       *"못 쟀다"* 로 적는다 — 0 으로 적으면 조용한 거짓이 된다(#3).
+    """
+    wanted = {str(x) for x in (keys or [])}
+    rows = []
+    for v in list(variables or []):
+        if str(getattr(v, "from_rule", "") or ""):
+            continue
+        if str(getattr(v, "type", "")) not in ARTICLE_TYPES:
+            continue
+        if wanted and str(getattr(v, "subject", "")) not in wanted:
+            continue
+        rows.append(v)
+    if not rows:
+        return {"n": 0, "rows": [],
+                "why": ("🔴 **0건** — 딥서치가 기사에서 결장 사실을 못 건졌다"
+                        "(단계 3+5 통합 · 규칙으로 지은 변수는 안 센다)")}
+    grades = [str(getattr(v, "grade", "") or "") for v in rows]
+    srcs = [int(getattr(v, "n_sources", 0) or 0) for v in rows]
+    top = next((g for g in ("S", "A", "B", "C") if g in grades), "")
+    n_media = max(srcs) if srcs else 0
+    said = (f"기사 결장 변수 **{len(rows)}개**"
+            + (f" · 원천 등급 최고 `{top}`" if top else " · ⬜ 원천 등급을 못 쟀다")
+            + (f" · 매체 최대 {n_media}곳" if n_media
+               else " · ⬜ 매체 수를 못 쟀다(§6-5 칸이 비었다)"))
+    if n_media and n_media < MEDIA_MIN:
+        said += f" · ⚠️ 지시서 문턱 {MEDIA_MIN}매체 **미달**"
+    return {"n": len(rows), "rows": rows, "why": said}
+
+
+def recount(rungs: list, variables, *, keys: list[str] | None = None) -> tuple:
+    """🔴🔴 **칸 4 만** 기사 수로 다시 적은 사다리와 그 사유. `(새 사다리, 글자)`.
+
+    🔴 칸 1~3 은 **건드리지 않는다** — 그것은 s2 가 구조 사실로 센 것이다.
+    ⚠️ 사다리를 안 돌린 실행(빈 목록)에는 아무것도 하지 않는다 — 없는 칸을
+       지어내지 않는다(#3).
+    """
+    got = [dict(x) for x in (rungs or [])]
+    if not got:
+        return got, "⬜ 사다리를 안 돌렸다 — 칸 4 를 다시 셀 자리가 없다"
+    box = articles_of(variables, keys=keys)
+    for one in got:
+        if str(one.get("rung")) == "국내 기사":
+            was = int(one.get("got") or 0)
+            one["got"] = int(box["n"])
+            one["why"] = str(box["why"])
+            return got, (f"칸 4(국내 기사) {was} → **{box['n']}** · {box['why']}")
+    return got, "⬜ 사다리에 `국내 기사` 칸이 없다"
 
 
 def _why_empty(facts, keys: list[str]) -> str:
