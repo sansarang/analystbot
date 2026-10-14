@@ -2008,6 +2008,23 @@ FATIGUE_DAYS = 4
 FATIGUE_TZ_HOURS = 3
 FATIGUE_KM = 3000
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **IR13 이동 문턱 — 1,000km**(사용자 지시 2026-10-15)
+# ══════════════════════════════════════════════════════════════════
+#
+# > 3000 **니 생각이고** 1000km도 가도 힘들다...**과부하 맞다**
+#
+# 🔴 내가 IR13 을 지을 때 `FATIGUE_KM`(3,000km)을 **재사용했다** — 새 수를
+#    지어내지 않으려고 그랬지만, 그 수는 **피로 규칙의 것**이다(지시서
+#    2026-10-06 7차 §6: *"직전 경기 후 4일 이내 + (시차 3시간 이상 또는 이동
+#    3,000km 이상)"*). 즉 *"4일 안에 또 뛰는데 멀리까지 갔다"* 의 문턱이다.
+# ⚠️ **이동 부담 자체**의 문턱은 그것과 다르다 — 사용자가 1,000km 로 정했다.
+#    ⚠️ 실측 2026-10-15: 로테르담 ↔ 코모는 **753km** 다(내가 "약 1,100km"
+#       라고 적은 것은 짐작이었다 · 규율 #4). 그래서 **그 경기는 안 걸린다** —
+#       문턱이 1,000km 라는 뜻이고 753km 를 걸리게 하라는 말은 아니다.
+# 🔴 `FATIGUE_KM` 은 **그대로 둔다**(IR11 은 지시서가 못 박은 수다).
+TRAVEL_KM = 1000
+
 
 def _ir_fatigue(rid: str, kind: str, row: dict, ref: MatchRef, facts: Facts, *,
                 state: RunState) -> list[Variable]:
@@ -2120,7 +2137,10 @@ def _travel(said: dict, ref: MatchRef, key: str) -> tuple[float | None,
 #       문서를 덮는다(CLAUDE.md 첫 줄) — 켜고, 충돌을 **코드에 남긴다**.
 #
 # 🔴 거리는 `_travel` **하나**가 센다(사본 금지) — IR11 이 쓰는 그 함수다.
-# 🔴 문턱도 `FATIGUE_KM` 을 **같이 쓴다**(새 수를 지어내지 않는다 · #4).
+# 🔴🔴 문턱은 **`TRAVEL_KM`(1,000km)** 이다 — 사용자 지시 2026-10-15
+#    (*"3000 니 생각이고 1000km도 가도 힘들다...과부하 맞다"*).
+#    ⚠️ 종전엔 `FATIGUE_KM`(3,000km)을 재사용했다 — 그것은 **피로 규칙의 수**
+#       이고 이동 부담의 문턱이 아니다. 그 혼동을 사용자가 잡았다.
 # ⚠️ IR11 과 겹치지 않는다: IR11 은 *"4일 이내 + 이동"* 이고 이것은 **거리만**
 #    본다. 같은 경기에서 둘 다 걸릴 수 있고 그것이 맞다(피로와 이동은 다른 일이다).
 
@@ -2155,12 +2175,12 @@ def _ir_travel_away(rid: str, kind: str, row: dict, ref: MatchRef,
     if km is None:
         state.note(f"s5 {rid} `{key}` — 거리를 못 셌다({why}) · 안 돈다")
         return []
-    if km < FATIGUE_KM:
+    if km < TRAVEL_KM:
         state.note(f"s5 {rid} `{key}` — 이동 {km:,.0f}km"
-                   f"(문턱 {FATIGUE_KM:,}km) · 안 돈다")
+                   f"(문턱 {TRAVEL_KM:,}km) · 안 돈다")
         return []
     claim = (f"{_name(ref, key)} 원정 이동 {km:,.0f}km — 원정 부담"
-             f"(문턱 {FATIGUE_KM:,}km · {why})")
+             f"(문턱 {TRAVEL_KM:,}km · {why})")
     state.note(f"s5 {rid} `{key}` **발동** — {why}")
     return [_ir_var(_rid_for(rid, key, ref), kind, row, key, claim, ref)]
 

@@ -158,7 +158,7 @@
 - `IR11-home` [fatigue] soft 무게 0.7 · 자리 ['V3', 'hypo']
     South Korea 일정 과부하 — 8일 안에 이번이 3번째 경기(직전 [4, 8]일 전) · 축2 압박 감쇠(T2)만 — **적합된 경우** · V3 일정·피로
 - `IR13-away` [travel_schedule] soft 무게 0.7 · 자리 ['V3', 'hypo']
-    Uzbekistan 원정 이동 4,734km — 원정 부담(문턱 3,000km · 시차 약 3.7시간(경도 어림) · 이동 4,734km) · 일정 부담 — 축2 는 적합된 경우만 · V3
+    Uzbekistan 원정 이동 4,734km — 원정 부담(문턱 1,000km · 시차 약 3.7시간(경도 어림) · 이동 4,734km) · 일정 부담 — 축2 는 적합된 경우만 · V3
 
 **⚔️ MatchupReport (전체)** — 종합 가리지 못함 없음 · axis0 ⬜ · axis1 ⬜ · axis2 ⬜ · axis3 ⬜ · 🟡 **축 부족** — ⬜ 4개(axis0, axis1, axis2, axis3) → 재배분하지 않는다(한 축을 과대 반영한다) → 합 +0.000 · 🔴 임시
 - **axis0** 홈 None · 원정 None · 차 None · 우위 —(없음)
@@ -252,7 +252,7 @@
 - `S03` [home_field] South Korea 홈 경기 — 홈 **승률** 수치 없음(대회 유형 `national_friendly` 의 승률 표가 없다 · 다른 대회 숫자를 빌리지 않는다) · ⚠️ λ 홈 배율은 **득점 실측**을 쓴다(홈 팀 평균 1.6177 · 표본 5274) — 승패 **home** · 득점 - · soft · 출처 구조 사실 · 대상 `home_field` · [규칙 S03]
 - `S04` [match_type] 친선 — 실험 라인업·교체 다수 가능 — 승패 **both** · 득점 - · soft · 출처 구조 사실 · 대상 `match_type` · [규칙 S04]
 - `IR11-home` [fatigue] South Korea 일정 과부하 — 8일 안에 이번이 3번째 경기(직전 [4, 8]일 전) — 승패 **away** · 득점 - · soft · 출처 구조 사실 · 대상 `fatigue:IR11-home` · [규칙 IR11-home]
-- `IR13-away` [travel_schedule] Uzbekistan 원정 이동 4,734km — 원정 부담(문턱 3,000km · 시차 약 3.7시간(경도 어림) · 이동 4,734km) — 승패 **home** · 득점 - · soft · 출처 구조 사실 · 대상 `travel_schedule:IR13-away` · [규칙 IR13-away]
+- `IR13-away` [travel_schedule] Uzbekistan 원정 이동 4,734km — 원정 부담(문턱 1,000km · 시차 약 3.7시간(경도 어림) · 이동 4,734km) — 승패 **home** · 득점 - · soft · 출처 구조 사실 · 대상 `travel_schedule:IR13-away` · [규칙 IR13-away]
 
 **(근거 불가)** — 맥락으로만 쓴다
 - `S02` [h2h_pattern] 맞대결 9경기 South Korea 6승 3무 0패(상대 0승) · 평균 3.0골 — 승패 **home** · 득점 - · soft · 출처 구조 사실 · 대상 `h2h` · [규칙 S02]

@@ -207,7 +207,10 @@ async def main(argv: list[str]) -> int:
     cands = await s4_extract.run(ref, docs, state=st, chain=chain, net=net,
                                  cache=cache)
     docs = list(cache.values()) or docs
-    variables = s5_verify.run(ref, facts, docs, cands, state=st, turnover={})
+    # 🔴🔴 **`turnover=turn` 을 넘긴다** — 운영 `pipeline` 이 그렇게 부른다.
+    #    ⚠️ 실사고 2026-10-15: 내가 `turnover={}` 로 불러 `TURN-*` 변수가 1차에서
+    #       안 만들어졌고, 표적 s5 에서만 나와 **varset 이 둘로 갈렸다**.
+    variables = s5_verify.run(ref, facts, docs, cands, state=st, turnover=turn)
     print(f"## ④⑤ 추출·검증 — 후보 {len(cands)} → 변수 **{len(variables)}개**")
     mark("④ 추출", "✅ 돌았다" if cands else "🔴 빈손", f"후보 {len(cands)}개")
     mark("⑤ 검증", "✅ 돌았다" if variables else "🔴 빈손",
@@ -337,6 +340,7 @@ async def main(argv: list[str]) -> int:
     RERANK = ("standings points round fixtures travel tactics formation "
               "manager record unrest")
     got_docs: list = []
+    gap_vars: list = []
     for side in ("home", "away"):
         nm = str(getattr(ref, f"{side}_name", "") or "")
         mine = [x for x in pairs if nm and nm.split()[0] in x[0]]
@@ -397,6 +401,9 @@ async def main(argv: list[str]) -> int:
                                     net=net, cache=cache)
         said_v2 = s5_verify.run(ref, facts, got_docs, more, state=st,
                                 turnover=turn)
+        # 🔴 **하나의 varset** 에 들어갈 목록에 담는다(위 ② 의 까닭)
+        gap_vars = [v for v in said_v2
+                    if v.id not in {x.id for x in variables}]
         print(f"## ⑧ 표적 추출·검증 — 후보 {len(more)} → 변수 **{len(said_v2)}개**")
         # 🔴 후보 0 이면 **추출이 무엇을 말했나**를 그대로 적는다(#3)
         if not more:
@@ -417,7 +424,9 @@ async def main(argv: list[str]) -> int:
                      else ""))
         # 🔴 **자리**를 보인다 — 확률에 닿는가(축·λ상수)가 그 칸에서 보인다
         from app.core import routing as _rt
-        box = _rt.place(list(variables) + list(said_v2) + list(var_lr))
+        # ⚠️ 여기서 또 배치하지 않는다 — ⑩ 이 **하나의 varset** 을 만든다.
+        #    이 줄은 표적 변수의 자리만 미리 보이는 **참고**다.
+        box = _rt.place(list(gap_vars))
         AX = {"axis0", "axis1", "axis2", "axis3", "lambda_const"}
         print("## ⑨ 배치 — 확률에 닿는가")
         for row in box.rows:
@@ -443,7 +452,11 @@ async def main(argv: list[str]) -> int:
     from app.core.stages import s2e_matchup as _s2e
     from app.core.stages import s6_verdict as _vd
 
-    all_vars = list(variables) + list(var_lr)
+    # 🔴🔴 **varset 은 하나다** — 운영 `pipeline:233` 이 그렇게 한다.
+    #    ⚠️ 실사고 2026-10-15: ⑩ 배치 출력은 `variables + said_v2 + var_lr` 로
+    #       찍고 축이 쓴 varset 은 `variables + var_lr` 였다 → **배치와 축
+    #       refs 가 어긋났다**(TURN-away 가 축0·축1·축3 근거에서 빠졌다).
+    all_vars = list(variables) + list(gap_vars) + list(var_lr)
     varset = _rt2.place(all_vars)
     print("## ⑩ 변수 배치")
     AX2 = {"axis0", "axis1", "axis2", "axis3", "lambda_const"}
@@ -487,7 +500,12 @@ async def main(argv: list[str]) -> int:
           f"원정 {float(dict(prob.lam or {}).get('away') or 0):.3f}")
     print(f"- 오버 — " + " · ".join(
         f"{k} {float(v):.1%}" for k, v in list(dict(prob.over or {}).items())[:5]))
-    print(f"- 유도 — {str(prob.why or '')[:420]}\n", flush=True)
+    # 🔴🔴 **자르지 않는다** — 실사고 2026-10-15: 420자로 잘라 찍었더니 λ 보정
+    #    글자가 안 보여 *"보정이 안 걸렸다"* 로 **잘못 결론**했다(규율 #4).
+    print(f"- 유도 — {str(prob.why or '')}")
+    said_lr_txt = ("✅ 걸렸다" if "λ 보정" in str(prob.why or "")
+                   else "🔴 **안 걸렸다**")
+    print(f"- λ 보정 — {said_lr_txt}\n", flush=True)
     mark("⑮⑯ 확률·시뮬", "✅ 돌았다",
          f"홈 {prob.home:.1%}/무 {prob.draw:.1%}/원정 {prob.away:.1%} · "
          f"스코어 칸 {len(dict(prob.scores or {}))}개")

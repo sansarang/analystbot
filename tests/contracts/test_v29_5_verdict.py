@@ -13,6 +13,7 @@
   VD6 🔴🔴 **지어낸 스코어를 잡는다**(전에 이 단계를 지운 그 사고)
   VD7 멀쩡한 평은 **안 지어냈다**로 지난다(거짓 위반이 없다)
   VD8 평이 없으면 **못 쟀다** — `안 지어냈다`로 넘기지 않는다
+  VD9 🔴🔴 **지어낸 규칙 번호를 잡는다**(실사고 2026-10-15 `[IR14]`)
 """
 from __future__ import annotations
 
@@ -172,3 +173,31 @@ def test_vd8_no_essay_is_not_pass() -> None:
         f"VD8 🔴 평이 없는데 `{verdict}` 로 적었다 — *'안 지어냈다'* 와 "
         "*'쓸 평이 없다'* 는 다른 말이다(#3)")
     assert bad, "VD8 🔴 사유가 없다"
+
+
+def test_vd9_catches_invented_rule_id() -> None:
+    """VD9 🔴🔴 — **없는 규칙 번호**를 잡는다(사용자 지시 2026-10-15 (가)).
+
+    ⚠️ 실사고 2026-10-15(코모): solar 가 *"**[IR14]**로 원정 λ가 0.95배로
+       깎여"* 라고 썼다. 🔴 묶음에 `IR14` 글자가 **0건**이었다(그 변수는 자리가
+       `['V2','hypo']` 라 묶음에 안 들어갔고 λ 보정도 안 걸렸다). 즉 **없는
+       규칙 효과를 지어냈다** — 그런데 (가)(나)(다)는 숫자·스코어·이름만 보므로
+       **통과시켰다**.
+    🔴 그래서 (라) 번호 검사를 더했다.
+    """
+    import sys
+    sys.path.insert(0, str(ROOT))
+    from app.core.stages.s6_verdict import Verdict, judge
+    # 🔴 묶음에 `T3` 는 있고 `IR14` 는 **없다**
+    box = ["확률 — 홈 42.7% · 무 24.4% · 원정 32.8%",
+           "λ 유도(코드 글자) — 규칙(축 안에서 셌다) [T3] home λ +5%"]
+    got = Verdict(sentences=["홈 42.7% 다.",
+                             "[T3] 가 홈 λ 를 밀었다.",
+                             "[IR14] 가 원정 λ 를 깎았다."],
+                  refs=["확률", "λ", "λ"])
+    verdict, bad = judge(got, box)
+    assert verdict == "지어냈다", f"VD9 🔴🔴 `[IR14]` 를 통과시켰다 — {bad}"
+    assert any("IR14" in x for x in bad), f"VD9 🔴 그 번호를 안 지목했다 — {bad}"
+    # 🔴 묶음에 **있는** 번호(`T3`)는 **거짓 위반이 없어야** 한다
+    assert not any("T3" in x and "없는" in x for x in bad), (
+        f"VD9 🔴 묶음에 있는 `T3` 를 없다고 했다 — {bad}")
