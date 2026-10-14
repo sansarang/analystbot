@@ -770,7 +770,7 @@ def parse_match(got, q: Question, *, day: date | None = None) -> list[Fact]:
         if not name:
             continue
         # 🔴 §17-g-3 — 질문한 팀만. 둘 다 올리면 귀속이 섞인다
-        if team and not verify.mentions_team(name, team, q.local):
+        if team and not verify.same_team(name, team, q.local):
             continue
         names = _names(side)
         gone = missing_of(side)
@@ -1003,10 +1003,8 @@ def parse_form(j: dict, q: Question, *, url: str, when) -> list[Fact]:
         #     자리별 교체가 **전부 ⬜** 가 됐다(연쇄).
         #  🔴 `core/teamname.pick` 이 양방향으로 맞춘다 — 어제 조 순위표를 고친
         #     그 함수다(사본 금지). ⚠️ 남의 팀은 여전히 거부한다(실측).
-        if q.team and not verify.mentions_team(team, q.team, q.local):
-            from app.core import teamname as _tn2
-            if not _tn2.pick(str(q.team), [team])[0]:
-                continue
+        if q.team and not verify.same_team(team, q.team, q.local):
+            continue
         games = [g for g in (tf[which] or []) if isinstance(g, dict)]
         if not games:
             continue
@@ -1491,10 +1489,10 @@ def prev_match_urls(j: dict, q: Question, *, limit: int = PREV_MATCHES
         #    있었다) 과거 XI 0경기 → 평소 XI 없음 → 바뀐 자리·ΔA·ΔD·
         #    자리별 교체가 **전부 ⬜** 가 됐다(연쇄 · 실측 2026-10-15).
         #  🔴 `core/teamname.pick` 이 양방향으로 맞춘다(사본 금지).
-        if q.team and not verify.mentions_team(team, q.team, q.local):
-            from app.core import teamname as _tn3
-            if not _tn3.pick(str(q.team), [team])[0]:
-                continue
+        # 🔴 이름 대 이름은 `verify.same_team` 하나다(사본 금지) — 위 머리말의
+        #    그 연쇄를 막는 문이다.
+        if q.team and not verify.same_team(team, q.team, q.local):
+            continue
         games = [g for g in (tf[which] or []) if isinstance(g, dict)]
         dated = sorted(((_when_of(g), g) for g in games),
                        key=lambda x: (x[0] is not None, x[0]))
@@ -1545,7 +1543,7 @@ def parse_prev(got, q: Question) -> list[Fact]:
         name = str(side.get("name") or "").strip()
         if not name:
             continue
-        if team and not verify.mentions_team(name, team, q.local):
+        if team and not verify.same_team(name, team, q.local):
             continue
         names = _names(side)
         if len(names) != XI:
@@ -1627,7 +1625,7 @@ def _past_stats(j: dict, q: Question, *, url: str, when) -> list[Fact]:
     for name, idx, opp in ((home, 0, away), (away, 1, home)):
         if not name:
             continue
-        if q.team and not verify.mentions_team(name, q.team, q.local):
+        if q.team and not verify.same_team(name, q.team, q.local):
             continue
         val = {"team": name, "opponent": opp,
                "from_match": f"{home} vs {away}",
@@ -2050,7 +2048,7 @@ def parse_players(j: dict, q: Question, *, url: str, when,
         name = str(side.get("name") or "").strip()
         if not name:
             continue
-        if q.team and not verify.mentions_team(name, q.team, q.local):
+        if q.team and not verify.same_team(name, q.team, q.local):
             continue
         for is_sub, group in ((False, side.get("starters") or []),
                               (True, side.get("subs") or [])):

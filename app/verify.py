@@ -367,6 +367,38 @@ def mentions_team(text: str, formal: str, local: str | None = None) -> bool:
     return hits >= min(2, len(words))
 
 
+def same_team(name: str, formal: str, local: str | None = None) -> bool:
+    """🔴🔴 **이름 대 이름** — 그 둘이 같은 팀인가. 사용자 지적 2026-10-15.
+
+    ⚠️ `mentions_team` 은 *"이 **글**이 그 팀을 말하나"* 다 — 그래서 라틴 이름에
+       **낱말 둘**을 요구한다(도시 이름 하나로 호텔·날씨 페이지가 통과하는 것을
+       막는 문턱이다 · 실측 2026-10-01 `lasvegashotels`).
+    🔴 그런데 **팀 이름끼리** 견줄 때는 그 위험이 없고, 그 문턱이 오히려 해롭다:
+    ```
+    mentions_team('Como',      'Como 1907')           → True   (낱말 1개 'como')
+    mentions_team('Feyenoord', 'Feyenoord Rotterdam') → **False**(낱말 2개 요구)
+    ```
+    그 하나로 연쇄가 났다(실측 2026-10-15): fotmob 경기 페이지의 짧은 이름
+    (`Feyenoord`)과 우리 긴 이름(`Feyenoord Rotterdam`)이 안 맞아 **직전 경기
+    0개** → 과거 XI 0경기 → 평소 XI 없음 → 바뀐 자리·ΔA·ΔD·자리별 교체가
+    **전부 ⬜**.
+
+    🔴 그래서 이 문은 두 단으로 본다:
+      ① `mentions_team` — 통과하면 그대로 참(기존 판정을 **안 바꾼다**)
+      ② `core/teamname.pick` — 양방향 이름 맞추기(조 순위표를 고친 그 함수)
+    ⚠️ **느슨해지지 않는다** — ② 도 남의 팀은 거부한다(계약이 센다).
+    """
+    said, want = str(name or "").strip(), str(formal or "").strip()
+    if not said or not want:
+        return False
+    if mentions_team(said, want, local):
+        return True
+    from app.core import teamname
+    # 🔴 양방향 — 긴 이름으로 짧은 이름을 찾고, 반대도 본다
+    return bool(teamname.pick(want, [said])[0]
+                or teamname.pick(said, [want])[0])
+
+
 def quote_grounded(quote: str, body: str) -> Verdict:
     """⑥ 감독 발언은 본문에 그 문장이 있을 때만 `quote` 로 저장한다.
 
