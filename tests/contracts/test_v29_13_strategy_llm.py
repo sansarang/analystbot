@@ -195,3 +195,28 @@ def test_프롬프트가_최근_5경기를_요구한다() -> None:
 def test_러너가_최근_재료를_넘긴다() -> None:
     said = __import__("pathlib").Path("tools/run_collect.py").read_text()
     assert "recent=_sl.recent_of(variables)" in said, "🔴 안 넘긴다"
+
+
+def test_운영_파이프라인에_배선됐다() -> None:
+    """🔴🔴 사용자 지시 2026-10-15 — *"전략 변수까지 **운영 파이프라인에
+    배선해라**"*. 러너만 부르면 봇 카드에는 그 변수가 **없다**."""
+    said = __import__("pathlib").Path("app/core/pipeline.py").read_text()
+    assert "strategy_llm" in said, "🔴 운영이 안 부른다"
+    assert "_sl.ask(ref, facts, plan" in said, "🔴 전략 판정 뒤에서 안 부른다"
+    assert "recent=_sl.recent_of(variables)" in said, "🔴 최근 5경기를 안 넘긴다"
+
+
+def test_운영이_배치를_다시_세운다() -> None:
+    """🔴 묶음이 둘로 갈리면 배치와 축이 어긋난다(실사고 2026-10-15)."""
+    said = __import__("pathlib").Path("app/core/pipeline.py").read_text()
+    i = said.index("_sl.ask(ref, facts, plan")
+    j = said.index("s2e_matchup as _s2e")
+    assert "varset = _routing.place(variables)" in said[i:j], \
+        "🔴 전략 변수를 더하고 **배치를 다시 세우지 않는다**"
+
+
+def test_상성_앞에서_부른다() -> None:
+    """🔴 상성(S2)이 그 변수를 써야 하므로 **그 앞**이어야 한다."""
+    said = __import__("pathlib").Path("app/core/pipeline.py").read_text()
+    assert said.index("_sl.ask(ref, facts, plan") < said.index("_s2e.run("), \
+        "🔴 상성 뒤에서 부르면 축이 그 변수를 못 본다"

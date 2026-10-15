@@ -321,6 +321,32 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
         st.note(f"🔴🔴 **라인업 신원 미확정** — {said_gate.why}")
         return _gate_card(ref, facts, variables, said_gate, state=st,
                           docs=docs, before=before)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **⑤-b2 전략 전문가(LLM)** — 사용자 지시 2026-10-15(운영 배선)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 라인업 확장 포메이션 결장 선수가 **주요선수가 뜨면** 전략 전문가
+    #  > deepseek 에게 변수 생성하는 프롬프트를 주입해라
+    #  > … **전략 변수까지 운영 파이프라인에 배선해라**
+    #
+    #  🔴 자리가 여기인 까닭 — 전략 판정(`plan`)이 **방금 섰고**, 상성(S2)이
+    #     **아직 안 돌았다**. 그래서 변수를 더해 **배치를 다시 세운다**.
+    #  🔴 모델은 **부등호만** 낸다(`홈>원정` · `총골<기준`) — 방향은 그 부등호가,
+    #     가중은 코드가 넣는다(절대규칙 5).
+    #  ⚠️ 트리거가 없으면(핵심 결장·포메이션 변화·자리 변화 모두 아니면) 부르지
+    #     않는다 — 사유를 수첩에 남긴다(#3).
+    from app.core import strategy_llm as _sl
+    var_sl, said_sl = _sl.ask(ref, facts, plan, state=st,
+                              recent=_sl.recent_of(variables))
+    st.note(f"⑤-b2 전략 전문가 — {said_sl}")
+    if var_sl:
+        variables = [*variables, *var_sl]
+        # 🔴 **묶음은 하나다** — 배치를 다시 세운다(둘로 갈리면 배치와 축이
+        #    어긋난다 · 실사고 2026-10-15 그 자리다)
+        varset = _routing.place(variables)
+        st.note(f"⑤-b2 변수 배치 다시 — {varset.why()}")
+        for said in varset.fails:
+            st.note(f"⑤-b2 {said}")
     # 🔴🔴 **상성 세 축**(사용자 지시 2026-10-10(셋째)) — 축1 폼 · 축3 골 내용
     #    ⚠️ 축2(T1~T8)는 스타일 프로필 자료가 없어 아직 안 돈다(사유가 들어온다)
     from app.core.stages import s2e_matchup as _s2e
