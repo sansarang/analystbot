@@ -1534,16 +1534,32 @@ def _ir_soccer(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
     elif rid == "IR13":                     # 🔴 원정 이동 거리(지시 2026-10-14)
         out += _ir_travel_away(rid, kind, row, ref, facts, state=state)
     elif rid == "IR12":                     # 연승·연패
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **부호를 사실대로 가른다** — 사용자 지적 2026-10-15
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > 무승 4경기인데 왜 이게 **삭감이 안 되냐** · **+ − 가 제대로** 되어야
+        #  > 한다
+        #
+        #  ⚠️ 실사고 2026-10-15(노리치): `IR12` 가 무패·무승을 **한 규칙**으로
+        #     묶고 표의 `favors: subject` 하나를 썼다. 그래서 *"노리치 무승
+        #     4경기"* 가 **홈에 유리**(×1.05)로 들어갔다 — 뜻이 반대다.
+        #  🔴 무패·연승 → 그 팀 **유리**(`subject`) · 무승·연패 → 그 팀 **불리**
+        #     (= `opponent` 유리). 표의 칸을 그 줄에서만 바꿔 넘긴다.
         for key, raw in facts.recent.items():
             box = dict(raw) if isinstance(raw, dict) else {}
-            said = ""
+            said, fav = "", ""
             if int(box.get("streak_unbeaten") or 0) >= 3:
-                said = f"무패 {box['streak_unbeaten']}경기"
+                said, fav = f"무패 {box['streak_unbeaten']}경기", "subject"
             elif int(box.get("streak_winless") or 0) >= 3:
-                said = f"무승 {box['streak_winless']}경기"
+                said, fav = f"무승 {box['streak_winless']}경기", "opponent"
             if said:
-                out.append(_ir_var(_rid_for(rid, key, ref), kind, row, key,
-                                   f"{_name(ref, key)} {said}", ref))
+                out.append(_ir_var(_rid_for(rid, key, ref), kind,
+                                   {**dict(row), "favors": fav}, key,
+                                   f"{_name(ref, key)} {said}"
+                                   + ("(그 팀이 불리하다)"
+                                      if fav == "opponent" else
+                                      "(그 팀이 유리하다)"), ref))
         if not out:
             state.note(f"s5 {rid} — 3경기 이상 연속이 없다")
         # ══════════════════════════════════════════════════════════════
