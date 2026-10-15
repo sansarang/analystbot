@@ -649,6 +649,12 @@ def test_v7_기여_합이_리그_평균_대비_변화와_같다():
 
 
 def test_v7_람다_이동이_상한을_지킨다():
+    # 🔴 `matchup_off` 가 켜지면 **이동이 0** 이라 상한에 닿을 수 없다 —
+    #    이 시험은 *"이동이 있을 때 상한을 지키나"* 를 묻는다(끄면 되살아난다).
+    from app.core import m1v2 as _c
+    if _c.on("matchup_off"):
+        import pytest as _pt
+        _pt.skip("🔴 `matchup_off` — λ 이동이 0 이라 상한 시험이 뜻을 잃는다")
     """🔴 3-6 — λ 이동은 `config/matchup_model.yaml` 의 `cap_pct` 안이다."""
     import math
 

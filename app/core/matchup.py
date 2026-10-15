@@ -105,8 +105,22 @@ class Axis:
         """🔴 F3 — `{"att": {home, away}, "dfn": {home, away}}`.
 
         🔴 안 갈린 축은 **그 팀의 값**을 둘 다로 쓴다(= 종전과 같은 수).
+
+        ══════════════════════════════════════════════════════════════
+        🔴🔴 **상성 빼기**(`m1v2.flags.matchup_off`) — 사용자 결정 2026-10-15
+        ══════════════════════════════════════════════════════════════
+
+        ⚠️ 실사고 2026-10-15: `gaps()` 만 0 으로 했더니 **축 종합만 0** 이 되고
+           λ 이동은 -0.069 로 **남았다** — 얼린 엔진의 F3 식은 종합이 아니라
+           **이 함수**(쪽마다 자기 값)를 쓴다.
+        🔴 그래서 여기도 0 을 돌려준다. 축 값(`home`·`away`)은 **그대로** 남아
+           카드가 근거로 적는다 — λ 를 세는 쪽만 축을 못 쓴다.
         """
         base = {"home": self.home, "away": self.away}
+        from app.core import m1v2 as _c
+        if _c.on("matchup_off"):
+            zero = {"home": 0.0, "away": 0.0}
+            return {"att": dict(zero), "dfn": dict(zero)}
         return {"att": dict(self.att or base), "dfn": dict(self.dfn or base)}
 
 
