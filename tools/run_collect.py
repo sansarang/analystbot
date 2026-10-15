@@ -197,10 +197,40 @@ async def main(argv: list[str]) -> int:
                    str(getattr(ref, s2, "") or "")), "name", "") or ""))
     n_ms = sum(len(v or []) for v in
                dict(getattr(facts, "missing", None) or {}).values())
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **XI 가 없는 까닭을 가른다** — 사용자 지시 2026-10-15
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 라인업 발표가 됐는데 계속 못 찾는 이유가 뭐냐?
+    #
+    #  ⚠️ 실사고 2026-10-15: `XI 0/2` 한 줄로는 **셋을 구분할 수 없었다** —
+    #     ① 라인업이 아직 안 나왔다(킥오프 1~2시간 전) ② **열쇠에 어댑터가
+    #     없다**(`6054753` 처럼 접두가 빠져 받을 주소가 0건) ③ 받았는데 못 떴다.
+    #     BG Pathum 은 ②였고, 그것을 ①로 읽어 **하루를 헛봤다**.
+    #  🔴 그래서 열쇠의 어댑터를 **원본 라우팅**(`ingest.context_of`)으로 확인해
+    #     적는다(사본 금지). 남은 시간도 함께 적는다.
+    said_why = ""
+    if not n_xi:
+        from app.collect import ingest as _ing
+        got_fn = _ing.context_of(ref.competition, ref.id)
+        if not callable(got_fn):
+            said_why = (f" · 🔴 **열쇠에 어댑터가 없다**(`{ref.id}`) — "
+                        f"받을 주소가 0건이다(라인업 발표와 무관)")
+        else:
+            said_left = ""
+            if getattr(ref, "kickoff_utc", None):
+                from datetime import datetime, timezone
+                mins = (ref.kickoff_utc
+                        - datetime.now(timezone.utc)).total_seconds() / 60
+                said_left = f" · 킥오프까지 {mins:.0f}분"
+            said_why = (f" · ⬜ 주소는 있다(`{ref.id}`){said_left} — "
+                        f"**아직 안 올라왔다**고 본다")
+        print(f"    🔎 XI 못 받은 까닭 —{said_why.lstrip(' ·')}", flush=True)
     mark("② fotmob(XI·결장·감독)",
          "✅ 돌았다" if n_xi else "🔴 빈손",
          f"XI {n_xi}/2 · 감독 {n_co}/2 · 결장 {n_ms}명 · 사다리 "
-         + "/".join(f"{r.get('rung')}{r.get('got')}" for r in rungs))
+         + "/".join(f"{r.get('rung')}{r.get('got')}" for r in rungs)
+         + said_why)
 
     # ── ②-b 선수단 교체 — 🔴 s3 **앞**이다(파이프라인 순서 그대로 · 지시
     #    2026-10-10 ③). 재료는 `facts` 뿐이다(새 통신 0건).
@@ -230,8 +260,34 @@ async def main(argv: list[str]) -> int:
     for d in list(docs)[:8]:
         print(f"    📄 {str(getattr(d, 'title', '') or '')[:70]} · "
               f"{str(getattr(d, 'url', '') or '')[:70]}", flush=True)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **버린 문서를 사유별로 적는다** — 사용자 지시 2026-10-15
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실사고 2026-10-15(BG Pathum): 열기 시도 열 번 중 **여섯 번이
+    #     `받은 문서 0건`** 이었고 53·55건 중 손에 든 것은 **5건**이었다.
+    #     그런데 장부는 `✅ 돌았다 · 문서 5건` 만 찍어서 **버린 것이 안 보였다**
+    #     (#3 조용한 0 금지 · 버린 사유는 `state.drops` 에 **이미 있었다**).
+    #  🔴 그래서 사유를 **종류별로 세어** 찍고, 가장 아픈 몇 줄은 **글자로** 적는다.
+    said_drop = [d for d in list(getattr(st, "drops", None) or [])
+                 if str(getattr(d, "stage", "") or "").startswith("s3")]
+    if said_drop:
+        box: dict = {}
+        for d in said_drop:
+            key = str(getattr(getattr(d, "reason", ""), "value", "")
+                      or getattr(d, "reason", ""))
+            box[key] = box.get(key, 0) + 1
+        print("- 🔴 **버린 문서** "
+              + " · ".join(f"{k} {v}건" for k, v in
+                           sorted(box.items(), key=lambda kv: -kv[1])),
+              flush=True)
+        for d in said_drop[:6]:
+            print(f"    🗑 {str(getattr(d, 'what', ''))[:46]} — "
+                  f"{str(getattr(d, 'detail', ''))[:150]}", flush=True)
     print(flush=True)
-    mark("③ 딥서치", "✅ 돌았다" if docs else "🔴 빈손", f"문서 {len(docs)}건")
+    mark("③ 딥서치", "✅ 돌았다" if docs else "🔴 빈손",
+         f"문서 {len(docs)}건"
+         + (f" · 🔴 버림 {len(said_drop)}건" if said_drop else ""))
 
     # ── ④⑤ 추출 · 검증
     cands = await s4_extract.run(ref, docs, state=st, chain=chain, net=net,

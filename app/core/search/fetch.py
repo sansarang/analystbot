@@ -95,9 +95,63 @@ def alt_of(league: str, url: str) -> list[str]:
     return out
 
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **알맹이 문턱** — 사용자 지시 2026-10-15
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 실사고 2026-10-15(BG Pathum): BeSoccer **부상·징계 명단** 페이지가
+#     `상태 200 · 본문 756자` 로 와서 **"받았다"로 셌다.** 그런데 그 756자는
+#     *"Are you of legal age?"*(연령 확인) · *"Loading ad..."*(광고) ·
+#     *"Login / Username must have between 4 and 16 characters"*(로그인) ·
+#     **남의 리그 선수 이름**(레알·바르사)뿐이었다. 부상자는 **한 줄도 없다** —
+#     자바스크립트로 채우는 판이다.
+#  🔴 그런데 사다리는 거기서 **멈췄다**(기록이 `[원문 ok]` 한 줄) — AMP·RSS·
+#     대체 경로를 **한 번도 안 불렀다**. 까닭은 성공 조건이 *"본문이 한 글자라도
+#     있나"* 였기 때문이다.
+#  🔴 그래서 **껍데기**를 성공으로 세지 않는다 — 아래 둘을 **함께** 보고 센다.
+#     ① 본문이 `SHELL_MAX` 자보다 짧다  ② 껍데기 문구가 **둘 이상** 보인다
+#     ⚠️ 둘을 함께 요구한다(한쪽만으로는 멀쩡한 짧은 글을 버린다 · ESPN 스쿼드는
+#        2,976자라 이 문턱에 **안 걸린다** — 실측).
+
+#: 🔴 껍데기로 볼 **본문 길이 상한**(이보다 길면 알맹이가 있다고 본다)
+SHELL_MAX = 1200
+#: 🔴 껍데기 문구 — 실측한 글자만 적는다(추측 금지 · CLAUDE.md #4)
+_SHELL = (
+    re.compile(r"are you of legal age|legal age\?|18 years old", re.I),
+    re.compile(r"loading ad|watch an ad|advertisement", re.I),
+    re.compile(r"\blog ?in\b|\bsign ?in\b|username must have", re.I),
+    re.compile(r"accept cookies|cookie policy|쿠키 동의", re.I),
+    re.compile(r"enable javascript|javascript is required", re.I),
+    re.compile(r"subscribe to continue|create (an )?account", re.I),
+)
+#: 🔴 껍데기라고 부르려면 문구가 **몇 개** 보여야 하나
+SHELL_HITS = 2
+
+
+def shell_like(body: str) -> tuple[bool, str]:
+    """🔴 **껍데기 본문인가**(알맹이 없이 틀만 왔나) — `(판정, 사유)`.
+
+    🔴 위 머리말 그대로 **짧고 + 껍데기 문구 둘 이상**일 때만 참이다.
+    """
+    said = str(body or "")
+    if not said.strip() or len(said) > SHELL_MAX:
+        return False, ""
+    hits = [one.pattern.split("|")[0] for one in _SHELL if one.search(said)]
+    if len(hits) < SHELL_HITS:
+        return False, ""
+    return True, (f"본문 {len(said)}자 · 껍데기 문구 {len(hits)}개"
+                  f"({' · '.join(hits[:3])})")
+
+
 def needs_render(html: str, body: str) -> bool:
-    """🔴 **자바스크립트 렌더가 필요한가** — 본문이 비고 그 안내만 있는 판."""
-    return (not str(body or "").strip()) and bool(_JS.search(str(html or "")))
+    """🔴 **자바스크립트 렌더가 필요한가** — 본문이 비거나 **껍데기**인 판.
+
+    🔴 종전엔 *"본문이 0자"* 일 때만 참이었다 — 그래서 위 BeSoccer 처럼
+       **756자 껍데기**가 오면 렌더 필요 판정이 안 섰다(실사고 2026-10-15).
+    """
+    said_shell, _why = shell_like(body)
+    return ((not str(body or "").strip()) or said_shell) and bool(
+        _JS.search(str(html or "")))
 
 
 async def _one(net, url: str, *, rung: str) -> tuple[object, str]:
@@ -153,15 +207,19 @@ async def body_of(net, url: str, *, league: str = "",
             body, when = said_extract(html, url=one)
             if rung == "원문":
                 html0 = html
-            if str(body or "").strip():
+            # 🔴 **껍데기면 성공으로 세지 않는다**(위 머리말 · 알맹이 문턱)
+            said_shell, said_why = shell_like(str(body or ""))
+            if str(body or "").strip() and not said_shell:
                 rows.append({"rung": rung, "url": one, "ok": True,
                              "why": f"{why} · 본문 {len(str(body))}자"})
                 return str(body), when, rows
             said_js = needs_render(html, body)
             rows.append({"rung": rung, "url": one, "ok": False,
-                         "why": (f"{why} · 🔴 **본문 0자** — "
-                                 + ("**자바스크립트 렌더 필요**"
-                                    if said_js else "빈 본문"))})
+                         "why": (f"{why} · "
+                                 + (f"🔴 **껍데기 본문** — {said_why}"
+                                    if said_shell else "🔴 **본문 0자**")
+                                 + (" · **자바스크립트 렌더 필요**"
+                                    if said_js else ""))})
         # ── 🔴 다음 칸을 **그때** 만든다(원문 HTML 이 있어야 AMP 를 안다)
         if rung == "원문":
             said_amp = amp_of(html0)

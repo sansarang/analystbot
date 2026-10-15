@@ -350,8 +350,23 @@ async def _by_schedule(pool: Any, q: Question, *, state: RunState,
                 lg = lg.title()
             state.note(f"s1 일정 퇴로 — `{key}` 에서 찾았다: "
                        f"{sides[0]} vs {sides[1]} · {got_utc}")
+            # ══════════════════════════════════════════════════════
+            # 🔴🔴 **열쇠에 접두를 붙인다** — 사용자 지시 2026-10-15
+            # ══════════════════════════════════════════════════════
+            #
+            #  ⚠️ 실사고 2026-10-15(BG Pathum vs Adelaide): 이 자리가 날숫자
+            #     `6054753` 을 적었다. 그런데 fotmob 어댑터는 **접두를 요구**한다
+            #     (`fotmob.sources_context` — *"안 요구하면 MLB 숫자 ext_id 도
+            #     통과해"*). 그래서 ② 가 **받을 주소가 0건**이 되어
+            #     `XI 0/2 · 감독 0/2` 가 났다 — 라인업이 발표돼 있어도 같았다.
+            #     ⚠️ 게다가 `fotmob:6054753` 행이 따로 있어 **같은 경기가 두 행**
+            #     이 됐다(`ON CONFLICT (sport, ext_id)` 가 다른 열쇠로 본다).
+            #  🔴 열쇠를 만드는 곳은 `matchkey.make` 하나다(사본 금지 —
+            #     `fotmob.slate_row` 도 그것을 쓴다).
+            from app import matchkey
+            ext = matchkey.make("fotmob", str(m.get("id") or ""))
             await pool.fetchval(
-                _UPSERT_GAME, "soccer", lg, str(m.get("id") or ""),
+                _UPSERT_GAME, "soccer", lg, ext,
                 sides[0], sides[1], None, when, when + timedelta(hours=9),
                 None, ("finished" if m.get("finished") else "scheduled"),
                 None, None, None)
@@ -360,7 +375,7 @@ async def _by_schedule(pool: Any, q: Question, *, state: RunState,
             #    골랐다(02:24:44 에 `LA Galaxy vs Portland Timbers` 를 적었는데도).
             #    🔴 그래서 **방금 적은 그 행**을 열쇠(`ext_id`)로 바로 집는다 —
             #       `_by_key` 가 그 길이다(표를 읽는 SQL 은 `slate.by_key` 하나).
-            out = await _by_key(pool, str(m.get("id") or ""), state=state)
+            out = await _by_key(pool, ext, state=state)
             if out is None:
                 state.note("s1 일정 퇴로 — 적었는데 열쇠로 못 집었다")
                 return None

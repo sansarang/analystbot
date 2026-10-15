@@ -287,9 +287,16 @@ def test_vd9_묶음에_기사와_출처가_든다() -> None:
     assert "문서 출처" in said and "news.example.com" in said, said
 
 
-def test_vd10_기사가_없으면_없다고_적는다() -> None:
-    """🔴 #3 — 비면 **⬜ 로 남긴다**(그러면 평이 *"기사에서 나온 것이 없다"* 고
-    쓸 수 있다)."""
+def test_vd10_기사_유무를_평문에_안_쓴다() -> None:
+    """🔴🔴 **바뀐 규칙** — 사용자 지시 2026-10-15:
+
+    > 평을 낼 때 **기사에서 나온 사실이 없다는 표기하지 않아도 된다** …
+    > 기사에서 나온 내용은 **평문으로 안 써도 된다**
+
+    🔴 묶음 칸은 그대로 **⬜ 로 남긴다**(#3 · 코드가 아는 상태다). 바뀐 것은
+       **프롬프트**다 — 그 칸이 비면 *"기사에서 나온 것이 없다"* 를 **쓰지
+       말라**고 말해야 한다(종전엔 **쓰라고** 말했다).
+    """
     import sys
     sys.path.insert(0, str(ROOT))
     from app.core.stages.s6_verdict import ask, chain_of
@@ -307,12 +314,13 @@ def test_vd10_기사가_없으면_없다고_적는다() -> None:
     said = "\n".join(chain_of(None, _Prob(), None, _Set(), docs=None))
     assert "기사에서 나온 사실 — ⬜ **없다**" in said, said
     assert "문서 출처 — ⬜ **없다**" in said, said
-    # 🔴 프롬프트가 그 칸을 쓰라고 말한다
+    # 🔴 프롬프트가 **쓰지 말라**고 말한다(강제 조항은 걷혔다)
     import inspect
     src = inspect.getsource(ask)
-    assert "기사에서 나온 사실을 반드시 한 번은 쓴다" in src
-    # ⚠️ 그 글은 **두 줄로 쪼개져** 있다 — 이어 붙인 글자로 세면 안 된다
-    assert "것이 없다" in src and "그대로 적어라" in src, src[-400:]
+    assert "기사에서 나온 사실을 반드시 한 번은 쓴다" not in src
+    # ⚠️ 그 글은 **여러 줄로 쪼개져** 있다 — 이어 붙인 글자로 세면 안 된다
+    assert "그 사실을 적지 마라" in src, src[-500:]
+    assert "자료 살림" in src and "경기 분석" in src, src[-500:]
 
 
 def test_vd11_문서_id_가_찍힌다() -> None:
