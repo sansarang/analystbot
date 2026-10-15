@@ -139,7 +139,7 @@ async def main(argv: list[str]) -> int:
         return 3
     if ref is None:
         print("🔴 경기를 못 찾았다")
-        for x in (st.notes() if hasattr(st, "notes") else [])[-6:]:
+        for x in list(getattr(st, "notes", None) or [])[-6:]:
             print("  ·", str(x)[:150])
         return 2
     print(f"## ① 경기\n- {ref.home_name or ref.home} vs "
@@ -207,7 +207,19 @@ async def main(argv: list[str]) -> int:
     cache: dict = {}
     docs = await s3_docs.run(ref, facts, state=st, chain=chain, net=net,
                              cache=cache)
-    print(f"## ③ 딥서치 — 문서 **{len(docs)}건**\n", flush=True)
+    print(f"## ③ 딥서치 — 문서 **{len(docs)}건**", flush=True)
+    # 🔴🔴 **왜 그만큼인지 보인다** — 사용자 지시 2026-10-15: *"왜 이렇게
+    #    빈손인지 확인해라"*. ⚠️ 종전엔 **수만** 찍어서 질의가 나빴는지,
+    #    검색이 0건이었는지, 검문이 버렸는지 **구분할 수 없었다**(#3).
+    # ⚠️ `state.notes` 는 **리스트**다(메서드가 아니다 — 실측 2026-10-15)
+    for one in list(getattr(st, "notes", None) or []):
+        said = str(one)
+        if any(k in said for k in ("질의", "s3", "버린", "사유", "후보")):
+            print(f"    · {said[:200]}", flush=True)
+    for d in list(docs)[:8]:
+        print(f"    📄 {str(getattr(d, 'title', '') or '')[:70]} · "
+              f"{str(getattr(d, 'url', '') or '')[:70]}", flush=True)
+    print(flush=True)
     mark("③ 딥서치", "✅ 돌았다" if docs else "🔴 빈손", f"문서 {len(docs)}건")
 
     # ── ④⑤ 추출 · 검증

@@ -1,0 +1,57 @@
+"""🔴🔴 **검색 전문가 프롬프트** — 사용자 지시 2026-10-15.
+
+> 그외 변수에 필요한것도 서치 못하냐? 솔라에게 **서치 전문가 프롬프트**를
+> 주면 안 되냐? **코드 수정하지 말고**
+
+⚠️ 실측 2026-10-15(Svay Rieng vs Shanghai Shenhua): 모델에게 문지기 규칙을
+   안 알려 줘서 `… AFC Champions League Two`(낱말 8개)가 **매 하위마다**
+   막혔고, 라인업·결장 질의가 한 번도 안 나가 3+5 통합이 **0건**이 됐다.
+"""
+from __future__ import annotations
+
+import inspect
+
+from app import llm as rules
+from app.core import querywriter
+
+
+def _prompt() -> str:
+    return inspect.getsource(querywriter.ask)
+
+
+def test_낱말_수는_규칙이_있는_곳에서_온다() -> None:
+    """🔴 사본 금지(#1) — 프롬프트가 `6` 을 손으로 적으면 규칙이 바뀔 때 어긋난다."""
+    src = _prompt()
+    assert "_rules.WORDS_MIN" in src and "_rules.WORDS_MAX" in src, src[:200]
+    assert (rules.WORDS_MIN, rules.WORDS_MAX) == (1, 6)
+
+
+def test_문지기_금지_항목을_알려_준다() -> None:
+    src = _prompt()
+    for one in ("site:", "따옴표", "연도", "대회 정식명을 쓰지 마라"):
+        assert one in src, f"🔴 `{one}` 를 안 알려 준다"
+
+
+def test_변수_여덟_갈래를_덮으라고_말한다() -> None:
+    """🔴 라인업·결장만이 아니라 **다른 변수 재료도** 찾게 한다."""
+    src = _prompt()
+    for one in ("로테이션", "감독 부임 후 성적", "팀내 불화", "원정 일정",
+                "복귀", "징계"):
+        assert one in src, f"🔴 `{one}` 가 목표에 없다"
+
+
+def test_배당_예측_사이트를_빼라고_말한다() -> None:
+    """⚠️ 실측: 받은 문서 7건이 전부 배당·예측·스코어 사이트였다(기사 0건)."""
+    assert "배당·예측·스코어 사이트는" in _prompt()
+
+
+def test_현지어를_두_팀_나라_말로_요구한다() -> None:
+    assert "두 팀의 나라 말로도" in _prompt()
+
+
+def test_문지기_자체는_안_건드렸다() -> None:
+    """🔴 *"코드 수정하지 말고"* — 규칙은 그대로다."""
+    assert rules.query_ok("Svay Rieng injury news") is True
+    assert rules.query_ok(
+        "Svay Rieng starting lineup AFC Champions League Two") is False
+    assert rules.query_ok("Shenhua news 2026") is False

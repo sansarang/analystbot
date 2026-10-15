@@ -208,6 +208,14 @@ L6_SLOTS = {
 _BAD_QUERY = re.compile(r'site:|["\'()]|-\w|\b20\d\d\b')
 
 
+#: 🔴 문지기 낱말 범위 — **질의를 쓰는 쪽이 이 수를 읽는다**(사본 금지 · #1).
+#   ⚠️ 실사고 2026-10-15: 이 규칙을 모델에게 **안 알려 줘서** solar 가
+#      `Svay Rieng starting lineup AFC Champions League Two`(낱말 8개)를
+#      냈고 문지기가 **매 하위마다 막았다** — 라인업·결장을 직접 겨눈 질의가
+#      그 경기에서 **한 번도 안 나갔다**(3+5 통합 0건의 직접 원인).
+WORDS_MIN, WORDS_MAX = 1, 6
+
+
 def query_ok(text: str) -> bool:
     """§12-b — 1~6단어 · 사이트 연산자·따옴표·마이너스 금지 · **연도 금지**.
 
@@ -216,4 +224,4 @@ def query_ok(text: str) -> bool:
     t = (text or "").strip()
     if not t or _BAD_QUERY.search(t):
         return False
-    return 1 <= len(t.split()) <= 6
+    return WORDS_MIN <= len(t.split()) <= WORDS_MAX
