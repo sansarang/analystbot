@@ -135,9 +135,24 @@ class MatchupReport:
         return self.axes.get(name) or Axis(name=name)
 
     def gaps(self) -> dict:
-        """🔴 S3 가 쓰는 **축별 표준화 차**(없는 축은 0)."""
-        return {k: (float(v.gap) if v.gap is not None else 0.0)
-                for k, v in self.axes.items()}
+        """🔴 S3 가 쓰는 **축별 표준화 차**(없는 축은 0).
+
+        ══════════════════════════════════════════════════════════════
+        🔴🔴 **상성 빼기** — 사용자 결정 2026-10-15(`m1v2.flags.matchup_off`)
+        ══════════════════════════════════════════════════════════════
+
+        🔴 켜지면 **0 을 돌려준다** — 축 값(`axes`)은 그대로 남아 카드가 근거로
+           적고, λ 를 세는 쪽만 축을 못 쓴다.
+        ⚠️ 얼린 엔진(`legacy/old_engine`)을 **고치지 않는다** — 계약
+           `test_s1_1_frozen_engine_hash_is_unchanged`(K0)가 그 코드를 잠갔다.
+           그래서 **입력 칸 하나**(이 함수)에서 끊는다.
+        """
+        box = {k: (float(v.gap) if v.gap is not None else 0.0)
+               for k, v in self.axes.items()}
+        from app.core import m1v2 as _c
+        if _c.on("matchup_off"):
+            return {k: 0.0 for k in box}
+        return box
 
     def edge_of(self) -> str:
         return str(self.verdict.get("edge") or "")
