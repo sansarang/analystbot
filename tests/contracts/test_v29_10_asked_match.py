@@ -79,3 +79,33 @@ def test_세_자리_전부에_문이_달렸다() -> None:
     said = __import__("pathlib").Path(
         "app/core/stages/s1_resolve.py").read_text()
     assert said.count("asked_match(") >= 4, "🔴 문이 덜 달렸다(정의 1 + 자리 3)"
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **대회 일정 퇴로** — LLM 이 죽어도 경기를 찾는다(지시 2026-10-15)
+# ══════════════════════════════════════════════════════════════════
+
+
+def test_일정_퇴로가_배선돼_있다() -> None:
+    """🔴 만든 것은 부르는 곳이 있어야 한다(규율 #2)."""
+    said = __import__("pathlib").Path(
+        "app/core/stages/s1_resolve.py").read_text()
+    assert "async def _by_schedule(" in said, "🔴 퇴로가 없다"
+    assert "got = await _by_schedule(" in said, "🔴 안 불린다"
+
+
+def test_일정_퇴로는_LLM_을_안_쓴다() -> None:
+    """🔴 이 퇴로의 존재 이유 — 공급자가 죽어도 도는 길이다."""
+    import inspect
+
+    from app.core.stages import s1_resolve
+    src = inspect.getsource(s1_resolve._by_schedule)
+    for bad in ("llm.ask", "_spell", "solar"):
+        assert bad not in src, f"🔴 퇴로가 `{bad}` 를 쓴다"
+    assert "verify.same_team" in src, "🔴 이름 문을 안 쓴다"
+    assert "_UPSERT_GAME" in src, "🔴 적는 SQL 이 사본이다"
+
+
+def test_일정_창은_한_곳에_있다() -> None:
+    from app.core.stages import s1_resolve
+    assert s1_resolve.SCHED_BACK_H > 0 and s1_resolve.SCHED_AHEAD_H > 0

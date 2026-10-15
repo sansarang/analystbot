@@ -275,6 +275,107 @@ async def _try(pool: Any, team: str, opp: str, *, state: RunState, net: Any,
     return got
 
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **대회 일정 퇴로 — LLM 없이 찾는다**(사용자 지시 2026-10-15)
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 실사고 2026-10-15(MLS 11:30): `LA Galaxy`·`Los Angeles FC` 경기가 `games`
+#     표에 **없었고** ⑥단(`findgame`)도 못 찾았다. 까닭은 그 길이 **LLM 으로
+#     이름을 푸는데**(`_by_llm_names`) 공급자가 둘 다 죽어 있었기 때문이다
+#     (`LLM_TIMEOUT` 7건). 🔴 그런데 같은 경기들이 `tools/slate_queue.py` 에는
+#     **다 보였다** — 그것은 **대회 일정**(fotmob `league_matches`)을 읽는다.
+#  🔴 그래서 마지막 퇴로로 그 일정을 읽는다 — **망 한 번 · LLM 0건**.
+#     ⚠️ 적는 SQL 은 `collect.ingest._UPSERT_GAME` 하나다(사본 금지 ·
+#        `findgame.find_and_store` 와 같은 길).
+#     🔴 이름 맞추기는 `verify.same_team` 하나다 — 그 문이 남의 팀을 거부한다.
+
+#: 🔴 일정에서 볼 **창** — 뒤로 3시간(도는 경기) · 앞으로 36시간
+SCHED_BACK_H = 3.0
+SCHED_AHEAD_H = 36.0
+
+
+async def _by_schedule(pool: Any, q: Question, *, state: RunState,
+                       net: Any) -> MatchRef | None:
+    """🔴 대회 일정에서 그 경기를 찾아 `games` 에 적고 입구를 다시 돌린다."""
+    from datetime import datetime, timedelta, timezone
+
+    from app import resolve, verify
+    from app.collect import fotmob as fm
+    from app.collect.ingest import _UPSERT_GAME
+    from app.core import competition as comp
+
+    said = [str(x or "").strip()
+            for x in (getattr(q, "team", ""), getattr(q, "opponent", ""))
+            if str(x or "").strip()]
+    if not said:
+        return None
+    now = datetime.now(timezone.utc)
+    lo, hi = (now - timedelta(hours=SCHED_BACK_H),
+              now + timedelta(hours=SCHED_AHEAD_H))
+    for key, row in comp.rows().items():
+        ids = [str(x) for x in
+               ((row.get("sources") or {}).get("fotmob_ids") or [])]
+        if not ids:
+            continue
+        try:
+            rows = await fm.league_matches(net, ids[0])
+        except Exception as exc:                            # noqa: BLE001
+            state.note(f"s1 일정 퇴로 — `{key}` 를 못 읽었다: {exc!r}")
+            continue
+        for m in rows:
+            got_utc = str(m.get("utc") or "")
+            if not got_utc:
+                continue
+            try:
+                when = datetime.fromisoformat(got_utc.replace("Z", "+00:00"))
+            except ValueError:
+                continue
+            # 🔴 **tz 를 확인한다**(절대규칙 2 · 계약 `test_time_contract`) —
+            #    naive 가 새면 창 비교가 거짓이 된다
+            if when.tzinfo is None:
+                when = when.replace(tzinfo=timezone.utc)
+            if not (lo <= when <= hi):
+                continue
+            sides = [str(m.get("home") or ""), str(m.get("away") or "")]
+            # 🔴 물어본 이름이 **그 경기 양쪽에** 있어야 한다(한 팀만 물었으면 한쪽)
+            hit = all(any(verify.same_team(one, x) for x in sides)
+                      for one in said)
+            if not hit:
+                continue
+            names = [str(x) for x in (list(row.get("names") or [])
+                                      + list((row.get("sources") or {})
+                                             .get("fotmob_names") or []))]
+            lg = max(names, key=len) if names else key
+            if lg.islower():
+                lg = lg.title()
+            state.note(f"s1 일정 퇴로 — `{key}` 에서 찾았다: "
+                       f"{sides[0]} vs {sides[1]} · {got_utc}")
+            await pool.fetchval(
+                _UPSERT_GAME, "soccer", lg, str(m.get("id") or ""),
+                sides[0], sides[1], None, when, when + timedelta(hours=9),
+                None, ("finished" if m.get("finished") else "scheduled"),
+                None, None, None)
+            again = await resolve.match_of(
+                pool, team=q.team or q.raw, opponent=q.opponent or "", net=net)
+            if not getattr(again, "ok", False):
+                state.note("s1 일정 퇴로 — 적었는데 입구가 또 못 골랐다")
+                return None
+            from app import queries
+            out = adapt.ref_of(
+                again.ref, competition_short=queries.competition_short(
+                    getattr(again.ref, "competition", "")), openworld=True)
+            if out is None:
+                return None
+            ok_name, why = asked_match(q, out)
+            if not ok_name:
+                state.note(f"s1 일정 퇴로 {why}")
+                return None
+            state.match_key = out.id
+            return out
+    state.note("s1 일정 퇴로 — 선언된 대회 일정에 그 경기가 없다")
+    return None
+
+
 async def _openworld(pool: Any, q: Question, *, state: RunState,
                      net: Any, board_text: str = "") -> MatchRef | None:
     """🔴 **두 번째 ⑥단 부품** — `findgame` 이 `fotmob …` 질의를 만든다.
@@ -376,6 +477,10 @@ async def run(q: Question, *, pool: Any, state: RunState,
             return got
         # 🔴 ② 그래도 없으면 `findgame` 의 ⑥단(`fotmob …` 질의)
         got = await _openworld(pool, q, state=state, net=net, board_text=board_text)
+        if got is not None:
+            return got
+        # 🔴🔴 ③ **대회 일정 퇴로**(위 머리말) — LLM 이 죽어도 도는 길이다
+        got = await _by_schedule(pool, q, state=state, net=net)
         if got is not None:
             return got
         reason = getattr(getattr(look, "reason", None), "value", "?")
