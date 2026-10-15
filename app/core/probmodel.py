@@ -124,43 +124,11 @@ def lambda_rules(varset, *, ref) -> tuple[dict, str]:
         said.append(f"[{rid}] {side} λ ×{mul:g}({name}"
                     + (" · 상대를 깎는다" if want_side == "opponent" else "")
                     + ")")
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **폼·결장·전략 변수를 λ 에 잇는다** — 사용자 지시 2026-10-15
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  > 폼·결장·전략 변수 **연결해라**
-    #
-    #  ⚠️ 상성을 삭제해 축 통로가 사라졌다 — 변수가 확률에 닿는 길은 **여기뿐**이다.
-    #  🔴 크기는 **새 수가 아니다** — 이동·피로·순위 동기에 사용자가 정한 ±5% 를
-    #     그대로 쓴다(`config/variable_routing.yaml: lambda_rules.by_var`).
-    #  🔴 **중복으로 안 센다** — `goals` 가 말한 변수는 `favors` 로 또 세지 않는다.
-    #  ⚠️ 어느 칸으로 셌는지 **변수 이름과 함께** 적는다(#3).
-    by = dict(box.get("by_var") or {})
-    if by:
-        g_box = dict(by.get("goals") or {})
-        f_box = dict(by.get("favors") or {})
-        g_types = {str(x) for x in (g_box.get("types") or [])}
-        f_types = {str(x) for x in (f_box.get("types") or [])}
-        for one in list(getattr(varset, "rows", None) or []):
-            kind = str(getattr(one, "type", "") or "")
-            key = str(getattr(one, "subject", "") or "")
-            side = ("home" if key == str(getattr(ref, "home", "") or "")
-                    else "away" if key == str(getattr(ref, "away", "") or "")
-                    else "")
-            goals = str(getattr(one, "goals", "") or "none")
-            fav = str(getattr(one, "favors", "") or "both")
-            rid = str(getattr(one, "id", "") or "")
-            # ② 흐름·③ 전술 — `goals` 칸(그 팀 득점 방향)
-            if side and kind in g_types and goals in ("up", "down"):
-                mul = float(g_box.get(goals) or 1.0)
-                got[side] *= mul
-                said.append(f"[{rid}] {side} λ ×{mul:g}(goals {goals})")
-                continue
-            # ① 전력 — `favors` 가 가리키는 쪽을 올린다(goals 가 말 안 한 것만)
-            if kind in f_types and fav in ("home", "away"):
-                mul = float(f_box.get("mul") or 1.0)
-                got[fav] *= mul
-                said.append(f"[{rid}] {fav} λ ×{mul:g}(favors)")
+    # 🔴🔴 **`by_var` 는 λ 에서 걷었다** — 사용자 지시 2026-10-15:
+    #    *"변수 넣기 전 초기 확률 33.3 프로로 동등하게 해라 · 그외에는 아무 의미
+    #    없다"*. ⚠️ λ 에 걸었더니 **총골이 부풀었다**(합 2.69 → 3.32 · 오버2.5
+    #    50.5% → 64.7%). 변수는 *"누가 유리한가"* 를 말한 것이지 총골이 아니다.
+    #    🔴 그래서 변수는 **승무패**(`flat_prob`)로만 간다.
     cap = float(box.get("cap_mul") or 0.0) or 0.0
     for side in got:
         if floor and got[side] < floor:
@@ -370,6 +338,70 @@ def home_mul(facts, varset, *, ref=None,
                      f" · {said_team}")
     return mul, (f"홈 이점 실측 — 홈 팀 평균 {float(share):g} ÷ 한 팀 몫 "
                  f"{float(per):g} = ×{mul:.3f}(대회 `{kind}`){tag}")
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **초기 확률은 1/3 균등** — 사용자 지시 2026-10-15
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 변수 넣기전 **초기 확률 33.3 프로로 동등**하게 해라 … 그외에는 아무 의미
+#  > 없다
+#
+#  🔴 그래서 승무패는 **홈 1/3 · 무 1/3 · 원정 1/3** 에서 출발하고, **변수만**
+#     그것을 움직인다. 리그 평균 총골·홈 이점·팀별 홈 효과는 승무패에 **안
+#     쓴다**(그 재료는 λ·오버·스코어에만 남는다).
+#  🔴 크기는 **새 수가 아니다** — 이동·피로·순위 동기에 사용자가 정한 **±5%** 를
+#     확률 비로 쓴다(유리한 쪽 ×1.05 · 상대 ÷1.05 · 그 뒤 정규화).
+#  ⚠️ 어느 변수가 어느 쪽을 밀었는지 **이름으로** 적는다(#3).
+
+
+def flat_prob(varset, *, ref) -> tuple[dict, str]:
+    """🔴 1/3 균등에서 변수만 움직인 승무패. `({home,draw,away}, 사유)`."""
+    from app.core import routing as _rt
+    box = dict(_rt.table().get("lambda_rules") or {})
+    by = dict(box.get("by_var") or {})
+    got = {"home": 1.0 / 3.0, "draw": 1.0 / 3.0, "away": 1.0 / 3.0}
+    if not by:
+        return got, "⬜ 변수 보정표가 없다 — 1/3 균등 그대로"
+    g_box, f_box = dict(by.get("goals") or {}), dict(by.get("favors") or {})
+    g_types = {str(x) for x in (g_box.get("types") or [])}
+    f_types = {str(x) for x in (f_box.get("types") or [])}
+    said: list[str] = []
+    for one in list(getattr(varset, "rows", None) or []):
+        kind = str(getattr(one, "type", "") or "")
+        rid = str(getattr(one, "id", "") or "")
+        fav = str(getattr(one, "favors", "") or "both")
+        goals = str(getattr(one, "goals", "") or "none")
+        key = str(getattr(one, "subject", "") or "")
+        side = ("home" if key == str(getattr(ref, "home", "") or "")
+                else "away" if key == str(getattr(ref, "away", "") or "")
+                else "")
+        # 🔴 **승패를 미는 칸은 `favors` 다** — `goals` 는 총골 이야기다.
+        #    ⚠️ `goals` 만 있고 `favors` 가 없는 변수(폼 S01 처럼)는 **그 팀이
+        #       많이 넣는다/적게 넣는다** 이므로 그 팀 쪽으로 센다.
+        want = ""
+        why = ""
+        if kind in f_types and fav in ("home", "away"):
+            want, why = fav, "favors"
+        elif side and kind in g_types and goals in ("up", "down"):
+            want = side if goals == "up" else (
+                "away" if side == "home" else "home")
+            why = f"goals {goals}"
+        if not want:
+            continue
+        mul = float(f_box.get("mul") or 1.05)
+        other = "away" if want == "home" else "home"
+        got[want] *= mul
+        got[other] /= mul
+        said.append(f"[{rid}] {want} ×{mul:g}({why})")
+    total = sum(got.values()) or 1.0
+    got = {k: v / total for k, v in got.items()}
+    head = "🎯 **초기 1/3 균등 + 변수**(사용자 지시 2026-10-15)"
+    if not said:
+        return got, head + " — ⬜ 민 변수가 없다(균등 그대로)"
+    return got, (head + " — " + " · ".join(said)
+                 + f" → 홈 {got['home']:.1%} · 무 {got['draw']:.1%} "
+                   f"· 원정 {got['away']:.1%}")
 
 
 def run(ref, facts, mr, varset, *, edge: dict | None = None,
@@ -715,13 +747,32 @@ def run(ref, facts, mr, varset, *, edge: dict | None = None,
                                             in mixed.items()), 4),
                           "away": round(sum(a * v for (_h, a), v
                                             in mixed.items()), 4)}
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **승무패는 1/3 균등 + 변수로 덮는다** — 사용자 지시 2026-10-15
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > 변수 넣기전 초기 확률 **33.3 프로로 동등**하게 해라 · 그외에는
+        #  > 아무 의미 없다
+        #
+        #  🔴 λ·오버·스코어는 **그대로 둔다**(총골은 리그 실측이 정한다) —
+        #     덮는 것은 **승·무·패 셋**뿐이다.
+        #  ⚠️ 그래서 승무패와 스코어 격자가 **다른 수**가 된다 — 카드가 그
+        #     사실을 적는다(아래 사유 글).
+        said_flat, why_flat = flat_prob(varset, ref=ref)
+        got.home = round(float(said_flat["home"]), 6)
+        got.draw = round(float(said_flat["draw"]), 6)
+        got.away = round(float(said_flat["away"]), 6)
+        _note(state, f"S3 {why_flat}")
         # 🔴 λ 보정을 **되덮지 않는다** — 위에서 곱한 값이 운영 λ 다.
         if not why_lr:
             got.lam = dict(said_m1.lam or {})
         got.move = dict(said_m1.move or {})
         if said_m1.share:
             got.share = dict(said_m1.share)
-        got.why = (f"🔴🔴 **운영 = M1 얼린 옛 경로**(legacy-4axis · 네 축) — "
+        got.why = (f"🔴🔴 **승무패 = 초기 1/3 균등 + 변수**(사용자 지시 "
+                   f"2026-10-15) — {why_flat} · ⚠️ λ·오버·스코어는 아래 "
+                   f"리그 실측 경로가 낸다(승무패와 **다른 수**다)\n"
+                   f"🔴 λ 경로(M1 얼린 옛 경로 · legacy-4axis) — "
                    f"{said_m1.why}"
                    + (f" · {why_lr}" if why_lr else "")
                    + (f" · 🎯 **무승부 보정** ρ "
