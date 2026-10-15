@@ -659,6 +659,10 @@ async def main(argv: list[str]) -> int:
         print(f"### {pv} — 호출 {why_vd}")
         print(_vd.said_of(got_vd, said_box, provider=pv))
         print(flush=True)
+    # 🔴🔴 **두 평의 공통점 ↔ 확률**(사용자 지시 2026-10-15) — 코드가 센다
+    print(_vd.agree_of({k: v[0] for k, v in said_cards.items()}, prob),
+          flush=True)
+    print(flush=True)
     # 🔴 장부는 **둘 다** 적는다(하나만 적으면 다른 쪽이 조용히 넘어간다)
     mark("⑯ 종합 평(solar)",
          "✅ 돌았다" if said_cards["solar"][0] is not None else "🔴 빈손",

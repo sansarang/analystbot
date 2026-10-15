@@ -107,6 +107,20 @@ class Verdict(BaseModel):
     sentences: list[str] = Field(default_factory=list)
     #: 🔴 각 문장이 든 근거 — 묶음의 **줄 머리말**(`확률`·`축1`·`IR13-away` …)
     refs: list[str] = Field(default_factory=list)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **각자 예측한다** — 사용자 지시 2026-10-15
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 확률을 보여주고 **변수 경기 관련으로 예측을 각각** 하라고 해라 · 단
+    #  > 이제까지 **모은 자료만** 가지고 **거짓없이** · 평을 쓸 때는 확률 경기
+    #  > 점수 예측 점수 **외에는 서술형**으로 분석글을 쓰라고 해라
+    #
+    #  🔴 예측은 **글자 둘**이다 — 승패 한 쪽과 스코어 하나. 확률·등급 칸은
+    #     여기 없다(그 수는 코드가 정했다 · 절대규칙 5).
+    #: 🔴 승패 예측 — `home`·`draw`·`away` 중 하나
+    pick: str = ""
+    #: 🔴 점수 예측 — `2-1` 꼴. ⚠️ **묶음의 스코어 상위에 있는 것만**(거짓 금지)
+    score: str = ""
 
 
 def chain_of(ref: MatchRef, prob, mr, varset) -> list[str]:
@@ -211,6 +225,15 @@ def ask(ref: MatchRef, prob, mr, varset, *, state: RunState,
             "③ 그래서 무엇을 조심하나\n"
             "🔴 `refs` — 문장마다 근거 **한 줄의 머리말**(예 `확률`·`axis1`·"
             "`변수 IR13-away`). 문장 수와 같게.\n"
+            "🔴🔴 **네 예측을 직접 낸다**(사용자 지시 2026-10-15)\n"
+            "   · `pick` — `home`·`draw`·`away` 중 **하나**. 변수와 경기 사정을 "
+            "보고 **네가** 고른다(확률과 달라도 된다 — 왜 다른지 문장에 적어라).\n"
+            "   · `score` — 예상 점수 하나. ⚠️ **묶음의 `스코어 상위` 에 있는 "
+            "것만** 쓴다(없는 점수를 지어내면 버려진다).\n"
+            "🔴 문장은 **서술형 분석글**이다 — 확률·경기 점수 말고는 **수를 "
+            "쓰지 마라**(퍼센트·배율·계수 금지). 변수와 선수 이름으로 설명한다.\n"
+            "🔴 **이제까지 모은 자료(묶음)만** 쓴다 — 네 기억으로 사실을 보태면 "
+            "거짓이다. 모르는 것은 **모른다고 적는다**.\n"
             "⚠️ 묶음에 없는 수를 쓰면 **버려진다** — 코드가 대조한다.")),
     ]
     got = llm.ask(provider=provider, purpose="commentary", messages=msgs,
@@ -299,6 +322,22 @@ def judge(got: Verdict | None, box: list[str]) -> tuple[str, list[str]]:
                 bad.append(f"🔴 (라) **없는 규칙·변수 번호**({rid}) — 묶음에 그 "
                            f"글자가 없다 · `{one[:50]}`")
                 break
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **예측도 검열한다** — 사용자 지시 2026-10-15
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 `pick` 은 셋 중 하나여야 하고, `score` 는 **묶음의 스코어 상위에 있는
+    #     것**이어야 한다(없는 점수를 지어내면 거짓이다).
+    said_pick = str(getattr(got, "pick", "") or "")
+    if said_pick not in ("home", "draw", "away"):
+        bad.append(f"🔴 (마) **예측이 없다·틀렸다**(`pick`={said_pick!r}) — "
+                   "`home`·`draw`·`away` 중 하나여야 한다")
+    said_sc = str(getattr(got, "score", "") or "").strip()
+    if not said_sc:
+        bad.append("🔴 (마) **점수 예측이 없다**(`score`)")
+    elif said_sc not in ok_scores:
+        bad.append(f"🔴 (마) **없는 점수 예측**({said_sc}) — 묶음의 `스코어 "
+                   f"상위` 에 그 점수가 없다")
     # 🔴 근거 — 문장 수와 같아야 한다
     refs = [str(x) for x in (got.refs or [])]
     if len(refs) < len(rows):
@@ -418,6 +457,50 @@ def ref_said(said_r: str, box: list[str]) -> str:
             + (f", 외 {cut}개" if cut > 0 else "") + " 에서 왔다")
 
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **두 평의 공통점 ↔ 확률** — 사용자 지시 2026-10-15
+# ══════════════════════════════════════════════════════════════════
+#
+#  > **2 평문의 공통점과 확률이 일치했을때 더 정확해진다**
+#
+#  🔴 그래서 코드가 그것을 **세어 적는다** — 두 모델이 같은 쪽을 골랐나, 같은
+#     점수를 댔나, 그리고 그것이 **확률이 가리키는 쪽**과 같나.
+#  ⚠️ 판정이 아니라 **표시**다 — 등급·확률을 이 줄이 바꾸지 않는다.
+
+
+def agree_of(cards: dict, prob) -> str:
+    """🔴 두 평의 공통점과 확률 일치 — 한 줄. `cards` 는 `{공급자: Verdict}`."""
+    rows = {k: v for k, v in dict(cards or {}).items() if v is not None}
+    if len(rows) < 2:
+        return ("🤝 **공통점 — ⬜ 못 쟀다**(평이 "
+                f"{len(rows)}개다 · 둘이 있어야 견준다)")
+    picks = {k: str(getattr(v, "pick", "") or "") for k, v in rows.items()}
+    scores = {k: str(getattr(v, "score", "") or "") for k, v in rows.items()}
+    want = ""
+    if prob is not None:
+        box = {"home": float(getattr(prob, "home", 0.0) or 0.0),
+               "draw": float(getattr(prob, "draw", 0.0) or 0.0),
+               "away": float(getattr(prob, "away", 0.0) or 0.0)}
+        want = max(box, key=lambda k: box[k])
+    said_k = {"home": "홈 승", "draw": "무", "away": "원정 승"}
+    same_p = len(set(picks.values())) == 1 and all(picks.values())
+    same_s = len(set(scores.values())) == 1 and all(scores.values())
+    out = []
+    if same_p:
+        one = list(picks.values())[0]
+        out.append(f"두 평이 **같은 쪽**({said_k.get(one, one)})")
+        if want:
+            out.append("확률과 **일치한다** 🟢" if one == want
+                       else f"그런데 확률은 **{said_k.get(want, want)}** 쪽이다 🔴")
+    else:
+        out.append("두 평이 **갈렸다** — "
+                   + " · ".join(f"{k} {said_k.get(v, v or '⬜')}"
+                                for k, v in picks.items()))
+    out.append(f"점수 {'**같다**' if same_s else '다르다'}("
+               + " · ".join(f"{k} {v or '⬜'}" for k, v in scores.items()) + ")")
+    return "🤝 **공통점** — " + " · ".join(out)
+
+
 def said_of(got: Verdict | None, box: list[str], *,
             provider: str = "solar") -> str:
     """🔴 카드·보고에 찍는 글 — 평 + **지어냈나 결론**."""
@@ -426,6 +509,11 @@ def said_of(got: Verdict | None, box: list[str], *,
     if got is None:
         return head + "\n" + "\n".join(f"- {x}" for x in bad)
     rows = [head]
+    # 🔴 **예측을 머리에 적는다**(사용자 지시 2026-10-15) — 모델이 고른 것이다
+    said_pick = {"home": "홈 승", "draw": "무", "away": "원정 승"}.get(
+        str(getattr(got, "pick", "") or ""), "⬜ 없음")
+    rows.append(f"- 🎯 **{provider} 예측 — {said_pick} · 점수 "
+                f"{str(getattr(got, 'score', '') or '⬜ 없음')}**")
     refs = [str(x) for x in (got.refs or [])]
     for i, one in enumerate(list(got.sentences or [])):
         said_r = refs[i] if i < len(refs) else "⬜ 근거 없음"

@@ -661,6 +661,9 @@ TOOL_ONLY: dict[str, str] = {
     #    **운영 배선은 다음 순서**다. ⚠️ 운영에 이으면 이 셋을 지운다.
     "app.core.stages.s6_verdict.ask": "tools/run_collect.py",
     "app.core.stages.s6_verdict.said_of": "tools/run_collect.py",
+    # 🔴 **두 평의 공통점 ↔ 확률**(지시 2026-10-15) — 지금 부르는 쪽은 러너뿐이고
+    #    운영 배선은 ⑯ 과 같은 순서다. ⚠️ 운영에 이으면 이 줄을 지운다.
+    "app.core.stages.s6_verdict.agree_of": "tools/run_collect.py",
     # ⚠️ `chain_of`·`judge` 는 **공개 함수인데** 러너가 직접 안 부른다 —
     #    `ask`·`said_of` 안에서 쓰인다. 🔴 그래도 공개로 둔다: 계약
     #    `test_v29_5_verdict.py` 가 **그 둘을 직접 돌려서** 센다(검열이

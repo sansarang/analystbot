@@ -90,7 +90,11 @@ def test_vd2_output_has_no_numbers() -> None:
     sys.path.insert(0, str(ROOT))
     from app.core.stages.s6_verdict import Verdict
     got = set(Verdict.model_fields)
-    assert got == {"sentences", "refs"}, (
+    # 🔴🔴 **예측 칸 둘을 더했다**(사용자 지시 2026-10-15) — *"변수 경기 관련으로
+    #    예측을 각각 하라"*. ⚠️ 그래도 **수 칸은 없다**: `pick` 은 셋 중 한 글자,
+    #    `score` 는 **묶음의 스코어 상위에 있는 것**이고 코드가 대조한다.
+    #    확률·등급 칸을 두면 모델이 코드가 정한 수를 덮을 길이 열린다 — 그건 여전히 없다.
+    assert got == {"sentences", "refs", "pick", "score"}, (
         f"VD2 🔴🔴 출력 칸이 {sorted(got)} 다 — `sentences`·`refs` 둘이어야 "
         "한다. 확률 칸을 두면 모델이 코드가 정한 수를 덮을 길이 열린다")
 
@@ -170,7 +174,10 @@ def test_vd7_clean_passes() -> None:
     got = Verdict(sentences=["홈이 53.1% 로 앞선다.",
                              "λ 는 홈 1.537 · 원정 0.869 이다.",
                              "1-1 이 12.1% 로 가장 두껍다."],
-                  refs=["확률", "λ", "스코어"])
+                  refs=["확률", "λ", "스코어"],
+                  # 🔴 예측 둘도 **있어야** 멀쩡한 평이다(지시 2026-10-15) —
+                  #    `score` 는 묶음의 `스코어 상위` 에 있는 것만 쓴다.
+                  pick="home", score="1-1")
     verdict, bad = judge(got, box)
     assert verdict == "안 지어냈다", (
         f"VD7 🔴 멀쩡한 평에 거짓 위반이 났다 — {bad}")
