@@ -293,6 +293,55 @@ keys:
       why: 2024-25 개편 — 리그 스테이지 단판 · 동/서 분리 · 결승 라운드 중립 가능
     seasons: ["2024/25", "2025/26", "2026/27"]
     baseline: {}
+  # ══════════════════════════════════════════════════════════════
+  # 🔴🔴 **UEFA 유로파·컨퍼런스** — 사용자 지시 2026-10-15(*"UEFA 한 경기"*)
+  # ══════════════════════════════════════════════════════════════
+  #
+  #  ⚠️ 실측 2026-10-15: 표에 **UCL 하나뿐**이었다. 그런데 목요일 유럽 밤은
+  #     UEL·UECL 이고(UCL 은 0경기), 그 둘이 표에 없으면 대회 열쇠가 **빈 글자**
+  #     가 되어 Kuching 과 똑같이 **확률을 못 낸다**.
+  #  🔴 대조(받아서 확인했다): `fotmob.com/leagues/73/table/x` → `leagueName`
+  #     **"Europa League"** · `fotmob.com/leagues/10216/table/x` →
+  #     **"Conference League"**(둘 다 `ccode: INT`).
+  #  ⚠️ `champions league` 글자와 겹치지 않게 **이름을 좁게** 적는다.
+  league:UEL:
+    kind: club_continental
+    confederation: UEFA
+    names: ["uefa europa league", "europa league", "유로파리그",
+            "유로파 리그", "uel"]
+    sources:
+      fotmob_ids: [73]
+      fotmob_names: ["Europa League"]
+      espn_slugs_unverified: ["uefa.europa"]
+      espn_unverified_why: "ESPN 슬러그는 아직 받아서 확인하지 않았다"
+      checked_at: "2026-10-15"
+    format:
+      stage_single: ["league stage", "리그 스테이지"]
+      two_legs: ["knockout round play-offs", "round of 16", "quarter-final",
+                 "semi-final"]
+      neutral: ["final", "결승"]
+      why: 2024-25 개편 — 리그 스테이지 단판 · 녹아웃 홈앤어웨이 · 결승 중립
+    seasons: ["2024/25", "2025/26", "2026/27"]
+    baseline: {}
+  league:UECL:
+    kind: club_continental
+    confederation: UEFA
+    names: ["uefa conference league", "uefa europa conference league",
+            "conference league", "컨퍼런스리그", "컨퍼런스 리그", "uecl"]
+    sources:
+      fotmob_ids: [10216]
+      fotmob_names: ["Conference League"]
+      espn_slugs_unverified: ["uefa.europa.conf"]
+      espn_unverified_why: "ESPN 슬러그는 아직 받아서 확인하지 않았다"
+      checked_at: "2026-10-15"
+    format:
+      stage_single: ["league stage", "리그 스테이지"]
+      two_legs: ["knockout round play-offs", "round of 16", "quarter-final",
+                 "semi-final"]
+      neutral: ["final", "결승"]
+      why: 2024-25 개편 — 리그 스테이지 단판 · 녹아웃 홈앤어웨이 · 결승 중립
+    seasons: ["2024/25", "2025/26", "2026/27"]
+    baseline: {}
   league:ACL2:
     kind: club_continental
     confederation: AFC
@@ -307,7 +356,16 @@ keys:
     sources:
       fotmob_ids: [9469]
       fotmob_names: ["AFC Champions League Two"]
-      checked_at: "2026-10-13"
+      #: 🔴🔴 **ESPN 슬러그** — 받아서 확인했다(2026-10-15).
+      #   ⚠️ 실사고 2026-10-15(Kuching City vs Kitchee): 그 경기는 **ESPN 행**
+      #      (`espn:401912788`)으로 들어왔고 `league` 칸이 `afc.cup` 이었다.
+      #      표에 그 글자가 없어 대회 열쇠가 **빈 글자**가 됐고, 리그 평균 총골
+      #      기준이 없어 **확률을 못 냈다**(⑮ 에서 멈췄다).
+      #   🔴 대조: `espn.com/soccer/scoreboard/_/league/afc.cup` 의 `og:title`
+      #      이 **"AFC Champions League Two Scores - 2026 Season"** 이다
+      #      (ESPN 이 옛 AFC 컵 슬러그를 그대로 쓴다).
+      espn_slugs: ["afc.cup"]
+      checked_at: "2026-10-15"
     format:
       stage_single: ["group stage", "조별"]
       two_legs: ["round of 16", "quarter-final", "semi-final", "final"]

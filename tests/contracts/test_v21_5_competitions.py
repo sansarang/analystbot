@@ -87,3 +87,23 @@ def test_neutral_rule_is_readable_from_the_table() -> None:
     assert said is False, why2
     none, why3 = cp.neutral_of("league:없는리그", stage="Final")
     assert none is None and "🔴" in why3
+
+
+def test_cp9_espn_afc_cup_slug() -> None:
+    """🔴🔴 CP9 — ESPN 슬러그 `afc.cup` 이 **ACL2** 로 선다(사용자 지시 2026-10-15).
+
+    ⚠️ 실사고 2026-10-15(Kuching City vs Kitchee): 그 경기가 **ESPN 행**
+       (`espn:401912788`)으로 들어왔고 `league` 칸이 `afc.cup` 이었다. 표에 그
+       글자가 없어 대회 열쇠가 **빈 글자**가 됐고, 리그 평균 총골 기준이 없어
+       **확률을 못 냈다**(⑮ 에서 멈췄다).
+    🔴 대조 근거: `espn.com/soccer/scoreboard/_/league/afc.cup` 의 `og:title`
+       이 *"AFC Champions League Two Scores - 2026 Season"* 이다(실측).
+    """
+    from app.core import competition as comp
+
+    key, why = comp.key_of(competition="afc.cup")
+    assert key == "league:ACL2", f"CP9 🔴 `afc.cup` → `{key}` · {why}"
+    row = comp.row_of(key)
+    assert str(row.get("kind")) == "club_continental", row.get("kind")
+    said = [str(x) for x in ((row.get("sources") or {}).get("espn_slugs") or [])]
+    assert "afc.cup" in said, f"CP9 🔴 표의 `espn_slugs` 에 없다 — {said}"
