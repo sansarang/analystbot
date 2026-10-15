@@ -60,27 +60,57 @@ def test_XI_가_없으면_안_묻는다() -> None:
     assert not ok and "XI 가 없다" in why, why
 
 
-def test_LLM_은_방향과_가중을_못_정한다() -> None:
-    """🔴🔴 절대규칙 5 — 모델 글이 `favors`·`weight` 에 닿으면 안 된다."""
-    got = sl.StrategyRead(rows=[sl.StrategyRow(
-        side="home", kind="압박 높이", text="공격수가 빠져 압박이 얕아진다")])
-    got_v = sl.vars_of(got, REF)
-    assert len(got_v) == 1
-    one = got_v[0]
-    assert one.favors == "both", "🔴 방향이 붙었다"
-    assert one.weight == 0.0, "🔴 가중이 붙었다"
-    assert one.goals == "none"
-    assert one.usable_as_basis is False
-    # 🔴 스키마에 수 칸이 아예 없어야 한다
-    assert set(sl.StrategyRow.model_fields) == {"side", "kind", "text"}
+def test_부등호가_방향이_된다() -> None:
+    """🔴🔴 사용자 지시 2026-10-15 — *"딥시크는 … **부등호 표시**를 해서 어느
+    값이 크다는 것을 **변수에 제공**해야 한다"*.
 
-
-def test_표에_없는_갈래는_버린다() -> None:
+    `cmp` 는 **홈 기준**이다: `>` 면 홈이 크다 → 홈 유리.
+    """
     got = sl.StrategyRead(rows=[
-        sl.StrategyRow(side="home", kind="없는갈래", text="버려야 한다"),
-        sl.StrategyRow(side="xxx", kind="압박 높이", text="쪽이 틀렸다"),
-    ])
+        sl.StrategyRow(kind="수비 라인", cmp="<", goals_cmp="<",
+                       text="원정이 5백으로 내려선다"),
+        sl.StrategyRow(kind="압박 높이", cmp=">", goals_cmp="=",
+                       text="홈이 전방 압박을 올린다")])
+    rows = sl.vars_of(got, REF)
+    assert [(v.favors, v.goals) for v in rows] == [("away", "down"),
+                                                   ("home", "none")]
+    # 🔴 **확률에 닿는 변수**다(변수를 더하는 것이 목적이다)
+    assert all(v.weight > 0 and v.usable_as_basis for v in rows)
+    # 🔴 카드에 부등호가 그대로 보인다
+    assert "홈<원정" in rows[0].claim and "총골<기준" in rows[0].claim
+
+
+def test_모델은_수를_적을_칸이_없다() -> None:
+    """🔴 크기(가중)는 코드가 넣는다 — 모델은 **어느 쪽이 큰지**만 말한다."""
+    assert set(sl.StrategyRow.model_fields) == {"kind", "cmp", "goals_cmp",
+                                                "text"}
+    from app.core.stages import s5_verify as _s5
+    assert sl._weight() == float(_s5._sample_weight(5)[1]), "🔴 새 수를 지었다"
+
+
+def test_둘_다_같음이면_변수가_아니다() -> None:
+    got = sl.StrategyRead(rows=[sl.StrategyRow(
+        kind="세트피스", cmp="=", goals_cmp="=", text="비슷하다")])
     assert sl.vars_of(got, REF) == []
+
+
+def test_표에_없는_갈래나_부등호는_버린다() -> None:
+    got = sl.StrategyRead(rows=[
+        sl.StrategyRow(kind="없는갈래", cmp=">", goals_cmp=">", text="x"),
+        sl.StrategyRow(kind="세트피스", cmp="크다", goals_cmp=">", text="y")])
+    assert sl.vars_of(got, REF) == []
+
+
+def test_승인된_표가_모델을_덮는다(monkeypatch) -> None:  # noqa: ANN001
+    """🔴 사람이 정한 값이 모델 판단보다 **위**다."""
+    monkeypatch.setattr(sl, "_DIRS", {
+        "수비 라인": {"goals": "up", "favors": "opponent", "approved": True,
+                  "url": "https://x.example/a"}})
+    got = sl.StrategyRead(rows=[sl.StrategyRow(
+        kind="수비 라인", cmp="<", goals_cmp="<", text="원정이 내려선다")])
+    one = sl.vars_of(got, REF)[0]
+    assert (one.favors, one.goals) == ("home", "up"), (one.favors, one.goals)
+    assert "표가 덮었다" in one.claim
 
 
 def test_배치표가_아는_유형으로_적는다() -> None:
@@ -106,13 +136,6 @@ def test_러너에_배선됐다() -> None:
 # ══════════════════════════════════════════════════════════════════
 # 🔴🔴 **방향 표** — 딥서치로 채우고 **사용자가 승인**해야 쓴다
 # ══════════════════════════════════════════════════════════════════
-
-
-def test_승인_전_표는_방향을_안_준다() -> None:
-    """⚠️ 실측 2026-10-15: 1차 딥서치가 **미식축구 기사**로 `수비 라인 → down`
-    을 적었다. 승인 전 표가 확률에 닿으면 그 거짓이 그대로 들어간다."""
-    assert sl._dir_of("수비 라인", "home") == ("both", "none",
-                                            " · ⬜ 방향 표 **승인 전**(수비 라인)")
 
 
 def test_승인된_줄만_방향을_준다(monkeypatch) -> None:  # noqa: ANN001
@@ -146,3 +169,29 @@ def test_표를_채우는_도구가_있다() -> None:
     said = __import__("pathlib").Path("tools/fit_strategy_dirs.py").read_text()
     assert "인용" in said and "문서에서" in said
     assert "config" in said and "strategy_dirs.yaml" in said
+
+
+def test_최근_5경기_재료를_추린다() -> None:
+    """🔴 사용자 지시 2026-10-15 — *"갈래도 찾아서 넣어야 한다 · **최근 5경기
+    기준으로**"*. ⚠️ 폼을 다시 세지 않고 `s5_verify` 가 센 변수를 그대로 쓴다."""
+    class V:
+        def __init__(self, i: str, c: str) -> None:
+            self.id, self.claim = i, c
+    got = sl.recent_of([V("S01-home", "최근 5경기 L L D L L"),
+                        V("R1", "결장"), V("IR12-away", "무패 4경기"),
+                        V("S02", "맞대결 3경기")])
+    # ⚠️ `R1` 로 세면 안 된다 — `IR12-away` 안에 그 글자가 들어 있다(실측)
+    assert len(got) == 3, got
+    assert not any("`R1`" in x for x in got), got
+
+
+def test_프롬프트가_최근_5경기를_요구한다() -> None:
+    import inspect
+    src = inspect.getsource(sl.ask)
+    assert "최근 5경기" in src and "said_recent" in src
+    assert "재료에 없는 갈래는 내지 마라" in src, "🔴 지어내기를 안 막는다"
+
+
+def test_러너가_최근_재료를_넘긴다() -> None:
+    said = __import__("pathlib").Path("tools/run_collect.py").read_text()
+    assert "recent=_sl.recent_of(variables)" in said, "🔴 안 넘긴다"

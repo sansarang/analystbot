@@ -43,11 +43,25 @@ MAX_ROWS = 4
 SWAP_CUT = 3
 
 
-class StrategyRow(BaseModel):
-    """🔴 전략 읽기 한 줄 — **수 칸이 없다**(모델이 수를 적을 자리가 없다)."""
+#: 🔴🔴 **부등호** — 사용자 지시 2026-10-15: *"딥시크는 수비·공격·갈래 등을
+#   **부등호 표시**를 해서 **어느 값이 크다**는 것을 변수에 제공해야 한다"*.
+#   🔴 비교는 **홈 기준**이다 — `>` 면 홈이 크고 `<` 면 원정이 크다.
+OPS: tuple[str, ...] = (">", "<", "=")
 
-    side: str = ""
+
+class StrategyRow(BaseModel):
+    """🔴 전략 비교 한 줄 — **수 칸이 없다**. 모델은 **부등호**만 고른다.
+
+    예) `kind="수비 라인"` · `cmp=">"` → *"홈의 수비 라인이 더 높다"*
+        `goals_cmp="<"`              → *"총골이 대회 기준보다 적겠다"*
+    🔴 크기(가중)는 **코드가** 넣는다 — 모델은 **어느 쪽이 큰지**만 말한다.
+    """
+
     kind: str = ""
+    #: 🔴 홈 vs 원정 — `>`(홈이 크다) · `<`(원정이 크다) · `=`(비슷)
+    cmp: str = "="
+    #: 🔴 총골 vs 대회 기준 — `>`(많겠다) · `<`(적겠다) · `=`(보통)
+    goals_cmp: str = "="
     text: str = ""
 
 
@@ -90,7 +104,24 @@ def may_ask(ref: MatchRef, facts: Facts, plan: object) -> tuple[bool, str]:
     return True, " · ".join(said[:3])
 
 
+#: 🔴🔴 **최근 5경기 재료** — 사용자 지시 2026-10-15: *"갈래도 찾아서 넣어야
+#   한다 · **최근 5경기 기준으로**"*. 그 재료를 든 변수 id 머리글자다.
+#   ⚠️ 여기서 폼을 다시 세지 않는다 — `s5_verify` 가 센 그 변수를 **그대로** 쓴다.
+RECENT_IDS: tuple[str, ...] = ("S01", "S02", "IR12")
+
+
+def recent_of(variables: list | None) -> list[str]:
+    """🔴 최근 5경기·맞대결·연속 기록 변수의 **글**만 추린다(사본 금지)."""
+    out: list[str] = []
+    for one in list(variables or []):
+        rid = str(getattr(one, "id", "") or "")
+        if rid.startswith(RECENT_IDS):
+            out.append(f"- `{rid}` {str(getattr(one, 'claim', '') or '')[:170]}")
+    return out
+
+
 def ask(ref: MatchRef, facts: Facts, plan: object, *, state: RunState,
+        recent: list[str] | None = None,
         providers: tuple = ("deepseek", "solar")) -> tuple[list[Variable], str]:
     """🔴 전략 전문가에게 **변수 글**을 받는다. `(변수 목록, 사유)`.
 
@@ -105,6 +136,7 @@ def ask(ref: MatchRef, facts: Facts, plan: object, *, state: RunState,
         f"- `{rid}` {dict(one).get('text', '')}"
         for rid, one in list(box.items())[:16] if isinstance(one, dict))
     xi = dict(getattr(facts, "xi", None) or {})
+    said_recent = "\n".join(list(recent or [])[:8])
     said_xi = "\n".join(
         f"- {str(getattr(ref, f'{s}_name', '') or '')}: "
         f"{getattr(xi.get(str(getattr(ref, s, '') or '')), 'formation', '') or '⬜'}"
@@ -112,22 +144,29 @@ def ask(ref: MatchRef, facts: Facts, plan: object, *, state: RunState,
     msgs = [
         llm.Message(role="system", content=(
             "너는 **축구 전술 분석 전문가**다. 아래는 오늘 라인업·포메이션·결장이 "
-            "만든 **사실 목록**이다. 네 일은 그 사실에서 **무엇이 달라지는지** "
-            "한 줄씩 읽어 주는 것이다.\n"
-            "🔴 **수를 쓰지 마라** — 확률·골 수·배율·퍼센트를 적지 않는다. "
-            "어느 쪽이 유리한지도 **네가 정하지 않는다**(코드가 정한다).\n"
-            "🔴 **사실 목록에 없는 선수·사건을 지어내지 마라.**")),
+            "만든 **사실 목록**이다. 네 일은 그 사실을 보고 **두 팀을 견주는 "
+            "것**이다 — 어느 쪽 값이 큰지 **부등호로만** 말한다.\n"
+            "🔴 **수를 쓰지 마라**(퍼센트·골 수·배율 금지). 크기는 코드가 넣는다.\n"
+            "🔴 **사실 목록에 없는 선수·사건을 지어내지 마라.** 모르면 `=` 다.")),
         llm.Message(role="user", content=(
-            f"경기: {getattr(ref, 'home_name', '')} vs "
-            f"{getattr(ref, 'away_name', '')}\n"
+            f"경기: {getattr(ref, 'home_name', '')}(홈) vs "
+            f"{getattr(ref, 'away_name', '')}(원정)\n"
             f"포메이션:\n{said_xi}\n"
-            f"오늘 라인업 사실:\n{said_facts}\n\n"
-            f"🔴 `rows` — **{MAX_ROWS}개 이하**. 각 줄은\n"
-            "  · `side` — `home` 또는 `away`(그 읽기가 어느 팀 것인가)\n"
+            f"오늘 라인업 사실:\n{said_facts}\n"
+            # 🔴 **최근 5경기 기준**으로도 갈래를 찾는다(지시 2026-10-15)
+            + (f"\n최근 5경기·맞대결 재료:\n{said_recent}\n" if said_recent
+               else "\n최근 5경기 재료: ⬜ 없다\n")
+            + "\n🔴 갈래는 **오늘 라인업**과 **최근 5경기 재료** 둘에서 "
+              "찾는다 — 재료에 없는 갈래는 내지 마라.\n"
+            + f"🔴 `rows` — **{MAX_ROWS}개 이하**. 한 줄은 한 갈래의 **비교**다:\n"
             f"  · `kind` — 다음 중 하나: {' · '.join(KINDS)}\n"
+            "  · `cmp` — **홈 vs 원정**: `>`(홈이 크다) · `<`(원정이 크다) · "
+            "`=`(비슷·모름)\n"
+            "  · `goals_cmp` — **이 경기 총골 vs 대회 기준**: `>`(많겠다) · "
+            "`<`(적겠다) · `=`(보통·모름)\n"
             "  · `text` — **한 문장**(80자 안). 위 사실의 선수 이름·포메이션을 "
             "근거로 든다.\n"
-            "⚠️ 사실이 얇으면 줄을 **적게** 낸다(빈 목록도 된다 · 지어내지 않는다).")),
+            "⚠️ 근거가 없으면 그 줄을 **내지 마라**(`=` 만 가득한 줄은 쓸모없다).")),
     ]
     got, said_pv = llm.ask_first(purpose="recall", messages=msgs,
                                  out=StrategyRead, state=state,
@@ -180,12 +219,13 @@ def approved(row: dict) -> bool:
     return bool(row.get("approved"))
 
 
-def _dir_of(kind: str, side: str) -> tuple[str, str, str]:
-    """🔴 그 갈래의 `(favors, goals, 근거 꼬리)`. 표에 없거나 **승인 전**이면
+def _dir_of(kind: str, side: str, level: str = "") -> tuple[str, str, str]:
+    """🔴 `갈래|정도` 의 `(favors, goals, 근거 꼬리)`. 표에 없거나 **승인 전**이면
     방향 없음이다."""
-    row = dict(dirs().get(kind) or {})
+    key = f"{kind}|{level}" if level else kind
+    row = dict(dirs().get(key) or dirs().get(kind) or {})
     if row and not approved(row):
-        return "both", "none", f" · ⬜ 방향 표 **승인 전**({kind})"
+        return "both", "none", f" · ⬜ 방향 표 **승인 전**({key})"
     goals = str(row.get("goals") or "none")
     said = str(row.get("favors") or "both")
     # 🔴 표는 **`subject`/`opponent`** 로 적는다 — 쪽으로 옮기는 것은 코드다
@@ -200,28 +240,51 @@ def _dir_of(kind: str, side: str) -> tuple[str, str, str]:
             goals if goals in ("up", "down", "none") else "none", tail)
 
 
-def vars_of(got: StrategyRead, ref: MatchRef, *, why: str = "") -> list[Variable]:
-    """🔴🔴 모델 글 → `Variable`. **방향·가중은 코드가 넣는다**(잠금 ①②).
+def _weight() -> float:
+    """🔴 가중은 **규칙 변수와 같은 자**다 — 여기서 새 수를 짓지 않는다(#1).
 
-    🔴 방향은 **표**(`config/strategy_dirs.yaml`)가 준다 — 모델이 아니다.
+    `s5_verify._sample_weight(5)` 가 표본 5건짜리 규칙 변수에 주는 그 값이다.
+    """
+    from app.core.stages import s5_verify as _s5
+    return float(_s5._sample_weight(5)[1])
+
+
+def vars_of(got: StrategyRead, ref: MatchRef, *, why: str = "") -> list[Variable]:
+    """🔴🔴 **부등호 → 변수**. 방향은 부등호가, **가중은 코드가** 넣는다.
+
+    🔴 `cmp` 가 `>` 면 홈이 큰 갈래다 → 그 갈래에서 **홈 유리**(`favors=home`).
+    🔴 `goals_cmp` 가 `<` 면 **총골 down** 이다.
+    ⚠️ 둘 다 `=` 인 줄은 **안 쓴다**(방향이 없으면 변수 구실을 못 한다).
+    🔴 표(`config/strategy_dirs.yaml`)에 **승인된 줄**이 있으면 그 표가 이긴다 —
+       사람이 정한 값이 모델 판단보다 위다.
     """
     out: list[Variable] = []
     for i, row in enumerate(list(got.rows or [])[:MAX_ROWS], 1):
-        side = str(row.side or "").strip().lower()
-        if side not in ("home", "away"):
-            continue
         kind = str(row.kind or "").strip()
         text = str(row.text or "").strip()
-        if not text or kind not in KINDS:
-            continue              # 🔴 표에 없는 갈래는 **버린다**(지어내기 금지)
-        key = str(getattr(ref, side, "") or "")
-        # 🔴🔴 **방향은 표가 준다** — 모델 글이 이 두 칸에 닿지 않는다
-        fav, goals, tail = _dir_of(kind, side)
+        op = str(row.cmp or "=").strip()
+        gop = str(row.goals_cmp or "=").strip()
+        if not text or kind not in KINDS or op not in OPS or gop not in OPS:
+            continue              # 🔴 표에 없는 갈래·부등호는 **버린다**
+        fav = {">": "home", "<": "away"}.get(op, "both")
+        goals = {">": "up", "<": "down"}.get(gop, "none")
+        if fav == "both" and goals == "none":
+            continue              # ⚠️ `=`·`=` 는 변수가 아니다
+        side = fav if fav in ("home", "away") else "home"
+        tail = f" [{kind} 홈{op}원정 · 총골{gop}기준]"
+        # 🔴 승인된 표가 있으면 **그 표가 이긴다**(사람이 정한 값이 위다)
+        said_tbl = dict(dirs().get(kind) or {})
+        if said_tbl and approved(said_tbl):
+            fav2, goals2, tail2 = _dir_of(kind, side)
+            fav, goals, tail = fav2, goals2, tail2 + " · 표가 덮었다"
         out.append(Variable(
-            id=f"SL{i}-{side}", type=VAR_TYPE, subject=key,
+            id=f"SL{i}", type=VAR_TYPE,
+            subject=str(getattr(ref, side, "") or ""),
             favors=fav, goals=goals,                        # type: ignore[arg-type]
-            target=f"strategy:{kind}", hardness="soft", weight=0.0,
-            claim=f"🟡 전략 읽기(LLM · {kind}) — {text}{tail}",
+            target=f"strategy:{kind}", hardness="soft",
+            # 🔴 가중은 **규칙 변수와 같은 자**다(여기서 새 수를 짓지 않는다)
+            weight=_weight(),
+            claim=f"🟢 전략 비교(LLM · {kind}) — {text}{tail}",
             quote=text, doc_ids=[], from_rule="SLLM",
-            usable_as_basis=False))
+            usable_as_basis=True))
     return out

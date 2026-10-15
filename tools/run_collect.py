@@ -283,7 +283,9 @@ async def main(argv: list[str]) -> int:
     #  🔴 LLM 은 **글만** 낸다 — 방향(`favors`)·가중은 코드가 넣는다(절대규칙 5).
     #     그래서 이 변수들은 지금 🟡 **표시·검증·가설**이다(축을 안 민다).
     from app.core import strategy_llm as _sl
-    var_sl, said_sl = _sl.ask(ref, facts, plan, state=st)
+    # 🔴 **최근 5경기 기준**으로도 갈래를 찾게 재료를 넘긴다(지시 2026-10-15)
+    var_sl, said_sl = _sl.ask(ref, facts, plan, state=st,
+                              recent=_sl.recent_of(variables))
     print("## ⑤-b2 전략 전문가(LLM)")
     print(f"- {said_sl}")
     for one in var_sl:
