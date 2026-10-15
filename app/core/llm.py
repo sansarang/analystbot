@@ -208,6 +208,14 @@ def ask(*, provider: Provider, purpose: str, messages: list[Message],
                 return LlmFail(
                     reason=DropReason.LLM_SCHEMA,
                     detail=f"두 번 다 스키마에 안 맞았다: {exc.errors()[:2]}")
+            # 🔴 상한을 넘겼으면 **다시 묻지 않는다**(지시 2026-10-15) —
+            #    재요청 한 번이 남은 예산을 통째로 먹던 자리다
+            got_clock = getattr(state, "clock", None)
+            if got_clock is not None and getattr(got_clock, "over", bool)():
+                return LlmFail(
+                    reason=DropReason.LLM_TIMEOUT,
+                    detail=("⏱ 상한을 넘겨 **스키마 재요청을 건너뛴다** — "
+                            f"{exc.errors()[:1]}"))
             # 🔴 **오류 문장을 붙여** 다시 묻는다 — 무엇이 틀렸는지 알려 준다
             body = dict(body)
             body["messages"] = [*body["messages"],
@@ -293,9 +301,21 @@ def _send(body: dict, pv: dict, *, provider: str, purpose: str,
         if got is not None:
             return _read(got, provider=provider, purpose=purpose, state=state,
                          secs0=secs0, body=body, replayed=True)
+    # 🔴🔴 **타임아웃은 남은 예산 안이다** — 사용자 지시 2026-10-15.
+    #    ⚠️ 실사고 2026-10-15: 공급자가 응답을 안 끊어 한 호출이 4분(소켓 120초
+    #       × 스키마 재요청 2회)을 먹었고, 카드 하나가 **27분**이 됐다.
+    #    🔴 상한을 세는 곳은 `core/deadline` 하나다(사본 금지).
+    from app.core import deadline as _dl
+    secs, said_cap = _dl.call_cap_sec(getattr(state, "clock", None),
+                                      int(pv.get("timeout_sec") or 120))
+    if said_cap:
+        # 🔴 사유는 **상태 수첩**에 남긴다 — 카드·보고가 그것을 적는다
+        state.note(f"llm {purpose} — {said_cap}")
+    if secs <= 0:
+        # 🔴 **안 부른다** — 사유를 남긴다(#3 조용한 0 금지)
+        return "", LlmFail(reason=DropReason.LLM_TIMEOUT, detail=said_cap)
     try:
-        raw = (_post or _http)(url, _key(provider), body,
-                               int(pv.get("timeout_sec") or 120))
+        raw = (_post or _http)(url, _key(provider), body, int(secs))
     except _Fail as exc:
         return "", LlmFail(reason=exc.reason, detail=str(exc),
                            status=exc.status)

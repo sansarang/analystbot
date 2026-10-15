@@ -101,7 +101,13 @@ async def main(argv: list[str]) -> int:
 
     asked = argv[1] if len(argv) > 1 else "Feyenoord Como"
     st = RunState()
-    st.deadline = _dl.Deadline(10.0)
+    # 🔴🔴 **시계는 `clock` 에 꽂는다** — 사용자 지시 2026-10-15(타임아웃 수정).
+    #    ⚠️ 실사고 2026-10-15: 여기가 `st.deadline` 이었고 **읽는 곳이 없었다**
+    #       (`state.clock` 이 그 칸이다 · `core/pipeline:97` 가 그렇게 한다).
+    #       그래서 카드 상한이 **아예 안 걸려** MLS 10:30 실행이 27분 멈췄다.
+    #    🔴 상한 값은 운영과 같은 그것이다(사본 금지 — `slate.CARD_CAP_MIN`).
+    from app.core import slate as _slate
+    st.clock = _dl.Deadline(_slate.CARD_CAP_MIN)
     # 🔴 DB 풀은 봇이 쓰는 그것이다(`app/bot/main` 과 같은 길) — s1 이 슬레이트를
     #    읽고 적는다. ⚠️ `None` 을 주면 입구가 터진다(실측 2026-10-14).
     # 🔴🔴 **재정렬기를 예열한다** — `app/bot/main.py:165` 가 운영에서 부르는 그것.

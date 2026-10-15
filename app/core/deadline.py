@@ -53,3 +53,50 @@ class Deadline:
         if not self.skipped:
             return head + " · 건너뛴 단계 **없다**"
         return head + " · 🔴 건너뛴 단계 — " + " · ".join(self.skipped)
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **LLM 한 번 호출도 남은 예산 안이다** — 사용자 지시 2026-10-15
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 타임아웃부터 고쳐라
+#
+#  ⚠️ 실사고 2026-10-15(MLS 10:30 두 경기): 공급자가 응답을 끊지 않아 봇이
+#     **27분**을 `_ssl__SSLSocket_read` 에서 멈췄다(CPU 0% · 외부 작업 0).
+#     ① `config/llm.yaml` 의 `timeout_sec: 120` 은 **소켓 한 번**의 상한이고
+#        `llm.ask` 는 스키마 재요청으로 **두 번** 부른다 → 호출당 4분.
+#        단계마다 여러 번 부르니 카드 하나가 27분이 됐다.
+#     ② 🔴 그런데 더 나쁜 것 — 카드 상한(15분)이 **안 걸려 있었다**:
+#        러너가 시계를 `st.deadline` 에 꽂았고 읽는 칸은 `st.clock` 이다.
+#  🔴 그래서 호출마다 **남은 예산 안으로 깎고**, 남은 게 바닥이면 **안 부른다**
+#     (#3 조용한 0 금지 — 왜 안 불렀는지 사유로 남긴다).
+
+#: 🔴 LLM 한 번에 줄 수 있는 **최소** 초 — 이보다 적게 남으면 부르지 않는다
+MIN_CALL_SEC = 20.0
+#: 🔴 한 번 호출이 **남은 예산에서 가져갈 몫** — 1.0 이면 남은 전부를 쓴다.
+#   ⚠️ 한 호출이 전부를 먹으면 뒤 단계가 통째로 ⬜ 가 된다.
+CALL_SHARE = 0.5
+
+
+def call_cap_sec(clock: object | None, want: float) -> tuple[float, str]:
+    """🔴🔴 그 호출에 줄 **초** — 남은 예산 안으로 깎는다. `(초, 사유)`.
+
+    `0` 이면 **부르지 않는다**(사유를 그대로 카드·보고에 적는다).
+    🔴 시계가 없으면 설정값 그대로다(상한 없는 실행 — 시험·도구).
+    """
+    want = float(want or 0.0)
+    left = getattr(clock, "left_min", None)
+    if left is None:
+        return want, ""
+    secs = float(left()) * 60.0
+    if secs <= MIN_CALL_SEC:
+        return 0.0, (f"⏱ **남은 시간이 {secs:.0f}초다**(상한 "
+                     f"{getattr(clock, 'cap_min', 0) or 0:g}분) — LLM 을 "
+                     f"부르지 않았다")
+    give = min(want, secs * CALL_SHARE)
+    if give < MIN_CALL_SEC:
+        give = min(want, MIN_CALL_SEC)
+    if give < want:
+        return give, (f"⏱ 타임아웃을 {want:.0f}초 → **{give:.0f}초**로 깎았다"
+                      f"(남은 {secs:.0f}초의 {CALL_SHARE:g})")
+    return give, ""
