@@ -292,7 +292,8 @@ ir_table:
   #    쓰지 않는다(실측 2026-10-14: 웹 검색 길은 오류만 많았다).
   # ⚠️ `모르겠다` 판단은 변수를 **만들지 않는다**.
   - id: IR14
-    type: stakes
+    #: 🔴 쪼갰다(2026-10-15) — **조건 집안**이다(λ `stakes_urgent` 가 그 통로다).
+    type: standing_motive
     sports: [soccer]
     when: fotmob 순위표로 LLM 이 "어느 팀이 더 급한가" 를 판단했을 때
     needs: [standings.group]
@@ -304,7 +305,9 @@ ir_table:
     source: "사용자 지시 2026-10-14 · 🔴 크기는 적합 아님(이동·피로와 같은 −5%)"
 
   - id: IR12
-    type: team_stats
+    #: 🔴 쪼갰다(2026-10-15) — **흐름 집안**이다(연승·연패는 최근 기록이다).
+    #   ⚠️ 종전 `team_stats` 는 순위·무승·분위기가 섞인 쓰레기통이었다.
+    type: form_streak
     sports: [soccer]
     when: 연승·연패가 이어질 때
     needs: [recent.streak_unbeaten, recent.streak_winless]

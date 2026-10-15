@@ -1580,7 +1580,9 @@ def _ir_desperate(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
         if n < DESPERATE_MIN:
             continue
         out.append(_ir_var(
-            _rid_for(f"{rid}D", key, ref), "stakes", row, key,
+            # 🔴 쪼갰다(2026-10-15) — **표시 전용 집안**(`mood`)이다.
+            #    글에 이미 *"확률에 닿지 않는다"* 고 적혀 있었다.
+            _rid_for(f"{rid}D", key, ref), "mood", row, key,
             f"{_name(ref, key)} **{n}연패** — 승리에 더 간절하다"
             f"(연패가 길수록 간절함이 크다 · 해석이고 확률에 닿지 않는다)",
             ref))

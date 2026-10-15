@@ -24,9 +24,21 @@ HYPO = "hypo"
 
 
 def table() -> dict:
-    """🔴 배치표 — `config/variable_routing.yaml`."""
+    """🔴 배치표 — `config/variable_routing.yaml`.
+
+    🔴🔴 **여섯 집안 판**(`types_v2`) — 사용자 지시 2026-10-15.
+       `m1v2.flags.route_v2` 가 켜지면 `types` 자리에 `types_v2` 를 끼운다.
+    ⚠️ 기본은 **꺼짐**이다 — 확률 경로를 건드리는 변경이라 백필 판정 전에는
+       운영 값을 바꾸지 않는다(2026-10-14e 가 쓰던 그 규율).
+    🔴 까닭: 같은 사실이 두 축에 걸려 **이중 계산**이었다(`team_stats` 축1·축2 ·
+       결장 계열 축0·축2). 집안마다 **확률 통로를 하나**로 줄인다.
+    """
     from app import rules
-    return dict(rules._load(CONF) or {})
+    box = dict(rules._load(CONF) or {})
+    from app.core import m1v2 as _c
+    if _c.on("route_v2") and box.get("types_v2"):
+        box = {**box, "types": dict(box["types_v2"])}
+    return box
 
 
 @dataclass

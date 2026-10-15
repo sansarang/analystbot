@@ -1,227 +1,393 @@
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 **변수 배치표** — 상성 중심 확률 엔진 지시서(2026-10-10 여섯째) V-3
-# ══════════════════════════════════════════════════════════════════
-#
-# > 변수마다 아래 표로 자리를 정한다(유형 → 자리). **한 변수가 여러 자리에 갈 수
-# > 있다.** … 표에 없는 유형이 나오면 **배치 실패** → 근거 불가로 내리고 운영자
-# > 알림(**지어서 배치하지 않는다**).
-# > 근거 불가 변수는 ①②에 못 들어가고 ③에서도 맥락으로만.
-#
-# 🔴 자리 글자(코드가 읽는 열거값):
-#     `axis0`·`axis1`·`axis2`·`axis3`  — ① 상성 축 입력(확률에 닿는 **유일한** 길)
-#     `lambda_const`                   — 리그/대회 상수(홈 이점·대회 유형)
-#     `V1`~`V6`                        — ② 검증 출처
-#     `hypo`                           — ③ 가설의 근거
-# ⚠️ `V7`(가설 신호)은 변수 자리가 아니다 — 단계 5 가 S3 출력과 대조하는 자리다.
-#
-# 🔴 `why` 는 **지시서의 그 칸 글자**다(옮겨 적으며 고치지 않는다).
-
-source: "사용자 지시 2026-10-10(여섯째) V-3 배치표"
-checked_at: "2026-10-10"
-
-#: 🔴 자리 열거값 — 코드가 이 목록으로만 검사한다(지어낸 자리 금지)
+source: 사용자 지시 2026-10-10(여섯째) V-3 배치표
+checked_at: '2026-10-10'
 places:
-  axis: [axis0, axis1, axis2, axis3]
-  const: [lambda_const]
-  verify: [V1, V2, V3, V4, V5, V6]
-  hypo: [hypo]
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴 유형 → 자리
-# ══════════════════════════════════════════════════════════════════
+  axis:
+  - axis0
+  - axis1
+  - axis2
+  - axis3
+  const:
+  - lambda_const
+  verify:
+  - V1
+  - V2
+  - V3
+  - V4
+  - V5
+  - V6
+  hypo:
+  - hypo
 types:
-  # │ absence·def_absence·absence_att·suspension │ 축0(빠진 선수 가치) 축2(무기 꺼짐) │ — │ 근거 │
   absence:
-    places: [axis0, axis2, hypo]
-    why: "축0(오늘 XI 전력: 빠진 선수 가치) · 축2(그 선수가 쥔 무기 꺼짐)"
+    places:
+    - axis0
+    - axis2
+    - hypo
+    why: '축0(오늘 XI 전력: 빠진 선수 가치) · 축2(그 선수가 쥔 무기 꺼짐)'
   def_absence:
-    places: [axis0, axis2, hypo]
-    why: "축0(빠진 수비 자원 가치) · 축2(수비 무기 꺼짐)"
+    places:
+    - axis0
+    - axis2
+    - hypo
+    why: 축0(빠진 수비 자원 가치) · 축2(수비 무기 꺼짐)
   absence_att:
-    places: [axis0, axis2, hypo]
-    why: "축0(빠진 공격 자원 가치) · 축2(공격 무기 꺼짐)"
+    places:
+    - axis0
+    - axis2
+    - hypo
+    why: 축0(빠진 공격 자원 가치) · 축2(공격 무기 꺼짐)
   suspension:
-    places: [axis0, axis2, hypo]
-    why: "축0·축2 — 결장과 같다(사유만 다르다)"
-
-  # │ returning·squad_boost │ 축0(들어온 선수 가치), 축2(무기 켜짐) │ — │ 근거 │
+    places:
+    - axis0
+    - axis2
+    - hypo
+    why: 축0·축2 — 결장과 같다(사유만 다르다)
   returning:
-    places: [axis0, axis2, hypo]
-    why: "축0(들어온 선수 가치) · 축2(무기 켜짐)"
+    places:
+    - axis0
+    - axis2
+    - hypo
+    why: 축0(들어온 선수 가치) · 축2(무기 켜짐)
   national_duty_return:
-    places: [axis0, axis2, hypo]
-    why: "복귀와 같다 — 대표팀에서 돌아온 선수"
+    places:
+    - axis0
+    - axis2
+    - hypo
+    why: 복귀와 같다 — 대표팀에서 돌아온 선수
   lineup_value:
-    places: [axis0, hypo]
-    why: "축0 — 오늘 XI 선수 가치 합이 그 변수의 내용이다"
-
-  # │ squad_turnover(IR03 포함) │ 축0 호흡, 축1·축3 r 가중 │ V1 기준 낡음 │ 근거 │
+    places:
+    - axis0
+    - hypo
+    why: 축0 — 오늘 XI 선수 가치 합이 그 변수의 내용이다
   squad_rotation:
-    places: [axis0, axis1, axis3, V1, hypo]
-    why: "축0 호흡 · 축1·축3 r 가중 · V1 기준 낡음(선수단 교체·로테이션)"
-
-  # │ lineup_intent(IR01 5백 등) │ 축2(스타일 조정·전략 판정) │ — │ 근거 │
+    places:
+    - axis0
+    - axis1
+    - axis3
+    - V1
+    - hypo
+    why: 축0 호흡 · 축1·축3 r 가중 · V1 기준 낡음(선수단 교체·로테이션)
   lineup_intent:
-    places: [axis2, hypo]
-    why: "축2 — 스타일 조정·전략 판정 입력"
-
-  # │ recent_pattern(S01)·IR12 │ 축1(보정 폼) │ — │ 근거 │
+    places:
+    - axis2
+    - hypo
+    why: 축2 — 스타일 조정·전략 판정 입력
   recent_pattern:
-    places: [axis1, hypo]
-    why: "축1 — 보정 폼"
-
-  # │ team_stats │ 축1 또는 축2(내용에 따라) │ — │ 근거 │
+    places:
+    - axis1
+    - hypo
+    why: 축1 — 보정 폼
   team_stats:
-    places: [axis1, axis2, hypo]
-    why: "축1 또는 축2 — 내용에 따라(둘 다 열어 두고 축이 쓸 것을 고른다)"
-
-  # │ IR04 회귀 │ 축1(운 요소·xG 대비 성과 보정) │ — │ 근거 │
+    places:
+    - axis1
+    - axis2
+    - hypo
+    why: 축1 또는 축2 — 내용에 따라(둘 다 열어 두고 축이 쓸 것을 고른다)
   regression:
-    places: [axis1, hypo]
-    why: "축1 — 운 요소·xG 대비 성과 보정"
-
-  # │ strength_gap │ 축0 — 전력 차가 그 변수의 내용이다
+    places:
+    - axis1
+    - hypo
+    why: 축1 — 운 요소·xG 대비 성과 보정
   strength_gap:
-    places: [axis0, hypo]
-    why: "축0 — 전력 차"
-
-  # │ home_field(S03) │ 리그 홈 이점(λ 상수) │ — │ — │
+    places:
+    - axis0
+    - hypo
+    why: 축0 — 전력 차
   home_field:
-    places: [lambda_const]
-    why: "리그 홈 이점(λ 상수) — 가설 근거로도 쓰지 않는다(지시서 표의 `—`)"
-
-  # │ match_type(S04 친선)·IR07 │ 리그/대회 유형별 상수(λ·무승부) │ — │ 근거 │
+    places:
+    - lambda_const
+    why: 리그 홈 이점(λ 상수) — 가설 근거로도 쓰지 않는다(지시서 표의 `—`)
   match_type:
-    places: [lambda_const, hypo]
-    why: "대회 유형 상수(λ·무승부)"
-
-  # │ stakes·IR05 동기 비대칭 │ —(상성 밖) │ V2 동기 │ 근거 │
+    places:
+    - lambda_const
+    - hypo
+    why: 대회 유형 상수(λ·무승부)
   stakes:
-    places: [V2, hypo]
-    why: "상성 밖 — V2 동기"
-
-  # │ fatigue·schedule_load·IR11 │ 축2 압박 감쇠(T2)만 — 적합된 경우 │ V3 │ 근거 │
+    places:
+    - V2
+    - hypo
+    why: 상성 밖 — V2 동기
   fatigue:
-    places: [axis2, V3, hypo]
-    why: "축2 압박 감쇠(T2)만 — **적합된 경우** · V3 일정·피로"
-    #: 🔴 적합 전에는 축2 로 **안 간다**(코드가 이 칸을 본다)
+    places:
+    - axis2
+    - V3
+    - hypo
+    why: 축2 압박 감쇠(T2)만 — **적합된 경우** · V3 일정·피로
     axis_needs_fit: true
   travel_schedule:
-    places: [axis2, V3, hypo]
-    why: "일정 부담 — 축2 는 적합된 경우만 · V3"
+    places:
+    - axis2
+    - V3
+    - hypo
+    why: 일정 부담 — 축2 는 적합된 경우만 · V3
     axis_needs_fit: true
-
-  # │ coach_intent·coach_conflict │ 축2 전략 판정 입력(확정 XI와 일치할 때) │ V4 │ 근거 │
   coach_intent:
-    places: [axis2, V4, hypo]
-    why: "축2 전략 판정 입력(**확정 XI 와 일치할 때**) · 아니면 V4"
-    #: 🔴 확정 XI 와 일치할 때만 축2 로 간다
+    places:
+    - axis2
+    - V4
+    - hypo
+    why: 축2 전략 판정 입력(**확정 XI 와 일치할 때**) · 아니면 V4
     axis_needs_xi_match: true
   coach_conflict:
-    places: [axis2, V4, hypo]
-    why: "같은 칸 — 발언과 명단이 어긋나면 V4 로만"
+    places:
+    - axis2
+    - V4
+    - hypo
+    why: 같은 칸 — 발언과 명단이 어긋나면 V4 로만
     axis_needs_xi_match: true
   coach_change:
-    places: [V1, V4, hypo]
-    why: "감독 교체 직후 → V1 기준 낡음 · V4"
-
-  # │ coach_quote(새 사실) │ — │ V4 │ 근거 │
-  #  ⚠️ 우리 카탈로그에는 `coach_quote` 가 **없다**(감독 발언은 `coach_intent`·
-  #     `coach_conflict` 로 들어온다). 🔴 그래도 **표에 둔다** — 지시서가 그 이름을
-  #     적었고, 새 사실 B 가 그 이름으로 오면 배치 실패가 되지 않게.
+    places:
+    - V1
+    - V4
+    - hypo
+    why: 감독 교체 직후 → V1 기준 낡음 · V4
   coach_quote:
-    places: [V4, hypo]
-    why: "V4 — 감독 발언(상성 밖)"
-
-  # │ h2h_pattern(S02) │ — │ V5 맞대결 │ 근거 │
+    places:
+    - V4
+    - hypo
+    why: V4 — 감독 발언(상성 밖)
   h2h_pattern:
-    places: [V5, hypo]
-    why: "상성 밖 — V5 맞대결"
-
-  # │ venue_record │ 축3(경기 목록으로 검증된 hard만) │ V5(나머지) │ 근거 │
+    places:
+    - V5
+    - hypo
+    why: 상성 밖 — V5 맞대결
   venue_weather:
-    places: [V4, hypo]
-    why: "V4 기타 — 날씨·구장 상태"
-
-  # │ individual_title·streak_psych·venue_weather │ — │ V4 기타 │ 근거 │
+    places:
+    - V4
+    - hypo
+    why: V4 기타 — 날씨·구장 상태
   individual_title:
-    places: [V4, hypo]
-    why: "V4 기타"
+    places:
+    - V4
+    - hypo
+    why: V4 기타
   individual:
-    places: [V4, hypo]
-    why: "V4 기타 — 개인 기록"
+    places:
+    - V4
+    - hypo
+    why: V4 기타 — 개인 기록
   emotion:
-    places: [V4, hypo]
-    why: "V4 기타 — 정서·분위기(확률에 닿지 않는다)"
+    places:
+    - V4
+    - hypo
+    why: V4 기타 — 정서·분위기(확률에 닿지 않는다)
   event_match:
-    places: [V4, hypo]
-    why: "V4 기타 — 은퇴 경기 등"
-
-  # 🔴 야구 유형 — 축구 범위 밖이지만 **표에 둔다**(배치 실패로 떨어지지 않게)
+    places:
+    - V4
+    - hypo
+    why: V4 기타 — 은퇴 경기 등
   pitcher_state:
-    places: [hypo]
-    why: "야구 선발 상태 — 축구 상성 축에 자리가 없다(가설 근거로만)"
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴 배치 실패 — 표에 없는 유형
-# ══════════════════════════════════════════════════════════════════
-#
-# > 표에 없는 유형이 나오면 **배치 실패** → 근거 불가로 내리고 **운영자 알림**.
+    places:
+    - hypo
+    why: 야구 선발 상태 — 축구 상성 축에 자리가 없다(가설 근거로만)
+  form_streak:
+    places:
+    - axis1
+    - axis2
+    - hypo
+    why: 🔴 쪼갠 유형(2026-10-15) — 플래그 꺼짐이면 `team_stats` 와 같다
+  standing_motive:
+    places:
+    - V2
+    - hypo
+    why: 🔴 쪼갠 유형(2026-10-15) — 플래그 꺼짐이면 `stakes` 와 같다
+  mood:
+    places:
+    - V2
+    - hypo
+    why: 🔴 쪼갠 유형(2026-10-15) — 플래그 꺼짐이면 `stakes` 와 같다
+  goal_profile:
+    places:
+    - axis1
+    - axis2
+    - hypo
+    why: 🔴 쪼갠 유형(2026-10-15) — 플래그 꺼짐이면 `team_stats` 와 같다
 fail:
-  #: 🔴 내려갈 자리 — 근거 불가(맥락)
   to: context_only
-  note: "🔴 배치표에 없는 유형 — 근거 불가로 내렸다(지어서 배치하지 않는다)"
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 **λ 직접 보정** — 사용자 지시 2026-10-14
-# ══════════════════════════════════════════════════════════════════
-#
-# > 이동이 멀면 원정이 불리하다... **상식이다... 내 지시다** ·
-# > 홈팀 원정팀의 피로도는 일정과 관련있다.. **변수에 닿게 해라**
-#
-# 🔴🔴 **왜 축이 아니라 λ 냐** — 축2 는 자리를 줘도 **값이 안 움직인다**.
-#    `matchup.axis2` 의 값은 `6축 차 + 발동 건수×per_rule − 꺼진 무기×per_off`
-#    이고, 배치된 변수는 `got.refs`(근거 **이름표**)에만 들어간다(실측
-#    2026-10-14). 🔴 게다가 `routing._fit_ok` 가 `fatigue`·`travel_schedule` 의
-#    축 자리를 **`T2` 적합이 올 때까지 닫아** 둔다 — T2 는 아직 임시값이다.
-#    ⚠️ 그래서 "축에 꽂는다"는 **확률에 안 닿는다**. λ 를 직접 깎는다.
-#
-# 🔴🔴 **이 수는 적합된 것이 아니다 — 사용자가 정했다**(2026-10-14).
-#    ⚠️ 백필 측정은 반대였다: 의심 변수 `C3 이동 거리`(1,470경기)에서
-#       *"4분위로 바꾸니 체급별로 **부호가 뒤집힌다**(중 −11.7%p · 강 +14.6%p)"*.
-#    🔴 직접 지시가 문서를 덮는다(CLAUDE.md 첫 줄). 원장에 쌓아 **나중에 검증**
-#       한다 — 그때까지 카드는 이 수를 `🔴 사용자 지정` 으로 적는다.
+  note: 🔴 배치표에 없는 유형 — 근거 불가로 내렸다(지어서 배치하지 않는다)
 lambda_rules:
-  #: 🔴 IR13 — 원정 이동 거리가 문턱 이상이면 **그 팀 λ** 에 이 배율
   travel_away:
     rule: IR13
     mul: 0.95
-    why: "이동이 멀면 원정이 불리하다(사용자 지시 2026-10-14 · 상식)"
-  #: 🔴 IR11 — 일정 과부하(8일 3경기 또는 4일 이내 + 이동)면 **그 팀 λ**
-  #   ⚠️ 홈·원정 **둘 다**에 걸린다(지시: *"홈팀 원정팀의 피로도"*)
+    why: 이동이 멀면 원정이 불리하다(사용자 지시 2026-10-14 · 상식)
   fatigue:
     rule: IR11
     mul: 0.95
-    why: "피로도는 일정과 관련있다(사용자 지시 2026-10-14)"
-  # ══════════════════════════════════════════════════════════════════
-  # 🔴🔴 **순위 동기**(IR14) — 사용자 지시 2026-10-14
-  # ══════════════════════════════════════════════════════════════════
-  #
-  # > 리그 관련 정보가 있어야 한다 · 지금 몇라운드인데 **승점이 필요하다** ·
-  # > fotmob에 받아서 llm이 그 리그정보 **분석만** 해서 **변수에 넣는다** ·
-  # > **확률에 닿게 해야 한다**
-  #
-  # 🔴🔴 **뜻이 반대다** — 이동·피로는 *걸린 팀이 불리*하지만, 순위 동기는
-  #    *급한 팀이 **유리**하다*. 그래서 `side: opponent` 로 **상대를 깎는다**.
-  #    ⚠️ `travel_away`·`fatigue` 는 `side` 칸이 없다(기본 `subject` = 걸린 팀).
-  # 🔴 크기는 사용자가 정한 이동·피로와 **같은 −5%** 로 뒀다(2026-10-14) —
-  #    따로 지시가 오면 그 수만 바꾼다. ⚠️ **적합된 수가 아니다.**
-  # ⚠️ `모르겠다` 판단은 변수를 **만들지 않는다**(`s4c_leagueread.variable`).
+    why: 피로도는 일정과 관련있다(사용자 지시 2026-10-14)
   stakes_urgent:
     rule: IR14
     mul: 0.95
     side: opponent
-    why: "순위 동기 — 급한 팀이 유리하다(사용자 지시 2026-10-14 · 승점·라운드 기준)"
-  #: 🔴 상한 — 둘이 겹치면 곱해지지만 이보다 더는 안 깎는다(폭주 방지)
-  floor_mul: 0.80
-  source: "사용자 지시 2026-10-14 · 🔴 적합 아님"
+    why: 순위 동기 — 급한 팀이 유리하다(사용자 지시 2026-10-14 · 승점·라운드 기준)
+  floor_mul: 0.8
+  source: 사용자 지시 2026-10-14 · 🔴 적합 아님
+types_v2:
+  absence:
+    places:
+    - axis0
+    - hypo
+    why: ① 전력(선수) — 축0 하나로
+  def_absence:
+    places:
+    - axis0
+    - hypo
+    why: ① 전력(선수) — 축0 하나로
+  absence_att:
+    places:
+    - axis0
+    - hypo
+    why: ① 전력(선수) — 축0 하나로
+  suspension:
+    places:
+    - axis0
+    - hypo
+    why: ① 전력(선수) — 축0 하나로
+  returning:
+    places:
+    - axis0
+    - hypo
+    why: ① 전력(선수) — 축0 하나로
+  national_duty_return:
+    places:
+    - axis0
+    - hypo
+    why: ① 전력(선수) — 축0 하나로
+  lineup_value:
+    places:
+    - axis0
+    - hypo
+    why: ① 전력(선수) — 축0 하나로
+  strength_gap:
+    places:
+    - axis0
+    - hypo
+    why: ① 전력(선수) — 축0 하나로
+  squad_rotation:
+    places:
+    - axis0
+    - V1
+    - hypo
+    why: ① 전력(선수) — 축0 하나로
+  recent_pattern:
+    places:
+    - axis1
+    - hypo
+    why: ② 흐름(최근) — 축1 하나로
+  regression:
+    places:
+    - axis1
+    - hypo
+    why: ② 흐름(최근) — 축1 하나로
+  form_streak:
+    places:
+    - axis1
+    - hypo
+    why: ② 흐름(최근) — 축1 하나로
+  team_stats:
+    places:
+    - axis1
+    - hypo
+    why: ② 흐름(최근) — 축1 하나로
+  h2h_pattern:
+    places:
+    - axis1
+    - V5
+    - hypo
+    why: ② 흐름(최근) — 축1 하나로
+  lineup_intent:
+    places:
+    - axis2
+    - hypo
+    why: ③ 전술(오늘) — 축2 하나로
+  coach_intent:
+    places:
+    - axis2
+    - V4
+    - hypo
+    why: ③ 전술(오늘) — 축2 하나로
+  goal_profile:
+    places:
+    - axis3
+    - hypo
+    why: ④ 골 성향 — 축3 하나로
+  home_field:
+    places:
+    - lambda_const
+    why: ⑤ 조건 — λ 상수
+  match_type:
+    places:
+    - lambda_const
+    - hypo
+    why: ⑤ 조건 — λ 상수
+  fatigue:
+    places:
+    - V3
+    - hypo
+    why: ⑤⑥ 조건·표시 — 확률 통로 없음(검증·가설만)
+  travel_schedule:
+    places:
+    - V3
+    - hypo
+    why: ⑤⑥ 조건·표시 — 확률 통로 없음(검증·가설만)
+  standing_motive:
+    places:
+    - V2
+    - hypo
+    why: ⑤⑥ 조건·표시 — 확률 통로 없음(검증·가설만)
+  stakes:
+    places:
+    - V2
+    - hypo
+    why: ⑤⑥ 조건·표시 — 확률 통로 없음(검증·가설만)
+  mood:
+    places:
+    - hypo
+    why: ⑤⑥ 조건·표시 — 확률 통로 없음(검증·가설만)
+  coach_conflict:
+    places:
+    - V4
+    - hypo
+    why: ⑤⑥ 조건·표시 — 확률 통로 없음(검증·가설만)
+  coach_change:
+    places:
+    - V1
+    - V4
+    - hypo
+    why: ⑤⑥ 조건·표시 — 확률 통로 없음(검증·가설만)
+  coach_quote:
+    places:
+    - V4
+    - hypo
+    why: ⑤⑥ 조건·표시 — 확률 통로 없음(검증·가설만)
+  venue_weather:
+    places:
+    - V4
+    - hypo
+    why: ⑤⑥ 조건·표시 — 확률 통로 없음(검증·가설만)
+  individual_title:
+    places:
+    - V4
+    - hypo
+    why: ⑤⑥ 조건·표시 — 확률 통로 없음(검증·가설만)
+  individual:
+    places:
+    - V4
+    - hypo
+    why: ⑤⑥ 조건·표시 — 확률 통로 없음(검증·가설만)
+  emotion:
+    places:
+    - V4
+    - hypo
+    why: ⑤⑥ 조건·표시 — 확률 통로 없음(검증·가설만)
+  event_match:
+    places:
+    - V4
+    - hypo
+    why: ⑤⑥ 조건·표시 — 확률 통로 없음(검증·가설만)
+  pitcher_state:
+    places:
+    - hypo
+    why: ⑤⑥ 조건·표시 — 확률 통로 없음(검증·가설만)
+types_v2_why: '🔴🔴 **여섯 집안 · 집안마다 확률 통로 하나**(사용자 지시 2026-10-15). ⚠️ `m1v2.flags.route_v2`
+  가 켜질 때만 쓴다 — 꺼짐이면 `types` 가 돈다. 까닭: 같은 사실이 두 축에 걸려 **이중 계산**이 됐다(`team_stats` 가
+  축1·축2 둘, 결장 계열이 축0·축2 둘).'
