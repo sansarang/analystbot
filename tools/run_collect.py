@@ -45,7 +45,8 @@ LEDGER: dict = {}
 #: 🔴 16단계의 **이름표** — 하나라도 장부에 없으면 보고가 빨개진다
 STEPS: tuple[str, ...] = (
     "① 경기", "② fotmob(XI·결장·감독)", "②-b 선수단 교체", "③ 딥서치",
-    "④ 추출", "⑤ 검증", "⑤-b 포메이션·전략", "⑤-c 리그·컵 분석",
+    "④ 추출", "⑤ 검증", "⑤-b 포메이션·전략", "⑤-b2 전략 전문가(LLM)",
+    "⑤-c 리그·컵 분석",
     "3+5 통합", "⑥ LLM 표적 질의", "⑦ 표적 문서", "⑧ 표적 추출",
     "⑩ 변수 배치", "⑬⑭ 상성·축", "⑮⑯ 확률·시뮬", "⑯ 종합 평(solar)",
     "⑯ 종합 평(deepseek)")
@@ -271,6 +272,26 @@ async def main(argv: list[str]) -> int:
          f"{len(list(getattr(plan, 'lines', None) or []))}개")
     print(flush=True)
 
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **⑤-b2 전략 전문가(LLM)** — 사용자 지시 2026-10-15
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 라인업 확장 포메이션 결장 선수가 **주요선수가 뜨면** 전략 전문가
+    #  > deepseek 에게 **변수 생성하는 프롬프트**를 주입해라.
+    #
+    #  🔴 트리거가 있을 때만 부른다 · 공급자는 **deepseek 우선**(죽으면 solar).
+    #  🔴 LLM 은 **글만** 낸다 — 방향(`favors`)·가중은 코드가 넣는다(절대규칙 5).
+    #     그래서 이 변수들은 지금 🟡 **표시·검증·가설**이다(축을 안 민다).
+    from app.core import strategy_llm as _sl
+    var_sl, said_sl = _sl.ask(ref, facts, plan, state=st)
+    print("## ⑤-b2 전략 전문가(LLM)")
+    print(f"- {said_sl}")
+    for one in var_sl:
+        print(f"    `{one.id}` {one.claim[:150]}")
+    mark("⑤-b2 전략 전문가(LLM)",
+         "✅ 돌았다" if var_sl else "🔴 빈손", said_sl[:110])
+    print(flush=True)
+
     # ── 3+5 통합 — 사다리 칸 4 를 기사로 다시 센다
     got_r, why_r = _ab.recount(rungs, variables,
                                keys=[str(ref.home), str(ref.away)])
@@ -475,7 +496,9 @@ async def main(argv: list[str]) -> int:
     #    ⚠️ 실사고 2026-10-15: ⑩ 배치 출력은 `variables + said_v2 + var_lr` 로
     #       찍고 축이 쓴 varset 은 `variables + var_lr` 였다 → **배치와 축
     #       refs 가 어긋났다**(TURN-away 가 축0·축1·축3 근거에서 빠졌다).
-    all_vars = list(variables) + list(gap_vars) + list(var_lr)
+    # 🔴 전략 전문가 변수도 **같은 묶음**에 넣는다(묶음이 둘이면 배치와 축이
+    #    어긋난다 — 실사고 2026-10-15 그 자리다)
+    all_vars = list(variables) + list(gap_vars) + list(var_lr) + list(var_sl)
     varset = _rt2.place(all_vars)
     print("## ⑩ 변수 배치")
     AX2 = {"axis0", "axis1", "axis2", "axis3", "lambda_const"}
