@@ -565,10 +565,17 @@ async def main(argv: list[str]) -> int:
         print(f"- 🔴 확률을 못 냈다 — {prob.gap or prob.why}")
         return 4
     print(f"- **홈 {prob.home:.1%} · 무 {prob.draw:.1%} · 원정 {prob.away:.1%}**")
-    print(f"- λ — 홈 {float(dict(prob.lam or {}).get('home') or 0):.3f} · "
-          f"원정 {float(dict(prob.lam or {}).get('away') or 0):.3f}")
-    print(f"- 오버 — " + " · ".join(
-        f"{k} {float(v):.1%}" for k, v in list(dict(prob.over or {}).items())[:5]))
+    # 🔴 **λ·오버·스코어는 뺐다**(사용자 결정 2026-10-15 3번) — 비었으면 ⬜ 로
+    #    적고 지어내지 않는다(#3).
+    if not dict(prob.lam or {}):
+        print("- λ(기대 득점)·오버·스코어 — 🔴 **뺐다**(3번 · 승무패는 λ 를 "
+              "안 본다)")
+    if dict(prob.lam or {}):
+        print(f"- λ — 홈 {float(dict(prob.lam or {}).get('home') or 0):.3f} · "
+              f"원정 {float(dict(prob.lam or {}).get('away') or 0):.3f}")
+    if dict(prob.over or {}):
+        print("- 오버 — " + " · ".join(
+            f"{k} {float(v):.1%}" for k, v in list(dict(prob.over or {}).items())[:5]))
     # 🔴🔴 **자르지 않는다** — 실사고 2026-10-15: 420자로 잘라 찍었더니 λ 보정
     #    글자가 안 보여 *"보정이 안 걸렸다"* 로 **잘못 결론**했다(규율 #4).
     print(f"- 유도 — {str(prob.why or '')}")

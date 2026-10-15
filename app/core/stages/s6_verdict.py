@@ -118,9 +118,9 @@ class Verdict(BaseModel):
     #  🔴 예측은 **글자 둘**이다 — 승패 한 쪽과 스코어 하나. 확률·등급 칸은
     #     여기 없다(그 수는 코드가 정했다 · 절대규칙 5).
     #: 🔴 승패 예측 — `home`·`draw`·`away` 중 하나
+    #   ⚠️ **점수 예측 칸은 뺐다**(2026-10-15 3번) — λ·스코어 격자를 지웠으니
+    #      고를 근거가 없다.
     pick: str = ""
-    #: 🔴 점수 예측 — `2-1` 꼴. ⚠️ **묶음의 스코어 상위에 있는 것만**(거짓 금지)
-    score: str = ""
 
 
 def chain_of(ref: MatchRef, prob, mr, varset) -> list[str]:
@@ -134,21 +134,9 @@ def chain_of(ref: MatchRef, prob, mr, varset) -> list[str]:
     # ── ① 확률 먼저(지시: *"확률 먼저"*)
     rows.append(f"확률 — 홈 {float(prob.home):.1%} · 무 {float(prob.draw):.1%} "
                 f"· 원정 {float(prob.away):.1%}")
-    lam = dict(getattr(prob, "lam", None) or {})
-    if lam:
-        rows.append(f"λ(기대 득점) — 홈 {float(lam.get('home') or 0):.3f} · "
-                    f"원정 {float(lam.get('away') or 0):.3f} · 합 "
-                    f"{float(lam.get('home') or 0) + float(lam.get('away') or 0):.3f}")
-    over = dict(getattr(prob, "over", None) or {})
-    if over:
-        rows.append("오버 — " + " · ".join(
-            f"{k} {float(v):.1%}" for k, v in list(over.items())[:5]))
-    top = sorted(dict(getattr(prob, "scores", None) or {}).items(),
-                 key=lambda kv: -float(kv[1]))[:5]
-    if top:
-        rows.append("스코어 상위 — " + " · ".join(
-            f"{k if isinstance(k, str) else f'{k[0]}-{k[1]}'} {float(v):.1%}"
-            for k, v in top))
+    # 🔴🔴 **λ·오버·스코어는 묶음에서 뺐다** — 사용자 결정 2026-10-15(3번).
+    #    ⚠️ 그 수가 없으니 모델은 **점수를 고를 수 없다** — 그래서 `score` 칸도
+    #       뺐다(없는 격자에서 점수를 지어내면 거짓이다).
     # ── ② 변수 → 자리
     got_rows = list(getattr(varset, "rows", None) or [])
     if got_rows:
@@ -228,10 +216,9 @@ def ask(ref: MatchRef, prob, mr, varset, *, state: RunState,
             "🔴🔴 **네 예측을 직접 낸다**(사용자 지시 2026-10-15)\n"
             "   · `pick` — `home`·`draw`·`away` 중 **하나**. 변수와 경기 사정을 "
             "보고 **네가** 고른다(확률과 달라도 된다 — 왜 다른지 문장에 적어라).\n"
-            "   · `score` — 예상 점수 하나. ⚠️ **묶음의 `스코어 상위` 에 있는 "
-            "것만** 쓴다(없는 점수를 지어내면 버려진다).\n"
-            "🔴 문장은 **서술형 분석글**이다 — 확률·경기 점수 말고는 **수를 "
-            "쓰지 마라**(퍼센트·배율·계수 금지). 변수와 선수 이름으로 설명한다.\n"
+            "🔴 문장은 **서술형 분석글**이다 — **확률 말고는 수를 쓰지 마라**"
+            "(점수·퍼센트·배율·계수 금지 · 기대 득점과 스코어 격자는 **뺐다**). "
+            "변수와 선수 이름으로 설명한다.\n"
             "🔴 **이제까지 모은 자료(묶음)만** 쓴다 — 네 기억으로 사실을 보태면 "
             "거짓이다. 모르는 것은 **모른다고 적는다**.\n"
             "⚠️ 묶음에 없는 수를 쓰면 **버려진다** — 코드가 대조한다.")),
@@ -332,12 +319,7 @@ def judge(got: Verdict | None, box: list[str]) -> tuple[str, list[str]]:
     if said_pick not in ("home", "draw", "away"):
         bad.append(f"🔴 (마) **예측이 없다·틀렸다**(`pick`={said_pick!r}) — "
                    "`home`·`draw`·`away` 중 하나여야 한다")
-    said_sc = str(getattr(got, "score", "") or "").strip()
-    if not said_sc:
-        bad.append("🔴 (마) **점수 예측이 없다**(`score`)")
-    elif said_sc not in ok_scores:
-        bad.append(f"🔴 (마) **없는 점수 예측**({said_sc}) — 묶음의 `스코어 "
-                   f"상위` 에 그 점수가 없다")
+    # ⚠️ 점수 예측 검사는 **없다** — 그 칸을 뺐다(2026-10-15 3번).
     # 🔴 근거 — 문장 수와 같아야 한다
     refs = [str(x) for x in (got.refs or [])]
     if len(refs) < len(rows):
@@ -475,7 +457,6 @@ def agree_of(cards: dict, prob) -> str:
         return ("🤝 **공통점 — ⬜ 못 쟀다**(평이 "
                 f"{len(rows)}개다 · 둘이 있어야 견준다)")
     picks = {k: str(getattr(v, "pick", "") or "") for k, v in rows.items()}
-    scores = {k: str(getattr(v, "score", "") or "") for k, v in rows.items()}
     want = ""
     if prob is not None:
         box = {"home": float(getattr(prob, "home", 0.0) or 0.0),
@@ -484,7 +465,6 @@ def agree_of(cards: dict, prob) -> str:
         want = max(box, key=lambda k: box[k])
     said_k = {"home": "홈 승", "draw": "무", "away": "원정 승"}
     same_p = len(set(picks.values())) == 1 and all(picks.values())
-    same_s = len(set(scores.values())) == 1 and all(scores.values())
     out = []
     if same_p:
         one = list(picks.values())[0]
@@ -496,8 +476,6 @@ def agree_of(cards: dict, prob) -> str:
         out.append("두 평이 **갈렸다** — "
                    + " · ".join(f"{k} {said_k.get(v, v or '⬜')}"
                                 for k, v in picks.items()))
-    out.append(f"점수 {'**같다**' if same_s else '다르다'}("
-               + " · ".join(f"{k} {v or '⬜'}" for k, v in scores.items()) + ")")
     return "🤝 **공통점** — " + " · ".join(out)
 
 
@@ -512,8 +490,7 @@ def said_of(got: Verdict | None, box: list[str], *,
     # 🔴 **예측을 머리에 적는다**(사용자 지시 2026-10-15) — 모델이 고른 것이다
     said_pick = {"home": "홈 승", "draw": "무", "away": "원정 승"}.get(
         str(getattr(got, "pick", "") or ""), "⬜ 없음")
-    rows.append(f"- 🎯 **{provider} 예측 — {said_pick} · 점수 "
-                f"{str(getattr(got, 'score', '') or '⬜ 없음')}**")
+    rows.append(f"- 🎯 **{provider} 예측 — {said_pick}**")
     refs = [str(x) for x in (got.refs or [])]
     for i, one in enumerate(list(got.sentences or [])):
         said_r = refs[i] if i < len(refs) else "⬜ 근거 없음"

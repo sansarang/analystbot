@@ -94,7 +94,9 @@ def test_vd2_output_has_no_numbers() -> None:
     #    예측을 각각 하라"*. ⚠️ 그래도 **수 칸은 없다**: `pick` 은 셋 중 한 글자,
     #    `score` 는 **묶음의 스코어 상위에 있는 것**이고 코드가 대조한다.
     #    확률·등급 칸을 두면 모델이 코드가 정한 수를 덮을 길이 열린다 — 그건 여전히 없다.
-    assert got == {"sentences", "refs", "pick", "score"}, (
+    # ⚠️ 2026-10-15(3번): **점수 예측 칸을 뺐다** — λ·스코어 격자를 지웠으니
+    #    고를 근거가 없다(없는 격자에서 점수를 지어내면 거짓이다).
+    assert got == {"sentences", "refs", "pick"}, (
         f"VD2 🔴🔴 출력 칸이 {sorted(got)} 다 — `sentences`·`refs` 둘이어야 "
         "한다. 확률 칸을 두면 모델이 코드가 정한 수를 덮을 길이 열린다")
 
@@ -177,7 +179,7 @@ def test_vd7_clean_passes() -> None:
                   refs=["확률", "λ", "스코어"],
                   # 🔴 예측 둘도 **있어야** 멀쩡한 평이다(지시 2026-10-15) —
                   #    `score` 는 묶음의 `스코어 상위` 에 있는 것만 쓴다.
-                  pick="home", score="1-1")
+                  pick="home")
     verdict, bad = judge(got, box)
     assert verdict == "안 지어냈다", (
         f"VD7 🔴 멀쩡한 평에 거짓 위반이 났다 — {bad}")
