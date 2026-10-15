@@ -132,7 +132,11 @@ def ask(asked: str, *, state, day: str = "", aliases: list[str] | None = None
               "🔴 `sites` — 그 리그 소식이 실리는 매체 도메인(모르면 빈 목록).\n"
               "⚠️ 상대 팀·스코어·날짜를 **추측해 적지 않는다**.")),
     ]
-    got = llm.ask(provider="deepseek", purpose="query", messages=msgs,
+    # 🔴🔴 **① 의 이름 풀이는 solar 다** — 사용자 지시 2026-10-15.
+    #    ⚠️ 실측 2026-10-15: deepseek 가 "Say OK" 3토막 요청에도 **59.3초 읽기
+    #       타임아웃**이었고(solar 는 0.5초) 그 멈춤이 ① 에서 13분을 태웠다.
+    #       그 바람에 카드 예산이 말라 **멀쩡한 solar 호출까지** 못 나갔다.
+    got = llm.ask(provider="solar", purpose="query", messages=msgs,
                   out=TeamGuess, state=state)
     if isinstance(got, TeamGuess):
         return got

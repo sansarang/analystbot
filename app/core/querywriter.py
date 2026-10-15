@@ -161,10 +161,27 @@ def ask(ref, *, state, aliases: list[str], langs: list[str]
             "이하**(호스트만 · 주소 전체 금지). 모르면 빈 목록으로 둔다.\n"
             "⚠️ 숫자·판정·선수 상태를 쓰지 않는다 — 글자만 낸다.")),
     ]
-    got = llm.ask(provider="deepseek", purpose="query", messages=msgs,
-                  out=QueryPlan, state=state)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **딥서치 질의는 solar 가 먼저다** — 사용자 지시 2026-10-15
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실측 2026-10-15: deepseek 가 "Say OK" 3토막 요청에도 **59.3초 읽기
+    #     타임아웃**이었다(solar 는 **0.5초**). 그 멈춤이 카드 예산을 태워
+    #     ③ 딥서치·④ 추출·⑯ 종합 평까지 **빈손 8개**가 됐다.
+    #  🔴 그래서 **solar 를 먼저** 부르고, 실패하면 deepseek 로 넘어간다
+    #     (한쪽이 죽어도 질의가 나온다 · 사유는 그대로 남긴다 · #3).
+    got, said_try = None, []
+    for pv in ("solar", "deepseek"):
+        got = llm.ask(provider=pv, purpose="query", messages=msgs,
+                      out=QueryPlan, state=state)
+        if isinstance(got, QueryPlan):
+            said_try.append(f"{pv} ✅")
+            break
+        said_try.append(f"{pv} 🔴 {getattr(got, 'reason', '?')}")
+    state.note("②③ 질의 공급자 — " + " · ".join(said_try))
     if not isinstance(got, QueryPlan):
-        why = f"🔴 LLM 실패({getattr(got, 'reason', '?')}) — 코드 질의로만 간다"
+        why = ("🔴 LLM 실패(" + " · ".join(said_try)
+               + ") — 코드 질의로만 간다")
         state.note(f"②③ 질의 쓰기 — {why}")
         return [], [], why
     rows, bad = keep(list(got.queries), aliases=list(aliases or []))
