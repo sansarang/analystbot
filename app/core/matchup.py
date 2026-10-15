@@ -632,12 +632,29 @@ def axis3(box: dict, varset, *, r: dict) -> Axis:
         val[str(f.side)] = val.get(str(f.side), 0.0) + per * mine
         if said_sign:
             signs.append(f"{f.rule}/{f.side} {mine:+d}")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **축3 도 변수를 센다** — 사용자 지시 2026-10-15
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > ③ 축0·축1·축3 — 변수는 값에 안 들어간다 … **여기에 넣어라**
+    #
+    #  🔴 크기는 **새로 짓지 않는다** — 축3 자기 표의 `per_rule`(0.15) 그대로다.
+    #  🔴 방향은 변수의 `favors` 가 가리키는 쪽(`both` 는 **안 센다**).
+    #  ⚠️ `r` 가중(선수단 교체)은 발동 규칙과 **같이** 걸린다 — 과거 프로필을
+    #     믿는 정도가 변수에도 똑같이 적용되는 자리다(C8).
+    n_v = 0
+    for one in (varset.of("axis3") if varset else []):
+        fav = str(getattr(one, "favors", "") or "")
+        if fav in ("home", "away"):
+            val[fav] = val.get(fav, 0.0) + per
+            n_v += 1
     for side in ("home", "away"):
         val[side] *= float(dict(r or {}).get(side, 1.0))
     got.home, got.away = round(val["home"], 4), round(val["away"], 4)
     got.refs = [one.id for one in varset.of("axis3")] if varset else []
     watch = [f.rule for f in (box.get("fired") or []) if f.watch_only]
     got.why = (f"발동 {len(fired)}건(규칙당 {per:g})"
+               + f" · 변수 {n_v}개(변수당 {per:g})"
                + (f" · **부호판 ①a** [{' · '.join(signs)}]" if signs else "")
                + (f" · 관찰만 {watch}(λ 에 안 들어간다 · C9)" if watch else "")
                + f" · {PROVISIONAL}")

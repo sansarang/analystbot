@@ -16,11 +16,13 @@ class _V:
 
 
 class _Set:
-    def __init__(self, rows: list) -> None:
-        self._rows = rows
+    """🔴 대역 — **그 자리를 물었을 때만** 변수를 돌려준다(배치표 흉내)."""
+
+    def __init__(self, rows: list, place: str = "axis2") -> None:
+        self._rows, self._place = rows, place
 
     def of(self, place: str) -> list:
-        return list(self._rows) if place == "axis2" else []
+        return list(self._rows) if place == self._place else []
 
 
 def _box() -> dict:
@@ -75,3 +77,49 @@ def test_크기를_새로_짓지_않았다() -> None:
     tail = src[i:]
     assert "val[side] = val.get(side, 0.0) + per * cnt" in tail, tail[:400]
     assert "PROVISIONAL" in src, "🔴 임시값 꼬리가 빠졌다"
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **축3 도 변수를 센다** — 사용자 지시 2026-10-15
+# ══════════════════════════════════════════════════════════════════
+
+
+def _box3() -> dict:
+    """🔴 축3 이 돌 최소 재료 — 골 프로필이 있어야 센다(없으면 ⬜)."""
+    return {"profile": {"home": {}, "away": {}}, "fired": []}
+
+
+def _per3() -> float:
+    return float(dict(mu.table().get("axis3") or {}).get("per_rule") or 0.0)
+
+
+def test_축3_도_변수를_센다() -> None:
+    per = _per3()
+    assert per > 0
+    r = {"home": 1.0, "away": 1.0}
+    zero = mu.axis3(_box3(), _Set([], "axis3"), r=r)
+    one = mu.axis3(_box3(), _Set([_V("SL1", "home")], "axis3"), r=r)
+    assert zero.home == 0.0, zero.home
+    assert one.home == per, (one.home, per)
+    assert "변수 1개" in one.why, one.why
+
+
+def test_축3_도_both_는_안_센다() -> None:
+    r = {"home": 1.0, "away": 1.0}
+    got = mu.axis3(_box3(), _Set([_V("SL1", "both")], "axis3"), r=r)
+    assert (got.home, got.away) == (0.0, 0.0)
+
+
+def test_축3_변수에도_r_가중이_걸린다() -> None:
+    """🔴 C8 — 선수단 교체 팀은 과거를 덜 믿는다. 변수도 같이 깎인다."""
+    per = _per3()
+    got = mu.axis3(_box3(), _Set([_V("SL1", "home")], "axis3"),
+                   r={"home": 0.5, "away": 1.0})
+    assert got.home == round(per * 0.5, 4), (got.home, per)
+
+
+def test_축3_도_크기를_새로_짓지_않았다() -> None:
+    import inspect
+    src = inspect.getsource(mu.axis3)
+    assert "축3 도 변수를 센다" in src
+    assert "val[fav] = val.get(fav, 0.0) + per" in src

@@ -592,6 +592,11 @@ async def main(argv: list[str]) -> int:
                            turnover=turn)
         prob_wo = _pm.run(ref, facts, mr_wo, set_wo, edge=edge, state=st)
         print("## 🔬 전략 변수 효과(같은 자료 · 배치·축·확률만 다시 셌다)")
+        # 🔴 **센 것을 보인다** — 수가 같으면 비교 자체가 거짓이다(#3)
+        print(f"- 축2 변수 — 넣고 {len(varset.of('axis2'))}개 ↔ 빼고 "
+              f"{len(set_wo.of('axis2'))}개 · 전략 변수 {len(var_sl)}개")
+        print(f"- 축2 사유(넣고) — {str(mr.axis('axis2').why or '')[:150]}")
+        print(f"- 축2 사유(빼고) — {str(mr_wo.axis('axis2').why or '')[:150]}")
         if prob_wo.ok():
             print(f"- **빼면** 홈 {prob_wo.home:.1%} · 무 {prob_wo.draw:.1%} "
                   f"· 원정 {prob_wo.away:.1%}")
