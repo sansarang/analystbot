@@ -100,6 +100,16 @@ async def main(argv: list[str]) -> int:
     from app.net import Net
     import app.search as _search
 
+    # 🔴🔴 **중단 지점** — 사용자 지시 2026-10-15: *"첫단계부터 변수 수집
+    #    단계까지만 한다 … 추가한 변수가 섰는지 확인 목적이다"*.
+    #    ⚠️ 뒤 단계를 **돌리지 않는다**(예산·시간을 안 쓴다) — 장부는 그대로 찍어
+    #       무엇을 안 돌렸는지 남긴다(#3 조용한 0 금지).
+    said_until = ""
+    rest = [x for x in argv[1:] if not str(x).startswith("--until")]
+    for x in argv[1:]:
+        if str(x).startswith("--until"):
+            said_until = str(x).partition("=")[2] or "vars"
+    argv = [argv[0], *rest]
     asked = argv[1] if len(argv) > 1 else "Feyenoord Como"
     st = RunState()
     # 🔴🔴 **시계는 `clock` 에 꽂는다** — 사용자 지시 2026-10-15(타임아웃 수정).
@@ -293,6 +303,21 @@ async def main(argv: list[str]) -> int:
     mark("⑤-b2 전략 전문가(LLM)",
          "✅ 돌았다" if var_sl else "🔴 빈손", said_sl[:110])
     print(flush=True)
+
+    # 🔴 **여기서 멈춘다**(`--until=vars`) — 변수 수집까지만 보는 실행이다
+    if said_until in ("vars", "변수", "5b2"):
+        print("## 🔴 **변수 수집까지만 돌렸다**(`--until=vars`) — 뒤 단계는 "
+              "안 돌렸다\n")
+        # ⚠️ `var_lr`(⑤-c 리그·컵)은 **아직 안 돌았다** — 여기 넣으면 터진다
+        said_all = list(variables) + list(var_sl)
+        print(f"### 거둔 변수 **{len(said_all)}개**")
+        for one in said_all:
+            print(f"- `{one.id}` [{one.type}] favors={one.favors} · "
+                  f"goals={one.goals} · w={one.weight} · "
+                  f"기준가능={getattr(one, 'usable_as_basis', '?')}\n"
+                  f"    {str(getattr(one, 'claim', '') or '')[:170]}")
+        print(flush=True)
+        return report_ledger() and 0 or 0
 
     # ── 3+5 통합 — 사다리 칸 4 를 기사로 다시 센다
     got_r, why_r = _ab.recount(rungs, variables,
@@ -550,6 +575,54 @@ async def main(argv: list[str]) -> int:
     said_lr_txt = ("✅ 걸렸다" if "λ 보정" in str(prob.why or "")
                    else "🔴 **안 걸렸다**")
     print(f"- λ 보정 — {said_lr_txt}\n", flush=True)
+
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **전략 변수를 빼면 확률이 어떻게 되나** — 사용자 지시 2026-10-15
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 경기가 진행하지 않았다는 근거하에 **확률이 어떻게 바뀄는지** 보여주라
+    #
+    #  🔴 효과를 떼려면 **같은 자료로 넣고/빼고** 재야 한다 — 수집을 다시 하지
+    #     않고 **배치·축·확률만** 다시 돈다(LLM 비용 0 · 순수 계산).
+    #  ⚠️ 이 둘을 섞어 적지 않는다 — 운영 값은 **넣은 쪽**이다.
+    if var_sl:
+        said_wo = [v for v in all_vars if not str(v.id).startswith("SL")]
+        set_wo = _rt2.place(said_wo)
+        mr_wo = _mu.report(ref, facts, edge, set_wo, strategy=plan,
+                           turnover=turn)
+        prob_wo = _pm.run(ref, facts, mr_wo, set_wo, edge=edge, state=st)
+        print("## 🔬 전략 변수 효과(같은 자료 · 배치·축·확률만 다시 셌다)")
+        if prob_wo.ok():
+            print(f"- **빼면** 홈 {prob_wo.home:.1%} · 무 {prob_wo.draw:.1%} "
+                  f"· 원정 {prob_wo.away:.1%}")
+            print(f"- **넣으면** 홈 {prob.home:.1%} · 무 {prob.draw:.1%} "
+                  f"· 원정 {prob.away:.1%}")
+            print(f"- 차 — 홈 {prob.home - prob_wo.home:+.1%} · "
+                  f"무 {prob.draw - prob_wo.draw:+.1%} · "
+                  f"원정 {prob.away - prob_wo.away:+.1%}")
+            lam_a = dict(prob.lam or {})
+            lam_b = dict(prob_wo.lam or {})
+            print(f"- λ — 홈 {float(lam_b.get('home') or 0):.3f} → "
+                  f"{float(lam_a.get('home') or 0):.3f} · 원정 "
+                  f"{float(lam_b.get('away') or 0):.3f} → "
+                  f"{float(lam_a.get('away') or 0):.3f}")
+            o_a = dict(prob.over or {})
+            o_b = dict(prob_wo.over or {})
+            if "2.5" in {str(k) for k in o_a} or 2.5 in o_a:
+                k = 2.5 if 2.5 in o_a else "2.5"
+                print(f"- 오버 2.5 — {float(o_b.get(k) or 0):.1%} → "
+                      f"{float(o_a.get(k) or 0):.1%}")
+            for key in ("axis0", "axis1", "axis2", "axis3"):
+                x, y = mr_wo.axis(key), mr.axis(key)
+                gx = getattr(x, "gap", None)
+                gy = getattr(y, "gap", None)
+                if gx is None and gy is None:
+                    continue
+                print(f"    {key} 차 {float(gx or 0):+.4f} → "
+                      f"{float(gy or 0):+.4f}")
+        else:
+            print(f"- 🔴 빼고는 확률을 못 냈다 — {prob_wo.gap or prob_wo.why}")
+        print(flush=True)
     mark("⑮⑯ 확률·시뮬", "✅ 돌았다",
          f"홈 {prob.home:.1%}/무 {prob.draw:.1%}/원정 {prob.away:.1%} · "
          f"스코어 칸 {len(dict(prob.scores or {}))}개")

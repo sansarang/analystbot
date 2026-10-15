@@ -566,7 +566,17 @@ def axis2(box: dict, varset) -> Axis:
     #  🔴 계수를 새로 짓지 않는다 — 공격 축은 `+`, 수비 축은 **상대의 공격을
     #     막는 쪽**이므로 `-` 로 넣고 크기는 `per_rule` 하나를 쓴다(사본 금지).
     base = _six_gap(box, per=per)
-    if not fired and not any(offs.values()) and base is None:
+    # 🔴🔴 **축2 가 변수를 센다** — 사용자 결정 2026-10-15(1번).
+    #    ⚠️ 실측: 발동 0건·6축 ⬜ 이면 **변수를 세기 전에** 빠져나가서, 변수만
+    #       있는 경기는 축2 가 통째로 ⬜ 였다 — 그래서 여기서 먼저 센다.
+    #    🔴 방향은 변수의 `favors` 가 가리키는 쪽이다(`both` 는 안 센다).
+    said_v: dict = {"home": 0, "away": 0}
+    for one in (varset.of("axis2") if varset else []):
+        fav = str(getattr(one, "favors", "") or "")
+        if fav in ("home", "away"):
+            said_v[fav] = said_v.get(fav, 0) + 1
+    n_v = said_v["home"] + said_v["away"]
+    if not fired and not any(offs.values()) and base is None and not n_v:
         from app.core import goals as _g
         got.why = ("🔴 **발동 0건 · 6축 차도 못 셌다** — T1~T6 의 문턱"
                    f"({float(dict(_g.table()).get('matchup_gap') or 0.25):g})을"
@@ -583,11 +593,17 @@ def axis2(box: dict, varset) -> Axis:
     for side, rows in offs.items():
         # 🔴 꺼진 무기는 **그 팀을 깎는다**(상대를 올리지 않는다)
         val[side] = val.get(side, 0.0) - per_off * len(list(rows or []))
+    # 🔴 미리 센 변수를 **그 쪽에** 더한다 — 크기는 `per_rule` 그대로다
+    #    (사본 금지 · 계수 금지 · 아래 사유에 몇 개를 셌는지 적는다)
+    for side, cnt in said_v.items():
+        if cnt:
+            val[side] = val.get(side, 0.0) + per * cnt
     got.home, got.away = round(val["home"], 4), round(val["away"], 4)
     got.refs = [one.id for one in varset.of("axis2")] if varset else []
     got.why = (f"{said_six} · 발동 {len(fired)}건(규칙당 {per:g}) · 꺼진 무기 "
                + " · ".join(f"{k} {len(list(v or []))}" for k, v in offs.items())
-               + f"(하나당 −{per_off:g}) · {PROVISIONAL}")
+               + f"(하나당 −{per_off:g}) · 변수 {n_v}개(변수당 {per:g}) · "
+               + PROVISIONAL)
     return _settle(got, scale=1.0)
 
 
