@@ -459,6 +459,25 @@ async def run(q: Question, *, pool: Any, state: RunState,
         return Ambiguous(why=f"🔴 입구가 터졌다 — {exc!r}")
     for said in (getattr(look, "steps", None) or ()):
         state.note(f"s1 {said}")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **입구가 고른 것도 이름 검문을 먼저 지난다**(지시 2026-10-15)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실측 2026-10-15(두 번째): 검문을 **퇴로 뒤**에 뒀더니, 입구가 `ok` 로
+    #     남의 경기를 주면 퇴로 블록에 **아예 안 들어갔다** — 거절만 하고 끝나
+    #     `LA Galaxy` 는 끝까지 못 찾았다.
+    #  🔴 그래서 **여기서** 검문한다 — 안 맞으면 `ok` 를 내리고 퇴로로 흘린다.
+    said_bad = ""
+    if getattr(look, "ok", False):
+        try_ref = adapt.ref_of(
+            look.ref, competition_short=queries.competition_short(
+                getattr(look.ref, "competition", "")),
+            openworld=bool(getattr(look, "openworld", False)))
+        if try_ref is not None:
+            ok_name, said_bad = asked_match(q, try_ref)
+            if not ok_name:
+                state.note(f"s1 {said_bad} — **퇴로로 간다**")
+                look.ok = False
     if not getattr(look, "ok", False):
         # ══════════════════════════════════════════════════════════════
         # 🔴🔴 **질의 만드는 곳이 둘이다** — 실측 2026-10-06
@@ -486,7 +505,8 @@ async def run(q: Question, *, pool: Any, state: RunState,
         reason = getattr(getattr(look, "reason", None), "value", "?")
         rows = list(getattr(look, "candidates", None) or ())[:6]
         return Ambiguous(
-            why=f"🔴 경기를 확정하지 못했다 — `{reason}`",
+            why=(said_bad + " · 퇴로 셋도 못 찾았다" if said_bad
+                 else f"🔴 경기를 확정하지 못했다 — `{reason}`"),
             candidates=[f"{r.get('away')} @ {r.get('home')} · {r.get('league')}"
                         for r in rows],
             # 🔴 §1-3 — **버튼으로 고르게 한다**(리그·날짜·시각을 붙여서)
