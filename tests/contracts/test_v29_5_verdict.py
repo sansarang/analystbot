@@ -386,3 +386,63 @@ def test_vd13_프롬프트가_점수_순서를_못_박는다() -> None:
     from app.core.stages.s6_verdict import ask
     src = inspect.getsource(ask)
     assert "홈-원정 순서" in src and "pick` 과 어긋나면 안 된다" in src
+
+
+def test_vd19_예측은_변수로_한다() -> None:
+    """🔴🔴 VD19 — 사용자 지시 2026-10-15:
+
+    > llm 평은 **확률에 근거하여 예측하지 말고 변수를 기반으로** 예측하라 …
+    > 확률은 변수를 기반하지만 … **포메이션 전략 등을 동반하여** 예측글을 쓰라
+
+    ⚠️ 실측 2026-10-15: 확률이 33.3 균등인 경기에서 두 평이 *"균등하니까 무"* ·
+       *"균등하지만 홈"* 처럼 **그 수를 출발점**으로 삼았다. 🔴 확률은 변수에서
+       나온 **결과**라 예측 근거로 쓰면 같은 재료를 두 번 세는 것이다.
+    """
+    import inspect
+    import sys
+    sys.path.insert(0, str(ROOT))
+    from app.core.stages.s6_verdict import ask
+
+    src = inspect.getsource(ask)
+    assert "예측은 변수로 한다" in src, "VD19 🔴 그 규칙이 프롬프트에 없다"
+    assert "확률 수를 " in src and "따라가지 마라" in src, src[-700:]
+    assert "포메이션과 전략을 반드시 동반" in src, "VD19 🔴 전략 동반 규칙이 없다"
+    # 🔴 **옛 규칙은 걷혔다** — 확률이 왜 그렇게 나왔나를 쓰라고 시키지 않는다
+    assert "그 수가 **왜 그렇게 " not in src
+
+
+def test_vd20_묶음에_포메이션_전략_칸이_있다() -> None:
+    """🔴 VD20 — 프롬프트가 읽을 **재료**가 묶음에 있어야 한다(없으면 빈 말이다)."""
+    import sys
+    sys.path.insert(0, str(ROOT))
+    from app.core.stages import s6_verdict as vd
+
+    class _R:
+        home = away = "t"
+        home_name, away_name, competition = "A", "B", "c"
+
+    class _Line:
+        side, strategy, why = "home", "고압박", "최근 5경기 전진 수비"
+
+    class _Plan:
+        shape, audit, lines = "평소 그대로 vs 바뀜", "🟡 예상 XI 판정", [_Line()]
+
+    class _Row:
+        id, type = "SL1", "lineup_intent"
+        claim = "홈 수비 라인 > 원정 수비 라인 · 총골 down"
+
+    box = "\n".join(vd.chain_of(_R(), _P(), None, None,
+                                plan=_Plan(), strat=[_Row()]))
+    assert "포메이션·전략 — 양상 평소 그대로 vs 바뀜" in box, box
+    assert "home 전략 `고압박`" in box, box
+    assert "전략 `SL1`" in box and "수비 라인 >" in box, box
+    # 🔴 비면 ⬜ 로 남긴다(#3) — 다만 평은 그 없음을 글로 쓰지 않는다
+    box0 = "\n".join(vd.chain_of(_R(), _P(), None, None))
+    assert "포메이션·전략 — ⬜ **없다**" in box0, box0
+
+
+def test_vd21_러너가_그_칸을_넘긴다() -> None:
+    """🔴 VD21 배선 — 안 넘기면 묶음에 ⬜ 만 남는다(없는 코드와 같다)."""
+    said = (ROOT / "tools/run_collect.py").read_text(encoding="utf-8")
+    assert "plan=plan, strat=var_sl" in said, (
+        "VD21 🔴 러너가 ⑤-b 판정·⑤-b2 전략 변수를 ⑯ 묶음에 안 넘긴다")

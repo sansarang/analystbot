@@ -711,7 +711,12 @@ async def main(argv: list[str]) -> int:
     #     미세하게 달라져 비교가 뜻을 잃는다.
     print("## ⑯ 종합 평 — solar · deepseek **같은 묶음**", flush=True)
     # 🔴 **문서도 넘긴다**(지시 2026-10-15) — 평이 기사·출처를 쓰게 한다
-    said_box = _vd.chain_of(ref, prob, mr, varset, docs=docs)
+    # 🔴🔴 **포메이션·전략도 넘긴다**(사용자 지시 2026-10-15: *"포메이션 전략
+    #    등을 동반하여 예측글을 작성하라"*) — ⑤-b 판정(`plan`)과 ⑤-b2 전략
+    #    전문가 변수(`var_sl`)다. ⚠️ 안 넘기면 묶음에 그 칸이 **⬜ 로만** 남고
+    #    평이 전략을 말할 재료가 없다(실측 Atalanta vs Pafos).
+    said_box = _vd.chain_of(ref, prob, mr, varset, docs=docs,
+                            plan=plan, strat=var_sl)
     print(f"- 🔴 **묶음은 코드가 만들었다**({len(said_box)}줄) — 모델이 만든 "
           "글자가 하나도 없다")
     for one in said_box:
