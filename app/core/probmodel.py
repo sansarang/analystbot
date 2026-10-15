@@ -361,6 +361,8 @@ def flat_prob(varset, *, ref) -> tuple[dict, str]:
     box = dict(_rt.table().get("lambda_rules") or {})
     by = dict(box.get("by_var") or {})
     got = {"home": 1.0 / 3.0, "draw": 1.0 / 3.0, "away": 1.0 / 3.0}
+    #: 🔴 쏠림을 세는 칸 — 어느 쪽을 몇 번 밀었나(무를 깎는 데 쓴다)
+    net: dict = {"home": 0, "away": 0}
     if not by:
         return got, "⬜ 변수 보정표가 없다 — 1/3 균등 그대로"
     g_box, f_box = dict(by.get("goals") or {}), dict(by.get("favors") or {})
@@ -394,6 +396,23 @@ def flat_prob(varset, *, ref) -> tuple[dict, str]:
         got[want] *= mul
         got[other] /= mul
         said.append(f"[{rid}] {want} ×{mul:g}({why})")
+        net[want] = net.get(want, 0) + 1
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **쏠리면 무를 깎는다** — 사용자 결정 2026-10-15(2번)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 홈쪽이 올라가면 상대쪽은 내려가는거여야 하지 않냐 → **2번으로 해라**
+    #    (홈·원정 차가 커지면 **무를 깎는다**)
+    #
+    #  🔴 크기는 **새 수가 아니다** — 변수 하나가 쓰는 그 ±5% 를 쓴다.
+    #  🔴 세는 것은 **순 단계수**다 — 홈 밀기 수 − 원정 밀기 수. 그래서
+    #     **상쇄되면 무는 그대로**다(홈1·원정1 → 균등 그대로).
+    #  ⚠️ 변수 수가 아니라 **쏠림**을 본다 — 양쪽에 똑같이 많아도 무는 안 깎인다.
+    lean = abs(int(net.get("home", 0)) - int(net.get("away", 0)))
+    if lean:
+        mul = float(f_box.get("mul") or 1.05)
+        got["draw"] /= mul ** lean
+        said.append(f"무 ÷{mul:g}^{lean}(쏠림 {lean}단계)")
     total = sum(got.values()) or 1.0
     got = {k: v / total for k, v in got.items()}
     head = "🎯 **초기 1/3 균등 + 변수**(사용자 지시 2026-10-15)"

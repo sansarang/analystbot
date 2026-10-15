@@ -94,3 +94,42 @@ def test_by_var_를_λ_에서_걷었다() -> None:
     import inspect
     src = inspect.getsource(pm.lambda_rules)
     assert "by_var" not in src or "걷었다" in src, src[-400:]
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **쏠리면 무를 깎는다**(2번) — 사용자 결정 2026-10-15
+# ══════════════════════════════════════════════════════════════════
+
+
+def test_쏠리면_무가_내려간다() -> None:
+    got, said = pm.flat_prob(rt.place([
+        V("A", "lineup_intent", favors="home")]), ref=REF)
+    assert got["draw"] < 1 / 3, got
+    assert "쏠림 1단계" in said, said
+
+
+def test_많이_쏠리면_더_내려간다() -> None:
+    one, _ = pm.flat_prob(rt.place([
+        V("A", "lineup_intent", favors="home")]), ref=REF)
+    three, _ = pm.flat_prob(rt.place([
+        V(f"A{i}", "lineup_intent", favors="home") for i in range(3)]), ref=REF)
+    assert three["draw"] < one["draw"] < 1 / 3, (three, one)
+    assert three["home"] > one["home"]
+
+
+def test_상쇄되면_무는_그대로다() -> None:
+    """🔴 변수 **수**가 아니라 **쏠림**을 본다 — 양쪽이 같으면 균등 그대로."""
+    got, said = pm.flat_prob(rt.place(
+        [V(f"A{i}", "lineup_intent", favors="home") for i in range(3)]
+        + [V(f"B{i}", "def_absence", favors="away") for i in range(3)]),
+        ref=REF)
+    for side in ("home", "draw", "away"):
+        assert abs(got[side] - 1 / 3) < 1e-9, (side, got)
+    assert "쏠림" not in said, said
+
+
+def test_무를_깎는_크기도_새_수가_아니다() -> None:
+    """🔴 변수 하나가 쓰는 그 ±5% 를 **거듭제곱**으로만 쓴다."""
+    import inspect
+    src = inspect.getsource(pm.flat_prob)
+    assert 'got["draw"] /= mul ** lean' in src, src[-500:]
