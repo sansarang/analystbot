@@ -191,7 +191,9 @@ def chain_of(ref: MatchRef, prob, mr, varset, *,
         url = str(getattr(one, "url", "") or "")
         host = url.split("/")[2] if "//" in url else url[:40]
         when = str(getattr(one, "published_at", "") or "")[:16]
-        said_src.append(f"  문서 `{getattr(one, 'doc_id', '?')}` {title} · "
+        # ⚠️ 실측 2026-10-15: `doc_id` 로 읽어 **`?` 로 찍혔다** — `Doc` 의 칸은
+        #    **`id`** 다(만드는 함수 인자 이름이 `doc_id` 라 헷갈린다).
+        said_src.append(f"  문서 `{getattr(one, 'id', None) or '?'}` {title} · "
                         f"{host}" + (f" · {when}" if when else " · 발행 ⬜"))
     if said_src:
         rows.append(f"문서 출처 {len(said_src)}건(딥서치·표적 검색이 연 것):")

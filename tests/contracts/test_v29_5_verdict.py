@@ -313,3 +313,29 @@ def test_vd10_기사가_없으면_없다고_적는다() -> None:
     assert "기사에서 나온 사실을 반드시 한 번은 쓴다" in src
     # ⚠️ 그 글은 **두 줄로 쪼개져** 있다 — 이어 붙인 글자로 세면 안 된다
     assert "것이 없다" in src and "그대로 적어라" in src, src[-400:]
+
+
+def test_vd11_문서_id_가_찍힌다() -> None:
+    """⚠️ 실측 2026-10-15: `doc_id` 로 읽어 **`?` 로 찍혔다** — `Doc` 의 칸은
+    **`id`** 다(만드는 함수 인자 이름이 `doc_id` 라 헷갈린다)."""
+    import sys
+    sys.path.insert(0, str(ROOT))
+    from app.core.stages.s6_verdict import chain_of
+
+    class _Doc:
+        id, title = "A-D3", "예상 라인업"
+        url, published_at = "https://x.example/a", "2026-10-15T09:00"
+
+    class _Set:
+        rows: list = []
+
+        def of(self, place: str) -> list:
+            return []
+
+    class _Prob:
+        home, draw, away = 0.4, 0.3, 0.3
+        lam, over, scores = {}, {}, {}
+
+    said = "\n".join(chain_of(None, _Prob(), None, _Set(), docs=[_Doc()]))
+    assert "문서 `A-D3`" in said, said
+    assert "문서 `?`" not in said, said

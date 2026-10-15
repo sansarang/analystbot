@@ -220,3 +220,12 @@ def test_상성_앞에서_부른다() -> None:
     said = __import__("pathlib").Path("app/core/pipeline.py").read_text()
     assert said.index("_sl.ask(ref, facts, plan") < said.index("_s2e.run("), \
         "🔴 상성 뒤에서 부르면 축이 그 변수를 못 본다"
+
+
+def test_recall_상한이_deepseek_를_안_자른다() -> None:
+    """⚠️ 실측 2026-10-15: ⑤-b2 가 **세 경기 연속 `LLM_TRUNCATED`** 로 끊기고
+    solar 퇴로가 받았다 — deepseek 는 `reasoning_effort` 를 무시하고 추론으로
+    상한을 쓴다. 🔴 그 용도의 출력 상한을 2,000 → **4,000** 으로 올렸다."""
+    from app.core import llm
+    got = int(dict(llm.purpose_cfg("recall")).get("max_tokens") or 0)
+    assert got >= 4000, got
