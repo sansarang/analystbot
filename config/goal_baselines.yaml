@@ -1,5 +1,11 @@
 measured_at: '2026-10-14'
 kinds:
+  league:UECL:
+    goals_per_match: 2.7105
+    home_share: 1.5987
+    n: 304
+    n_home: 304
+    source: fotmob league:UECL 자체 실측(2026/2027 0경기 · 2025/2026 153경기 · 2024/2025 153경기) · 중립 단계 제외(CC3) · tools/fit_comp_goals.py 2026-10-15
   league:UEL:
     goals_per_match: 2.8198
     home_share: 1.6218
