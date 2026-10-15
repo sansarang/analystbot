@@ -81,7 +81,22 @@ GAPS: tuple[tuple[str, str, str], ...] = (
     ("원정 부담(이동·전체 일정·홈까지 거리)", "away", "travel"),
     # 🔴 홈팀 홈 전력 — 홈 최근 5경기 승·무(쪽 폼이 `SIDE_FULL=5` 로 보는 그것)
     ("홈 전력(홈 최근 5경기 승·무)", "home", "side_form"),
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **결장 사유** — 사용자 지시 2026-10-15
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > fotmob 에 **결장 사유나 알 수 없는 정보**도 역시 **llm 이 서치해서
+    #  > 채워야** 한다
+    #
+    #  ⚠️ 실측 2026-10-15(강원 vs 프놈펜): 결장 21명의 사유가 **전부 `other`**
+    #     였다 — fotmob 이 사유를 안 준다. 부상인지 징계인지 로테이션인지
+    #     못 가리면 그 결장이 **얼마나 센 변수인지** 알 수 없다.
+    #  🔴 그래서 **사유 없는 결장자 이름을** 빈 칸으로 올려 ⑥ 이 찾게 한다.
+    ("결장 사유(누가 왜 빠졌나)", "both", "absence_reason"),
 )
+
+#: 🔴 사유로 **안 치는** 글자 — fotmob 이 모를 때 넣는 값들
+DIM_REASONS: tuple[str, ...] = ("", "other", "unknown", "미상", "사유 미상")
 
 #: 🔴 홈 쪽 폼을 **그대로 쓸 수 있는** 경기 수 — `core/form.SIDE_FULL` 과 같아야
 #   한다(사본 금지: 그 값이 바뀌면 이 칸의 뜻도 바뀐다).
@@ -183,6 +198,20 @@ def need(facts, *, keys: list[str], conflict_docs: int = 0,
                 miss.append(name)
             elif name == "팀내 불화" and not conflict_docs:
                 miss.append(name)
+            elif name == "결장 사유(누가 왜 빠졌나)":
+                # 🔴 사유가 **비었거나 `other`** 인 결장자를 센다(위 머리말)
+                said_dim = [
+                    str(getattr(x, "name", "") or "")
+                    for x in list(dict(getattr(facts, "missing", None)
+                                       or {}).get(key) or [])
+                    if str(getattr(x, "reason", "") or "").strip().lower()
+                    in DIM_REASONS]
+                if said_dim:
+                    # ⚠️ **이름을 적는다** — 그래야 LLM 이 그 선수를 겨눈 질의를
+                    #    쓴다(사람 글자다 · 열쇠가 아니다)
+                    miss.append(f"{name} — {' · '.join(said_dim[:4])}"
+                                + (f" 외 {len(said_dim) - 4}명"
+                                   if len(said_dim) > 4 else ""))
             elif name.startswith("원정 부담") and not (
                     ctx.get("venue") or ctx.get("travel")):
                 # 🔴 원정팀만 — 이동 거리·전체 일정·홈까지 거리
@@ -313,6 +342,11 @@ def ask(ref: MatchRef, facts, *, state: RunState, want: dict,
                if dict(thin or {}) else "")
             + f"쓸 언어: {', '.join(langs or ['en'])}\n\n"
             f"🔴 `queries` — 위 **못 찾은 칸을 겨냥한** 검색어 {MAX_Q}개 이하.\n"
+            "🔴🔴 **결장 사유 칸이 있으면 그 선수 이름으로 찾는다**(사용자 지시 "
+            "2026-10-15) — `<선수 이름> injury`·`<선수 이름> 부상`·`<선수 "
+            "이름> suspended` 꼴로 쓴다(그 나라 말로도). ⚠️ fotmob 이 사유를 "
+            "`other` 로만 줄 때가 많다 — **부상·징계·로테이션 중 무엇인지**가 "
+            "그 결장의 무게를 가른다.\n"
             "   · 팀 순위·승점 → `{팀} standings points` · `{팀} classifica "
             "punti`\n"
             "   · 지금 몇 라운드 → `{대회} matchday` · `{대회} giornata` · "
