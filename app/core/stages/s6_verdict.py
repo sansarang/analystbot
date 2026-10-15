@@ -133,7 +133,8 @@ class Verdict(BaseModel):
     score: str = ""
 
 
-def chain_of(ref: MatchRef, prob, mr, varset) -> list[str]:
+def chain_of(ref: MatchRef, prob, mr, varset, *,
+             docs: list | None = None) -> list[str]:
     """🔴🔴 *"변수가 이래케 저렇게 되서 이렇게 나온다"* — **코드가 짠다**.
 
     돌려주는 것은 묶음 줄 목록이다(모델 입력의 전부). 🔴 모델이 만든 글자가
@@ -160,6 +161,43 @@ def chain_of(ref: MatchRef, prob, mr, varset) -> list[str]:
                         f"{str(getattr(one, 'claim', '') or '')[:120]}")
     else:
         rows.append("변수 — ⬜ 배치표가 비었다")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **딥서치가 건진 것을 평이 쓰게 한다** — 사용자 지시 2026-10-15
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 딥서치, llm 서치 자료들을 파악해서 ⑯ 평이 **그 자료를 쓰게** 하려면
+    #
+    #  ⚠️ 그때까지 묶음에는 **확률·축·확률에 닿는 변수**뿐이었다. 기사 변수는
+    #     확률에서 안 세니(개수 금지) **묶음에도 없었고**, 문서 자체(제목·원천)는
+    #     애초에 없었다. 🔴 그래서 검열이 *"묶음에 없는 글자"* 로 잡아 모델은
+    #     기사 내용을 **쓰고 싶어도 못 썼다**.
+    #  🔴 여기 두 칸을 더한다 — 확률엔 안 닿지만 **평에는 쓰라고** 주는 것이다.
+    #  ⚠️ 비면 **⬜ 로 적는다**(#3) — 그러면 평이 *"기사에서 나온 것이 없다"* 고
+    #     쓸 수 있다(그게 정직한 상태다).
+    said_doc = [one for one in got_rows
+                if bool(getattr(one, "from_doc", False))]
+    if said_doc:
+        rows.append(f"기사에서 나온 사실 {len(said_doc)}개 "
+                    "— **확률에는 안 셌다**(개수로 세지 않는다 · 내용으로 읽는다):")
+        for one in said_doc[:10]:
+            rows.append(f"  기사 `{one.id}` [{one.type}] — "
+                        f"{str(getattr(one, 'claim', '') or '')[:200]}")
+    else:
+        rows.append("기사에서 나온 사실 — ⬜ **없다**(딥서치·표적 검색이 그 경기 "
+                    "기사를 못 건졌다)")
+    said_src = []
+    for one in list(docs or [])[:8]:
+        title = str(getattr(one, "title", "") or "")[:70]
+        url = str(getattr(one, "url", "") or "")
+        host = url.split("/")[2] if "//" in url else url[:40]
+        when = str(getattr(one, "published_at", "") or "")[:16]
+        said_src.append(f"  문서 `{getattr(one, 'doc_id', '?')}` {title} · "
+                        f"{host}" + (f" · {when}" if when else " · 발행 ⬜"))
+    if said_src:
+        rows.append(f"문서 출처 {len(said_src)}건(딥서치·표적 검색이 연 것):")
+        rows += said_src
+    else:
+        rows.append("문서 출처 — ⬜ **없다**")
     # ── ③ 축 값 → 종합
     if mr is not None:
         for key in ("axis0", "axis1", "axis2", "axis3"):
@@ -190,6 +228,7 @@ def chain_of(ref: MatchRef, prob, mr, varset) -> list[str]:
 
 
 def ask(ref: MatchRef, prob, mr, varset, *, state: RunState,
+        docs: list | None = None,
         provider: str = "solar", box: list[str] | None = None
         ) -> tuple[Verdict | None, list[str], str]:
     """🔴🔴 **solar 가 종합 평을 쓴다**. `(평, 묶음, 사유)`.
@@ -203,7 +242,7 @@ def ask(ref: MatchRef, prob, mr, varset, *, state: RunState,
     ⚠️ 실패하면 `(None, 묶음, 사유)` 다 — 코드가 만든 묶음은 **그대로 남는다**.
     """
     from app.core import llm
-    box = list(box) if box else chain_of(ref, prob, mr, varset)
+    box = list(box) if box else chain_of(ref, prob, mr, varset, docs=docs)
     said = "\n".join(box)
     names = [str(getattr(ref, f"{s}_name", "") or "")
              or str(getattr(ref, s, "") or "") for s in ("home", "away")]
@@ -241,6 +280,11 @@ def ask(ref: MatchRef, prob, mr, varset, *, state: RunState,
             "이탈만으로 수비를 판단하지 마라(실제로 얼마나 먹혔나가 더 세다).\n"
             "🔴 **이제까지 모은 자료(묶음)만** 쓴다 — 네 기억으로 사실을 보태면 "
             "거짓이다. 모르는 것은 **모른다고 적는다**.\n"
+            "🔴🔴 **기사에서 나온 사실을 반드시 한 번은 쓴다**(사용자 지시 "
+            "2026-10-15) — 묶음의 `기사에서 나온 사실` 칸을 읽고 그 경기에 "
+            "무엇을 뜻하는지 적는다. ⚠️ 그 칸이 **⬜ 없다** 면 *\"기사에서 나온 "
+            "것이 없다\"* 고 **그대로 적어라**(지어내지 마라). 출처를 들 때는 "
+            "`문서 출처` 칸의 매체를 쓴다.\n"
             "⚠️ 묶음에 없는 수를 쓰면 **버려진다** — 코드가 대조한다.")),
     ]
     got = llm.ask(provider=provider, purpose="commentary", messages=msgs,

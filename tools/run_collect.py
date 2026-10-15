@@ -654,7 +654,8 @@ async def main(argv: list[str]) -> int:
     #  🔴 묶음은 **한 번만** 만들고 둘에게 **그대로** 넘긴다 — 다시 만들면
     #     미세하게 달라져 비교가 뜻을 잃는다.
     print("## ⑯ 종합 평 — solar · deepseek **같은 묶음**", flush=True)
-    said_box = _vd.chain_of(ref, prob, mr, varset)
+    # 🔴 **문서도 넘긴다**(지시 2026-10-15) — 평이 기사·출처를 쓰게 한다
+    said_box = _vd.chain_of(ref, prob, mr, varset, docs=docs)
     print(f"- 🔴 **묶음은 코드가 만들었다**({len(said_box)}줄) — 모델이 만든 "
           "글자가 하나도 없다")
     for one in said_box:

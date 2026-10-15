@@ -246,3 +246,70 @@ def test_vd8_예측_점수는_묶음에_없어도_된다() -> None:
     # 🔴 빈 칸은 위반이다
     _v2, bad2 = judge(got.model_copy(update={"score": ""}), box)
     assert any("점수 예측이 없다" in x for x in bad2), bad2
+
+
+def test_vd9_묶음에_기사와_출처가_든다() -> None:
+    """🔴🔴 사용자 지시 2026-10-15 — *"딥서치, llm 서치 자료들을 파악해서 ⑯
+    평이 **그 자료를 쓰게**"*.
+
+    ⚠️ 그때까지 묶음에는 확률·축·확률에 닿는 변수뿐이었다 — 기사 변수는 확률에서
+       안 세니(개수 금지) **묶음에도 없었고**, 검열이 *"묶음에 없는 글자"* 로
+       잡아 모델은 기사 내용을 **쓰고 싶어도 못 썼다**.
+    """
+    import sys
+    sys.path.insert(0, str(ROOT))
+    from app.core.stages.s6_verdict import chain_of
+
+    class _V:
+        def __init__(self, vid: str, doc: bool) -> None:
+            self.id, self.type, self.claim = vid, "team_stats", f"{vid} 글"
+            self.favors, self.goals, self.places = "home", "none", ["axis1"]
+            self.from_doc = doc
+
+    class _Set:
+        rows = [_V("R1", True), _V("S01-home", False)]
+
+        def of(self, place: str) -> list:
+            return [x for x in self.rows if place in x.places]
+
+    class _Doc:
+        doc_id, title = "A-D1", "노리치 결장 소식"
+        url, published_at = "https://news.example.com/a", "2026-10-15T09:00"
+
+    class _Prob:
+        home, draw, away = 0.35, 0.32, 0.33
+        lam, over, scores = {}, {}, {}
+
+    box = chain_of(None, _Prob(), None, _Set(), docs=[_Doc()])
+    said = "\n".join(box)
+    assert "기사에서 나온 사실" in said and "R1" in said, said
+    assert "확률에는 안 셌다" in said, "🔴 그 칸이 확률에 닿는다고 읽힌다"
+    assert "문서 출처" in said and "news.example.com" in said, said
+
+
+def test_vd10_기사가_없으면_없다고_적는다() -> None:
+    """🔴 #3 — 비면 **⬜ 로 남긴다**(그러면 평이 *"기사에서 나온 것이 없다"* 고
+    쓸 수 있다)."""
+    import sys
+    sys.path.insert(0, str(ROOT))
+    from app.core.stages.s6_verdict import ask, chain_of
+
+    class _Set:
+        rows: list = []
+
+        def of(self, place: str) -> list:
+            return []
+
+    class _Prob:
+        home, draw, away = 0.33, 0.33, 0.34
+        lam, over, scores = {}, {}, {}
+
+    said = "\n".join(chain_of(None, _Prob(), None, _Set(), docs=None))
+    assert "기사에서 나온 사실 — ⬜ **없다**" in said, said
+    assert "문서 출처 — ⬜ **없다**" in said, said
+    # 🔴 프롬프트가 그 칸을 쓰라고 말한다
+    import inspect
+    src = inspect.getsource(ask)
+    assert "기사에서 나온 사실을 반드시 한 번은 쓴다" in src
+    # ⚠️ 그 글은 **두 줄로 쪼개져** 있다 — 이어 붙인 글자로 세면 안 된다
+    assert "것이 없다" in src and "그대로 적어라" in src, src[-400:]
