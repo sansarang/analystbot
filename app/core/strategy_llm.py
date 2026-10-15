@@ -139,8 +139,72 @@ def ask(ref: MatchRef, facts: Facts, plan: object, *, state: RunState,
     return out, f"{why} → {said_pv} · 변수 {len(out)}개"
 
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **방향 표** — 사용자 지시 2026-10-15
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 예: 수비 라인 낮음 → 총골 down, 압박 높이 낮음 → 상대 유리
+#  > **딥서치해서 넣어라**
+#
+#  🔴 그래서 방향은 **표가 정한다** — 모델은 갈래와 글만 낸다(절대규칙 5 그대로).
+#  🔴 표를 채우는 곳은 `tools/fit_strategy_dirs.py` 하나다(딥서치 → 문서 인용).
+#  ⚠️ 표가 없거나 그 갈래가 비어 있으면 **방향 없음**이다(both/none) —
+#     지어내지 않는다(#4). 카드에는 그 사실이 그대로 적힌다.
+DIRS_FILE = "config/strategy_dirs.yaml"
+_DIRS: dict | None = None
+
+
+def dirs() -> dict:
+    """🔴 갈래 → `{goals, favors, url, quote}`. 파일이 없으면 **빈 표**다."""
+    global _DIRS
+    if _DIRS is None:
+        import pathlib
+
+        import yaml
+        p = pathlib.Path(DIRS_FILE)
+        if not p.exists():
+            _DIRS = {}
+        else:
+            box = dict(yaml.safe_load(p.read_text(encoding="utf-8")) or {})
+            _DIRS = dict(box.get("rows") or {})
+    return dict(_DIRS)
+
+
+#: 🔴🔴 **승인 전에는 안 쓴다** — 사용자 지시 2026-10-15(값 승인은 사용자 몫).
+#   ⚠️ 실측 2026-10-15(1차 딥서치): 여덟 갈래가 다 채워졌는데 근거가
+#      **미식축구 기사**(UVA defensive line)·한 팀 일화(아스널 코너 19골)·
+#      위키 정의문이었고 `favors` 가 **전부 `subject`** 로 기울었다.
+#      🔴 그런 표로 방향을 넣으면 확률이 거짓이 된다 — 그래서 **잠근다**.
+#   🔴 켜는 법: 그 줄에 `approved: true` 를 **사용자가** 적는다.
+def approved(row: dict) -> bool:
+    return bool(row.get("approved"))
+
+
+def _dir_of(kind: str, side: str) -> tuple[str, str, str]:
+    """🔴 그 갈래의 `(favors, goals, 근거 꼬리)`. 표에 없거나 **승인 전**이면
+    방향 없음이다."""
+    row = dict(dirs().get(kind) or {})
+    if row and not approved(row):
+        return "both", "none", f" · ⬜ 방향 표 **승인 전**({kind})"
+    goals = str(row.get("goals") or "none")
+    said = str(row.get("favors") or "both")
+    # 🔴 표는 **`subject`/`opponent`** 로 적는다 — 쪽으로 옮기는 것은 코드다
+    other = "away" if side == "home" else "home"
+    fav = {"subject": side, "opponent": other}.get(said, "both")
+    tail = ""
+    if row.get("url"):
+        tail = f" · 근거 {str(row.get('url'))[:60]}"
+    elif goals == "none" and fav == "both":
+        tail = " · ⬜ 방향 표 없음(표시만)"
+    return (fav if fav in ("home", "away", "both") else "both",
+            goals if goals in ("up", "down", "none") else "none", tail)
+
+
 def vars_of(got: StrategyRead, ref: MatchRef, *, why: str = "") -> list[Variable]:
-    """🔴🔴 모델 글 → `Variable`. **방향·가중은 코드가 넣는다**(잠금 ①②)."""
+    """🔴🔴 모델 글 → `Variable`. **방향·가중은 코드가 넣는다**(잠금 ①②).
+
+    🔴 방향은 **표**(`config/strategy_dirs.yaml`)가 준다 — 모델이 아니다.
+    """
     out: list[Variable] = []
     for i, row in enumerate(list(got.rows or [])[:MAX_ROWS], 1):
         side = str(row.side or "").strip().lower()
@@ -151,14 +215,13 @@ def vars_of(got: StrategyRead, ref: MatchRef, *, why: str = "") -> list[Variable
         if not text or kind not in KINDS:
             continue              # 🔴 표에 없는 갈래는 **버린다**(지어내기 금지)
         key = str(getattr(ref, side, "") or "")
+        # 🔴🔴 **방향은 표가 준다** — 모델 글이 이 두 칸에 닿지 않는다
+        fav, goals, tail = _dir_of(kind, side)
         out.append(Variable(
             id=f"SL{i}-{side}", type=VAR_TYPE, subject=key,
-            # 🔴🔴 **방향 없음** — LLM 이 유불리를 정하지 않는다(절대규칙 5).
-            #    ⚠️ 그래서 이 변수는 축을 **안 민다**. 확률에 닿게 하려면
-            #       방향 표를 사용자가 정해야 한다.
-            favors="both", goals="none",
+            favors=fav, goals=goals,                        # type: ignore[arg-type]
             target=f"strategy:{kind}", hardness="soft", weight=0.0,
-            claim=f"🟡 전략 읽기(LLM · {kind}) — {text}",
+            claim=f"🟡 전략 읽기(LLM · {kind}) — {text}{tail}",
             quote=text, doc_ids=[], from_rule="SLLM",
             usable_as_basis=False))
     return out

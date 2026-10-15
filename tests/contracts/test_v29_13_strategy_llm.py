@@ -101,3 +101,48 @@ def test_러너에_배선됐다() -> None:
     assert "strategy_llm" in said, "🔴 안 불린다"
     assert "⑤-b2 전략 전문가(LLM)" in said, "🔴 장부에 칸이 없다"
     assert "+ list(var_sl)" in said, "🔴 varset 묶음에 안 들어간다"
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **방향 표** — 딥서치로 채우고 **사용자가 승인**해야 쓴다
+# ══════════════════════════════════════════════════════════════════
+
+
+def test_승인_전_표는_방향을_안_준다() -> None:
+    """⚠️ 실측 2026-10-15: 1차 딥서치가 **미식축구 기사**로 `수비 라인 → down`
+    을 적었다. 승인 전 표가 확률에 닿으면 그 거짓이 그대로 들어간다."""
+    assert sl._dir_of("수비 라인", "home") == ("both", "none",
+                                            " · ⬜ 방향 표 **승인 전**(수비 라인)")
+
+
+def test_승인된_줄만_방향을_준다(monkeypatch) -> None:  # noqa: ANN001
+    monkeypatch.setattr(sl, "_DIRS", {
+        "수비 라인": {"goals": "down", "favors": "subject", "approved": True,
+                  "url": "https://x.example/a"}})
+    fav, goals, tail = sl._dir_of("수비 라인", "away")
+    assert (fav, goals) == ("away", "down"), (fav, goals)
+    assert "근거" in tail
+    # 🔴 `opponent` 는 **반대 쪽**으로 옮긴다(옮기는 것은 코드다)
+    monkeypatch.setattr(sl, "_DIRS", {
+        "압박 높이": {"favors": "opponent", "approved": True}})
+    assert sl._dir_of("압박 높이", "home")[0] == "away"
+
+
+def test_표에_없는_갈래는_방향_없음() -> None:
+    assert sl._dir_of("없는갈래", "home")[:2] == ("both", "none")
+
+
+def test_지금_표는_전부_승인_전이다() -> None:
+    """🔴 1차 딥서치 결과는 근거가 나빠 **잠가 뒀다**(사용자 승인 대기)."""
+    import yaml
+    box = yaml.safe_load(open("config/strategy_dirs.yaml", encoding="utf-8"))
+    rows = dict(box.get("rows") or {})
+    assert rows, "🔴 표가 비었다"
+    assert not any(r.get("approved") for r in rows.values()), \
+        "🔴 승인되지 않은 값이 켜져 있다"
+
+
+def test_표를_채우는_도구가_있다() -> None:
+    said = __import__("pathlib").Path("tools/fit_strategy_dirs.py").read_text()
+    assert "인용" in said and "문서에서" in said
+    assert "config" in said and "strategy_dirs.yaml" in said

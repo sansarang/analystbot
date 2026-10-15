@@ -1,0 +1,81 @@
+source: 딥서치(문헌) — 사용자 지시 2026-10-15
+rule: '🔴 값은 문서에서 온다 · 인용 없는 줄은 비운다 · 원장으로 맞추지 않는다 · **`approved: true` 를 사용자가 적기 전에는
+  안 쓴다**'
+rows:
+  압박 높이:
+    goals: none
+    favors: subject
+    fit: 문헌
+    why: 상대 골문 근처에서 압력을 높이는 전술로, 쓰는 팀에 유리하다고 서술됨.
+    url: https://en.wikipedia.org/wiki/High_press
+    quote: High press or high pressing is a style of play in association football
+      in which a team keeps its defenders forward to increase pressure near the opposing
+      goal.
+    approved: false
+  수비 라인:
+    goals: down
+    favors: subject
+    fit: 문헌
+    why: 버지니아 수비가 경기당 5.5점만 허용해 상대 득점을 크게 낮추고 있다.
+    url: https://sports.yahoo.com/articles/deep-diving-uva-defensive-line-205125975.html
+    quote: The defense has been nothing short of spectacular so far.
+    approved: false
+  빌드업:
+    goals: none
+    favors: subject
+    fit: 문헌
+    why: 빌드업보다 빠른 역습·직접 공격을 선호하는 흐름이 관찰되며, 조직화 전 공간을 exploiting 한다고 서술됨.
+    url: https://www.fifatrainingcentre.com/en/game/tournaments/fu17wwc/2025/group-stage-review.php
+    quote: Here, at the U-17 Women’s World Cup in Morocco, fewer teams are trying
+      to build up play all the time, and more are willing to counter-attack and play
+      quickly, which explains the high-block positioning
+    approved: false
+  측면 집중:
+    goals: none
+    favors: subject
+    fit: 문헌
+    why: 포워드는 전방에서 공격 공간을 만들고 수비 부담이 적어 팀 득점을 더 많이 올린다고 서술됨.
+    url: https://en.wikipedia.org/wiki/Forward_(association_football)
+    quote: Their advanced position and limited defensive responsibilities mean forwards
+      normally score more goals on behalf of their team than other players.
+    approved: false
+  중원 수싸움:
+    goals: none
+    favors: subject
+    fit: 문헌
+    why: 중원 수적 우위로 상대 빌드업을 막고 경기를 통제해 승리했으므로 쓰는 팀에 유리하다.
+    url: https://malawi24.com/2026/10/10/how-wanderers-midfield-overload-silenced-silver/
+    quote: Wanderers used numerical superiority in midfield, aggressive pressing and
+      defensive organisation to beat Silver Strikers 1-0 at Silver Stadium on Saturday,
+      disrupting the hosts’ attempts to build atta
+    approved: false
+  역습 성향:
+    goals: up
+    favors: subject
+    fit: 문헌
+    why: 역습으로 상대 전진 배치가 남긴 공간을 빠르게 공략해 득점을 만들고, 상대가 압박에서 회복하는 데 어려움을 겪는다.
+    url: https://www.dazn.com/en-US/news/soccer/tactical-analysis-club-brugge-vs-aston-villa/axd7snjlky4l1d9i8yg97vhz2
+    quote: Aston Villa won 3-2 away at Club Brugge in their Champions League opener,
+      but the scoreline only partially told the tactical story.
+    approved: false
+  세트피스:
+    goals: up
+    favors: subject
+    fit: 문헌
+    why: 코너에서 기록적인 득점을 올려 우승을 이끌었으므로 세트피스가 경기 총 득점을 올리고 쓰는 팀에 유리하다고 판단한다.
+    url: https://www.dailymail.com/sport/football/article-16194021/Arsenal-set-pieces-goals-Premier-League-referees-towels.html
+    quote: The Gunners, for all their creative tribulations in open play last season,
+      scored a record 19 goals from corners and won the title for the first time in
+      22 years.
+    approved: false
+  교체 운용:
+    goals: up
+    favors: subject
+    fit: 문헌
+    why: 교체 투입 선수가 시즌 19골을 기록하며 팀 승리에 직접 기여하고 있다.
+    url: https://sports.yahoo.com/articles/arsenals-substitute-impact-becoming-impossible-191500255.html
+    quote: As Arsenal fight in all four competitions, the contribution of substitutes
+      continues to be a key reason why they're able to do this.
+    approved: false
+audit_2026-10-15: 🔴 1차 딥서치 결과는 **쓰지 않는다** — 수비 라인은 미식축구 기사, 세트피스·교체·역습은 한 팀 일화, 압박·측면은
+  위키 정의문이고 favors 가 여덟 개 다 subject 로 기울었다. 갈래에 **정도**(낮음/높음)가 없다.
