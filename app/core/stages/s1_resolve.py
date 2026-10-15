@@ -299,7 +299,7 @@ async def _by_schedule(pool: Any, q: Question, *, state: RunState,
     """🔴 대회 일정에서 그 경기를 찾아 `games` 에 적고 입구를 다시 돌린다."""
     from datetime import datetime, timedelta, timezone
 
-    from app import resolve, verify
+    from app import verify
     from app.collect import fotmob as fm
     from app.collect.ingest import _UPSERT_GAME
     from app.core import competition as comp
@@ -355,16 +355,14 @@ async def _by_schedule(pool: Any, q: Question, *, state: RunState,
                 sides[0], sides[1], None, when, when + timedelta(hours=9),
                 None, ("finished" if m.get("finished") else "scheduled"),
                 None, None, None)
-            again = await resolve.match_of(
-                pool, team=q.team or q.raw, opponent=q.opponent or "", net=net)
-            if not getattr(again, "ok", False):
-                state.note("s1 일정 퇴로 — 적었는데 입구가 또 못 골랐다")
-                return None
-            from app import queries
-            out = adapt.ref_of(
-                again.ref, competition_short=queries.competition_short(
-                    getattr(again.ref, "competition", "")), openworld=True)
+            # 🔴🔴 **입구를 다시 믿지 않는다** — ⚠️ 실측 2026-10-15: 행을
+            #    적은 **뒤에도** `resolve.match_of` 가 또 그 튀니지 경기를
+            #    골랐다(02:24:44 에 `LA Galaxy vs Portland Timbers` 를 적었는데도).
+            #    🔴 그래서 **방금 적은 그 행**을 열쇠(`ext_id`)로 바로 집는다 —
+            #       `_by_key` 가 그 길이다(표를 읽는 SQL 은 `slate.by_key` 하나).
+            out = await _by_key(pool, str(m.get("id") or ""), state=state)
             if out is None:
+                state.note("s1 일정 퇴로 — 적었는데 열쇠로 못 집었다")
                 return None
             ok_name, why = asked_match(q, out)
             if not ok_name:
