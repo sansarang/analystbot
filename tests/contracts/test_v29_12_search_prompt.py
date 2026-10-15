@@ -82,3 +82,41 @@ def test_종합_평도_득실점으로_말한다() -> None:
     assert "수비 불안과 공격력을 득실점으로 말한다" in src, src[-600:]
     # 🔴 그 수를 쓰라고 했으니 **써도 된다**고 함께 적혀 있어야 한다
     assert "묶음의 득점·실점 평균" in src
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **라인업 기사를 찾는다**(지어내지 않는다) — 사용자 결정 2026-10-15
+# ══════════════════════════════════════════════════════════════════
+
+
+def test_딥서치가_예상_라인업_기사를_노린다() -> None:
+    """⚠️ 실측 2026-10-15(Tampines vs Machida · T−2h): XI 0/2 라 축0 을 못 세고
+    전략 변수도 0 이어서 확률이 **균등 그대로** 남았다."""
+    import inspect
+
+    from app.core import querywriter as qw
+    src = inspect.getsource(qw.ask)
+    assert "예상 라인업 기사를 노린다" in src, src[-700:]
+    for one in ("predicted lineup", "probable XI", "予想スタメン", "首发预测"):
+        assert one in src, one
+
+
+def test_표적_질의도_포메이션_칸에_그것을_쓴다() -> None:
+    import inspect
+
+    from app.core.stages import s4b_gapsearch as gs
+    src = inspect.getsource(gs.ask)
+    assert "`포메이션` 칸이 있으면 예상 라인업 기사를 노린다" in src
+    # 🔴 **지어내기 금지**가 같은 자리에 적혀 있어야 한다
+    assert "지어내지 마라" in src and "찾는 것은 **기사**다" in src
+
+
+def test_라인업을_모델_기억으로_만들지_않는다() -> None:
+    """🔴🔴 절대규칙 — 사실은 **문서에서만** 온다. 프롬프트가 명단을 달라고
+    하면 안 된다(확정 판정은 fotmob 경기 페이지 표식만 쓴다)."""
+    import inspect
+
+    from app.core.stages import s4b_gapsearch as gs
+    src = inspect.getsource(gs.ask)
+    for bad in ("명단을 네가 적어", "예상 XI 를 만들어", "라인업을 추측해"):
+        assert bad not in src, bad

@@ -342,6 +342,9 @@ def ask(ref: MatchRef, facts, *, state: RunState, want: dict,
                if dict(thin or {}) else "")
             + f"쓸 언어: {', '.join(langs or ['en'])}\n\n"
             f"🔴 `queries` — 위 **못 찾은 칸을 겨냥한** 검색어 {MAX_Q}개 이하.\n"
+            "🔴🔴 **`포메이션` 칸이 있으면 예상 라인업 기사를 노린다** — `predicted lineup` · `probable XI` · `starting XI` · 그 나라 말로도(`予想スタメン`·`先発予想`·`예상 선발`·`首发预测`·`alineación probable`)**(사용자 결정 "
+            "2026-10-15) — 라인업이 아직 안 나온 경기다. ⚠️ 네 기억으로 명단을 "
+            "**지어내지 마라** — 찾는 것은 **기사**다.\n"
             "🔴🔴 **결장 사유 칸이 있으면 그 선수 이름으로 찾는다**(사용자 지시 "
             "2026-10-15) — `<선수 이름> injury`·`<선수 이름> 부상`·`<선수 "
             "이름> suspended` 꼴로 쓴다(그 나라 말로도). ⚠️ fotmob 이 사유를 "
