@@ -273,6 +273,9 @@ def ask(ref: MatchRef, prob, mr, varset, *, state: RunState,
             "   · `score` — **예상 점수 하나**(`2-1` 꼴). 기대 득점·스코어 "
             "격자는 **없다** — 변수와 경기 사정을 보고 **네가** 판단해 낸다"
             "(그 까닭을 문장에 적어라).\n"
+            "   🔴🔴 점수는 **홈-원정 순서**다(`2-1` = 홈 2 · 원정 1) — "
+            "**`pick` 과 어긋나면 안 된다**: `home` 이면 홈이 더 많고, `away` "
+            "면 원정이 더 많고, `draw` 면 **동점**이어야 한다.\n"
             "🔴 문장은 **서술형 분석글**이다 — 쓸 수 있는 수는 **확률 · 네 "
             "예상 점수 · 묶음의 득점·실점 평균**뿐이다(그 밖의 퍼센트·배율·"
             "계수 금지). 그 외는 변수와 선수 이름으로 설명한다.\n"
@@ -395,6 +398,26 @@ def judge(got: Verdict | None, box: list[str]) -> tuple[str, list[str]]:
     said_sc = str(getattr(got, "score", "") or "").strip()
     if not said_sc:
         bad.append("🔴 (마) **점수 예측이 없다**(`score`)")
+    else:
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **승패와 점수가 어긋나면 위반** — 사용자 지시 2026-10-15
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 실측 2026-10-15(Svay Rieng vs Shanghai Shenhua): solar 가
+        #     `pick=away` 인데 점수를 **`1-0`**(홈 승 스코어)으로 적었다.
+        #     검열은 `pick` 이 셋 중 하나인지와 빈 칸만 봤고 **둘의 일치는
+        #     안 봤다**.
+        #  🔴 점수는 **홈-원정 순서**다 — 그 둘이 어긋나면 평 자체가 모순이다.
+        got_sc = _SCORE.search(said_sc)
+        if got_sc:
+            gh, ga = int(got_sc.group(1)), int(got_sc.group(2))
+            want = ("home" if gh > ga else "away" if ga > gh else "draw")
+            if said_pick in ("home", "draw", "away") and want != said_pick:
+                said_k = {"home": "홈 승", "draw": "무", "away": "원정 승"}
+                bad.append(
+                    f"🔴 (마) **예측과 점수가 어긋난다** — `pick` 은 "
+                    f"{said_k.get(said_pick)} 인데 점수 {said_sc} 는 "
+                    f"{said_k.get(want)} 다(점수는 **홈-원정 순서**다)")
     # 🔴 근거 — 문장 수와 같아야 한다
     refs = [str(x) for x in (got.refs or [])]
     if len(refs) < len(rows):

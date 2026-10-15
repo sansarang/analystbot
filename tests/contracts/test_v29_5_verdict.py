@@ -339,3 +339,42 @@ def test_vd11_문서_id_가_찍힌다() -> None:
     said = "\n".join(chain_of(None, _Prob(), None, _Set(), docs=[_Doc()]))
     assert "문서 `A-D3`" in said, said
     assert "문서 `?`" not in said, said
+
+
+def test_vd12_예측과_점수가_어긋나면_위반이다() -> None:
+    """🔴🔴 사용자 지시 2026-10-15 — 점수는 **홈-원정 순서**다.
+
+    ⚠️ 실측(Svay Rieng vs Shanghai Shenhua): solar 가 `pick=away` 인데 점수를
+       **`1-0`**(홈 승 스코어)으로 적었다. 검열은 `pick` 이 셋 중 하나인지와
+       빈 칸만 보고 **둘의 일치는 안 봤다** — 평 자체가 모순이었다.
+    """
+    import sys
+    sys.path.insert(0, str(ROOT))
+    from app.core.stages.s6_verdict import Verdict, judge
+    box = ["확률 — 홈 31.1% · 무 31.1% · 원정 37.8%"]
+    rows = [("홈 31.1% 다.", "원정 37.8% 다.", "무 31.1% 다.")][0]
+
+    def _v(pick: str, score: str) -> tuple:
+        return judge(Verdict(sentences=list(rows),
+                             refs=["확률", "확률", "확률"],
+                             pick=pick, score=score), box)
+
+    # 🔴 그 사고 그대로 — 원정 승인데 홈 승 점수
+    verdict, bad = _v("away", "1-0")
+    assert verdict == "지어냈다", bad
+    assert any("예측과 점수가 어긋난다" in x for x in bad), bad
+    # 🔴 무 예측이면 **동점**이어야 한다
+    assert any("어긋난다" in x for x in _v("draw", "2-1")[1])
+    # ✅ 맞는 짝은 통과한다
+    for pick, score in (("away", "1-2"), ("home", "2-1"), ("draw", "1-1")):
+        got_v, got_bad = _v(pick, score)
+        assert got_v == "안 지어냈다", (pick, score, got_bad)
+
+
+def test_vd13_프롬프트가_점수_순서를_못_박는다() -> None:
+    import inspect
+    import sys
+    sys.path.insert(0, str(ROOT))
+    from app.core.stages.s6_verdict import ask
+    src = inspect.getsource(ask)
+    assert "홈-원정 순서" in src and "pick` 과 어긋나면 안 된다" in src
