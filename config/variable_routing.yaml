@@ -221,6 +221,38 @@ lambda_rules:
     why: 순위 동기 — 급한 팀이 유리하다(사용자 지시 2026-10-14 · 승점·라운드 기준)
   floor_mul: 0.8
   source: 사용자 지시 2026-10-14 · 🔴 적합 아님
+  by_var:
+    why: 🔴🔴 **폼·결장·전략 변수를 λ 에 잇는다**(사용자 지시 2026-10-15). 상성을 삭제해 축 통로가 사라진 뒤, 변수가 확률에
+      닿는 길은 여기뿐이다. 🔴 크기는 **새 수가 아니다** — 이동·피로·순위 동기에 사용자가 정한 **±5%** 를 그대로 쓴다. ⚠️
+      겹치면 곱하고 `floor_mul`·`cap_mul` 로 막는다.
+    goals:
+      up: 1.05
+      down: 0.95
+      types:
+      - recent_pattern
+      - form_streak
+      - lineup_intent
+      - goal_profile
+      - regression
+      why: ② 흐름 · ③ 전술 — 변수의 `goals` 칸이 그 팀 득점 방향이다
+    favors:
+      mul: 1.05
+      types:
+      - def_absence
+      - absence
+      - absence_att
+      - suspension
+      - returning
+      - national_duty_return
+      - squad_rotation
+      - lineup_value
+      - strength_gap
+      - lineup_intent
+      - form_streak
+      - team_stats
+      why: ① 전력 · ② 흐름 · ③ 전술 — `favors` 가 가리키는 쪽 λ 를 올린다(`goals` 가 이미 말한 변수는 **중복으로
+        안 센다**)
+  cap_mul: 1.25
 types_v2:
   absence:
     places:

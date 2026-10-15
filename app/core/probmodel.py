@@ -124,10 +124,51 @@ def lambda_rules(varset, *, ref) -> tuple[dict, str]:
         said.append(f"[{rid}] {side} λ ×{mul:g}({name}"
                     + (" · 상대를 깎는다" if want_side == "opponent" else "")
                     + ")")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **폼·결장·전략 변수를 λ 에 잇는다** — 사용자 지시 2026-10-15
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 폼·결장·전략 변수 **연결해라**
+    #
+    #  ⚠️ 상성을 삭제해 축 통로가 사라졌다 — 변수가 확률에 닿는 길은 **여기뿐**이다.
+    #  🔴 크기는 **새 수가 아니다** — 이동·피로·순위 동기에 사용자가 정한 ±5% 를
+    #     그대로 쓴다(`config/variable_routing.yaml: lambda_rules.by_var`).
+    #  🔴 **중복으로 안 센다** — `goals` 가 말한 변수는 `favors` 로 또 세지 않는다.
+    #  ⚠️ 어느 칸으로 셌는지 **변수 이름과 함께** 적는다(#3).
+    by = dict(box.get("by_var") or {})
+    if by:
+        g_box = dict(by.get("goals") or {})
+        f_box = dict(by.get("favors") or {})
+        g_types = {str(x) for x in (g_box.get("types") or [])}
+        f_types = {str(x) for x in (f_box.get("types") or [])}
+        for one in list(getattr(varset, "rows", None) or []):
+            kind = str(getattr(one, "type", "") or "")
+            key = str(getattr(one, "subject", "") or "")
+            side = ("home" if key == str(getattr(ref, "home", "") or "")
+                    else "away" if key == str(getattr(ref, "away", "") or "")
+                    else "")
+            goals = str(getattr(one, "goals", "") or "none")
+            fav = str(getattr(one, "favors", "") or "both")
+            rid = str(getattr(one, "id", "") or "")
+            # ② 흐름·③ 전술 — `goals` 칸(그 팀 득점 방향)
+            if side and kind in g_types and goals in ("up", "down"):
+                mul = float(g_box.get(goals) or 1.0)
+                got[side] *= mul
+                said.append(f"[{rid}] {side} λ ×{mul:g}(goals {goals})")
+                continue
+            # ① 전력 — `favors` 가 가리키는 쪽을 올린다(goals 가 말 안 한 것만)
+            if kind in f_types and fav in ("home", "away"):
+                mul = float(f_box.get("mul") or 1.0)
+                got[fav] *= mul
+                said.append(f"[{rid}] {fav} λ ×{mul:g}(favors)")
+    cap = float(box.get("cap_mul") or 0.0) or 0.0
     for side in got:
         if floor and got[side] < floor:
             said.append(f"⚠️ {side} 배율이 상한에 걸렸다({got[side]:.3f} → {floor:g})")
             got[side] = floor
+        if cap and got[side] > cap:
+            said.append(f"⚠️ {side} 배율이 상한에 걸렸다({got[side]:.3f} → {cap:g})")
+            got[side] = cap
     if not said:
         return got, ""
     return got, ("🔴 **λ 보정**(사용자 지정 · 적합 아님) — " + " · ".join(said)
