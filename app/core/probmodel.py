@@ -403,6 +403,25 @@ def run(ref, facts, mr, varset, *, edge: dict | None = None,
     #  🔴 `tilt` 는 이제 **보고용**이다(카드가 종합을 적는다) — λ 는 안 만든다.
     sides = {k: mr.axis(k).sides() for k in weights}
     move = sides_move(sides, weights, beta=beta, cap=cap)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **상성을 뺀다** — 사용자 결정 2026-10-15
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 상성을 빼라 … 빼고 노리치 경기가 어떻게 바뀄는지 확인해라
+    #
+    #  🔴 빼면 λ 는 **리그 실측 총골 + 홈 이점 + 팀별 홈 효과 + λ 규칙**만으로
+    #     선다 — 두 팀의 **전력·폼 차가 확률에 안 들어간다**(실측 2026-10-15:
+    #     여섯 경기 홈 확률 퍼짐 7.7% → 6.0%).
+    #  ⚠️ 축 값은 **그대로 센다**(카드가 근거로 적는다) — λ 에만 안 넣는다.
+    #  🔴 되돌릴 수 있게 플래그다(`m1v2.flags.matchup_off`).
+    said_off = ""
+    from app.core import m1v2 as _c
+    if _c.on("matchup_off"):
+        said_off = (f"🔴 **상성 뺐다**(`matchup_off`) — 종전 이동 홈 "
+                    f"{move['home']:+.3f} · 원정 {move['away']:+.3f} 를 **0 으로** "
+                    "둔다(축 값은 카드에 그대로 적는다)")
+        move = {k: 0.0 for k in move}
+        _note(state, f"S3 {said_off}")
     # 🔴🔴 2(b) — **원정 배율을 건다**(사용자 지시 2026-10-12). ⚠️ 종전엔 원정이
     #    `mean`(한 팀 평균)이었다 — 원정 팀이 덜 넣는다는 실측을 버린 식이다.
     from app import rules as _rules

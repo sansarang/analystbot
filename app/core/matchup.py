@@ -679,11 +679,32 @@ def fingerprint(mr: object) -> str:
             one = None
         gap = getattr(one, "gap", None)
         got.append("⬜" if gap is None else f"{float(gap):.4f}")
-    got.append(f"{float(getattr(mr, 'total', 0.0) or 0.0):.4f}")
+    got.append(f"{total_of(mr):.4f}")
     said = dict(getattr(mr, "verdict", None) or {})
     got.append(f"{said.get('who')}/{said.get('strength')}")
     got.append(str(getattr(mr, "xi_state", "") or ""))
     return hashlib.sha1("|".join(got).encode()).hexdigest()[:12]
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **축 종합을 읽는 자리 하나** — 사용자 지시 2026-10-15(버그 수정)
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 실사고 2026-10-15: 카드·러너가 `mr.total` 을 읽었는데 `MatchupReport` 에
+#     **그런 칸이 없다**(`getattr(..., 0.0)` 이 늘 **0.0** 을 돌려줬다).
+#     그래서 축 종합이 **+0.0000** 으로 찍혀 *"축이 아무 일도 안 했다"* 로
+#     읽혔다 — 실제 값은 λ 유도 글의 `축 종합 -0.113` 이었다.
+#  🔴 참값은 `verdict["score"]`(= `combined()` 의 가중합)다. 읽는 함수를
+#     **하나** 둔다(사본 금지 · #1).
+
+
+def total_of(mr: object) -> float:
+    """🔴 축 종합(가중합) — `verdict["score"]` 하나에서 읽는다."""
+    said = dict(getattr(mr, "verdict", None) or {})
+    try:
+        return float(said.get("score") or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
 
 
 def report(ref, facts, box: dict, varset, *, strategy=None,

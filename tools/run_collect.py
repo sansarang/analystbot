@@ -552,12 +552,12 @@ async def main(argv: list[str]) -> int:
         else:
             print(f"- {key} — 홈 {h:.4f} · 원정 {a:.4f} · 차 {h - a:+.4f} "
                   f"· 근거 {list(getattr(ax, 'refs', None) or []) or '없다'}")
-    print(f"- 축 종합 — {float(getattr(mr, 'total', 0.0) or 0.0):+.4f}\n",
-          flush=True)
+    # 🔴 `mr.total` 은 **없는 칸**이었다 — 참값은 `matchup.total_of`(verdict.score)
+    print(f"- 축 종합 — {_mu.total_of(mr):+.4f}\n", flush=True)
     n_ax = sum(1 for k in ("axis0", "axis1", "axis2", "axis3")
                if getattr(mr.axis(k), "home", None) is not None)
     mark("⑬⑭ 상성·축", "✅ 돌았다" if n_ax else "🔴 빈손",
-         f"선 축 {n_ax}/4 · 종합 {float(getattr(mr, 'total', 0.0) or 0.0):+.4f}")
+         f"선 축 {n_ax}/4 · 종합 {_mu.total_of(mr):+.4f}")
 
     print("## ⑮ 확률 + ⑯ 시뮬", flush=True)
     prob = _pm.run(ref, facts, mr, varset, edge=edge, state=st)
