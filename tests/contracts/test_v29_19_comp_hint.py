@@ -59,3 +59,37 @@ def test_글자를_베끼지_않았다() -> None:
               "app/core/stages/s6_verdict.py"):
         said = pathlib.Path(f).read_text(encoding="utf-8")
         assert "대륙 대회다" not in said, f"🔴 {f} 가 글자를 베꼈다"
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **AFC 컵도 같은 대회다** — 사용자 지적 2026-10-15
+# ══════════════════════════════════════════════════════════════════
+
+
+def test_afc_컵이_대륙_대회로_잡힌다() -> None:
+    """⚠️ 실측 2026-10-15: `AFC Cup`·`AFC 컵` 은 **못 알아봤다**(지시문이 빈
+    글자) — ACL2 가 2024 년에 AFC 컵을 대체한 대회다."""
+    from app.core import competition as c
+    for name in ("AFC Cup", "AFC 컵", "에이에프씨컵"):
+        key, _why = c.key_of(competition=name)
+        assert key == "league:ACL2", (name, key)
+        assert "대륙 대회다" in comp_hint(R(name)), name
+
+
+def test_afc_가_uefa_로_안_간다() -> None:
+    """🔴 실측 2026-10-15: `AFC Champions League 2` 가 `champions league` 글자로
+    **UEFA UCL** 에 걸렸다 — 남의 대회 기준을 쓰면 수가 전부 거짓이 된다."""
+    from app.core import competition as c
+    for name in ("AFC Champions League 2", "AFC Champions League Two"):
+        assert c.key_of(competition=name)[0] == "league:ACL2", name
+    assert c.key_of(competition="UEFA Champions League")[0] == "league:UCL"
+
+
+def test_자동_등록_열쇠는_지시문이_없다() -> None:
+    """⚠️ 전부터 그렇다(내 수정과 무관) — 맨 `Champions League` 는
+    `league:fotmob42`(자동 등록)로 가고 그 행에 `kind` 가 없어 **빈 글자**다.
+    🔴 지어내지 않는 쪽이 맞다 — 유형을 모르면 지시문을 붙이지 않는다."""
+    from app.core import competition as c
+    key, _why = c.key_of(competition="Champions League")
+    assert key.startswith("league:fotmob"), key
+    assert comp_hint(R("Champions League")) == ""

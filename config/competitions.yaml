@@ -296,8 +296,14 @@ keys:
   league:ACL2:
     kind: club_continental
     confederation: AFC
-    names: ["afc champions league two", "acl two", "acl2",
-            "아시아 챔피언스리그 투"]
+    #: 🔴🔴 **AFC 컵도 같은 대회다** — 사용자 지적 2026-10-15.
+    #   ⚠️ 실측 2026-10-15: `AFC Cup`·`AFC 컵` 은 **못 알아봤고**(지시문이 빈
+    #      글자가 됐다), `AFC Champions League 2` 는 `champions league` 글자가
+    #      **UEFA UCL** 에 먼저 걸려 **엉뚱한 대회**로 잡혔다.
+    #   🔴 ACL2 는 2024 년에 **AFC 컵을 대체한** 대회다 — 그 이름들을 여기 둔다.
+    names: ["afc champions league two", "afc champions league 2",
+            "acl two", "acl2", "아시아 챔피언스리그 투",
+            "아시아 챔피언스리그 2", "afc cup", "afc 컵", "에이에프씨컵"]
     sources:
       fotmob_ids: [9469]
       fotmob_names: ["AFC Champions League Two"]
