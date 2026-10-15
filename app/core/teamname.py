@@ -17,7 +17,13 @@ from __future__ import annotations
 #: 🔴 팀 이름에서 **구단 형태**를 말하는 낱말 — 겹침을 셀 때 뺀다
 NOISE = {"fc", "cf", "cp", "sc", "sk", "fk", "ac", "as", "rc", "club",
          "clube", "de", "da", "do", "of", "the", "futbol", "football",
-         "calcio", "sport", "sportif", "team", "afc", "kf", "nk", "bk"}
+         "calcio", "sport", "sportif", "team", "afc", "kf", "nk", "bk",
+         # 🔴🔴 **관사**(사용자 지적 2026-10-15) — ⚠️ 실사고: `de`·`da`·`do` 는
+         #    있는데 `la` 가 없어 **`LA Galaxy` 가 `Avenir de La Marsa`**(튀니지
+         #    Ligue I)에 붙었다(속 낱말 `la` 하나 ÷ 2 = 0.5 = CUT). 그 바람에
+         #    MLS 11:30 세 경기 질의가 **남의 경기**로 확정됐다.
+         "la", "le", "les", "el", "los", "las", "lo",
+         "du", "di", "del", "des", "der", "den", "dos"}
 # ⚠️ `racing`·`sporting`·`united`·`city` 는 **빼지 않는다** — 그것이 유일한 속
 #    낱말인 이름이 있다(`Sporting CP` 의 속 낱말은 `sporting` 뿐이다).
 

@@ -182,6 +182,45 @@ async def _spell_hints(q: Question, *, state: RunState) -> dict:
     return out
 
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **확정한 경기가 물어본 그 경기인가** — 사용자 지적 2026-10-15
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 실사고 2026-10-15(MLS 11:30): `"Los Angeles FC Austin FC"` 도,
+#     `"LA Galaxy Portland Timbers"` 도 **`Avenir de La Marsa vs Etoile
+#     Métlaoui`**(튀니지 Ligue I)로 확정됐다. 그 경기는 `games` 표에서 **가장
+#     최근에 적힌 행**이었고, 물어본 세 경기는 표에 **없었다**.
+#     🔴 즉 입구가 *"못 찾았다"* 대신 **남의 경기**를 `ok` 로 돌려줬고, 봇은
+#        그것으로 16단계를 다 돌렸다(돈과 시간을 썼다).
+#  🔴 그래서 **이름 대 이름**으로 검문한다 — 한쪽도 안 맞으면 쓰지 않는다.
+#     문은 `verify.same_team` 하나다(사본 금지 · 2026-10-15 에 그 문을 하나로
+#     합쳤다). ⚠️ 느슨하지 않다 — 짧은 이름(`Como`)과 긴 이름(`Como 1907`)은
+#     통과하고 남의 팀은 거부한다(그 함수의 계약이 센다).
+
+
+def asked_match(asked: object, ref: object) -> tuple[bool, str]:
+    """🔴 물어본 이름이 그 경기의 **어느 쪽에라도** 있나. `(맞나, 사유)`.
+
+    `asked` 는 `Question` 이거나 **이름 목록**이다(퇴로는 이름만 들고 있다).
+    🔴 묻는 이름이 **하나도 없으면** 검문하지 않는다 — 그때는 고를 근거가
+       질문에 없다(슬레이트·보드가 고른 것이다).
+    """
+    from app import verify
+    raw = (list(asked) if isinstance(asked, (list, tuple))
+           else [getattr(asked, "team", ""), getattr(asked, "opponent", "")])
+    said = [str(x or "").strip() for x in raw if str(x or "").strip()]
+    if not said:
+        return True, ""
+    sides = [x for x in (str(getattr(ref, k, "") or "")
+                         for k in ("home_name", "away_name", "home", "away"))
+             if x]
+    for one in said:
+        if any(verify.same_team(one, side) for side in sides):
+            return True, ""
+    return False, (f"🔴 **물어본 팀이 그 경기에 없다** — 물음 "
+                   f"{' · '.join(said)} ↔ 확정 {' vs '.join(sides[:2])}")
+
+
 async def _respell(pool: Any, q: Question, *, state: RunState,
                    net: Any) -> MatchRef | None:
     """🔴 **이름표가 모르는 쪽만** 철자를 바꿔 입구를 다시 돌린다(§5 s1 ⑥-1).
@@ -226,6 +265,12 @@ async def _try(pool: Any, team: str, opp: str, *, state: RunState, net: Any,
     got = adapt.ref_of(raw, competition_short=queries.competition_short(
         getattr(raw, "competition", "")), openworld=openworld)
     if got is not None:
+        # 🔴🔴 **이름 검문**(`asked_match` 머리말) — 검색·철자 퇴로가 데려온
+        #    경기가 더 위험하다. 안 맞으면 **안 쓴다**.
+        ok_name, said_name = asked_match([team, opp], got)
+        if not ok_name:
+            state.note(f"s1(퇴로) {said_name}")
+            return None
         state.match_key = got.id
     return got
 
@@ -277,6 +322,12 @@ async def _openworld(pool: Any, q: Question, *, state: RunState,
         # 🔴 이 경기는 **⑥단으로 들어왔다** — 상한이 그것을 본다(§7)
         openworld=True)
     if got is not None:
+        # 🔴🔴 **이름 검문**(`asked_match` 머리말) — 검색·철자 퇴로가 데려온
+        #    경기가 더 위험하다. 안 맞으면 **안 쓴다**.
+        ok_name, said_name = asked_match(q, got)
+        if not ok_name:
+            state.note(f"s1(퇴로) {said_name}")
+            return None
         state.match_key = got.id
     return got
 
@@ -345,5 +396,15 @@ async def run(q: Question, *, pool: Any, state: RunState,
         return Ambiguous(
             why=("🔴 경기를 찾았는데 **열쇠나 킥오프가 비었다** — 그 값으로는 "
                  "창을 자를 수 없다(절대규칙 2)"))
+    # 🔴🔴 **이름 검문**(`asked_match` 머리말) — 남의 경기를 분석하지 않는다
+    ok_name, said_name = asked_match(q, got)
+    if not ok_name:
+        state.note(f"s1 {said_name}")
+        rows = list(getattr(look, "candidates", None) or ())[:6]
+        return Ambiguous(
+            why=said_name,
+            candidates=[f"{r.get('away')} @ {r.get('home')} · {r.get('league')}"
+                        for r in rows],
+            picks=picks_of(rows))
     state.match_key = got.id
     return got
