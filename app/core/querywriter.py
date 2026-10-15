@@ -170,18 +170,10 @@ def ask(ref, *, state, aliases: list[str], langs: list[str]
     #     ③ 딥서치·④ 추출·⑯ 종합 평까지 **빈손 8개**가 됐다.
     #  🔴 그래서 **solar 를 먼저** 부르고, 실패하면 deepseek 로 넘어간다
     #     (한쪽이 죽어도 질의가 나온다 · 사유는 그대로 남긴다 · #3).
-    got, said_try = None, []
-    for pv in ("solar", "deepseek"):
-        got = llm.ask(provider=pv, purpose="query", messages=msgs,
-                      out=QueryPlan, state=state)
-        if isinstance(got, QueryPlan):
-            said_try.append(f"{pv} ✅")
-            break
-        said_try.append(f"{pv} 🔴 {getattr(got, 'reason', '?')}")
-    state.note("②③ 질의 공급자 — " + " · ".join(said_try))
+    got, said_try = llm.ask_first(purpose="query", messages=msgs,
+                                  out=QueryPlan, state=state)
     if not isinstance(got, QueryPlan):
-        why = ("🔴 LLM 실패(" + " · ".join(said_try)
-               + ") — 코드 질의로만 간다")
+        why = f"🔴 LLM 실패({said_try}) — 코드 질의로만 간다"
         state.note(f"②③ 질의 쓰기 — {why}")
         return [], [], why
     rows, bad = keep(list(got.queries), aliases=list(aliases or []))

@@ -18,18 +18,25 @@ def test_일단_이름_풀이는_solar_다() -> None:
     assert 'provider="deepseek"' not in src, "🔴 deepseek 가 남아 있다"
 
 
-def test_딥서치_질의는_solar_가_먼저다() -> None:
-    from app.core import querywriter
-    src = inspect.getsource(querywriter)
-    at_s = src.find('"solar"')
-    at_d = src.find('"deepseek"')
-    assert at_s >= 0 and at_d >= 0, "🔴 공급자 둘이 다 있어야 한다(퇴로)"
-    assert at_s < at_d, "🔴 solar 가 먼저가 아니다"
-    assert 'for pv in ("solar", "deepseek")' in src, "🔴 퇴로가 고리로 안 돈다"
+def test_차례는_solar_가_먼저다() -> None:
+    from app.core import llm
+    assert llm.ORDER[0] == "solar", llm.ORDER
+    assert "deepseek" in llm.ORDER, "🔴 퇴로를 지웠다 — solar 가 죽으면 멈춘다"
 
 
-def test_퇴로를_지운_것이_아니다() -> None:
-    """🔴 solar 가 죽으면 deepseek 로 간다 — 한쪽만 남기면 또 멈춘다."""
-    from app.core import querywriter
-    src = inspect.getsource(querywriter)
-    assert src.count('llm.ask(provider=pv') == 1, "🔴 공급자를 고리로 안 돈다"
+def test_deepseek_고정_호출이_app_에_없다() -> None:
+    """🔴 한 공급자에 못을 박으면 그쪽이 죽을 때 그 단계가 통째로 멈춘다."""
+    import pathlib
+    bad = [str(f) for f in pathlib.Path("app").rglob("*.py")
+           if 'provider="deepseek"' in f.read_text()]
+    assert not bad, f"🔴 deepseek 고정 호출 — {bad}"
+
+
+def test_차례를_도는_곳은_하나다() -> None:
+    """🔴 사본 금지(#1) — 같은 고리를 단계마다 베끼지 않는다."""
+    import pathlib
+    from app.core import llm
+    assert hasattr(llm, "ask_first"), "🔴 `llm.ask_first` 가 없다"
+    users = [str(f) for f in pathlib.Path("app").rglob("*.py")
+             if "ask_first(" in f.read_text() and f.name != "llm.py"]
+    assert len(users) >= 3, f"🔴 배선이 덜 됐다 — {users}"

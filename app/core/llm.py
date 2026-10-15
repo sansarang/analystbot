@@ -176,6 +176,44 @@ def provider_cfg(provider: str) -> dict:
 # ══════════════════════════════════════════════════════════════════
 
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **공급자 차례** — solar 우선 · 죽은 쪽은 넘어간다(지시 2026-10-15)
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 1을 솔라로 바꿔라 · 딥서치도 솔라가 우선되게 · (⑤-c·⑨도) 그래
+#
+#  ⚠️ 실측 2026-10-15(실제 키·실제 경로): deepseek 가 `"Say OK"` 3토막에도
+#     **59.3초 읽기 타임아웃**이었고 solar 는 **0.5초**였다. 한 공급자의 멈춤이
+#     카드 예산을 태워 **멀쩡한 쪽까지** 못 부르게 만든다(San Diego 빈손 8개).
+#  🔴 그래서 차례를 **한 곳에서** 돈다 — 같은 고리를 단계마다 베끼지 않는다(#1).
+#  ⚠️ 퇴로를 지우지 않는다 — solar 가 죽으면 deepseek 가 받는다.
+
+#: 🔴 기본 차례 — **solar 먼저**
+ORDER: tuple = ("solar", "deepseek")
+
+
+def ask_first(*, purpose: str, messages: list[Message], out: type[T],
+              state: RunState, providers: tuple = ORDER,
+              enums: dict[str, list[str]] | None = None,
+              _post=None) -> tuple[object, str]:
+    """🔴 차례대로 묻고 **처음 성공한 것**을 돌려준다. `(결과, 사유)`.
+
+    🔴 사유에는 **누가 됐고 누가 실패했나**가 남는다(#3 조용한 0 금지).
+    """
+    said: list[str] = []
+    got: object = LlmFail(reason=DropReason.LLM_TIMEOUT, detail="공급자가 없다")
+    for pv in providers:
+        got = ask(provider=pv, purpose=purpose, messages=messages, out=out,
+                  state=state, enums=enums, _post=_post)
+        if isinstance(got, out):
+            said.append(f"{pv} ✅")
+            break
+        said.append(f"{pv} 🔴 {getattr(got, 'reason', '?')}")
+    why = " · ".join(said)
+    state.note(f"llm {purpose} 공급자 — {why}")
+    return got, why
+
+
 def ask(*, provider: Provider, purpose: str, messages: list[Message],
         out: type[T], state: RunState,
         enums: dict[str, list[str]] | None = None,

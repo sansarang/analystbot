@@ -139,9 +139,10 @@ def ask(ref: MatchRef, facts, *, state: RunState) -> tuple[dict, str]:
             "   (순위·승점·남은 경기·구역을 근거로 든다)\n"
             "⚠️ 모르겠으면 `urgency` 를 `모르겠다` 로 두고 `why` 를 비운다.")),
     ]
-    got = llm.ask(provider="deepseek", purpose="recall", messages=msgs,
-                  out=LeagueRead, state=state,
-                  enums={"urgent_team": names, "urgency": list(URGENCY)})
+    # 🔴 **solar 우선**(지시 2026-10-15) — 차례를 도는 곳은 `llm.ask_first` 하나다
+    got, _said_pv = llm.ask_first(
+        purpose="recall", messages=msgs, out=LeagueRead, state=state,
+        enums={"urgent_team": names, "urgency": list(URGENCY)})
     if not isinstance(got, LeagueRead):
         why = f"🔴 LLM 분석 실패({getattr(got, 'reason', '?')}) — 코드 글자만 쓴다"
         state.note(f"s4c 리그 분석 — {why}")

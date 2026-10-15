@@ -533,8 +533,9 @@ def _ask(card: Card, box: Bundle, *, state: RunState,
         msgs = msgs + [llm.Message(role="user", content=(
             "🔴 아래가 **검열에서 어긋났다** — 그 자리만 고쳐 다시 내라:\n"
             + "\n".join(f"- {x}" for x in bad[:10])))]
-    got = llm.ask(provider="deepseek", purpose="say", messages=msgs,
-                  out=SayOut, state=state)
+    # 🔴 **solar 우선**(지시 2026-10-15) — 차례를 도는 곳은 `llm.ask_first` 하나다
+    got, _said_pv = llm.ask_first(
+        purpose="say", messages=msgs, out=SayOut, state=state)
     if isinstance(got, SayOut):
         return got
     # 🔴 ⑦ — **왜 실패했는지**를 호출부가 읽는다(잘림이면 축약판으로 간다)
@@ -650,8 +651,9 @@ def _ask_core(card: Card, box: Bundle, *, state: RunState):
     msgs = _prompt(card, box) + [llm.Message(role="user", content=(
         "🔴 **앞 요청이 잘렸다.** 이번에는 칸 **둘만** 내라 — `one_line`(한 줄 "
         "요약)과 `reason`(이유 문단). 주장·흐름·승부처는 **쓰지 않는다**."))]
-    got = llm.ask(provider="deepseek", purpose="say", messages=msgs,
-                  out=SayCore, state=state)
+    # 🔴 **solar 우선**(지시 2026-10-15) — 차례를 도는 곳은 `llm.ask_first` 하나다
+    got, _said_pv = llm.ask_first(
+        purpose="say", messages=msgs, out=SayCore, state=state)
     if isinstance(got, SayCore):
         return got
     state.note(f"s9say 핵심 다시 받기 실패 — {getattr(got, 'reason', '?')}")
@@ -671,8 +673,9 @@ def _ask_reason(card: Card, box: Bundle, *, state: RunState,
         "🔴 **이 번만은 `reason`(이유 문단) 하나만** 내라 — 다른 칸은 쓰지 "
         "않는다. 아래가 검열에서 어긋난 자리다:\n"
         + "\n".join(f"- {x}" for x in (bad or [])[:6])))]
-    got = llm.ask(provider="deepseek", purpose="say", messages=msgs,
-                  out=ReasonOnly, state=state)
+    # 🔴 **solar 우선**(지시 2026-10-15) — 차례를 도는 곳은 `llm.ask_first` 하나다
+    got, _said_pv = llm.ask_first(
+        purpose="say", messages=msgs, out=ReasonOnly, state=state)
     if isinstance(got, ReasonOnly):
         return str(got.reason or "").strip()
     state.note(f"s9say 이유 문단 수선 실패 — {getattr(got, 'reason', '?')}")
