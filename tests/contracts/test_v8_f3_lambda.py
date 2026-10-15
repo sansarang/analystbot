@@ -26,7 +26,9 @@ def test_F3_R5_λ홈_식에_원정_공격이_들어가지_않는다():
 
     🔴 실물로 센다 — 원정 **공격**만 올리면 λ홈 은 **그대로**이고 λ원정만 오른다.
     """
-    from app.core import probmodel as _pm
+    # 🔴 상성 삭제(2026-10-15)로 새 경로의 `sides_move` 를 지웠다 —
+    #    같은 식이 **얼린 경로**에 남아 있고 도구들이 그것을 쓴다.
+    from app.core.legacy import old_engine as _pm
 
     def _mk(**kw):
         box = {"axis0": (0.0, 0.0, 0.0, 0.0), "axis1": (0.0, 0.0, 0.0, 0.0),
@@ -56,7 +58,9 @@ def test_F3_R4_같은_규칙이_λ_경로에_두_번_나오지_않는다():
        으로 λ 를 **또** 미는 항은 지웠다.
     ⚠️ 돌연변이: `probmodel` 이 다시 `sim_input` 의 λ 를 쓰면 빨개진다.
     """
-    from app.core import probmodel as _pm
+    # 🔴 상성 삭제(2026-10-15)로 새 경로의 `sides_move` 를 지웠다 —
+    #    같은 식이 **얼린 경로**에 남아 있고 도구들이 그것을 쓴다.
+    from app.core.legacy import old_engine as _pm
     said = inspect.getsource(_pm.run)
     assert "lam_home=" not in said or "sim_input" not in said, (
         "🔴 ⑪ 이 규칙 λ 를 다시 더한다(이중 계산)")
@@ -67,7 +71,9 @@ def test_F3_R4_같은_규칙이_λ_경로에_두_번_나오지_않는다():
 
 def test_F3_홈_이점은_lambda_const_자리_변수만_받는다():
     """🔴 `home_mul`(홈 이점)은 **lambda_const 자리 변수만** 받는다."""
-    from app.core import probmodel as _pm
+    # 🔴 상성 삭제(2026-10-15)로 새 경로의 `sides_move` 를 지웠다 —
+    #    같은 식이 **얼린 경로**에 남아 있고 도구들이 그것을 쓴다.
+    from app.core.legacy import old_engine as _pm
     said = inspect.getsource(_pm.home_mul)
     assert 'of("lambda_const")' in said, "🔴 다른 자리 변수를 본다"
     for ban in ('of("axis0")', 'of("axis1")', 'of("axis2")', 'of("axis3")',
@@ -80,7 +86,9 @@ def test_F3_식이_로그에서_더해진다():
 
     ⚠️ 상한(cap)은 그대로 — 임시 계수 표시도 유지한다.
     """
-    from app.core import probmodel as _pm
+    # 🔴 상성 삭제(2026-10-15)로 새 경로의 `sides_move` 를 지웠다 —
+    #    같은 식이 **얼린 경로**에 남아 있고 도구들이 그것을 쓴다.
+    from app.core.legacy import old_engine as _pm
     said = inspect.getsource(_pm.run)
     assert "math.exp" in said, "🔴 로그 합이 아니다"
     assert "cap" in said, "🔴 상한이 사라졌다"
@@ -93,7 +101,9 @@ def test_F3_식이_로그에서_더해진다():
 
 def test_F3_축마다_베타를_둘_수_있다():
     """🔴 `Σ_축 β_축` — 축별 계수를 표에서 읽는다(없으면 공통 β · 🔴 임시)."""
-    from app.core import probmodel as _pm
+    # 🔴 상성 삭제(2026-10-15)로 새 경로의 `sides_move` 를 지웠다 —
+    #    같은 식이 **얼린 경로**에 남아 있고 도구들이 그것을 쓴다.
+    from app.core.legacy import old_engine as _pm
     got = inspect.signature(_pm.sides_move).parameters
     assert {"beta", "cap"} <= set(got), sorted(got)
     # 🔴 축별 무게가 곱해진다 — 무게 0 이면 그 축은 λ 를 못 민다

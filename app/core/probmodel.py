@@ -331,32 +331,6 @@ def home_mul(facts, varset, *, ref=None,
                  f"{float(per):g} = ×{mul:.3f}(대회 `{kind}`){tag}")
 
 
-def sides_move(box: dict, weights: dict, *, beta: float, cap: float) -> dict:
-    """🔴🔴 **F3** — 축별 공격·수비 특징 → **쪽별 λ 이동**(로그).
-
-    > log λ홈  = … + Σ_축 β_축 ·(홈 공격_축 − 원정 수비_축)
-    > log λ원정 = … + Σ_축 β_축 ·(원정 공격_축 − 홈 수비_축)
-
-    `box` 한 줄: `{"axis0": {"att": {"home": …, "away": …}, "dfn": {…}}}`.
-    🔴 **쪽마다 자기 식**이다 — 축 종합 숫자 하나로 두 λ 를 만들지 않는다(R5).
-    ⚠️ 못 잰 칸(`None`)은 **0 이 아니라 건너뛴다** — 그 축은 그 쪽 λ 를 안 민다(#3).
-    """
-    out = {"home": 0.0, "away": 0.0}
-    for key, one in (box or {}).items():
-        w = float(dict(weights or {}).get(key) or 0.0)
-        if not w:
-            continue
-        att = dict((one or {}).get("att") or {})
-        dfn = dict((one or {}).get("dfn") or {})
-        pairs = (("home", att.get("home"), dfn.get("away")),
-                 ("away", att.get("away"), dfn.get("home")))
-        for side, mine, theirs in pairs:
-            if mine is None or theirs is None:
-                continue
-            out[side] += w * float(beta) * (float(mine) - float(theirs))
-    return {k: max(-float(cap), min(float(cap), v)) for k, v in out.items()}
-
-
 def run(ref, facts, mr, varset, *, edge: dict | None = None,
         state=None, floor: object = None) -> ProbOut:
     """🔴🔴 S3 — **상성만으로** λ 를 세고 시뮬로 바꾼다.
@@ -402,7 +376,19 @@ def run(ref, facts, mr, varset, *, edge: dict | None = None,
     #     거울이라 *"홈이 좋으면 원정이 그만큼 나쁘다"* 가 **식에 박혀** 있었다.
     #  🔴 `tilt` 는 이제 **보고용**이다(카드가 종합을 적는다) — λ 는 안 만든다.
     sides = {k: mr.axis(k).sides() for k in weights}
-    move = sides_move(sides, weights, beta=beta, cap=cap)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **상성을 삭제했다** — 사용자 결정 2026-10-15
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 그냥 **상성 삭제**하라고
+    #
+    #  🔴 축 종합·쪽값이 λ 를 **움직이지 않는다**(이동 0 고정). 축 값 자체는
+    #     계속 센다 — 카드가 **근거로** 적는다(표시·검증).
+    #  ⚠️ 그래서 두 팀 전력·폼 차가 확률에 **안 들어간다** — 남는 재료는 리그
+    #     실측 총골 · 홈 이점 · 팀별 홈 효과 · λ 규칙(IR13·IR11·IR14)뿐이다
+    #     (실측 2026-10-15: 여섯 경기 홈 확률 퍼짐 7.7% → 6.0%).
+    move = {"home": 0.0, "away": 0.0}
+    tilt = 0.0
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **상성을 뺀다** — 사용자 결정 2026-10-15
     # ══════════════════════════════════════════════════════════════════

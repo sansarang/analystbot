@@ -117,10 +117,6 @@ class Axis:
            카드가 근거로 적는다 — λ 를 세는 쪽만 축을 못 쓴다.
         """
         base = {"home": self.home, "away": self.away}
-        from app.core import m1v2 as _c
-        if _c.on("matchup_off"):
-            zero = {"home": 0.0, "away": 0.0}
-            return {"att": dict(zero), "dfn": dict(zero)}
         return {"att": dict(self.att or base), "dfn": dict(self.dfn or base)}
 
 
@@ -161,12 +157,10 @@ class MatchupReport:
            `test_s1_1_frozen_engine_hash_is_unchanged`(K0)가 그 코드를 잠갔다.
            그래서 **입력 칸 하나**(이 함수)에서 끊는다.
         """
-        box = {k: (float(v.gap) if v.gap is not None else 0.0)
-               for k, v in self.axes.items()}
-        from app.core import m1v2 as _c
-        if _c.on("matchup_off"):
-            return {k: 0.0 for k in box}
-        return box
+        # ⚠️ 축 차는 **그대로 돌려준다** — λ 를 안 쓰는 것은 확률 쪽에서
+        #    끊었다(상성 삭제 · 2026-10-15). 카드·검증이 이 수를 읽는다.
+        return {k: (float(v.gap) if v.gap is not None else 0.0)
+                for k, v in self.axes.items()}
 
     def edge_of(self) -> str:
         return str(self.verdict.get("edge") or "")

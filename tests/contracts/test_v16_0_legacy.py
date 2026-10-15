@@ -16,8 +16,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 LEGACY = ROOT / "app/core/legacy/old_engine.py"
 
-#: 🔴🔴 **태그 `legacy-4axis`** — 얼린 그 파일의 sha256(2026-10-12 측정)
-TAG_SHA = "71def33640d1a7d41b7731700960fef8509fc7c41ac85741c80c9317ec6ee53f"
+#: 🔴🔴 **태그 `legacy-4axis`** — 얼린 그 파일의 sha256
+#
+#  ⚠️ **2026-10-15 에 한 번 바뀠다** — 사용자 결정으로 **상성을 삭제**했다
+#     (축 종합·쪽값이 λ 를 안 움직인다 · 이동 0 고정). K0(얼림)을 그 지시가
+#     풀었고, 그 밖의 줄은 **하나도 안 건드렸다**.
+#  🔴 옛 해시(2026-10-12 측정): 71def33640d1a7d41b7731700960fef8509fc7c41ac85741c80c9317ec6ee53f
+TAG_SHA = "5ec097aadabcb32f39524edef6695702162d7dfc6fa5b322be8a09e9beae9140"
 
 
 def test_k0_legacy_hash_matches_the_tag() -> None:
