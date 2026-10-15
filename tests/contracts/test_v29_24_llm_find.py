@@ -7,7 +7,8 @@
    벽은 **상대 팀 이름을 모르는 것**이었다.
 
 지키는 것:
-  LF1 `_by_llm` 이 **퇴로 맨 뒤**에 배선돼 있다(망·LLM 없는 길을 먼저 쓴다)
+  LF1 `_by_llm` 이 **퇴로 맨 앞**에 배선돼 있다(사용자 지시 2026-10-15:
+      *"solar 로 그냥 넣어라 맨 처음으로"* — 앞 셋을 다 기다리는 시간이 아깝다)
   LF2 공급자는 **`llm.ask_first`**(solar → deepseek) 하나로 고른다
   LF3 🔴🔴 **문서 접지** — 모델이 낸 이름·인용이 본문에 없으면 **버린다**
   LF4 출력 칸에 **수가 없다**(이름 둘과 인용뿐)
@@ -47,14 +48,20 @@ def _fn(name: str) -> str:
     return code[i:j if j > i else len(code)]
 
 
-def test_lf1_wired_last() -> None:
-    """LF1 🔴 `run` 이 `_by_llm` 을 **일정 퇴로 뒤에** 부른다."""
+def test_lf1_wired_first() -> None:
+    """LF1 🔴 `run` 이 `_by_llm` 을 **맨 처음** 부른다(사용자 지시 2026-10-15).
+
+    ⚠️ 실측 2026-10-15(`Hope FC`): 앞 셋이 전부 못 찾는 경기에서 ⑥단
+       findgame 을 기다리는 데만 시간이 갔다. 🔴 순서가 바뀌어도 확정 기준은
+       그대로다 — 본문 대조 → 기존 길(⑥단 → 입구 → `same_team`).
+    """
     said = _fn("run")
     for one in ("_respell(", "_openworld(", "_by_schedule(", "_by_llm("):
         assert one in said, f"LF1 🔴 `run` 이 `{one}` 를 안 부른다"
-    assert said.index("_by_schedule(") < said.index("_by_llm("), (
-        "LF1 🔴 solar 퇴로가 **일정 퇴로보다 먼저** 돈다 — 망·LLM 없이 도는 "
-        "길을 먼저 다 써야 한다")
+    first = said.index("_by_llm(")
+    for one in ("_respell(", "_by_schedule("):
+        assert first < said.index(one), (
+            f"LF1 🔴 solar 퇴로가 `{one}` 보다 **뒤에** 있다 — 맨 처음이어야 한다")
 
 
 def test_lf2_provider_order_is_shared() -> None:

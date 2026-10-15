@@ -647,21 +647,31 @@ async def run(q: Question, *, pool: Any, state: RunState,
         #  ⚠️ §9 는 4단계 전까지 **옛 경로 수정**을 금지한다. 그래서 고치지 않고,
         #     **s1 이 두 부품을 다 쓴다**(§5 s1: *"기존 … 오픈월드 ⑥단 … 을 감싸"*).
         #  🔴 5단계에서 **질의 만드는 곳을 하나로** 줄인다(§6 "사본 전부").
-        # 🔴 ① **철자부터** — 이름표가 모르는 글자가 원인일 수 있다(실측: `한국`)
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **① solar 경기 찾기가 맨 앞이다** — 사용자 지시 2026-10-15
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > solar 로 그냥 넣어라 **맨 처음으로**
+        #
+        #  ⚠️ 종전 순서는 철자 → ⑥단 → 일정 → solar(맨 뒤)였다. 그런데 실측
+        #     2026-10-15(`Hope FC`): 앞 셋이 **전부** 못 찾는 경기에서 앞 셋을
+        #     다 기다리는 데만 시간이 갔다(⑥단 findgame 이 가장 느리다).
+        #  🔴 그래서 **solar 를 먼저** 돈다 — 그래도 확정 기준은 그대로다:
+        #     모델이 낸 이름은 **본문 대조**를 지나야 하고, 선 이름은 **기존
+        #     길**(⑥단 → 입구 → `same_team`·창 검사)로 되돌아가 확인된다.
+        got = await _by_llm(pool, q, state=state, net=net)
+        if got is not None:
+            return got
+        # 🔴 ② **철자** — 이름표가 모르는 글자가 원인일 수 있다(실측: `한국`)
         got = await _respell(pool, q, state=state, net=net)
         if got is not None:
             return got
-        # 🔴 ② 그래도 없으면 `findgame` 의 ⑥단(`fotmob …` 질의)
+        # 🔴 ③ 그래도 없으면 `findgame` 의 ⑥단(`fotmob …` 질의)
         got = await _openworld(pool, q, state=state, net=net, board_text=board_text)
         if got is not None:
             return got
-        # 🔴🔴 ③ **대회 일정 퇴로**(위 머리말) — LLM 이 죽어도 도는 길이다
+        # 🔴🔴 ④ **대회 일정 퇴로**(위 머리말) — LLM 이 죽어도 도는 길이다
         got = await _by_schedule(pool, q, state=state, net=net)
-        if got is not None:
-            return got
-        # 🔴🔴 ④ **solar 경기 찾기**(위 `_by_llm` 머리말) — 사용자 지시
-        #    2026-10-15. ⚠️ **맨 뒤다** — 망·LLM 없이 도는 길을 먼저 다 쓴다.
-        got = await _by_llm(pool, q, state=state, net=net)
         if got is not None:
             return got
         reason = getattr(getattr(look, "reason", None), "value", "?")
