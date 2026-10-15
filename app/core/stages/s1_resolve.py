@@ -446,6 +446,147 @@ async def _openworld(pool: Any, q: Question, *, state: RunState,
     return got
 
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **solar 경기 찾기 퇴로** — 사용자 지시 2026-10-15
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 봇에 **경기 검색 solar api** 를 추가해라
+#
+#  ⚠️ 실사고 2026-10-15(남아공 `Hope FC` 22:30): 퇴로 셋이 **전부** 못 찾았다 —
+#     ① 철자(이름표가 그 팀을 모른다) ② ⑥단 findgame(fotmob 색인에 **없다**)
+#     ③ 대회 일정(남아공 리그가 **대회 표에 없다**). 그래서 ① 단계에서
+#     `openworld_not_found` 로 멈췄고, **상대 팀 이름을 모르는 것**이 벽이었다.
+#  🔴 그래서 네 번째 퇴로: **solar 가 상대 팀 이름을 읽어 온다.**
+#
+#  🔴🔴 **규율 — 사실은 문서에서만 온다**(절대규칙 5 · CLAUDE.md #4)
+#    ① 모델에게 *"무슨 경기가 있나"* 를 **기억으로 묻지 않는다** — 검색으로 받은
+#       **본문을 주고** 그 안에서 두 팀 이름을 **고르게** 한다.
+#    ② 모델이 낸 이름과 인용이 **받은 본문에 글자로 없으면 버린다**(지어낸 것).
+#    ③ 이름이 서면 **기존 길로 되돌아간다**(⑥단 findgame → 입구) — 확정 기준
+#       (`verify.same_team`·`asked_match`·창 검사)은 **그대로** 돈다.
+#    ④ 공급자 순서는 `llm.ORDER`(solar → deepseek) 하나다(사본 금지).
+#
+#  ⚠️ **`findgame._by_llm_names` 와 무엇이 다른가**(사본 금지 조항):
+#     · 그쪽은 LLM 이 **같은 팀의 다른 철자·슬러그**를 내고 **fotmob 팀 색인**
+#       에서 확인한다 — 🔴 색인에 **없는 팀은 구조적으로 못 찾는다**(Hope FC).
+#     · 이쪽은 LLM 이 **모르는 상대 팀 이름**을 **기사 본문**에서 읽는다 —
+#       색인 밖 팀도 이름이 서고, 그 뒤 **⑥단 findgame** 으로 되돌아간다.
+#     🔴 둘은 **입력이 다르다**(색인 ↔ 본문). 같은 일을 두 번 하지 않는다.
+
+#: 🔴 solar 에게 줄 **문서 수 상한**
+LLM_FIND_DOCS = 3
+#: 🔴 던질 질의 — 문지기 규칙(낱말 1~6 · 연산자 금지)에 맞춘다
+LLM_FIND_Q = ("{t} next match opponent", "{t} fixtures today")
+#: 🔴 본문이 이보다 짧으면 안 읽는다(껍데기 · `fetch.shell_like` 와 같은 결)
+LLM_FIND_MIN = 400
+
+
+def _find_schema():
+    """🔴 solar 출력 — **이름 둘과 원문 인용**뿐이다(수·확률 없다)."""
+    from pydantic import BaseModel, Field
+
+    class Out(BaseModel):
+        home: str = Field(default="", description="홈 팀 이름(글에 적힌 그대로)")
+        away: str = Field(default="", description="원정 팀 이름(글에 적힌 그대로)")
+        quote: str = Field(default="", description="그 경기를 말한 원문 한 문장")
+
+    return Out
+
+
+async def _by_llm(pool: Any, q: Question, *, state: RunState,
+                  net: Any) -> MatchRef | None:
+    """🔴🔴 네 번째 퇴로 — **solar 가 문서에서 상대 팀을 읽는다**(위 머리말)."""
+    from app import search as _search
+    from app import verify
+    from app.core import llm
+    from app.core.search import fetch as _ft
+
+    team = (str(getattr(q, "team", "") or "").strip()
+            or str(getattr(q, "raw", "") or "").strip())
+    if not team:
+        return None
+    chain = _search.build_chain()
+    docs: list[tuple[str, str]] = []
+    for one in LLM_FIND_Q:
+        said_q = one.format(t=team)
+        try:
+            hits = await chain.query(said_q, lang="en")
+        except Exception as exc:                            # noqa: BLE001
+            state.note(f"s1 solar 찾기 — 검색 실패 `{said_q}`: {exc!r}")
+            continue
+        state.note(f"s1 solar 찾기 — `{said_q}` → {len(hits)}건")
+        for h in list(hits)[:4]:
+            url = str(getattr(h, "url", "") or "")
+            if not url or any(url == u for u, _ in docs):
+                continue
+            try:
+                body, _when, _rungs = await _ft.body_of(net, url)
+            except Exception:                               # noqa: BLE001
+                continue
+            if len(str(body or "")) < LLM_FIND_MIN:
+                continue
+            docs.append((url, str(body)[:4000]))
+            if len(docs) >= LLM_FIND_DOCS:
+                break
+        if len(docs) >= LLM_FIND_DOCS:
+            break
+    if not docs:
+        state.note("s1 solar 찾기 — 🔴 본문을 하나도 못 받았다(읽을 글이 없다)")
+        return None
+
+    Out = _find_schema()
+    said_body = "\n\n".join(f"[{i + 1}] {u}\n{b[:1800]}"
+                              for i, (u, b) in enumerate(docs))
+    msgs = [
+        llm.Message(role="system", content=(
+            "너는 **글에 적힌 것만 고르는 사람**이다. 네 기억으로 경기를 "
+            "말하지 말고, 아래 글에서 **그 팀의 다음 경기**를 찾는다. "
+            "글에 없으면 빈 글자로 둔다.")),
+        llm.Message(role="user", content=(
+            f"찾는 팀: **{team}**\n\n{said_body}\n\n"
+            "🔴 위 글에서 이 팀의 **다음 경기 두 팀 이름**을 고른다.\n"
+            "  · `home` — 홈 팀 이름(글에 적힌 **그대로**)\n"
+            "  · `away` — 원정 팀 이름(글에 적힌 **그대로**)\n"
+            "  · `quote` — 그 경기를 말한 **원문 한 문장**(글자 그대로)\n"
+            "⚠️ 글에 그 경기가 없으면 **셋 다 비워라** — 지어내면 버려진다"
+            "(코드가 본문과 대조한다).")),
+    ]
+    got, said_pv = llm.ask_first(purpose="recall", messages=msgs, out=Out,
+                                 state=state)
+    state.note(f"s1 solar 찾기 — 공급자 {said_pv}")
+    if not isinstance(got, Out):
+        return None
+    home = str(getattr(got, "home", "") or "").strip()
+    away = str(getattr(got, "away", "") or "").strip()
+    quote = str(getattr(got, "quote", "") or "").strip()
+    said_all = "\n".join(b for _u, b in docs).lower()
+
+    def _grounded(said: str) -> bool:
+        return bool(said) and said.lower() in said_all
+
+    if not (home and away):
+        state.note("s1 solar 찾기 — ⬜ 모델이 두 팀을 못 골랐다(글에 없다)")
+        return None
+    bad = [x for x in (home, away) if not _grounded(x)]
+    if bad or not _grounded(quote[:40]):
+        # 🔴 **지어낸 것이다** — 본문에 그 글자가 없다(위 규율 ②)
+        state.note(f"s1 solar 찾기 — 🔴 **본문에 없는 글자**를 냈다 "
+                   f"{bad or [quote[:30]]} → 버린다")
+        return None
+    # 🔴 **물어본 팀이 그 경기 한쪽이어야 한다**(남의 경기 금지 · same_team 하나)
+    if not any(verify.same_team(team, x) for x in (home, away)):
+        state.note(f"s1 solar 찾기 — 🔴 물어본 `{team}` 이 "
+                   f"`{home} vs {away}` 에 없다 → 버린다")
+        return None
+    state.note(f"s1 solar 찾기 — ✅ `{home} vs {away}` · 인용 `{quote[:60]}`")
+    # 🔴 이름이 서면 **기존 길로 되돌아간다**(위 규율 ③)
+    q2 = q.model_copy(update={"team": home, "opponent": away})
+    got_ref = await _openworld(pool, q2, state=state, net=net)
+    if got_ref is not None:
+        return got_ref
+    return await _try(pool, home, away, state=state, net=net, openworld=True)
+
+
 async def run(q: Question, *, pool: Any, state: RunState,
               net: Any = None, board_text: str = "",
               pick_key: str = "") -> MatchRef | Ambiguous:
@@ -518,11 +659,16 @@ async def run(q: Question, *, pool: Any, state: RunState,
         got = await _by_schedule(pool, q, state=state, net=net)
         if got is not None:
             return got
+        # 🔴🔴 ④ **solar 경기 찾기**(위 `_by_llm` 머리말) — 사용자 지시
+        #    2026-10-15. ⚠️ **맨 뒤다** — 망·LLM 없이 도는 길을 먼저 다 쓴다.
+        got = await _by_llm(pool, q, state=state, net=net)
+        if got is not None:
+            return got
         reason = getattr(getattr(look, "reason", None), "value", "?")
         rows = list(getattr(look, "candidates", None) or ())[:6]
         return Ambiguous(
             why=(said_bad + " · 퇴로 셋도 못 찾았다" if said_bad
-                 else f"🔴 경기를 확정하지 못했다 — `{reason}`"),
+                 else f"🔴 경기를 확정하지 못했다 — `{reason}`(퇴로 넷 다)"),
             candidates=[f"{r.get('away')} @ {r.get('home')} · {r.get('league')}"
                         for r in rows],
             # 🔴 §1-3 — **버튼으로 고르게 한다**(리그·날짜·시각을 붙여서)
