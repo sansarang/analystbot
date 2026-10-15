@@ -468,7 +468,10 @@ async def run(q: Question, *, pool: Any, state: RunState,
     #     `LA Galaxy` 는 끝까지 못 찾았다.
     #  🔴 그래서 **여기서** 검문한다 — 안 맞으면 `ok` 를 내리고 퇴로로 흘린다.
     said_bad = ""
-    if getattr(look, "ok", False):
+    # 🔴 `Lookup.ok` 는 **읽기 전용 속성**이다(실측 2026-10-15: 대입이 터졌다)
+    #    — 그래서 여기 지역 깃발로 든다.
+    ok_entry = bool(getattr(look, "ok", False))
+    if ok_entry:
         try_ref = adapt.ref_of(
             look.ref, competition_short=queries.competition_short(
                 getattr(look.ref, "competition", "")),
@@ -477,8 +480,8 @@ async def run(q: Question, *, pool: Any, state: RunState,
             ok_name, said_bad = asked_match(q, try_ref)
             if not ok_name:
                 state.note(f"s1 {said_bad} — **퇴로로 간다**")
-                look.ok = False
-    if not getattr(look, "ok", False):
+                ok_entry = False
+    if not ok_entry:
         # ══════════════════════════════════════════════════════════════
         # 🔴🔴 **질의 만드는 곳이 둘이다** — 실측 2026-10-06
         # ══════════════════════════════════════════════════════════════
