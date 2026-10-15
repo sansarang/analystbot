@@ -172,8 +172,12 @@ def ask(ref: MatchRef, facts: Facts, plan: object, *, state: RunState,
             "🔴 **사실 목록에 없는 선수·사건을 지어내지 마라.** 모르면 `=` 다.")),
         llm.Message(role="user", content=(
             f"경기: {getattr(ref, 'home_name', '')}(홈) vs "
-            f"{getattr(ref, 'away_name', '')}(원정)\n"
-            f"포메이션:\n{said_xi}\n"
+            f"{getattr(ref, 'away_name', '')}(원정) · "
+            f"{getattr(ref, 'competition', '')}\n"
+            # 🔴 **그 경기에 맞게 본다**(지시 2026-10-15 · 사본 금지)
+            + __import__("app.core.querywriter",
+                         fromlist=["x"]).comp_hint(ref)
+            + f"포메이션:\n{said_xi}\n"
             f"오늘 라인업 사실:\n{said_facts}\n"
             # 🔴 **최근 5경기 기준**으로도 갈래를 찾는다(지시 2026-10-15)
             + (f"\n최근 5경기·맞대결 재료:\n{said_recent}\n" if said_recent

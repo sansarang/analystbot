@@ -215,7 +215,10 @@ def ask(ref: MatchRef, prob, mr, varset, *, state: RunState,
             "나왔는지**를 변수와 축으로 설명한다.")),
         llm.Message(role="user", content=(
             f"경기: {names[0]} (홈) vs {names[1]} (원정)\n"
-            f"대회: {getattr(ref, 'competition', '')}\n\n"
+            f"대회: {getattr(ref, 'competition', '')}\n"
+            # 🔴 **그 경기에 맞게 읽는다**(지시 2026-10-15 · 사본 금지)
+            + __import__("app.core.querywriter",
+                         fromlist=["x"]).comp_hint(ref) + "\n"
             f"=== 묶음(코드가 만든 것 · 이것이 전부다) ===\n{said}\n\n"
             f"🔴 `sentences` — **{MIN_SENT}~{MAX_SENT}개** 문장. 각 "
             f"{SENT_MAX}자 안.\n"

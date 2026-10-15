@@ -135,6 +135,45 @@ def site_queries(hosts_ok: list[str], queries: list[str]) -> list[str]:
     return out[:MAX_QUERIES]
 
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **대회 유형에 맞춘다** — 사용자 지시 2026-10-15
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 딥서치·llm 서치할 때 **대륙경기, 그에 맞게 서치해야 한다** · 변수 관련
+#  > 모든 사항도 **그 경기에 맞게** 해야 한다
+#
+#  🔴 유형은 **표가 든다**(`competition.row_of(key)["kind"]`) — 여기서 짓지
+#     않는다. `club_continental`(UCL·ACLE·ACL2)이면 리그와 **다른 것을** 찾아야
+#     한다: 두 나라 말 · 조별 순위·진출 · 주중 일정과 리그 로테이션 ·
+#     장거리 이동·시차.
+#  ⚠️ 고치는 것은 **글(프롬프트)뿐**이다 — 질의 문지기·변수 경로는 그대로다.
+
+
+def comp_hint(ref: object) -> str:
+    """🔴 그 대회 유형에 맞춘 **한 토막 지시문**. 못 알아보면 빈 글자다."""
+    from app.core import competition as _c
+    key, _why = _c.key_of(competition=str(getattr(ref, "competition", "") or ""))
+    kind = str(dict(_c.row_of(key) if key else {}).get("kind") or "")
+    if kind == "club_continental":
+        return ("🔴🔴 **대륙 대회다**(`club_continental`) — 리그와 다른 것을 "
+                "찾는다/본다:\n"
+                "   · **두 팀 나라 말 둘 다**로 찾는다(상대 나라 매체가 그 팀을 "
+                "더 자세히 쓴다)\n"
+                "   · **조별 순위·진출 상황**(몇 점이 필요한가 · 탈락·확정)\n"
+                "   · **주중 경기다** — 리그 경기와 겹쳐 **로테이션**이 크다"
+                "(주말 리그를 위해 주전을 뺀다)\n"
+                "   · **장거리 이동·시차**(나라를 넘는다) · 원정 명단 제한\n"
+                "   · 득점·실점 기준은 **그 대회 것**이다 — 리그 수치와 섞지 "
+                "않는다\n")
+    if kind == "domestic_league":
+        return ("🔴 **리그다**(`domestic_league`) — 순위·승점·강등·플레이오프 "
+                "경쟁과 **주말 일정**을 본다(대륙 대회 일정과 섞지 않는다).\n")
+    if kind.startswith("national"):
+        return ("🔴 **대표팀 경기다** — 소집·차출·장거리 이동과 **클럽 일정**을 "
+                "본다(리그 순위는 뜻이 없다).\n")
+    return ""
+
+
 def ask(ref, *, state, aliases: list[str], langs: list[str]
         ) -> tuple[list[str], list[str], str]:
     """🔴🔴 ②③ — LLM 1회로 **질의·매체**를 받는다. `(질의, 매체, 사유)`.
@@ -169,7 +208,8 @@ def ask(ref, *, state, aliases: list[str], langs: list[str]
             f"{getattr(ref, 'away_name', '')} · "
             f"{getattr(ref, 'competition', '')}\n"
             f"팀 표기(이 글자들만 쓴다): {said_alias}\n"
-            f"쓸 언어: {said_langs}\n\n"
+            f"쓸 언어: {said_langs}\n"
+            + comp_hint(ref) + "\n"
             "🔴🔴 **검색기 규칙 — 어기면 그 질의는 버려진다**\n"
             f"  · 낱말 **{_rules.WORDS_MIN}~{_rules.WORDS_MAX}개**"
             " (공백으로 센다 · 넘으면 **통째로 버린다**)\n"

@@ -300,7 +300,11 @@ def ask(ref: MatchRef, facts, *, state: RunState, want: dict,
             "**검색어만** 만든다. 네가 모르는 것을 질의로 적는 것이 네 일이다.")),
         llm.Message(role="user", content=(
             f"경기: {names[0]} vs {names[1]} · {getattr(ref, 'competition', '')}\n"
-            f"팀 표기(이 글자들만 쓴다): {' · '.join(aliases[:12])}\n"
+            # 🔴 **대회 유형에 맞춘다**(지시 2026-10-15) — 글자는
+            #    `querywriter.comp_hint` 하나가 만든다(사본 금지)
+            + __import__("app.core.querywriter",
+                         fromlist=["x"]).comp_hint(ref)
+            + f"팀 표기(이 글자들만 쓴다): {' · '.join(aliases[:12])}\n"
             f"이미 아는 감독: {said_coach}\n"
             f"🔴 **못 찾은 칸**: {said_want or '없다'}\n"
             + (f"🔴 **검색이 얇은 자리**(변수 0개인 묶음): "
