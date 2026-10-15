@@ -55,6 +55,18 @@ class VarRow:
     goals: str = ""
     #: 🔴 근거 불가(맥락)인가 — 그러면 ①② 자리에 못 간다
     context_only: bool = False
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **기사에서 온 변수인가** — 사용자 지시 2026-10-15
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > **기사 내용으로 판단**을 해야지 기사 **횟수로 하는거는 바보같은 짓**이다
+    #  > … 기사 내용을 파악하는거까지 llm이 할 일이다 · **추출수가 아니다**
+    #
+    #  ⚠️ 실사고 2026-10-15(노리치): 같은 사실(18위·승점 삭감)이 기사에서
+    #     `R1~R7` **다섯 변수**로 쪼개졌고, 그 **다섯 표**가 승무패를 뒤집었다
+    #     (원정 40.1% → 홈 35.5%). 세어야 할 것은 **내용**이지 개수가 아니다.
+    #  🔴 그래서 확률을 세는 쪽이 **기사 변수를 가릴 수 있어야** 한다.
+    from_doc: bool = False
     places: list = field(default_factory=list)
     why: str = ""
 
@@ -153,4 +165,6 @@ def _row(one, *, places: list, ctx: bool, why: str) -> VarRow:
         hardness=str(getattr(one, "hardness", "") or ""),
         weight=float(getattr(one, "weight", 0.0) or 0.0),
         goals=str(getattr(one, "goals", "") or ""),
-        context_only=bool(ctx), places=list(places), why=why)
+        context_only=bool(ctx), places=list(places), why=why,
+        # 🔴 기사에서 왔나(문서 id 가 있으면 추출 변수다 · 위 머리말)
+        from_doc=bool(list(getattr(one, "doc_ids", None) or [])))

@@ -295,7 +295,10 @@ async def main(argv: list[str]) -> int:
     from app.core import strategy_llm as _sl
     # 🔴 **최근 5경기 기준**으로도 갈래를 찾게 재료를 넘긴다(지시 2026-10-15)
     var_sl, said_sl = _sl.ask(ref, facts, plan, state=st,
-                              recent=_sl.recent_of(variables))
+                              recent=_sl.recent_of(variables),
+                              # 🔴 **기사 사실도 넘긴다**(지시 2026-10-15) —
+                              #    확률은 기사를 안 세고, 내용 판단은 여기서 한다
+                              news=_sl.news_of(variables))
     print("## ⑤-b2 전략 전문가(LLM)")
     print(f"- {said_sl}")
     for one in var_sl:

@@ -337,7 +337,10 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #     않는다 — 사유를 수첩에 남긴다(#3).
     from app.core import strategy_llm as _sl
     var_sl, said_sl = _sl.ask(ref, facts, plan, state=st,
-                              recent=_sl.recent_of(variables))
+                              recent=_sl.recent_of(variables),
+                              # 🔴 **기사 사실도 넘긴다**(지시 2026-10-15) —
+                              #    확률은 기사를 안 세고, 내용 판단은 여기서 한다
+                              news=_sl.news_of(variables))
     st.note(f"⑤-b2 전략 전문가 — {said_sl}")
     if var_sl:
         variables = [*variables, *var_sl]

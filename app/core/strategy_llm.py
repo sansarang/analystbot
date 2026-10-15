@@ -34,6 +34,9 @@ logger = logging.getLogger(__name__)
 KINDS: tuple[str, ...] = (
     "압박 높이", "수비 라인", "빌드업", "측면 집중", "중원 수싸움",
     "역습 성향", "세트피스", "교체 운용",
+    # 🔴🔴 **기사 사실**(사용자 지시 2026-10-15) — 기사 여러 줄을 **내용으로**
+    #    읽어 **한 줄의 부등호**로 정리하는 자리다(개수로 세지 않는다).
+    "기사 사실",
 )
 #: 🔴 배치표가 아는 유형으로 **코드가** 적는다(축2 — 스타일 조정·전략 판정)
 VAR_TYPE = "lineup_intent"
@@ -100,7 +103,8 @@ def may_ask(ref: MatchRef, facts: Facts, plan: object) -> tuple[bool, str]:
             if float(val) >= SWAP_CUT:
                 said.append(f"바뀐 자리 {float(val):g}개")
     if not said:
-        return False, "⬜ 트리거 없음(핵심 결장·포메이션 변화·자리 변화 모두 아니다)"
+        return False, ("⬜ 트리거 없음(핵심 결장·포메이션 변화·자리 변화 모두 "
+                       "아니다)")
     return True, " · ".join(said[:3])
 
 
@@ -108,6 +112,23 @@ def may_ask(ref: MatchRef, facts: Facts, plan: object) -> tuple[bool, str]:
 #   한다 · **최근 5경기 기준으로**"*. 그 재료를 든 변수 id 머리글자다.
 #   ⚠️ 여기서 폼을 다시 세지 않는다 — `s5_verify` 가 센 그 변수를 **그대로** 쓴다.
 RECENT_IDS: tuple[str, ...] = ("S01", "S02", "IR12")
+
+
+def news_of(variables: list | None) -> list[str]:
+    """🔴🔴 **기사에서 온 변수 글**(사용자 지시 2026-10-15).
+
+    > 기사 **내용으로 판단**을 해야지 기사 횟수로 하는 건 바보 같은 짓이다
+
+    🔴 확률을 세는 쪽은 이 변수를 **안 센다**(`probmodel.flat_prob`) — 대신
+       그 글을 여기로 넘겨 모델이 **한 줄의 부등호**로 정리한다.
+    """
+    out: list[str] = []
+    for one in list(variables or []):
+        if not list(getattr(one, "doc_ids", None) or []):
+            continue
+        rid = str(getattr(one, "id", "") or "")
+        out.append(f"- `{rid}` {str(getattr(one, 'claim', '') or '')[:200]}")
+    return out
 
 
 def recent_of(variables: list | None) -> list[str]:
@@ -121,7 +142,7 @@ def recent_of(variables: list | None) -> list[str]:
 
 
 def ask(ref: MatchRef, facts: Facts, plan: object, *, state: RunState,
-        recent: list[str] | None = None,
+        recent: list[str] | None = None, news: list[str] | None = None,
         providers: tuple = ("deepseek", "solar")) -> tuple[list[Variable], str]:
     """🔴 전략 전문가에게 **변수 글**을 받는다. `(변수 목록, 사유)`.
 
@@ -137,6 +158,7 @@ def ask(ref: MatchRef, facts: Facts, plan: object, *, state: RunState,
         for rid, one in list(box.items())[:16] if isinstance(one, dict))
     xi = dict(getattr(facts, "xi", None) or {})
     said_recent = "\n".join(list(recent or [])[:8])
+    said_news = "\n".join(list(news or [])[:10])
     said_xi = "\n".join(
         f"- {str(getattr(ref, f'{s}_name', '') or '')}: "
         f"{getattr(xi.get(str(getattr(ref, s, '') or '')), 'formation', '') or '⬜'}"
@@ -156,8 +178,13 @@ def ask(ref: MatchRef, facts: Facts, plan: object, *, state: RunState,
             # 🔴 **최근 5경기 기준**으로도 갈래를 찾는다(지시 2026-10-15)
             + (f"\n최근 5경기·맞대결 재료:\n{said_recent}\n" if said_recent
                else "\n최근 5경기 재료: ⬜ 없다\n")
-            + "\n🔴 갈래는 **오늘 라인업**과 **최근 5경기 재료** 둘에서 "
+            + (f"\n기사에서 나온 사실({len(list(news or []))}줄):\n{said_news}\n"
+               if said_news else "\n기사에서 나온 사실: ⬜ 없다\n")
+            + "\n🔴 갈래는 **오늘 라인업 · 최근 5경기 · 기사 사실** 셋에서 "
               "찾는다 — 재료에 없는 갈래는 내지 마라.\n"
+            + "🔴🔴 **기사는 줄 수로 세지 마라** — 같은 이야기가 여러 줄로 쪼개져 "
+              "있다. **내용을 읽어** 그 경기에 무엇을 뜻하는지 판단하고 "
+              "`기사 사실` 갈래 **한 줄**로 정리한다(여러 줄 금지).\n"
             + f"🔴 `rows` — **{MAX_ROWS}개 이하**. 한 줄은 한 갈래의 **비교**다:\n"
             f"  · `kind` — 다음 중 하나: {' · '.join(KINDS)}\n"
             "  · `cmp` — **홈 vs 원정**: `>`(홈이 크다) · `<`(원정이 크다) · "

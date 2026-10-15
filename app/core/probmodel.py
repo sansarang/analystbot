@@ -369,10 +369,25 @@ def flat_prob(varset, *, ref) -> tuple[dict, str]:
     g_types = {str(x) for x in (g_box.get("types") or [])}
     f_types = {str(x) for x in (f_box.get("types") or [])}
     said: list[str] = []
+    n_doc = 0
     for one in list(getattr(varset, "rows", None) or []):
         kind = str(getattr(one, "type", "") or "")
         rid = str(getattr(one, "id", "") or "")
         fav = str(getattr(one, "favors", "") or "both")
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **기사는 세지 않는다** — 사용자 지시 2026-10-15
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > 기사 **내용으로 판단**을 해야지 기사 **횟수로 하는거는 바보같은
+        #  > 짓**이다 … 추출수가 아니다
+        #
+        #  ⚠️ 실사고(노리치): 같은 사실(18위·승점 삭감)이 `R1~R7` 다섯 변수로
+        #     쪼개져 **다섯 표**가 됐고 승무패가 뒤집혔다(원정 40.1% → 홈 35.5%).
+        #  🔴 기사 변수는 **전략 전문가(LLM)가 내용으로 읽어** 부등호 하나로
+        #     정리한다 — 그 산출(`SL*`)만 센다.
+        if bool(getattr(one, "from_doc", False)):
+            n_doc += 1
+            continue
         goals = str(getattr(one, "goals", "") or "none")
         key = str(getattr(one, "subject", "") or "")
         side = ("home" if key == str(getattr(ref, "home", "") or "")
@@ -408,6 +423,9 @@ def flat_prob(varset, *, ref) -> tuple[dict, str]:
     #  🔴 세는 것은 **순 단계수**다 — 홈 밀기 수 − 원정 밀기 수. 그래서
     #     **상쇄되면 무는 그대로**다(홈1·원정1 → 균등 그대로).
     #  ⚠️ 변수 수가 아니라 **쏠림**을 본다 — 양쪽에 똑같이 많아도 무는 안 깎인다.
+    if n_doc:
+        said.append(f"⚠️ 기사 변수 {n_doc}개는 **안 셌다**(내용 판단은 전략 "
+                    "전문가가 한다 · 개수로 세지 않는다)")
     lean = abs(int(net.get("home", 0)) - int(net.get("away", 0)))
     if lean:
         mul = float(f_box.get("mul") or 1.05)

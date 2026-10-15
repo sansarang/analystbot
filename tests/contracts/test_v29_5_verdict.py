@@ -94,9 +94,10 @@ def test_vd2_output_has_no_numbers() -> None:
     #    예측을 각각 하라"*. ⚠️ 그래도 **수 칸은 없다**: `pick` 은 셋 중 한 글자,
     #    `score` 는 **묶음의 스코어 상위에 있는 것**이고 코드가 대조한다.
     #    확률·등급 칸을 두면 모델이 코드가 정한 수를 덮을 길이 열린다 — 그건 여전히 없다.
-    # ⚠️ 2026-10-15(3번): **점수 예측 칸을 뺐다** — λ·스코어 격자를 지웠으니
-    #    고를 근거가 없다(없는 격자에서 점수를 지어내면 거짓이다).
-    assert got == {"sentences", "refs", "pick"}, (
+    # ⚠️ 2026-10-15: 점수 예측 칸을 **되살렸다** — 사용자 지시 *"기대득점은
+    #    삭제했어도 마지막에는 두 모델이 점수까지 예상하게 해야 한다"*.
+    #    🔴 격자가 없으니 그 점수는 **묶음에 없어도 된다**(사실이 아니라 예측).
+    assert got == {"sentences", "refs", "pick", "score"}, (
         f"VD2 🔴🔴 출력 칸이 {sorted(got)} 다 — `sentences`·`refs` 둘이어야 "
         "한다. 확률 칸을 두면 모델이 코드가 정한 수를 덮을 길이 열린다")
 
@@ -179,7 +180,7 @@ def test_vd7_clean_passes() -> None:
                   refs=["확률", "λ", "스코어"],
                   # 🔴 예측 둘도 **있어야** 멀쩡한 평이다(지시 2026-10-15) —
                   #    `score` 는 묶음의 `스코어 상위` 에 있는 것만 쓴다.
-                  pick="home")
+                  pick="home", score="2-1")
     verdict, bad = judge(got, box)
     assert verdict == "안 지어냈다", (
         f"VD7 🔴 멀쩡한 평에 거짓 위반이 났다 — {bad}")
@@ -223,3 +224,25 @@ def test_vd9_catches_invented_rule_id() -> None:
     # 🔴 묶음에 **있는** 번호(`T3`)는 **거짓 위반이 없어야** 한다
     assert not any("T3" in x and "없는" in x for x in bad), (
         f"VD9 🔴 묶음에 있는 `T3` 를 없다고 했다 — {bad}")
+
+
+def test_vd8_예측_점수는_묶음에_없어도_된다() -> None:
+    """🔴🔴 사용자 지시 2026-10-15 — *"기대득점은 삭제했어도 마지막에는 솔라와
+    딥시크가 **점수까지 예상**하게 해야 한다"*.
+
+    격자(λ·스코어)를 지웠으니 그 점수는 묶음에 있을 수 없다. 🔴 **예측**이지
+    사실이 아니므로 (나) 스코어 검열이 잡으면 안 된다. ⚠️ 빈 칸은 위반이다.
+    """
+    import sys
+    sys.path.insert(0, str(ROOT))
+    from app.core.stages.s6_verdict import Verdict, judge
+    box = ["확률 — 홈 35.5% · 무 32.2% · 원정 32.2%"]
+    got = Verdict(sentences=["홈이 35.5% 로 앞선다.",
+                             "변수가 홈 쪽으로 조금 더 밀었다.",
+                             "그래서 2-1 을 본다."],
+                  refs=["확률", "확률", "확률"], pick="home", score="2-1")
+    verdict, bad = judge(got, box)
+    assert verdict == "안 지어냈다", f"🔴 예측 점수에 거짓 위반이 났다 — {bad}"
+    # 🔴 빈 칸은 위반이다
+    _v2, bad2 = judge(got.model_copy(update={"score": ""}), box)
+    assert any("점수 예측이 없다" in x for x in bad2), bad2
