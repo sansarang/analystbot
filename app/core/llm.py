@@ -344,8 +344,10 @@ def _send(body: dict, pv: dict, *, provider: str, purpose: str,
     #       × 스키마 재요청 2회)을 먹었고, 카드 하나가 **27분**이 됐다.
     #    🔴 상한을 세는 곳은 `core/deadline` 하나다(사본 금지).
     from app.core import deadline as _dl
-    secs, said_cap = _dl.call_cap_sec(getattr(state, "clock", None),
-                                      int(pv.get("timeout_sec") or 120))
+    # 🔴 마지막 단계(⑯ 종합 평)는 **예약분을 쓴다**(지시 2026-10-15)
+    secs, said_cap = _dl.call_cap_sec(
+        getattr(state, "clock", None), int(pv.get("timeout_sec") or 120),
+        reserved=(str(purpose) in _dl.RESERVED_PURPOSES))
     if said_cap:
         # 🔴 사유는 **상태 수첩**에 남긴다 — 카드·보고가 그것을 적는다
         state.note(f"llm {purpose} — {said_cap}")

@@ -77,18 +77,38 @@ MIN_CALL_SEC = 20.0
 #   ⚠️ 한 호출이 전부를 먹으면 뒤 단계가 통째로 ⬜ 가 된다.
 CALL_SHARE = 0.5
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **마지막 단계 몫을 떼어 둔다** — 사용자 결정 2026-10-15
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 실측 2026-10-15: 상한(15분)을 **수집이 다 써서**(17~18분) 마지막 단계
+#     ⑯ 종합 평이 늘 굶었다 — 공급자는 멀쩡한데(solar 0.9초·deepseek 0.7초)
+#     평이 **매번 비었다**.
+#  🔴 상한을 올리는 것만으로는 **같은 병이 재발한다**(상한은 총량만 막고 순서를
+#     안 지킨다). 그래서 **그 단계 몫을 처음부터 예약**한다 — 앞 단계는 이
+#     초를 **못 쓴다**.
+#: 🔴 ⑯ 종합 평에 남겨 두는 초
+RESERVE_SEC = 90.0
+#: 🔴 그 예약을 **쓸 수 있는** 목적(=마지막 단계)
+RESERVED_PURPOSES: tuple[str, ...] = ("commentary",)
 
-def call_cap_sec(clock: object | None, want: float) -> tuple[float, str]:
+
+def call_cap_sec(clock: object | None, want: float, *,
+                 reserved: bool = False) -> tuple[float, str]:
     """🔴🔴 그 호출에 줄 **초** — 남은 예산 안으로 깎는다. `(초, 사유)`.
 
     `0` 이면 **부르지 않는다**(사유를 그대로 카드·보고에 적는다).
     🔴 시계가 없으면 설정값 그대로다(상한 없는 실행 — 시험·도구).
+    🔴 `reserved=False` 면 **⑯ 몫(`RESERVE_SEC`)을 뺀 나머지**만 쓴다.
     """
     want = float(want or 0.0)
     left = getattr(clock, "left_min", None)
     if left is None:
         return want, ""
     secs = float(left()) * 60.0
+    if not reserved:
+        # 🔴 앞 단계는 **예약분을 못 쓴다**
+        secs -= RESERVE_SEC
     if secs <= MIN_CALL_SEC:
         return 0.0, (f"⏱ **남은 시간이 {secs:.0f}초다**(상한 "
                      f"{getattr(clock, 'cap_min', 0) or 0:g}분) — LLM 을 "

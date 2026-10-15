@@ -29,10 +29,24 @@ def test_시계가_없으면_설정값_그대로다() -> None:
 
 
 def test_남은_시간_안으로_깎는다() -> None:
-    secs, why = dl.call_cap_sec(dl.Deadline(1.0), 120)      # 1분 남았다
+    """⚠️ 앞 단계는 **⑯ 몫을 뺀 나머지**만 쓴다(`RESERVE_SEC`)."""
+    secs, why = dl.call_cap_sec(dl.Deadline(5.0), 120)      # 5분 남았다
+    left = 5 * 60 - dl.RESERVE_SEC
     assert secs < 120, "🔴 안 깎았다"
-    assert secs <= 60 * dl.CALL_SHARE + 1, secs
+    assert secs <= left * dl.CALL_SHARE + 1, (secs, left)
     assert "깎았다" in why, why
+
+
+def test_마지막_단계는_예약분을_쓴다() -> None:
+    """🔴 앞 단계가 다 써도 ⑯ 은 부를 수 있어야 한다(그게 예약의 뜻)."""
+    got = dl.Deadline(1.0)                                  # 60초 남았다
+    assert dl.call_cap_sec(got, 120)[0] == 0.0, "🔴 앞 단계가 예약분을 먹었다"
+    secs, _ = dl.call_cap_sec(got, 120, reserved=True)
+    assert secs >= dl.MIN_CALL_SEC, secs
+
+
+def test_예약을_쓰는_목적은_종합_평이다() -> None:
+    assert "commentary" in dl.RESERVED_PURPOSES
 
 
 def test_바닥이면_부르지_않는다() -> None:
@@ -73,7 +87,7 @@ def test_ask_가_받은_초를_그대로_소켓에_넘긴다() -> None:
     """🔴 깎은 초가 **실제 호출 인자**로 가야 한다(표시만이면 뜻이 없다)."""
     from app.core import llm
     st = RunState()
-    st.clock = dl.Deadline(1.0)                             # 60초
+    st.clock = dl.Deadline(6.0)                             # 360초
     saw: list = []
 
     def _spy(url, key, body, timeout):                      # noqa: ANN001
@@ -85,7 +99,7 @@ def test_ask_가_받은_초를_그대로_소켓에_넘긴다() -> None:
                   messages=[llm.Message(role="user", content="x")],
                   out=Out, state=st, _post=_spy)
     assert saw, "🔴 호출이 안 갔다"
-    assert saw[0] <= 60 * dl.CALL_SHARE + 1, saw
+    assert saw[0] <= (6 * 60 - dl.RESERVE_SEC) * dl.CALL_SHARE + 1, saw
     assert isinstance(got, Out), got
 
 

@@ -49,11 +49,15 @@ def test_sl3_after_kickoff_is_post_hoc() -> None:
         assert slate.stage_of(KO, KO - timedelta(hours=left))[0] == want
 
 
-def test_sl4_cap_is_fifteen_minutes_and_skips() -> None:
+def test_sl4_cap_is_twenty_minutes_and_skips() -> None:
+    """🔴 상한 15 → **20분**(사용자 결정 2026-10-15) — 수집이 17~18분이라
+    마지막 단계 ⑯ 이 늘 굶었다. ⚠️ 상한만 올리면 재발하므로
+    `deadline.RESERVE_SEC`(⑯ 몫)이 **함께** 있어야 한다."""
     from app.core import deadline, slate
-    assert slate.CARD_CAP_MIN == 15.0
-    one = deadline.Deadline(15.0)
-    assert not one.over() and one.left_min() > 14
+    assert slate.CARD_CAP_MIN == 20.0
+    assert deadline.RESERVE_SEC > 0, "🔴 ⑯ 몫 예약이 없다 — 같은 병이 재발한다"
+    one = deadline.Deadline(20.0)
+    assert not one.over() and one.left_min() > 19
     said = one.skip("시험 단계")
     assert "건너뛰었다" in said and one.skipped == ["시험 단계"]
     assert "건너뛴 단계" in one.said_of()

@@ -216,7 +216,12 @@ def ask(ref: MatchRef, prob, mr, varset, *, state: RunState,
     got = llm.ask(provider=provider, purpose="commentary", messages=msgs,
                   out=Verdict, state=state)
     if not isinstance(got, Verdict):
-        why = f"🔴 {provider} 실패({getattr(got, 'reason', '?')}) — 평이 없다"
+        # 🔴🔴 **사유를 그대로 적는다** — 사용자 지시 2026-10-15: *"평이 왜 안
+        #    나오는 이유부터 찾아라"*. ⚠️ `LLM_TIMEOUT` 하나로는 **공급자가 안
+        #    준 것**과 **카드 상한이 호출을 막은 것**(`deadline.call_cap_sec`)을
+        #    가를 수 없었다 — `detail` 이 그 둘을 가른다.
+        why = (f"🔴 {provider} 실패({getattr(got, 'reason', '?')}) — 평이 없다 "
+               f"· 사유 {str(getattr(got, 'detail', '') or '⬜ 없다')[:160]}")
         state.note(f"s6v 종합 평 — {why}")
         return None, box, why
     n = len(list(got.sentences or []))

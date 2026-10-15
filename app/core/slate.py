@@ -28,7 +28,14 @@ STAGES: tuple[tuple[str, float], ...] = (
 XI_OPEN_MIN, XI_CLOSE_MIN = 60, 45
 
 #: 🔴🔴 카드 한 장의 **벽시계 상한**(분) — 넘는 단계는 ⬜ 로 넘긴다
-CARD_CAP_MIN = 15.0
+#
+#  ⚠️ 실측 2026-10-15: 수집이 **17~18분**이 걸려(③ 딥서치가 대부분) 마지막
+#     단계 ⑯ 종합 평이 **늘 굶었다** — 남은 예산이 0이라 LLM 을 못 불렀고,
+#     카드에는 `LLM_TIMEOUT` 으로만 찍혀 **공급자 장애처럼 보였다**.
+#     (Svay Rieng 17분 · San Diego 18분 · 상한은 15분이었다)
+#  🔴 15 → **20분**(사용자 결정 2026-10-15). ⚠️ 상한만 올리면 같은 병이
+#     재발한다 — 그래서 `deadline.RESERVE_SEC`(⑯ 몫)을 **함께** 둔다.
+CARD_CAP_MIN = 20.0
 
 
 def times_of(kickoff: datetime) -> dict[str, datetime]:
