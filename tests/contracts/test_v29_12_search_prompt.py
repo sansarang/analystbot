@@ -55,3 +55,30 @@ def test_문지기_자체는_안_건드렸다() -> None:
     assert rules.query_ok(
         "Svay Rieng starting lineup AFC Champions League Two") is False
     assert rules.query_ok("Shenhua news 2026") is False
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **득실점으로 수비 불안·공격력을 말한다** — 사용자 지시 2026-10-15
+# ══════════════════════════════════════════════════════════════════
+
+
+def test_전략_전문가가_득실점을_근거로_삼는다() -> None:
+    """⚠️ 실측: 재료(`S01`)를 넘겼는데도 모델이 **라인업 이탈만** 보고 수비를
+    판단한 실행이 있었다(실점 3.2 ↔ 0.8 을 안 들었다)."""
+    import inspect
+
+    from app.core import strategy_llm as sl
+    src = inspect.getsource(sl.ask)
+    assert "실점" in src and "수비 불안" in src, src[-600:]
+    assert "득점" in src and "공격력" in src
+    assert "라인업 이탈만 보고 수비를 판단하지 마라" in src
+
+
+def test_종합_평도_득실점으로_말한다() -> None:
+    import inspect
+
+    from app.core.stages import s6_verdict as vd
+    src = inspect.getsource(vd.ask)
+    assert "수비 불안과 공격력을 득실점으로 말한다" in src, src[-600:]
+    # 🔴 그 수를 쓰라고 했으니 **써도 된다**고 함께 적혀 있어야 한다
+    assert "묶음의 득점·실점 평균" in src
