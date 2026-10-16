@@ -515,3 +515,38 @@ def test_vd23_llm_감시() -> None:
     assert "네가 세지 마라" in src
     # 🔴 감시 한 문장이 더 붙으니 상한이 6 이다
     assert vd.MAX_SENT == 6, vd.MAX_SENT
+
+
+def test_vd24_맥락_전용도_묶음에_싣는다() -> None:
+    """🔴🔴 VD24 — 사용자 지시 2026-10-16.
+
+    ⚠️ 실사고(PSIM 확정 XI): `S01-away`(원정 최근 4경기 · 득점 1.5 · 실점
+       2.75)가 표본 문턱으로 **맥락 전용**이 되자 묶음이 **아예 안 실었다** →
+       평이 *"득실 평균이 **홈 쪽만** 있다"* 고 썼다. **수치는 있었는데 못 본
+       것**이다. 🔴 ⑩ 은 맥락 전용을 *"**표시**·검증·가설"* 이라 부른다 —
+       표시는 **평에게 보여 준다**는 뜻이다.
+    """
+    import inspect
+    import sys
+    sys.path.insert(0, str(ROOT))
+    from app.core.routing import VarRow, VariableSet
+    from app.core.stages import s6_verdict as vd
+
+    rows = [VarRow(id="S01-home", type="recent_pattern",
+                   places=["axis1", "hypo"], claim="홈 폼"),
+            VarRow(id="S01-away", type="recent_pattern", places=["hypo"],
+                   claim="원정 최근 4경기 · 득점 1.5 · 실점 2.75(많다)"),
+            VarRow(id="R1", type="event_match", places=["hypo"], claim="기사",
+                   from_doc=True)]
+    box = vd.chain_of(None, _P(), None, VariableSet(rows=rows))
+    said = "\n".join(box)
+    assert "맥락 전용 변수 1개" in said, said
+    assert "맥락 `S01-away`" in said and "2.75" in said, said
+    # 🔴 기사 변수는 **그 칸으로 가지 않는다**(기사 칸이 따로 있다)
+    assert "맥락 `R1`" not in said
+    # 🔴 감시 줄의 수가 맞다(확률에 닿는 것 1 · 맥락 1)
+    one = next(x for x in box if "🔎 파이프라인" in x)
+    assert "확률에 닿는 것 1개 · 맥락 전용 1개" in one, one
+    # 🔴 프롬프트가 **읽되 얇다고 적으라**고 말한다
+    src = inspect.getsource(vd.ask)
+    assert "맥락 전용 변수` 칸도 **읽고" in src, src[-900:]
