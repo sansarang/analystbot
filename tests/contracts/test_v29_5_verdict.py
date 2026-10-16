@@ -482,3 +482,36 @@ def test_vd22_점수는_홈_원정_순서다() -> None:
     _v2, bad2 = judge(Verdict(sentences=[alt] * 3, refs=["확률"] * 3,
                               pick="away", score="1-2"), box)
     assert not [x for x in bad2 if "(마)" in x], bad2
+
+
+def test_vd23_llm_감시() -> None:
+    """🔴🔴 VD23 — 사용자 지시 2026-10-16:
+
+    > llm 이 **변수가 잘 들어왔는지 · 딥서치가 잘됐는지 · 파이프라인이 제대로
+    > 돌았는지** 평문에 적게 하고 프롬프트 주입해라 — **llm 감시를 추가한다**
+
+    🔴 수는 **코드가 센 것**을 묶음(`🔎 파이프라인` 줄)으로 준다 — 모델이 다시
+       세면 그 수가 또 거짓이 된다.
+    """
+    import inspect
+    import sys
+    sys.path.insert(0, str(ROOT))
+    from app.core.routing import VarRow, VariableSet
+    from app.core.stages import s6_verdict as vd
+
+    rows = [VarRow(id="S01-home", type="recent_pattern", places=["axis1"],
+                   claim="최근 5경기"),
+            VarRow(id="R1", type="event_match", places=["hypo"], claim="기사",
+                   from_doc=True)]
+    box = vd.chain_of(None, _P(), None, VariableSet(rows=rows))
+    one = next((x for x in box if "🔎 파이프라인" in x), "")
+    assert one, "VD23 🔴 묶음에 감시 줄이 없다"
+    for w in ("변수 2개", "확률에 닿는 것", "기사 변수 1개", "딥서치 문서",
+              "전략 변수", "포메이션"):
+        assert w in one, (w, one)
+    # 🔴 프롬프트가 그 줄을 읽고 **마지막 문장**으로 적으라고 말한다
+    src = inspect.getsource(vd.ask)
+    assert "마지막 문장은 감시다" in src, src[-900:]
+    assert "네가 세지 마라" in src
+    # 🔴 감시 한 문장이 더 붙으니 상한이 6 이다
+    assert vd.MAX_SENT == 6, vd.MAX_SENT

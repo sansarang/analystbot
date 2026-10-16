@@ -23,9 +23,22 @@ MIN_GAMES = 3
 
 
 def avg_of(seq: list, key: str) -> float | None:
-    """🔴 수열에서 그 칸의 평균. ⚠️ 못 세면 `None`(0 이 아니다 · #3)."""
-    got = [float(x[key]) for x in (seq or [])
-           if isinstance(x, dict) and str(x.get(key, "")).lstrip("-").isdigit()]
+    """🔴 수열에서 그 칸의 평균. ⚠️ 못 세면 `None`(0 이 아니다 · #3).
+
+    ⚠️ 실사고 2026-10-16(Obolon Kyiv): 값이 **실수**(`1.0`)로 오는 경로가 있는데
+       `str(1.0).isdigit()` 은 **거짓**이라 통째로 못 셌다 → `form_cross` 가
+       *"한쪽을 못 셌다"* 로 어긋남을 외쳤고, **멀쩡한 폼 변수 넷**이 맥락
+       전용으로 내려가 확률이 33.3 균등이 됐다.
+    🔴 그래서 꼴을 보지 말고 **수로 바꿔 본다**.
+    """
+    got: list[float] = []
+    for one in (seq or []):
+        if not isinstance(one, dict) or key not in one:
+            continue
+        try:
+            got.append(float(one[key]))
+        except (TypeError, ValueError):
+            continue
     return round(sum(got) / len(got), 3) if got else None
 
 
@@ -42,15 +55,28 @@ def form_cross(ours: dict, theirs: dict) -> tuple[bool | None, str]:
         return None, ("⬜ 대조 못 함 — "
                       + ("우리 폼이 비었다" if not a else "다른 경로가 비었다"))
     said: list[str] = []
+    #: 🔴 **못 잰 칸**은 어긋남이 아니다(아래 머리말)
+    said_na: list[str] = []
     for key, name in (("goals_for", "득점"), ("goals_against", "실점")):
         x, y = avg_of(a, key), avg_of(b, key)
         if x is None or y is None:
-            said.append(f"{name} 한쪽을 못 셌다")
+            said_na.append(f"{name} 한쪽을 못 셌다")
             continue
         if abs(x - y) > TOL:
             said.append(f"{name} **{x} ↔ {y}**")
     if said:
         return False, "🔴 **두 경로가 어긋난다** — " + " · ".join(said)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **못 쟀다 ≠ 어긋났다** — 사용자 지시 2026-10-16
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실사고(Obolon Kyiv vs Veres Rivne): 한쪽 평균을 못 세자 이 함수가
+    #     **False**(어긋남)를 돌려줬고, 그 깃발이 **멀쩡한 폼 변수 넷**을 맥락
+    #     전용으로 내려 확률이 33.3 균등이 됐다(폼 자체는 `0.6/1.8` 로 정확했다).
+    #  🔴 못 잰 것은 `None` 이다 — 쓰는 쪽이 **내리지 않는다**(#3: 못 잰 칸은
+    #     이름으로 남기되, 그것이 **거짓의 증거는 아니다**).
+    if said_na:
+        return None, "⬜ 대조 못 함 — " + " · ".join(said_na)
     return True, (f"✅ 두 경로가 같다(득점 {avg_of(a, 'goals_for')} · "
                   f"실점 {avg_of(a, 'goals_against')})")
 

@@ -253,3 +253,47 @@ def test_cc10_안전장치_사유가_안_잘린다() -> None:
     said_run = (ROOT / "tools/run_collect.py").read_text(encoding="utf-8")
     assert "def say_var(" in said_run and "say_var(v, 100)" in said_run
     assert "FLAG_MARK" in said_run
+
+
+def test_cc11_못_쟀다는_어긋남이_아니다() -> None:
+    """🔴🔴 CC11 — 사용자 지시 2026-10-16.
+
+    ⚠️ 실사고(Obolon Kyiv): 한쪽 평균을 못 세자 `form_cross` 가 **False**
+       (어긋남)를 돌려줬고, 그 깃발이 **멀쩡한 폼 변수 넷**을 맥락 전용으로
+       내려 확률이 33.3 균등이 됐다(폼 자체는 `0.6/1.8` 로 정확했다).
+       🔴 뿌리는 `avg_of` 가 **실수**(`1.0`)를 `str().isdigit()` 으로 보고
+          버린 것이다.
+    """
+    flo = {"sequence": [{"goals_for": 1.0, "goals_against": 2.0}] * 5}
+    num = {"sequence": [{"goals_for": 1, "goals_against": 2}] * 5}
+    assert cc.avg_of(flo["sequence"], "goals_for") == 1.0
+    ok, why = cc.form_cross(flo, num)
+    assert ok is True, why
+    # 🔴 한쪽을 못 세면 **None**(못 쟀다)이고 False(어긋남)가 아니다
+    got, said = cc.form_cross(num, {"sequence": [{"result": "W"}] * 3})
+    assert got is None and "대조 못 함" in said, said
+    # 🔴 진짜 어긋남은 여전히 False
+    bad, _why = cc.form_cross(num, {"sequence": [{"goals_for": 3,
+                                                  "goals_against": 0}] * 5})
+    assert bad is False
+
+
+def test_cc12_등급이_다른_글은_버린다() -> None:
+    """🔴🔴 CC12 — U19·여자 글이 시니어 경기에 섞였다(사용자 지시 2026-10-16).
+
+    ⚠️ 실사고(Obolon Kyiv): `Zhytomyr **U19** vs Veres Rivne **U19**` 글이
+       신원 검사를 통과했다(`Veres Rivne` ⊂ `Veres Rivne U19`). 그 글에서
+       `R3 match_type — The contest is a U19 League match` 가 나와 **λ 상수
+       자리까지** 갔고, 두 평이 *"U19 로 잡혀 전제와 안 맞는다"* 고 지적했다.
+    """
+    from app.core.stages.s3_docs import grade_ok
+
+    mine = "Obolon Kyiv Veres Rivne Premier League"
+    assert not grade_ok("Zhytomyr U19 vs Veres Rivne U19 Highlights", "", mine)[0]
+    assert not grade_ok("Arsenal Women beat Chelsea", "", mine)[0]
+    assert grade_ok("Obolon Kyiv vs Veres Rivne preview", "", mine)[0]
+    # 🔴 반대쪽 — 우리 경기가 U19 면 U19 글을 받는다
+    assert grade_ok("Barcelona U19 youth cup", "", "Barcelona U19 Youth League")[0]
+    # 🔴 배선 — s3 가 그 문을 지난다
+    said = _code("app/core/stages/s3_docs.py")
+    assert "grade_ok(" in said and 's3/등급' in said, "CC12 🔴 안 이었다"

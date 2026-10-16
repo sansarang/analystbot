@@ -340,6 +340,56 @@ def short_forms(names: list[str]) -> list[str]:
     return list(dict.fromkeys(out))
 
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **연령·성별 등급 검사** — 사용자 지시 2026-10-16
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 실사고 2026-10-16(Obolon Kyiv vs Veres Rivne · 시니어 리그): 문서
+#     `Zhytomyr **U19** vs Veres Rivne **U19** Highlights` 가 신원 검사를
+#     **통과했다**(이름이 품는다: `Veres Rivne` ⊂ `Veres Rivne U19`).
+#     그 글에서 `R1 venue_weather`·`R2 event_match`·`R3 match_type`
+#     ("The contest is a **U19 League** match") 가 나왔고, `R3` 은
+#     **λ 상수 자리까지** 갔다. 두 평이 *"U19 로 잡혀 있어 전제와 안 맞는다"*
+#     고 **스스로 지적**했다.
+#  🔴 그래서 이름이 걸려도 **등급이 다르면 버린다** — 우리 경기에 그 표가
+#     없는데 글에만 있으면 **다른 경기**다.
+#  ⚠️ 반대쪽도 본다 — 우리 경기가 U19·여자면 **그 글만** 받는다.
+
+#: 🔴 등급 표식 — **낱말 경계**로 본다(아래 머리말)
+#   ⚠️ 실측 2026-10-16: 처음에 `" w "` 를 넣었더니 *"Korea Republic **w**
+#      Uzbekistan preview"* 같은 **멀쩡한 제목**이 떨어졌다(재현에서 기사 변수가
+#      5개 → 1개로 줄었다). 🔴 애매한 표식은 **안 쓴다** — 거짓 양성이 더 비싸다.
+_GRADE = __import__("re").compile(
+    r"\b(u-?1[5-9]|u-?2[0-3]|youth|junior|primavera|reserves?|women|female|"
+    r"feminin[ae]?|femenin[oa]?|frauen)\b|유스|청소년|리저브|여자|여성|"
+    r"(?<![가-힣])2군(?![가-힣])", __import__("re").I)
+
+
+def _grade_of(said: str) -> set[str]:
+    """🔴 그 글자가 든 **등급 표식**(없으면 빈 집합 = 시니어 남자).
+
+    🔴 낱말 경계로 본다 — `U19`·`U-19`·`Women`·`여자`·`유스`·`2군`.
+    ⚠️ 한 글자 표식(`w`)은 **쓰지 않는다**(위 머리말의 그 거짓 양성).
+    """
+    return {m.group(0).lower() for m in _GRADE.finditer(str(said or ""))}
+
+
+def grade_ok(title: str, snippet: str, ref_words: str) -> tuple[bool, str]:
+    """🔴🔴 **등급이 같나** — `(맞나, 사유)`. 우리 경기 글자와 대본다.
+
+    ⚠️ **제목만** 본다 — 스니펫에는 사이트 차림표(`여자부`·`U-18`)가 섞여
+       멀쩡한 기사가 떨어진다(실측 2026-10-16).
+    """
+    mine, theirs = _grade_of(ref_words), _grade_of(title)
+    if mine == theirs:
+        return True, ""
+    if theirs - mine:
+        return False, (f"🔴 **등급이 다르다** — 글은 "
+                       f"{sorted(theirs - mine)} 인데 이 경기는 아니다")
+    return False, (f"🔴 **등급이 다르다** — 이 경기는 {sorted(mine - theirs)} "
+                   f"인데 글은 아니다")
+
+
 def identity_ok(title: str, snippet: str, names: tuple[list[str], list[str]]
                 ) -> tuple[bool, str]:
     """🔴🔴 **신원 선필터**(§5 s3-3) — 제목·스니펫이 **두 팀 중 하나라도** 말하나.
@@ -757,6 +807,15 @@ async def _candidates(sub: Any, ref: MatchRef, *, state: RunState,
             # 🔴 ② — **제목을 함께 남긴다**(손실 감사가 그 글이 무엇이었나를 본다)
             state.drop(f"s3/{name}/{url[:40]}", DropReason.IDENTITY_MISMATCH,
                        said_i[:90], stage="s3/신원", title=said_t[:70])
+            continue
+        # 🔴🔴 **등급 검사**(`grade_ok` 머리말 · 사용자 지시 2026-10-16) —
+        #    이름이 걸려도 **U19·여자 글이면 다른 경기**다.
+        ok_g, said_g = grade_ok(
+            said_t, str(getattr(h, "snippet", "") or ""),
+            f"{ref.home_name} {ref.away_name} {ref.competition}")
+        if not ok_g:
+            state.drop(f"s3/{name}/{url[:40]}", DropReason.IDENTITY_MISMATCH,
+                       said_g[:90], stage="s3/등급", title=said_t[:70])
             continue
         old, said_old = datehint.too_old(url, str(getattr(h, "snippet", "")
                                                  or ""))
