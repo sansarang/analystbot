@@ -446,3 +446,39 @@ def test_vd21_러너가_그_칸을_넘긴다() -> None:
     said = (ROOT / "tools/run_collect.py").read_text(encoding="utf-8")
     assert "plan=plan, strat=var_sl" in said, (
         "VD21 🔴 러너가 ⑤-b 판정·⑤-b2 전략 변수를 ⑯ 묶음에 안 넘긴다")
+
+
+def test_vd22_점수는_홈_원정_순서다() -> None:
+    """🔴🔴 VD22 — 사용자 지시 2026-10-16: *"순서를 거꾸로 썼다 — 수정해라"*.
+
+    ⚠️ 실사고 2026-10-16(PSIM · City Club 둘 다): `pick=away` 인데
+       `score="2-1"`(또는 문장에 `1-0`)을 냈다. 뜻은 *"원정이 이기고 홈이 한
+       골"* 인데 **표기만 뒤집혔다**.
+    🔴 프롬프트에만 적어 둔 규칙이 **두 번 안 지켜졌다** → 모델이 출력 직전에
+       보는 **스키마 칸 설명**에도 박고, 문장 속 **뒤집힌 표기**도 잡는다.
+    """
+    import inspect
+    import sys
+    sys.path.insert(0, str(ROOT))
+    from app.core.stages.s6_verdict import Verdict, ask, judge
+
+    # ① 스키마 칸 설명이 순서를 말한다
+    said = str(Verdict.model_fields["score"].description or "")
+    assert "홈-원정" in said and "1-2" in said, said
+    assert "앞이 홈 득점" in said, said
+    assert "away" in str(Verdict.model_fields["pick"].description or "")
+    # ② 프롬프트에 **보기**가 있다
+    src = inspect.getsource(ask)
+    assert "원정이 이기고 홈이 한 골" in src, src[-900:]
+
+    # ③ 문장에 **거꾸로** 적으면 잡는다
+    box = ["확률 — 홈 31.1% · 무 31.1% · 원정 37.8%"]
+    one = "점수는 원정 1골, 홈 0골로 원정 1-0을 예상한다."
+    _v, bad = judge(Verdict(sentences=[one] * 3, refs=["확률"] * 3,
+                            pick="away", score="0-1"), box)
+    assert any("거꾸로 적었다" in x for x in bad), bad
+    # ④ **대안 점수**(1-1 로 접힐 여지)는 잡지 않는다 — 그것까지 막으면 평이 얕아진다
+    alt = "원정 수비가 버티면 1-1 쪽으로 기울 여지도 있다."
+    _v2, bad2 = judge(Verdict(sentences=[alt] * 3, refs=["확률"] * 3,
+                              pick="away", score="1-2"), box)
+    assert not [x for x in bad2 if "(마)" in x], bad2
