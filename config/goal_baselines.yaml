@@ -1,5 +1,11 @@
 measured_at: '2026-10-14'
 kinds:
+  league:CSL:
+    goals_per_match: 3.1523
+    home_share: 1.7902
+    n: 696
+    n_home: 696
+    source: fotmob league:CSL 자체 실측(2026 216경기 · 2025 240경기 · 2024 240경기) · 중립 단계 제외(CC3) · tools/fit_comp_goals.py 2026-10-16
   league:ISR1:
     goals_per_match: 2.8927
     home_share: 1.5096
