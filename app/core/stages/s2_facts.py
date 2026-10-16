@@ -1166,7 +1166,9 @@ def _recent_from_games(games: list[dict], *, kickoff=None) -> dict:
     """
     from app.collect import fotmob as _fm
     from app.core import form as _form
-    rows = [dict(g) for g in (games or [])]
+    # 🔴🔴 **컵·친선을 뺀다**(사용자 지시 2026-10-16 · `form.league_only` 머리말)
+    #    ⚠️ 뺀 것을 **이름으로 남긴다** — 창이 얇아진 까닭이 보여야 한다(#3).
+    rows, said_cut = _form.league_only([dict(g) for g in (games or [])])
     five = _form.window_sums(rows, 5)
     # 🔴🔴 **칸 이름과 순서를 `fotmob.parse_form` 과 맞춘다**(사본 금지의 반대쪽
     #    함정): ⚠️ 실측 2026-10-11 — 내가 `conceded` 로만 적었더니 `s5_verify.
@@ -1201,6 +1203,8 @@ def _recent_from_games(games: list[dict], *, kickoff=None) -> dict:
             rest = None
     n = int(five["n"])
     return {
+        # 🔴 **폼 창에서 뺀 경기**(컵·친선·대륙) — 카드·평이 그 사실을 본다
+        "cup_dropped": said_cut,
         # 🔴 승패 글자는 **득실로 센다**(다른 파서의 글자를 베끼지 않는다)
         "last5": [x["result"] for x in seq],
         # 🔴🔴 **연패**(사용자 지시 2026-10-11) — *"연패한 팀일수록 승리에 더

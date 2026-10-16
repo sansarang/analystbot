@@ -137,6 +137,53 @@ def adjust_one(goals: float, *, mine_elo: float | None,
 WINDOWS = (5, 10)
 
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **폼 창은 리그 경기만 센다** — 사용자 지시 2026-10-16
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 컵은 §1 의 폼 창에서 **빠진다**(리그 경기만 쓴다) — 지시서 2026-10-13 셋째
+#
+#  ⚠️ 실사고 2026-10-16(Sydney FC vs Western Sydney · A리그 개막 전): 폼 창
+#     다섯 경기가 **호주컵 네 번 + 친선 한 번**으로 찼다 —
+#       07-21 Australia Cup 5-1(하부 팀) · 07-29 **친선 Tottenham 1-1** ·
+#       08-09 Australia Cup 5-1 · 08-18 Australia Cup 1-0 · 09-09 Cup 1-1
+#     그 수로 `S01-home 득점 평균 2.6` 이 섰다. **리그 경기가 0건**이었다.
+#  🔴 그래서 창을 자르기 전에 **컵·친선을 뺀다.** ⚠️ 남은 경기가 창보다 적으면
+#     그대로 적는다(0 으로 채우지 않는다 · #3) — `n` 과 `dropped` 가 말한다.
+#  ⚠️ 대륙 대회(ACL·UCL 등)는 **뺀다** — 상대 수준이 국내 리그와 다르다.
+#     🔴 이 판정은 **글자**로 한다(대회 표에 없는 리그도 많다) — 그래서 낱말은
+#        여기 한 곳에만 둔다(사본 금지).
+
+#: 🔴 폼 창에서 **빼는** 대회 낱말(소문자 비교)
+NOT_LEAGUE: tuple[str, ...] = (
+    "cup", "컵", "pokal", "copa", "coppa", "taca", "taça", "beker", "kup",
+    "puchar", "cupen", "friendl", "친선", "trophy", "trophee", "trophée",
+    "shield", "supercop", "supercup", "super cup", "champions league",
+    "europa league", "conference league", "libertadores", "sudamericana",
+    "playoff", "play-off", "qualification", "예선",
+)
+
+
+def is_league_game(said: object) -> bool:
+    """🔴 그 경기의 대회 글자가 **국내 리그**인가(폼 창에 넣나)."""
+    low = str(said or "").lower()
+    if not low:
+        return True          # ⬜ 대회를 모르면 **빼지 않는다**(있는 것을 지우지 않는다)
+    return not any(w in low for w in NOT_LEAGUE)
+
+
+def league_only(games: list[dict]) -> tuple[list[dict], list[str]]:
+    """🔴 폼 창 재료에서 **컵·친선·대륙 대회를 뺀다**. `(남은 것, 뺀 사유들)`."""
+    keep, said = [], []
+    for one in list(games or []):
+        got = dict(one) if isinstance(one, dict) else {}
+        if is_league_game(got.get("league")):
+            keep.append(got)
+        else:
+            said.append(f"{got.get('date')} {got.get('league')}")
+    return keep, said
+
+
 def window_sums(games: list[dict], n: int) -> dict:
     """🔴🔴 ① — **한 경기 목록에서 최근 n경기**를 잘라 득·실을 센다.
 

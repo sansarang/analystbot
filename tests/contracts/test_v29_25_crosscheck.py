@@ -120,3 +120,45 @@ def test_cc5_s5_가_빨간_폼을_내린다() -> None:
     assert 'box.get("flags")' in said, "CC5 🔴 `flags` 를 안 읽는다"
     assert "usable_as_basis=(n >= low and not said_flags)" in said, (
         "CC5 🔴 빨간 폼이 **근거로 남는다** — 맥락 전용으로 내려야 한다")
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **폼 창은 리그 경기만** — 사용자 지시 2026-10-16
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 실사고 2026-10-16(Sydney FC · A리그 개막 전): 폼 다섯 경기가 **호주컵 넷 +
+#     친선 하나**로 찼고(리그 **0건**) 그 수로 `득점 평균 2.6` 이 섰다.
+
+CUPMIX = [
+    {"date": "2026-07-21", "league": "Australia Cup", "gf": 5, "ga": 1},
+    {"date": "2026-07-29", "league": "Club Friendlies", "gf": 1, "ga": 1},
+    {"date": "2026-09-01", "league": "A-League", "gf": 1, "ga": 2},
+    {"date": "2026-09-08", "league": "AFC Champions League Two", "gf": 0, "ga": 0},
+    {"date": "2026-09-15", "league": "A-League", "gf": 2, "ga": 0},
+]
+
+
+def test_cc6_폼_창은_리그만() -> None:
+    """CC6 🔴 컵·친선·대륙 대회를 뺀다 — 판정은 `form.is_league_game` 하나다."""
+    from app.core import form as _form
+
+    keep, cut = _form.league_only(CUPMIX)
+    assert [k["date"] for k in keep] == ["2026-09-01", "2026-09-15"], keep
+    assert len(cut) == 3, cut
+    assert _form.is_league_game("A-League") and _form.is_league_game("Serie A")
+    for bad in ("Australia Cup", "Club Friendlies", "DFB-Pokal", "Copa del Rey",
+                "UEFA Champions League", "Conference League", "친선"):
+        assert not _form.is_league_game(bad), bad
+    # ⬜ 대회를 모르면 **빼지 않는다**(있는 것을 지우지 않는다 · #3)
+    assert _form.is_league_game("") and _form.is_league_game(None)
+
+
+def test_cc7_뺀_것을_이름으로_남긴다() -> None:
+    """CC7 🔴 창이 얇아진 까닭이 보여야 한다(조용한 0 금지)."""
+    from app.core.stages.s2_facts import _recent_from_games
+
+    box = _recent_from_games(CUPMIX, kickoff=None)
+    assert box.get("cup_dropped"), box
+    assert any("Australia Cup" in x for x in box["cup_dropped"])
+    # 🔴 남은 두 경기만 센다
+    assert len(box["sequence"]) == 2, box["sequence"]
