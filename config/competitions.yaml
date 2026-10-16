@@ -261,6 +261,74 @@ keys:
   #     감독(isCoach 2)** 을 준다 → 축0·⑤-b·⑤-b2 가 경기 전에 돈다.
   #  🔴 배당 — 러시아는 `soccer_russia_premier_league`(피드 실측) ·
   #     우크라이나는 **피드에 없다**(`none`).
+  # ══════════════════════════════════════════════════════════════
+  # 🔴 **사우디 · 남아공 · 체코 1부** — 사용자 지시 2026-10-16
+  # ══════════════════════════════════════════════════════════════
+  #
+  #  🔴 받아서 확인했다(경기 페이지 `parentLeagueId` → 리그 페이지 대조):
+  #     `536` = `Saudi Pro League`/**KSA** · `537` = `Premier Soccer League`/**RSA**
+  #     · `122` = `1. Liga`/**CZE**.
+  #  ⚠️ 셋 다 **리그 sitemap 색인(431개)에 없다** — 팀 색인에서 구단을 집어
+  #     일정 → 경기 페이지로 번호를 풀었다(그래서 `fotmob_ids` 가 중요하다).
+  #  🔴 라인업 실측(2026-10-16) — 셋 다 **11·11 + 포메이션 + 감독(isCoach 2)**.
+  #     사우디·체코는 **다음 경기**도 이미 있다.
+  #  ⚠️ 정정 — 2026-10-15 에 내가 *"남아공은 fotmob 범위 밖"* 이라 적은 것은
+  #     **틀렸다**(팀 색인의 열쇠만 훑고 슬러그를 안 봤다). 1부는 있다 ·
+  #     `Hope FC` 가 안 됐던 것은 그 팀이 **2부(Motsepe)** 라서다.
+  league:KSA1:
+    kind: domestic_league
+    confederation: AFC
+    names: ["saudi pro league", "사우디 프로리그", "사우디 1부",
+            "roshn saudi league"]
+    sources:
+      fotmob_ids: [536]
+      fotmob_names: ["Saudi Pro League"]
+      fotmob_ccode: "KSA"
+      odds_sport_key: soccer_saudi_arabia_pro_league
+      checked_at: "2026-10-16"
+    format:
+      stage_single: ["regular season"]
+      two_legs: []
+      neutral: []
+      why: 단일 리그(플레이오프 없음)
+    seasons: ["2024/25", "2025/26", "2026/27"]
+    baseline: {}
+  league:RSA1:
+    kind: domestic_league
+    confederation: CAF
+    names: ["premier soccer league", "betway premiership", "남아공 1부",
+            "남아프리카공화국 1부", "psl 남아공"]
+    sources:
+      fotmob_ids: [537]
+      fotmob_names: ["Premier Soccer League"]
+      fotmob_ccode: "RSA"
+      odds_sport_key: none
+      checked_at: "2026-10-16"
+    format:
+      stage_single: ["regular season"]
+      two_legs: []
+      neutral: []
+      why: 단일 리그(승강 플레이오프는 따로 열린다)
+    seasons: ["2024/25", "2025/26", "2026/27"]
+    baseline: {}
+  league:CZE1:
+    kind: domestic_league
+    confederation: UEFA
+    names: ["czech first league", "chance liga", "fortuna liga",
+            "체코 1부", "체코 리그"]
+    sources:
+      fotmob_ids: [122]
+      fotmob_names: ["1. Liga"]
+      fotmob_ccode: "CZE"
+      odds_sport_key: none
+      checked_at: "2026-10-16"
+    format:
+      stage_single: ["regular season"]
+      two_legs: ["play-off"]
+      neutral: []
+      why: 정규 35R 뒤 상·하위 분할 플레이오프
+    seasons: ["2024/25", "2025/26", "2026/27"]
+    baseline: {}
   league:RUS1:
     kind: domestic_league
     confederation: UEFA
