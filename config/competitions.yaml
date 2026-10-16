@@ -290,6 +290,54 @@ keys:
   #     `soccer_poland_ekstraklasa`. 나머지 넷은 `none`.
   #  ⚠️ `1. liga`·`Prva Liga`·`Super Liga` 는 나라마다 겹친다(CZE 122 · SVN 173 ·
   #     MKD 249 · UZB 540) — 맨 이름을 안 적고 **번호로** 갈랐다.
+  # ══════════════════════════════════════════════════════════════
+  # 🔴 **스위스 1부 · 한국 2부 · 일본 2부** — 사용자 지시 2026-10-16
+  # ══════════════════════════════════════════════════════════════
+  #
+  #  🔴 번호는 받아서 확인했다 — `69` = `Super League`/**SUI** ·
+  #     `9116` = `K League 2`/**KOR**(리그 색인에 없어 서울 이랜드 616212 의
+  #     경기에서 `parentLeagueId` 로 뽑았다 · K리그1 은 9080) ·
+  #     `8974` = `J. League 2`/**JPN**.
+  #  🔴 라인업 실측(2026-10-16) — **셋 다 끝난 경기에는 11·11 + 포메이션**이 있다.
+  #     ⚠️ 다만 **미리 싣는 정도가 다르다**:
+  #       · 일본 2부 — **다음 경기도** 11·11(경기 전에 축0·⑤-b2 가 돈다)
+  #       · 스위스·한국 2부 — 다음 경기는 **0명/없다**(8일 뒤 경기로 확인) →
+  #         **킥오프 1시간 전쯤**에 올라온다. 하루 전 실행은 ⬜ 가 정상이다.
+  #     ⚠️ 이것은 과테말라·우즈벡(끝난 경기도 `null`)과 **다른 상태**다.
+  #  🔴 배당 — 스위스만 있다(`soccer_switzerland_superleague`). 피드의
+  #     `soccer_korea_kleague1`·`soccer_japan_j_league` 는 **1부**라 쓰지 않는다.
+  #  ⚠️ `Super League` 이름 겹침(SUI 69 · CHN 120 · IDN 8983 · GRE2 8815) —
+  #     맨 이름을 안 적고 번호로 갈랐다.
+  league:SUI1:
+    kind: domestic_league
+    confederation: UEFA
+    names: ["swiss super league", "스위스 1부", "스위스 수퍼리그", "스위스 슈퍼리그"]
+    sources: {fotmob_ids: [69], fotmob_names: ["Super League"], fotmob_ccode: "SUI",
+              odds_sport_key: soccer_switzerland_superleague, checked_at: "2026-10-16"}
+    format: {stage_single: ["regular season"], two_legs: ["championship round",
+             "relegation play-off"], neutral: [], why: 정규 뒤 상·하위 분할}
+    seasons: ["2024/25", "2025/26", "2026/27"]
+    baseline: {}
+  league:KL2:
+    kind: domestic_league
+    confederation: AFC
+    names: ["k league 2", "k리그2", "k리그 2", "한국 2부", "케이리그2"]
+    sources: {fotmob_ids: [9116], fotmob_names: ["K League 2"], fotmob_ccode: "KOR",
+              odds_sport_key: none, checked_at: "2026-10-16"}
+    format: {stage_single: ["regular season"], two_legs: ["promotion play-off"],
+             neutral: [], why: 정규 리그 + 승격 플레이오프}
+    seasons: ["2024", "2025", "2026"]
+    baseline: {}
+  league:J2:
+    kind: domestic_league
+    confederation: AFC
+    names: ["j2 league", "j. league 2", "j리그2", "j리그 2", "일본 2부"]
+    sources: {fotmob_ids: [8974], fotmob_names: ["J. League 2"], fotmob_ccode: "JPN",
+              odds_sport_key: none, checked_at: "2026-10-16"}
+    format: {stage_single: ["regular season"], two_legs: ["promotion play-off"],
+             neutral: [], why: 정규 38R + 승격 플레이오프}
+    seasons: ["2024", "2025", "2026"]
+    baseline: {}
   league:SVK1:
     kind: domestic_league
     confederation: UEFA

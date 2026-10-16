@@ -1,5 +1,23 @@
 measured_at: '2026-10-14'
 kinds:
+  league:J2:
+    goals_per_match: 2.4942
+    home_share: 1.3406
+    n: 866
+    n_home: 866
+    source: fotmob league:J2 자체 실측(2026/2027 100경기 · 2025 383경기 · 2024 383경기) · 중립 단계 제외(CC3) · tools/fit_comp_goals.py 2026-10-16
+  league:KL2:
+    goals_per_match: 2.5905
+    home_share: 1.3238
+    n: 735
+    n_home: 735
+    source: fotmob league:KL2 자체 실측(2026 224경기 · 2025 275경기 · 2024 236경기) · 중립 단계 제외(CC3) · tools/fit_comp_goals.py 2026-10-16
+  league:SUI1:
+    goals_per_match: 3.207
+    home_share: 1.7698
+    n: 517
+    n_home: 517
+    source: fotmob league:SUI1 자체 실측(2026/2027 60경기 · 2025/2026 229경기 · 2024/2025 228경기) · 중립 단계 제외(CC3) · tools/fit_comp_goals.py 2026-10-16
   league:BL2:
     goals_per_match: 3.0
     home_share: 1.6444
