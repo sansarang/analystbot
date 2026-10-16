@@ -1,5 +1,11 @@
 measured_at: '2026-10-14'
 kinds:
+  league:UAE1:
+    goals_per_match: 3.0376
+    home_share: 1.594
+    n: 399
+    n_home: 399
+    source: fotmob league:UAE1 자체 실측(2026/2027 35경기 · 2025/2026 182경기 · 2024/2025 182경기) · 중립 단계 제외(CC3) · tools/fit_comp_goals.py 2026-10-16
   league:CSL:
     goals_per_match: 3.1523
     home_share: 1.7902
