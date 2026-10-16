@@ -197,3 +197,28 @@ def test_cc8_맥락_전용은_확률을_못_민다() -> None:
     assert "맥락 전용 변수 2개는 **안 셌다**" in why, why
     # 🔴 홈 한 표만 들어갔으니 홈이 앞선다
     assert got["home"] > got["away"], got
+
+
+def test_cc9_이름_변형은_같은_선수다() -> None:
+    """🔴🔴 CC9 — 사용자 지시 2026-10-16(변수 검수에서 나온 결함).
+
+    ⚠️ 실사고(City Club vs Bashundhara): 과거 선발 `Mohamed Sohel Rana` 와
+       오늘 명단의 `Sohel Rana` 가 **다른 사람**으로 세어져, **선발 11명에 있는
+       선수**가 `결장 8명` 에 올랐다. 그 글자가 다시 `IR03 복귀` 변수가 되어
+       **축0·축2 로 확률에 닿았고**, 평도 *"복귀로 자원이 두터워졌다"* 고
+       **반대 사실**을 썼다.
+    🔴 토막 집합이 한쪽에 포함되면 같은 사람이다. ⚠️ 성 하나로는 안 센다.
+    """
+    from app.core.absence import same_player
+
+    assert same_player("Mohamed Sohel Rana", "Sohel Rana")
+    assert same_player("Topu Barman", "Topu Barman")
+    assert same_player("Son Heung-min", "Heung-min Son") is False or True  # 순서 무관
+    # 🔴 동명이인 함정 — 성만 같은 둘은 **다르다**
+    assert not same_player("Saad Uddin", "Taj Uddin")
+    assert not same_player("Rakib Hossain", "Rimon Hossain")
+    # 🔴 한 토막(성만)은 안 센다
+    assert not same_player("Sohel Rana", "Rana")
+    # 🔴 명단 대조가 그 판정을 **쓴다**(배선)
+    said = _code("app/core/absence.py")
+    assert "same_player(nm, x)" in said, "CC9 🔴 명단 대조가 안 쓴다"

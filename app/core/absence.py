@@ -64,6 +64,25 @@ def squad_known(facts, key: str) -> bool:
     return bool(getattr(one, "bench", None) or [])
 
 
+def _tokens(said: str) -> set[str]:
+    """🔴 선수 이름 토막 — 소문자·기호 제거(점·하이픈)."""
+    import re as _re
+    got = _re.sub(r"[.\-\u2019']", " ", str(said or "")).lower()
+    return {x for x in got.split() if len(x) > 1}
+
+
+def same_player(a: str, b: str) -> bool:
+    """🔴🔴 **같은 선수인가** — 토막 집합이 한쪽에 포함되면 같다.
+
+    `Sohel Rana` ⊂ `Mohamed Sohel Rana` → 같다.
+    ⚠️ **두 토막 이상**이어야 센다 — 성 하나로 맞추면 동명이인이 섞인다.
+    """
+    x, y = _tokens(a), _tokens(b)
+    if len(x) < 2 or len(y) < 2:
+        return False
+    return x <= y or y <= x
+
+
 def today_squad(facts, key: str) -> set[str]:
     """🔴 **오늘 출전 명단**(선발+벤치). ⚠️ 못 받았으면 **빈 집합**이다.
 
@@ -161,10 +180,26 @@ def roster_gap(facts, key: str) -> list:
         # ⚠️ 5경기를 못 모았으면 **문턱을 그 수에 맞춰 올리지 않는다** — 적은
         #    표본으로 주전을 가리면 로테이션이 결장으로 샌다. 그래서 안 센다.
         return []
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **이름 변형도 같은 사람으로 센다** — 사용자 지시 2026-10-16
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실사고 2026-10-16(City Club vs Bashundhara): 과거 선발 이름이
+    #     **`Mohamed Sohel Rana`** 인데 오늘 명단에는 **`Sohel Rana`** 로 적혀
+    #     id 가 안 붙었다 → **선발 11명에 있는 선수**가 `결장 8명` 에 올랐고,
+    #     그 글자가 다시 `IR03 복귀` 변수가 되어 **축0·축2 로 확률에 닿았다**
+    #     (평도 *"Rana 복귀로 자원이 두터워졌다"* 고 썼다 — **반대 사실**이다).
+    #  🔴 id 가 못 붙으면 **이름 토막**으로 한 번 더 본다 — 한쪽 토막 집합이
+    #     다른 쪽에 **포함**되면 같은 사람이다(`Sohel Rana` ⊂ `Mohamed Sohel
+    #     Rana`). ⚠️ 한 토막짜리(성만)는 **안 센다** — 동명이인이 흔하다.
+    said_squad = [str(x) for x in today_squad(facts, key)]
     out = []
     for nm, k in sorted(starts.items(), key=lambda x: (-x[1], x[0])):
         ident = _pid.resolve(box, said=nm)[0] or f"name:{nm}"
         if k < STARTS_MIN or ident in squad:
+            continue
+        if any(same_player(nm, x) for x in said_squad):
+            # 🔴 **오늘 명단에 있다** — 결장이 아니다(위 머리말)
             continue
         out.append(Missing(name=str(nm), reason="other", source="roster",
                            why=ROSTER_WHY.format(n=n, k=k)))
