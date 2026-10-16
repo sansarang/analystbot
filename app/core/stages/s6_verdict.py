@@ -188,8 +188,15 @@ def chain_of(ref: MatchRef, prob, mr, varset, *,
             places = [str(x) for x in (getattr(one, "places", None) or [])]
             if not (set(places) & AX):
                 continue
+            # 🔴🔴 **안전장치 사유는 자르지 않는다** — 사용자 지시 2026-10-16.
+            #    ⚠️ 실사고(Obolon Kyiv): 글을 120자에서 잘라 `🔴 **안전장치**:`
+            #       뒤가 사라졌다 — 평이 **왜 그 변수가 맥락 전용인지** 못 봤다.
+            said_c = str(getattr(one, "claim", "") or "")
+            head, _sep, tail = said_c.partition("🔴 **안전장치**")
             rows.append(f"  변수 `{one.id}` [{one.type}] 자리 {places} — "
-                        f"{str(getattr(one, 'claim', '') or '')[:120]}")
+                        + head[:120]
+                        + (f" · 🔴 **안전장치** {tail.lstrip(': ')[:160]}"
+                           if tail else ""))
     else:
         rows.append("변수 — ⬜ 배치표가 비었다")
     # ══════════════════════════════════════════════════════════════════

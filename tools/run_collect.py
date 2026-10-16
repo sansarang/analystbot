@@ -52,6 +52,28 @@ STEPS: tuple[str, ...] = (
     "⑯ 종합 평(deepseek)")
 
 
+#: 🔴 변수 글에서 **안전장치 사유**가 시작되는 글자
+FLAG_MARK = "🔴 **안전장치**"
+
+
+def say_var(v, cut: int = 100) -> None:
+    """🔴🔴 변수 한 줄 — **안전장치 사유는 따로 찍는다**(사용자 지시 2026-10-16).
+
+    ⚠️ 실사고 2026-10-16(Obolon Kyiv): 카드에 `… 🔴 **안전장치**: 🔴 ` 까지만
+       찍히고 **사유가 잘렸다** — 글을 `claim[:100]` 으로 잘랐기 때문이다.
+       🔴 *조용한 0* 은 아니었지만, **왜 맥락 전용인지 읽을 수 없었다**(#3 의 뜻은
+       "이름으로 남긴다"이지 "글자를 남긴다"가 아니다).
+    🔴 그래서 사유를 **둘째 줄**로 온전히 적는다.
+    """
+    said = str(getattr(v, "claim", "") or "")
+    head, _sep, tail = said.partition(FLAG_MARK)
+    print(f"- `{v.id}` [{v.type}] {head[:cut]}"
+          + (f" · 원천 {v.n_sources}곳" if getattr(v, "n_sources", 0) else ""),
+          flush=True)
+    if tail:
+        print(f"    └ 🔴 **안전장치** {tail.lstrip(': ')}"[:400], flush=True)
+
+
 def mark(step: str, state: str, said: str = "") -> None:
     """🔴 장부에 적는다. ⚠️ 적지 않으면 보고가 *"그냥 넘어갔다"* 로 센다."""
     LEDGER[step] = (state, said)
@@ -302,8 +324,7 @@ async def main(argv: list[str]) -> int:
     mark("⑤ 검증", "✅ 돌았다" if variables else "🔴 빈손",
          f"변수 {len(variables)}개")
     for v in variables[:12]:
-        print(f"- `{v.id}` [{v.type}] {str(v.claim or '')[:100]}"
-              + (f" · 원천 {v.n_sources}곳" if getattr(v, "n_sources", 0) else ""))
+        say_var(v, 100)
     print(flush=True)
 
     # ══════════════════════════════════════════════════════════════════
@@ -545,9 +566,7 @@ async def main(argv: list[str]) -> int:
         mark("⑧ 표적 추출", "✅ 돌았다" if said_v2 else "🔴 빈손",
              f"후보 {len(more)} → 변수 {len(said_v2)}개")
         for v in said_v2:
-            print(f"- `{v.id}` [{v.type}] {str(v.claim or '')[:110]}"
-                  + (f" · 원천 {v.n_sources}곳" if getattr(v, "n_sources", 0)
-                     else ""))
+            say_var(v, 110)
         # 🔴 **자리**를 보인다 — 확률에 닿는가(축·λ상수)가 그 칸에서 보인다
         from app.core import routing as _rt
         # ⚠️ 여기서 또 배치하지 않는다 — ⑩ 이 **하나의 varset** 을 만든다.

@@ -222,3 +222,34 @@ def test_cc9_이름_변형은_같은_선수다() -> None:
     # 🔴 명단 대조가 그 판정을 **쓴다**(배선)
     said = _code("app/core/absence.py")
     assert "same_player(nm, x)" in said, "CC9 🔴 명단 대조가 안 쓴다"
+
+
+def test_cc10_안전장치_사유가_안_잘린다() -> None:
+    """🔴🔴 CC10 — 사용자 지시 2026-10-16.
+
+    ⚠️ 실사고(Obolon Kyiv vs Veres Rivne): 카드에 `… 🔴 **안전장치**: 🔴 ` 까지만
+       찍히고 **사유가 사라졌다**. 변수 글을 `claim[:100]`(러너)·`[:120]`(묶음)
+       에서 잘랐기 때문이다. 🔴 *"이름으로 남긴다"* 는 **읽을 수 있게 남긴다**는
+       뜻이다 — 잘린 사유는 없는 것과 같다.
+    """
+    from app.core.routing import VarRow, VariableSet
+    from app.core.stages import s6_verdict as vd
+
+    said = ("최근 5경기 W D L L D · 득점 평균 0.6 · 기준 팀당 1.2033골 대비 "
+            "적다 · 실점 평균 1.8(많다) · 🔴 **안전장치**: 🔴 폼이 2경기뿐이다"
+            "(<3) · 두 경로가 어긋난다 — 득점 0.0 ↔ 1.6")
+    row = VarRow(id="S01-home", type="recent_pattern",
+                 places=["axis1", "hypo"], claim=said)
+
+    class _P:
+        home = draw = away = 0.333
+        lam = over = scores = {}
+
+    box = vd.chain_of(None, _P(), None, VariableSet(rows=[row]))
+    one = next(x for x in box if "S01-home" in x)
+    assert "폼이 2경기뿐이다" in one, one
+    assert "두 경로가 어긋난다" in one, one
+    # 🔴 러너도 사유를 **둘째 줄**로 온전히 찍는다(배선)
+    said_run = (ROOT / "tools/run_collect.py").read_text(encoding="utf-8")
+    assert "def say_var(" in said_run and "say_var(v, 100)" in said_run
+    assert "FLAG_MARK" in said_run
