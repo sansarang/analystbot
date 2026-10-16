@@ -116,6 +116,32 @@ keys:
       football_data: SA
       football_data_names: ["Serie A"]
     baseline: {elo: football_data, fit: "league:SA"}
+  # ══════════════════════════════════════════════════════════════
+  # 🔴 **호주 1부(A-League Men)** — 사용자 지시 2026-10-16 `aus d1`
+  # ══════════════════════════════════════════════════════════════
+  #
+  #  🔴 받아서 확인했다: fotmob `113` → `leagueName` **"A-League"** · ccode **AUS**
+  #     (일정 156경기). ⚠️ 종전엔 **자동 등록**(`league:fotmob113`)으로만 섰다 —
+  #     그러면 득점 기준·배당 열쇠가 비어 ⑮ 가 멈춘다.
+  #  🔴 배당 열쇠 실측 — `soccer_australia_aleague | A-League`.
+  league:AUS1:
+    kind: domestic_league
+    confederation: AFC
+    names: ["a-league men", "a-league", "aus d1", "호주 1부",
+            "호주 에이리그", "에이리그"]
+    sources:
+      fotmob_ids: [113]
+      fotmob_names: ["A-League"]
+      fotmob_ccode: "AUS"
+      odds_sport_key: soccer_australia_aleague
+      checked_at: "2026-10-16"
+    format:
+      stage_single: ["regular season"]
+      two_legs: ["semi-final"]
+      neutral: ["grand final"]
+      why: 정규 리그 + 파이널 시리즈(결승은 상위 팀 홈 · 중립 아님)
+    seasons: ["2024/25", "2025/26", "2026/27"]
+    baseline: {}
   league:BL1:
     kind: domestic_league
     names: ["bundesliga", "분데스리가"]
@@ -140,7 +166,7 @@ keys:
     baseline: {elo: football_data, fit: "league:FL1"}
   league:DED:
     kind: domestic_league
-    names: ["eredivisie", "에레디비시"]
+    names: ["eredivisie", "에레디비시", "hol d1", "네덜란드 1부"]
     sources:
       football_data_hist: {kind: mmz4281, code: N1}
       espn_slugs: ["ned.1"]
@@ -162,7 +188,7 @@ keys:
     baseline: {elo: football_data, fit: "league:PPL"}
   league:ELC:
     kind: domestic_league
-    names: ["championship", "챔피언십"]
+    names: ["championship", "챔피언십", "eng lch", "잉글랜드 2부"]
     sources:
       football_data_hist: {kind: mmz4281, code: E1}
       espn_slugs: ["eng.2"]

@@ -1,5 +1,11 @@
 measured_at: '2026-10-14'
 kinds:
+  league:AUS1:
+    goals_per_match: 3.0472
+    home_share: 1.5605
+    n: 339
+    n_home: 339
+    source: fotmob league:AUS1 자체 실측(2026/2027 0경기 · 2025/2026 163경기 · 2024/2025 176경기) · 중립 단계 제외(CC3) · tools/fit_comp_goals.py 2026-10-16
   league:DEN1:
     goals_per_match: 3.1076
     home_share: 1.6637
