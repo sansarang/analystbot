@@ -1,5 +1,11 @@
 measured_at: '2026-10-14'
 kinds:
+  league:ISR1:
+    goals_per_match: 2.8927
+    home_share: 1.5096
+    n: 522
+    n_home: 522
+    source: fotmob league:ISR1 자체 실측(2026/2027 42경기 · 2025/2026 240경기 · 2024/2025 240경기) · 중립 단계 제외(CC3) · tools/fit_comp_goals.py 2026-10-16
   league:J2:
     goals_per_match: 2.4942
     home_share: 1.3406

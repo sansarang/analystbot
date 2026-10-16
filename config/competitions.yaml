@@ -308,6 +308,26 @@ keys:
   #     `soccer_korea_kleague1`·`soccer_japan_j_league` 는 **1부**라 쓰지 않는다.
   #  ⚠️ `Super League` 이름 겹침(SUI 69 · CHN 120 · IDN 8983 · GRE2 8815) —
   #     맨 이름을 안 적고 번호로 갈랐다.
+  # 🔴 **이스라엘 1부** — 사용자 지시 2026-10-16
+  #  🔴 받아서 확인했다: fotmob `127` = `Ligat ha'Al`/**ISR**.
+  #     ⚠️ 색인에 있는 `128 leumit-league` 는 **2부**다 — 1부는 색인에 없어
+  #        **마카비 텔아비브 7855** 의 경기에서 `parentLeagueId` 로 풀었다.
+  #  🔴 라인업 실측(2026-10-16) — **사흘 뒤 경기까지** 11·11 + 포메이션 +
+  #     감독(isCoach 2) 이 있다 → 축0·⑤-b·⑤-b2 가 경기 전에 돈다.
+  #  🔴 배당 피드에는 **없다**(종목 85개 실측 0건) → `odds_sport_key: none`.
+  league:ISR1:
+    kind: domestic_league
+    confederation: UEFA
+    names: ["ligat haal", "ligat ha'al", "israeli premier league",
+            "이스라엘 1부", "이스라엘 리그"]
+    sources: {fotmob_ids: [127], fotmob_names: ["Ligat ha'Al"],
+              fotmob_ccode: "ISR", odds_sport_key: none,
+              checked_at: "2026-10-16"}
+    format: {stage_single: ["regular season"],
+             two_legs: ["championship round", "relegation round"],
+             neutral: [], why: 정규 뒤 상·하위 분할}
+    seasons: ["2024/25", "2025/26", "2026/27"]
+    baseline: {}
   league:SUI1:
     kind: domestic_league
     confederation: UEFA
