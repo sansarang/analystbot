@@ -1043,10 +1043,39 @@ async def _fill_form(ref: MatchRef, box: dict, *, state: RunState, net: Any,
                        f"(옛 폼 칸을 그대로 둔다)")
             continue
         old_box = dict((box.get("recent") or {}).get(key) or {})
-        box.setdefault("recent", {})[key] = {
-            **old_box, **_recent_from_games(made, kickoff=ref.kickoff_utc)}
+        got_new = _recent_from_games(made, kickoff=ref.kickoff_utc)
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **안전장치 셋**(사용자 지시 2026-10-16) — 층2 대조 · 층3 말이
+        #     되나 · 층4 누설. ⚠️ 여기서 **값을 고치지 않는다** — 어긋남을
+        #     이름으로 달아 두고, 쓰는 쪽(`s5_verify`)이 근거에서 뺀다(#3).
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 실사고 2026-10-16(Saprissa): 이 목록(경로 B)이 득실 0 이었고
+        #     경기 페이지 `teamForm`(경로 A)은 1.6/2.0 이었다 — 두 경로를
+        #     맞춰 봤으면 그 자리에서 잡혔다.
+        from app.core import crosscheck as _cc
+        said_flags: list[str] = []
+        # 🔴 층4 — 누설(킥오프 뒤 경기·그 경기 자신)
+        said_leak = _cc.leak_of(made, kickoff=ref.kickoff_utc,
+                                home=ref.home_name, away=ref.away_name)
+        said_flags += said_leak
+        # 🔴 층3 — 말이 되는 값인가
+        said_flags += _cc.form_sane(got_new)
+        # 🔴 층2 — **다른 경로**(경기 페이지 teamForm)와 대조
+        said_cross, why_cross = (None, "⬜ 대조 못 함 — 경기 페이지가 없다")
+        if old_box.get("sequence"):
+            said_cross, why_cross = _cc.form_cross(got_new, old_box)
+        if said_cross is False:
+            said_flags.append(why_cross)
+        got_new["cross_ok"] = said_cross
+        got_new["cross_why"] = why_cross
+        got_new["flags"] = said_flags
+        box.setdefault("recent", {})[key] = {**old_box, **got_new}
         state.note(f"s2 ① 폼 한 원천 — `{name}` {len(made)}경기 목록에서 "
-                   f"두 창을 잘랐다(상성과 같은 목록)")
+                   f"두 창을 잘랐다(상성과 같은 목록) · 대조 {why_cross[:60]}")
+        if said_flags:
+            state.note(f"s2 🔴 **폼 안전장치**(`{name}`) — "
+                       + " · ".join(said_flags[:3]))
     # ③ 핵심 선수 — 리그 통계 페이지 + 전체 목록
     lid = str((((fm._page(fm.payload(pages[0]) or {}).get("content") or {})
                 .get("table") or {}).get("parentLeagueId")) or "") if pages else ""

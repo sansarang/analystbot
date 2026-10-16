@@ -1013,10 +1013,22 @@ def _ir_recent(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
         #     *"서로를 열어두고 주고받는다"* 를 그 변수로 근거 삼았다.
         kind = comp_kind(ref, facts)
         got_dir, got_against, why_dir = _form_goal_dirs(box, trim, kind)
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **안전장치가 빨개진 폼은 근거로 안 쓴다**(사용자 지시 2026-10-16)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 실사고 2026-10-16(Saprissa): 폼이 *"득점 0.0 · 실점 0.2"* 라는
+        #     **거짓 수**였는데 그대로 변수가 되어 확률·평까지 갔다. 🔴 이제
+        #     `s2_facts` 가 층2(두 경로 대조)·층3(말이 되나)·층4(누설)를 달아
+        #     두므로, 하나라도 빨개지면 **맥락 전용**으로 내린다(확률에 안 닿는다).
+        #  🔴 값을 고치지 않는다 — **이름으로 남기고 내린다**(#3).
+        said_flags = [str(x) for x in (box.get("flags") or [])]
         claim = (f"최근 {n}경기 {last5} · 득점 평균 "
                  f"{avg if avg is not None else '못 쟀다'}"
                  + (f"(보정 {trim})" if trim is not None else "")
-                 + (f" · {why_dir}" if why_dir else ""))
+                 + (f" · {why_dir}" if why_dir else "")
+                 + (f" · 🔴 **안전장치**: {' · '.join(said_flags[:2])}"
+                    if said_flags else ""))
         out.append(Variable(
             id=f"{rid}-{'home' if key == ref.home else 'away'}",
             type="recent_pattern", subject=key,
@@ -1028,9 +1040,12 @@ def _ir_recent(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
             # 🔴 인용은 **어댑터 수치 그대로**다 — 기사가 아니라 구조 자료다
             quote=claim, doc_ids=[], from_rule=rid,
             # ⚠️ 표본이 문턱 미만이면 **근거로 쓰지 않는다**(§7 R7)
-            usable_as_basis=(n >= low)))
+            usable_as_basis=(n >= low and not said_flags)))
         if n < low:
             state.note(f"s5 {rid} `{key}` 표본 {n}경기 < {low} — 맥락 전용")
+        if said_flags:
+            state.note(f"s5 🔴 {rid} `{key}` **안전장치가 걸렸다** → 맥락 전용"
+                       f"(확률에 안 닿는다) — {' · '.join(said_flags[:2])}")
     return out
 
 
