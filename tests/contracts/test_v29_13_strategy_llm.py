@@ -45,11 +45,20 @@ def test_자리가_많이_바뀌면_묻는다() -> None:
     assert ok
 
 
-def test_트리거가_없으면_안_묻는다() -> None:
-    """🔴 늘 부르면 예산을 태운다."""
+def test_변화가_작아도_묻는다() -> None:
+    """🔴🔴 **바뀐 규칙**(사용자 지시 2026-10-16) — 변화가 작아도 **묻는다**.
+
+    > 포메이션 **변화가 없다고 해서 분석 자체를 하지 않으면 안 된다**
+
+    ⚠️ 종전 규칙은 *"트리거(핵심 결장·포메이션 바뀜·자리 ≥ 문턱)가 없으면 안
+       묻는다 — 늘 부르면 예산을 태운다"* 였다. 실사고 2026-10-16(Saprissa
+       4-4-2 vs Sporting 4-2-3-1): XI 를 받았는데 양 팀이 평소 그대로라
+       전략 분석이 **통째로 빠졌다**. 🔴 이제 XI 가 있으면 돈다.
+    """
     ok, why = sl.may_ask(REF, _Facts(), _Plan(
         {"L2": {"kind": "rotation", "text": "바뀐 자리 1개", "value": 1.0}}))
-    assert not ok and "트리거 없음" in why, why
+    assert ok, f"🔴 변화가 작다고 안 묻는다 — {why}"
+    assert "트리거 없음" not in why, why
 
 
 def test_XI_가_없으면_안_묻는다() -> None:
@@ -229,3 +238,43 @@ def test_recall_상한이_deepseek_를_안_자른다() -> None:
     from app.core import llm
     got = int(dict(llm.purpose_cfg("recall")).get("max_tokens") or 0)
     assert got >= 4000, got
+
+
+def test_sl9_변화_없어도_돈다() -> None:
+    """🔴🔴 SL9 — 사용자 지시 2026-10-16:
+
+    > b2 전략 전문가는 **포메이션에 따른 전술**을 말하는 거다 ·
+    > **포메이션 변화가 없다고 해서 분석 자체를 하지 않으면 안 된다**
+
+    ⚠️ 실사고 2026-10-16(Saprissa 4-4-2 vs Sporting 4-2-3-1): XI 2/2 를
+       받았는데 양 팀이 평소 그대로라 `⬜ 트리거 없음` 으로 **안 돌았다**.
+    🔴 이제 **XI 가 있으면 돈다** — 변화는 사유에 적는 맥락일 뿐이다.
+    """
+    class _XI:
+        def __init__(self, form: str) -> None:
+            self.formation = form
+            self.players: list = []
+
+    class _F:
+        xi = {"h": _XI("4-4-2"), "a": _XI("4-2-3-1")}
+
+    class _Plan:
+        facts: dict = {}          # 🔴 변화 사실이 **하나도 없다**
+
+    ok, why = sl.may_ask(None, _F(), _Plan())
+    assert ok, f"SL9 🔴 변화가 없다고 안 돈다 — {why}"
+    assert "4-4-2" in why and "변화 없음" in why, why
+    # 🔴 XI 가 아예 없으면 여전히 안 돈다(읽을 판이 없다)
+
+    class _F0:
+        xi: dict = {}
+
+    ok0, why0 = sl.may_ask(None, _F0(), _Plan())
+    assert not ok0 and "XI 가 없다" in why0, why0
+
+
+def test_sl10_포메이션_맞붙기_프롬프트() -> None:
+    """🔴 SL10 — 프롬프트가 **두 포메이션이 맞붙는 모양**을 읽으라고 말한다."""
+    src = inspect.getsource(sl.ask)
+    assert "두 포메이션이 맞붙는 모양" in src, "SL10 🔴 그 규칙이 없다"
+    assert "중원 숫자" in src and "변화가 " in src, src[-600:]

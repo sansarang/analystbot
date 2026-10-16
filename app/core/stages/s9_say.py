@@ -458,7 +458,29 @@ def _names_of(box: Bundle) -> set[str]:
     return {x.strip() for x in out if x.strip()}
 
 
-def _names_in(said: str, known: set[str]) -> list[str]:
+#: 🔴🔴 **자리 글자**(포지션 접두) — 이름 앞에 붙는다. 사람 이름의 일부가 아니다.
+#   ⚠️ 실사고 2026-10-16(코스타리카): 평이 *"CB **Waston**"*·*"CM **Soto**"*·
+#      *"DM **López**"* 라고 썼고 검열이 셋 다 **없는 이름**이라 했다 — 묶음에는
+#      `Waston`·`Soto`·`Alexander López` 가 **그대로 있었다**(실측).
+#   🔴 까닭 둘: ① `_NAME` 이 **두 낱말 이상**만 이름으로 보므로 묶음의 한 낱말
+#      이름(`Waston`)을 **아예 모으지 못했다** ② 문장 쪽은 접두가 붙어 두 낱말이
+#      되어 후보로 잡혔다 — **비대칭**이다.
+_POS = re.compile(r"^(?:GK|DF|MF|FW|CB|LCB|RCB|LB|RB|FB|WB|FB/WB|CDM|DM|CM|"
+                  r"LM|RM|AM|CAM|LW|RW|ST|CF|SS)\s+", re.I)
+
+
+def strip_pos(said: str) -> str:
+    """🔴 이름 앞의 **자리 글자**를 떼낸다(`CB Waston` → `Waston`)."""
+    got = str(said or "").strip()
+    for _ in range(3):
+        cut = _POS.sub("", got).strip()
+        if cut == got:
+            break
+        got = cut
+    return got
+
+
+def _names_in(said: str, known: set[str], *, text: str = "") -> list[str]:
     """🔴 (r) — 글이 **인용한, 묶음에 없는** 이름들. ⚠️ 로마자 이름만 센다.
 
     ⚠️ 한글 토막은 보통 명사(*"오른쪽"*·*"수비"*)와 섞여 거짓 위반을 만든다 —
@@ -472,10 +494,23 @@ def _names_in(said: str, known: set[str]) -> list[str]:
     """
     got = [x for x in _NAME.findall(str(said or ""))
            if re.match(r"^[A-Z]", x)]
+    said_text = str(text or "")
     out: list[str] = []
     for nm in got:
         if any(k and (k in nm or nm in k) for k in known):
             continue
+        # 🔴 ① **자리 글자를 떼고** 다시 본다(위 머리말 `CB Waston`)
+        bare = strip_pos(nm)
+        if bare != nm and any(k and (k in bare or bare in k) for k in known):
+            continue
+        # 🔴 ② **묶음 원문에 그 낱말들이 있으면** 지어낸 것이 아니다 —
+        #    묶음의 한 낱말 이름(`Waston`)이나 성만 쓴 축약(`López` ←
+        #    `Alexander López`)이 이 길로 통과한다. ⚠️ `text` 를 안 주면
+        #    종전과 **똑같이** 동작한다(옛 호출부를 안 깨뜨린다).
+        if said_text:
+            words = [w for w in re.split(r"[\s·]+", bare) if w]
+            if words and all(w in said_text for w in words):
+                continue
         out.append(nm)
     return out
 

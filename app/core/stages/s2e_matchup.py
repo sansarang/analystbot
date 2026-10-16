@@ -421,14 +421,42 @@ async def _history(net: Any, name: str, *, state: RunState, as_of,
                        f"as-of 이전 {len(fx)}건만 본다")
         out: list[dict] = []
         for m in fx:
-            url = str(m.get("page") or "")
-            if url.startswith("/"):
-                url = fm.BASE + url
-            one = await _day_page(net, url, state=state,
+            # ══════════════════════════════════════════════════════════
+            # 🔴🔴 **번호로 받는다 — 슬러그 주소는 남의 경기를 준다**
+            # ══════════════════════════════════════════════════════════
+            #
+            #  ⚠️ 실사고 2026-10-16(코스타리카 Saprissa): 팀 일정의 `page` 는
+            #     `/matches/<A>-vs-<B>/<슬러그>#<번호>` 꼴이고 **`#번호` 는
+            #     브라우저 조각이라 서버가 무시한다**. 그래서 같은 두 팀이 여러
+            #     번 만난 경우 서버가 **다른 맞대결**(보통 최신·다음 경기)을 준다.
+            #     실측 — 과거 5경기 중 **4경기가 엉뚱한 페이지**였다:
+            #       09-10 기대 6119118 → 받은 5833808(골 0건)
+            #       09-13 기대 5833791 → 받은 **5833806 = 분석 대상 경기 자신**
+            #       09-17 기대 6119122 → 받은 5833808 · 09-20 기대 5833796 → 5833823
+            #     🔴 그 페이지엔 골 목록이 없으니 `goals_of` 가 0 이고 `games_of`
+            #        의 `gf/ga` 가 **조용히 0** 이 됐다 → 폼이 *"득점 0.0 · 실점
+            #        0.2"* 라는 거짓 수가 됐고, 평·확률이 그 수로 갔다.
+            #  🔴 그래서 **`fotmob.match_url(번호)`** 로 받는다(번호는 유일하다).
+            #  🔴 그리고 **받은 페이지가 그 경기인지 확인한다** — `general.matchId`
+            #     가 기대 번호와 다르면 **그 줄을 버리고 사유를 남긴다**(#3).
+            said_id = str(m.get("id") or "").strip()
+            if not said_id:
+                state.note(f"s2e ⬜ `{name}` 과거 경기에 **번호가 없다** — "
+                           f"{str(m.get('utc') or '')[:10]} 줄을 버린다")
+                continue
+            one = await _day_page(net, fm.match_url(said_id), state=state,
                                   team=f"{name} 골 타임라인")
             if one is None:
                 continue
             j = fm.payload(getattr(one, "text", "") or "") or {}
+            got_id = str((((j.get("props") or {}).get("pageProps") or {})
+                          .get("general") or {}).get("matchId") or "")
+            if got_id and got_id != said_id:
+                # 🔴 **남의 경기다** — 폼에 넣지 않는다(위 머리말의 그 사고)
+                state.note(f"s2e 🔴 `{name}` {str(m.get('utc') or '')[:10]} — "
+                           f"기대 번호 `{said_id}` 인데 페이지는 `{got_id}` 다 "
+                           f"→ 그 경기를 **버린다**")
+                continue
             # 🔴 **홈/원정을 여기서 가린다** — 신원 계약(3단계)이 아래 단계에서
             #    이름 비교를 금지한다. ⚠️ 그 가림을 이름으로 하되 **한 곳**이다.
             mine = _d.same_any(str(m["home"]), _d.aliases_of(name), loose=True)

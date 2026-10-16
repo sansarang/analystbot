@@ -373,6 +373,93 @@ keys:
       why: 조별 단판 · 녹아웃 홈앤어웨이(결승도 2차전 · 확인 필요)
     seasons: ["2024/25", "2025/26", "2026/27"]
     baseline: {}
+  # ══════════════════════════════════════════════════════════════
+  # 🔴🔴 **중앙아메리카 1부 둘** — 사용자 지시 2026-10-16
+  # ══════════════════════════════════════════════════════════════
+  #
+  #  🔴 **이름이 똑같다** — 둘 다 `Liga Nacional` 이다(fotmob 실측 2026-10-16:
+  #     336 `ccode GUA` · 337 `ccode HON`). 그래서 **번호로만 갈린다**.
+  #  ⚠️ 그래서 `names` 에 **맨 `liga nacional` 을 적지 않는다** — 적으면 두 줄이
+  #     같은 글자를 물어 아무 쪽이나 걸린다(실사고 2026-10-10 `Super League`
+  #     스위스·인도네시아와 같은 병).
+  #  ⚠️ 그리고 **`la liga` 를 넣지 않는다** — 실측 2026-10-16:
+  #     `key_of("Guatemala Liga Nacional")` 이 `la liga` 글자에 걸려 **스페인
+  #     라리가(league:PD)** 로 붙었다. 나라 이름을 붙인 꼴만 적는다.
+  # ══════════════════════════════════════════════════════════════
+  # 🔴🔴 **코스타리카 1부** — 사용자 지시 2026-10-16
+  # ══════════════════════════════════════════════════════════════
+  #
+  #  🔴 받아서 확인했다: `fotmob.com/leagues/121/table/x` → `leagueName`
+  #     **"Primera Division"** · `ccode` **CRC**.
+  #  ⚠️ **같은 이름이 또 있다** — 335 는 `Primera Division`/`SLV`(엘살바도르)다.
+  #     그래서 번호로 갈린다(`fotmob_ids`). 맨 `primera division` 은 적지 않는다 —
+  #     실사고 2026-10-10(엘살바도르 → 스페인 라리가)이 그 글자에서 났다.
+  #  🔴 이 리그는 fotmob 이 **라인업·감독을 준다**(실측 2026-10-16: 끝난 경기 셋과
+  #     다음 경기 모두 11·11 + 포메이션 + `isCoach` 2) — 과테말라(336)·
+  #     온두라스(337)는 **null** 이다. 그래서 축0·⑤-b·⑤-b2 가 이 리그에서는 돈다.
+  league:CRC1:
+    kind: domestic_league
+    confederation: CONCACAF
+    names: ["primera division de costa rica", "costa rica primera division",
+            "liga promerica", "코스타리카 1부", "코스타리카 프리메라"]
+    sources:
+      fotmob_ids: [121]
+      #: 🔴 배당 피드가 **안 다룬다**(종목 85개 실측 0건 · 2026-10-16) —
+      #   이름(`Liga Nacional`·`Primera Division`)으로 찾으면 **스페인 라리가**에
+      #   걸린다(실사고 2026-10-16). 그래서 **직접 적는다**.
+      odds_sport_key: none
+      fotmob_names: ["Primera Division"]
+      fotmob_ccode: "CRC"
+      checked_at: "2026-10-16"
+    format:
+      stage_single: ["apertura", "clausura", "regular"]
+      two_legs: ["semifinal", "final"]
+      neutral: []
+      why: 아페르투라·클라우수라 단판 + 플레이오프(2차전 확인 필요)
+    seasons: ["2024/25", "2025/26", "2026/27"]
+    baseline: {}
+  league:GUA1:
+    kind: domestic_league
+    confederation: CONCACAF
+    names: ["liga nacional de guatemala", "guatemala liga nacional",
+            "liga guate banrural", "과테말라 리가 나시오날", "과테말라 1부"]
+    sources:
+      fotmob_ids: [336]
+      #: 🔴 배당 피드가 **안 다룬다**(종목 85개 실측 0건 · 2026-10-16) —
+      #   이름(`Liga Nacional`·`Primera Division`)으로 찾으면 **스페인 라리가**에
+      #   걸린다(실사고 2026-10-16). 그래서 **직접 적는다**.
+      odds_sport_key: none
+      fotmob_names: ["Liga Nacional"]
+      fotmob_ccode: "GUA"
+      checked_at: "2026-10-16"
+    format:
+      stage_single: ["apertura", "clausura", "regular"]
+      two_legs: ["semifinal", "final"]
+      neutral: []
+      why: 아페르투라·클라우수라 단판 + 플레이오프(2차전 확인 필요)
+    seasons: ["2024/25", "2025/26", "2026/27"]
+    baseline: {}
+  league:HON1:
+    kind: domestic_league
+    confederation: CONCACAF
+    names: ["liga nacional de honduras", "honduras liga nacional",
+            "liga betcris", "온두라스 리가 나시오날", "온두라스 1부"]
+    sources:
+      fotmob_ids: [337]
+      #: 🔴 배당 피드가 **안 다룬다**(종목 85개 실측 0건 · 2026-10-16) —
+      #   이름(`Liga Nacional`·`Primera Division`)으로 찾으면 **스페인 라리가**에
+      #   걸린다(실사고 2026-10-16). 그래서 **직접 적는다**.
+      odds_sport_key: none
+      fotmob_names: ["Liga Nacional"]
+      fotmob_ccode: "HON"
+      checked_at: "2026-10-16"
+    format:
+      stage_single: ["apertura", "clausura", "regular"]
+      two_legs: ["semifinal", "final"]
+      neutral: []
+      why: 아페르투라·클라우수라 단판 + 플레이오프(2차전 확인 필요)
+    seasons: ["2024/25", "2025/26", "2026/27"]
+    baseline: {}
   national_friendly:
     kind: national_friendly
     confederation: FIFA

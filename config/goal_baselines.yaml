@@ -1,5 +1,23 @@
 measured_at: '2026-10-14'
 kinds:
+  league:CRC1:
+    goals_per_match: 2.4752
+    home_share: 1.4046
+    n: 524
+    n_home: 524
+    source: fotmob league:CRC1 자체 실측(2026/2027 54경기 · 2025/2026 192경기 · 2024/2025 278경기) · 중립 단계 제외(CC3) · tools/fit_comp_goals.py 2026-10-16
+  league:HON1:
+    goals_per_match: 2.7947
+    home_share: 1.5331
+    n: 302
+    n_home: 302
+    source: fotmob league:HON1 자체 실측(2026/2027 - Apertura 54경기 · 2025/2026 - Clausura 124경기 · 2025/2026 - Apertura 124경기) · 중립 단계 제외(CC3) · tools/fit_comp_goals.py 2026-10-16
+  league:GUA1:
+    goals_per_match: 2.4457
+    home_share: 1.5954
+    n: 608
+    n_home: 608
+    source: fotmob league:GUA1 자체 실측(2026/2027 82경기 · 2025/2026 292경기 · 2024/2025 234경기) · 중립 단계 제외(CC3) · tools/fit_comp_goals.py 2026-10-16
   league:UECL:
     goals_per_match: 2.7105
     home_share: 1.5987

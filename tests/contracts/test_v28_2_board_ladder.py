@@ -27,6 +27,13 @@ NO_FEED = {
     "league:ACL2": "AFC — 같다",
     "league:JLC": "J리그컵 — 피드에 일본 컵 종목이 없다(실측 10-14)",
     "national_friendly": "대표팀 친선 — 피드에 친선 종목이 없다(실측 10-06)",
+    # 🔴🔴 **중미 1부 셋**(2026-10-16 등록) — 피드 종목 목록 **85개를 받아**
+    #    `guatemal`·`hondur`·`costa`·`salvador`·`concacaf` 로 훑었고 **0건**이었다
+    #    (걸린 것은 `soccer_uefa_nations_league` 뿐이다). 그래서 ③ 는 이 리그를
+    #    못 받는다 — *"아직 안 넣었다"* 가 아니라 **피드에 없다**.
+    "league:GUA1": "과테말라 1부 — 피드 종목 85개에 중미 리그가 없다(실측 10-16)",
+    "league:HON1": "온두라스 1부 — 같다(실측 10-16)",
+    "league:CRC1": "코스타리카 1부 — 같다(실측 10-16)",
 }
 
 
@@ -92,9 +99,12 @@ def test_우리_대회마다_셋째칸_열쇠가_있거나_없는_까닭이_적�
         pytest.skip("피드 키가 없다 — 표만 있는 상태에서는 못 잰다")
     miss = []
     for key in sorted(cp.rows()):
-        said = str(((cp.row_of(key).get("sources") or {})
-                    .get("fotmob_names") or [key])[0])
-        hit = any(od.sport_key_for(f, said, label=said)[0] for f in feeds)
+        # 🔴🔴 **운영과 같은 길로 본다**(사용자 지시 2026-10-16) — 종전엔
+        #    `sport_key_for(이름)` 으로 봤고, 그래서 코스타리카
+        #    `Primera Division` 이 **스페인 라리가 열쇠**로 잡혀 *"열쇠가 있다"*
+        #    고 셌다(실사고 2026-10-16). 🔴 이제 대회 줄의
+        #    `sources.odds_sport_key` 를 읽는 `sport_key_of_comp` 하나를 본다.
+        hit = any(od.sport_key_of_comp(f, key)[0] for f in feeds)
         if not hit and key not in NO_FEED:
             miss.append(f"{key}(`{said}`)")
     assert not miss, ("🔴 ③ 종목 열쇠가 없는 대회 — 넣거나 `NO_FEED` 에 까닭을 "
@@ -104,9 +114,9 @@ def test_우리_대회마다_셋째칸_열쇠가_있거나_없는_까닭이_적�
     for key, why in NO_FEED.items():
         if key not in cp.rows():
             continue
-        said = str(((cp.row_of(key).get("sources") or {})
-                    .get("fotmob_names") or [key])[0])
-        if any(od.sport_key_for(f, said, label=said)[0] for f in feeds):
+        # 🔴 여기도 **운영과 같은 길**이다(위 머리말) — 이름으로 보면
+        #    코스타리카가 라리가 열쇠를 받아 *"열쇠가 생겼다"* 로 거짓 빨개진다.
+        if any(od.sport_key_of_comp(f, key)[0] for f in feeds):
             stale.append(f"{key} — `{why}`")
     assert not stale, "🔴 `NO_FEED` 가 낡았다(열쇠가 생겼다): " + " · ".join(stale)
 

@@ -56,3 +56,52 @@ def test_vd18_still_catches() -> None:
     """VD18 🔴 그래도 **진짜 지어냄**은 잡는다 — 없는 번호·없는 수."""
     assert [x for x in _bad("S09-home 이 홈을 밀었다.") if "(라)" in x]
     assert [x for x in _bad("홈 승률이 42%p 다.") if "(가)" in x]
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **자리 글자·한 낱말 이름** — 사용자 지시 2026-10-16
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 실사고 2026-10-16(코스타리카 Saprissa): deepseek 평이 *"CB **Waston**"* ·
+#     *"CM **Soto**"* · *"DM **López**"* 라고 썼고 (다) 가 셋 다 **없는 이름**
+#     이라 했다 — 묶음에는 `Waston`·`Soto`·`Alexander López` 가 **그대로** 있었다.
+#  🔴 까닭은 **비대칭**이다: `_NAME` 이 두 낱말 이상만 이름으로 보므로 묶음의
+#     한 낱말 이름(`Waston`)을 못 모으고, 문장 쪽은 접두가 붙어 두 낱말이 된다.
+
+NAME_BOX = [
+    "확률 — 홈 32.2% · 무 32.2% · 원정 35.5%",
+    "  전략 `SL1` — 홈은 실점 2.0 으로 흔들리고 CB에 Waston·Taylor·Azofeifa를 "
+    "새로 넣어 라인이 높아진다",
+    "  전략 `SL3` — 홈은 CM에 Soto·Acuña를 투입하고 원정은 DM Alexander López가 "
+    "빠져 중원에서 홈이 우위다",
+]
+
+
+def _bad_name(*said: str) -> list:
+    got = V.Verdict(sentences=list(said), refs=["확률"] * len(said),
+                    pick="home", score="2-1")
+    return [x for x in V.judge(got, NAME_BOX)[1] if "(다)" in x]
+
+
+def test_vd19_자리_글자는_이름이_아니다() -> None:
+    """VD19 🔴 `CB Waston`·`CM Soto` — 접두를 떼면 묶음에 있다."""
+    assert not _bad_name("홈은 CB Waston 과 CM Soto 를 새로 넣었다.")
+
+
+def test_vd20_성만_써도_같은_사람이다() -> None:
+    """VD20 🔴 `DM López` — 묶음의 `Alexander López` 를 가리킨 것이다."""
+    assert not _bad_name("원정은 DM López 가 빠져 중원이 얇다.")
+
+
+def test_vd21_지어낸_이름은_그래도_잡는다() -> None:
+    """VD21 🔴🔴 느슨해진 뒤에도 **없는 선수**는 잡아야 한다."""
+    assert _bad_name("GK Hyun-Woo Kim 이 선발로 들어왔다.")
+    assert _bad_name("교체로 Marco Verratti 가 들어온다.")
+
+
+def test_vd22_strip_pos() -> None:
+    """VD22 🔴 자리 글자 떼기 — `FB/WB` 처럼 겹친 꼴도 떼낸다."""
+    from app.core.stages import s9_say as say
+    assert say.strip_pos("FB/WB Carvajal") == "Carvajal"
+    assert say.strip_pos("CB Waston") == "Waston"
+    assert say.strip_pos("Alexander López") == "Alexander López"

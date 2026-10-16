@@ -458,7 +458,10 @@ def judge(got: Verdict | None, box: list[str]) -> tuple[str, list[str]]:
                 bad.append(f"🔴 (나) **없는 스코어**({sc}) — `{one[:50]}`")
                 break
         # (다) 이름
-        for nm in _say._names_in(one, ok_names):
+        # 🔴 **묶음 원문도 넘긴다**(사용자 지시 2026-10-16) — 한 낱말 이름과
+        #    자리 글자 접두(`CB Waston`)가 거짓 위반이 되던 자리다(`s9_say`
+        #    머리말의 그 실사고).
+        for nm in _say._names_in(one, ok_names, text=said_box):
             # ══════════════════════════════════════════════════════════
             # 🔴🔴 **사람 이름이 아닌 것을 빼낸다** — 실측 2026-10-15
             # ══════════════════════════════════════════════════════════

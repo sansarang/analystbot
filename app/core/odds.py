@@ -438,6 +438,43 @@ async def from_feed(ref: MatchRef, *, pool, net, state: RunState,
     return MarketProb(why="시장 없음 — " + " · ".join(whys))
 
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **대회 표가 종목 열쇠를 든다** — 사용자 지시 2026-10-16
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 실사고 2026-10-16(코스타리카 Primera Division): 종목 열쇠를 **대회 이름
+#     글자**로만 찾으니 `primera division` 이 **스페인 라리가**
+#     (`soccer_spain_la_liga`)에 걸렸다 — 그 열쇠로 부르면 **엉뚱한 리그의
+#     배당**을 받아 시장 열에 싣는다(크레딧도 쓴다).
+#     ⚠️ 그 낱말은 빼기도 어렵다 — 스페인 쪽이 `Primera Division` 으로 올 때를
+#        위해 일부러 넣은 글자다(실측 2026-10-11 엘체–셀타).
+#  🔴 그래서 **대회 줄이 열쇠를 직접 적는다** — `sources.odds_sport_key`.
+#     · 글자를 적으면 **그것이 이긴다**(이름 맞추기를 건너뛴다)
+#     · `none` 이면 **이 피드가 그 대회를 안 다룬다**(부르지 않는다)
+#     · 칸이 **없으면** 종전처럼 이름 표로 찾는다(옛 대회를 안 깨뜨린다)
+def sport_key_of_comp(feed: dict, comp_key: str, *, label: str = ""
+                      ) -> tuple[str, str]:
+    """🔴 **대회 열쇠**로 종목 열쇠를 정한다. `(열쇠, 사유)`.
+
+    🔴 보는 곳은 `config/competitions.yaml` 의 `sources.odds_sport_key` 하나다.
+    """
+    from app.core import competition as _cp
+    row = _cp.row_of(str(comp_key or ""))
+    said = str(((row.get("sources") or {}).get("odds_sport_key") or "")).strip()
+    names = [str(x) for x in ((row.get("sources") or {}).get("fotmob_names")
+                              or [])] + [str(comp_key or "")]
+    # 🔴 사유에 적는 이름은 **사람이 읽는 대회 이름**이다(`label`) — ⚠️ 카드
+    #    스냅샷이 그 글자를 본다(실측: `Friendlies` ↔ `national_friendly`).
+    said_name = str(label or (names[0] if names else comp_key))
+    if said.lower() in ("none", "없다"):
+        return "", (f"`{said_name}` — **이 피드가 안 다룬다**(대회 표가 "
+                    f"`odds_sport_key: none` 이라 적었다)")
+    if said:
+        return said, f"대회 표가 적은 종목 열쇠 `{said}`"
+    # ⬜ 칸이 없다 — 종전 길(이름 맞추기)로 간다
+    return sport_key_for(feed, " ".join(names).lower(), label=said_name)
+
+
 def sport_key_of(feed: dict, ref: MatchRef) -> tuple[str, str]:
     """🔴🔴 그 경기의 **피드 종목 열쇠**. `(열쇠, 사유)` — 없으면 빈 글자.
 
@@ -445,6 +482,13 @@ def sport_key_of(feed: dict, ref: MatchRef) -> tuple[str, str]:
     ⚠️ 실측 2026-10-06: 이 피드에는 **대표팀 친선·CONCACAF·AFC 가 없다**. 그 경기에
        열쇠를 억지로 붙여 부르면 크레딧만 쓰고 0건이 온다 — 그래서 **안 부른다**.
     """
+    # 🔴 **대회 열쇠가 서면 표가 이긴다**(위 머리말) — 이름 충돌을 끝낸다
+    from app.core import competition as _cp
+    key, _why_k = _cp.key_of(competition=str(ref.competition or ""),
+                             league_id=(str(getattr(ref, "league_id", "") or "")
+                                        or None))
+    if key:
+        return sport_key_of_comp(feed, key, label=str(ref.competition or key))
     return sport_key_for(feed, f"{ref.competition} {ref.competition_short}",
                          label=str(ref.competition))
 
