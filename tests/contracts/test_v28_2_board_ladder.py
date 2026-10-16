@@ -105,8 +105,13 @@ def test_우리_대회마다_셋째칸_열쇠가_있거나_없는_까닭이_적�
         #    고 셌다(실사고 2026-10-16). 🔴 이제 대회 줄의
         #    `sources.odds_sport_key` 를 읽는 `sport_key_of_comp` 하나를 본다.
         hit = any(od.sport_key_of_comp(f, key)[0] for f in feeds)
-        if not hit and key not in NO_FEED:
-            miss.append(f"{key}(`{said}`)")
+        # 🔴🔴 **대회 줄이 `none` 이라 적었으면 그것이 까닭이다**(2026-10-16) —
+        #    손 목록(`NO_FEED`)은 그 칸이 **없던 시절**의 장치다. 표에 적힌 쪽이
+        #    원본이므로 그것을 먼저 인정한다(사본 금지).
+        said_dec = str(((cp.row_of(key).get("sources") or {})
+                        .get("odds_sport_key") or "")).strip().lower()
+        if not hit and said_dec not in ("none", "없다") and key not in NO_FEED:
+            miss.append(f"{key}(`{cp.row_of(key).get('kind') or '?'}`)")
     assert not miss, ("🔴 ③ 종목 열쇠가 없는 대회 — 넣거나 `NO_FEED` 에 까닭을 "
                       "적어라: " + " · ".join(miss))
     # 🔴 반대쪽도 본다 — **없다고 적었는데 실은 있는** 칸은 지워야 한다
@@ -116,6 +121,10 @@ def test_우리_대회마다_셋째칸_열쇠가_있거나_없는_까닭이_적�
             continue
         # 🔴 여기도 **운영과 같은 길**이다(위 머리말) — 이름으로 보면
         #    코스타리카가 라리가 열쇠를 받아 *"열쇠가 생겼다"* 로 거짓 빨개진다.
+        said_dec = str(((cp.row_of(key).get("sources") or {})
+                        .get("odds_sport_key") or "")).strip().lower()
+        if said_dec in ("none", "없다"):
+            continue          # 🔴 표가 직접 적었다 — 손 목록과 겹쳐도 모순이 아니다
         if any(od.sport_key_of_comp(f, key)[0] for f in feeds):
             stale.append(f"{key} — `{why}`")
     assert not stale, "🔴 `NO_FEED` 가 낡았다(열쇠가 생겼다): " + " · ".join(stale)
