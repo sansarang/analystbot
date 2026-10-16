@@ -356,6 +356,21 @@ def ask(ref: MatchRef, prob, mr, varset, *, state: RunState,
             "🔴 **이제까지 모은 자료(묶음)만** 쓴다 — 네 기억으로 사실을 보태면 "
             "거짓이다. 모르는 것은 **모른다고 적는다**.\n"
             # ══════════════════════════════════════════════════════
+            # 🔴🔴 **없는 폼을 지어내지 마라** — 사용자 지시 2026-10-16
+            # ══════════════════════════════════════════════════════
+            #
+            #  ⚠️ 실사고 2026-10-16(Sydney FC · A리그 개막 전): 컵·친선을 빼자
+            #     리그 경기가 0건이 되어 묶음에 **폼이 한 줄도 없었다**. 그런데
+            #     solar 가 *"최근 5경기 득점 평균 1.7골, 실점 1.4골 …"* 이라고
+            #     **네 수를 지어냈다**(deepseek 는 *"폼·결장·XI 가 모두 없다"* 고
+            #     정직하게 썼다).
+            #  🔴 그래서 **없을 때 쓰지 말라고 못 박는다** — 일반 규칙("모르면
+            #     모른다고 적어라")만으로는 안 막혔다.
+            "🔴🔴 **묶음에 최근 경기 득점·실점 평균이 없으면 그 수를 쓰지 "
+            "마라** — *\"최근 5경기 득점 평균 …\"* 같은 문장을 **지어내지 "
+            "않는다**(코드가 묶음과 대조해 버린다). 폼이 없으면 **있는 변수**"
+            "(홈 이점·포메이션·전략·일정)로만 분석한다.\n"
+            # ══════════════════════════════════════════════════════
             # 🔴🔴 **기사 유무는 적지 않는다** — 사용자 지시 2026-10-15
             # ══════════════════════════════════════════════════════
             #
@@ -391,17 +406,59 @@ def ask(ref: MatchRef, prob, mr, varset, *, state: RunState,
 
 
 def _nums(said: str) -> list[float]:
-    """🔴 (가) — 글 속 수. 분·년·나이는 **안 센다**."""
-    out: list[float] = []
-    for m in _NUM.finditer(str(said or "")):
-        tail = said[m.end():m.end() + 1]
+    """🔴 (가) — 글 속 수. 분·년·나이는 **안 센다**. ⚠️ 옛 호출부를 위해 남긴다."""
+    return [float(x) for x, _pc in _num_tokens(said)]
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **(가) 수 검사를 둘로 가른다** — 사용자 지시 2026-10-16
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 실사고 2026-10-16(Sydney FC): 묶음에 **폼이 한 줄도 없는데** solar 가
+#     *"최근 5경기 득점 평균 **1.7**골, 실점 **1.4**골 … 원정 **1.3**/**1.5**"*
+#     이라고 썼다. 🔴 검열은 그 넷을 **놓치고** 엉뚱하게 `5`(최근 **5**경기)를
+#     잡았다 — 두 방향 다 틀렸다.
+#  🔴 까닭: 비교가 **상대 오차 5%**였다. 묶음의 `1.6444` 와 지어낸 `1.7` 은
+#     차이 0.056 인데 허용치가 ±0.082 라 **통과**했다. 반대로 `5` 는 묶음에
+#     그 수가 없어 걸렸다(그런데 그건 *"다섯 경기"* 라는 **낱말**이다).
+#  🔴 그래서:
+#     · **소수**(`1.7`·`88.8`)는 **글자 그대로** 묶음에 있어야 한다(오차 없음)
+#     · **퍼센트**(`42%`·`33.3%`)는 수로 대조한다(±0.05 · 반올림 표기를 받아준다)
+#     · **맨 정수**(`최근 5경기`·`11명`·`3연승`)는 **세지 않는다** — 셀 수 없는
+#       낱말이고, 세면 멀쩡한 문장이 빨개진다(실측).
+
+def _num_tokens(said: str) -> list[tuple[str, bool]]:
+    """🔴 글 속 수 토막 — `(글자, 퍼센트인가)`. 분·년·나이는 뺀다."""
+    out: list[tuple[str, bool]] = []
+    text = str(said or "")
+    for m in _NUM.finditer(text):
+        tail = text[m.end():m.end() + 1]
         if tail in NUM_SKIP:
             continue
-        try:
-            out.append(float(m.group(1)))
-        except ValueError:
-            continue
+        got = m.group(0)
+        out.append((m.group(1), "%" in got))
     return out
+
+
+def num_bad(one: str, box: str) -> str:
+    """🔴 (가) — 그 문장이 **묶음에 없는 수**를 썼나. 없으면 빈 글자."""
+    ok_pc = [float(x) for x, pc in _num_tokens(box) if pc]
+    for said, pc in _num_tokens(one):
+        if pc:
+            # 🔴 퍼센트는 수로 본다(반올림 표기를 받아준다)
+            try:
+                got = float(said)
+            except ValueError:
+                continue
+            if not any(abs(got - x) <= 0.05 for x in ok_pc):
+                return f"🔴 (가) **없는 수**({said}%) — `{one[:50]}`"
+            continue
+        if "." not in said:
+            continue          # 🔴 맨 정수는 안 센다(위 머리말)
+        # 🔴 소수는 **글자 그대로** 있어야 한다
+        if said not in box:
+            return f"🔴 (가) **없는 수**({said}) — `{one[:50]}`"
+    return ""
 
 
 def _scores(said: str) -> list[str]:
@@ -446,12 +503,10 @@ def judge(got: Verdict | None, box: list[str]) -> tuple[str, list[str]]:
     for one in rows:
         if len(one) > SENT_MAX:
             bad.append(f"🔴 문장이 {len(one)}자다(>{SENT_MAX}) — `{one[:40]}…`")
-        # (가) 숫자
-        for v in _nums(one):
-            if not any(abs(v - x) <= max(0.051, abs(x) * NUM_TOL)
-                       for x in ok_nums):
-                bad.append(f"🔴 (가) **없는 수**({v:g}) — `{one[:50]}`")
-                break
+        # (가) 숫자 — 소수는 글자 그대로 · 퍼센트는 수로 · 맨 정수는 안 센다
+        said_num = num_bad(one, said_box)
+        if said_num:
+            bad.append(said_num)
         # (나) 스코어 — 꼴 그대로 대조한다
         for sc in _scores(one):
             if sc not in ok_scores:

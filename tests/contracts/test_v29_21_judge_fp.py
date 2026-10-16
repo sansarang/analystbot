@@ -105,3 +105,55 @@ def test_vd22_strip_pos() -> None:
     assert say.strip_pos("FB/WB Carvajal") == "Carvajal"
     assert say.strip_pos("CB Waston") == "Waston"
     assert say.strip_pos("Alexander López") == "Alexander López"
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **(가) 수 검사 — 소수는 글자 그대로 · 맨 정수는 안 센다**
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 실사고 2026-10-16(Sydney FC): 묶음에 **폼이 한 줄도 없는데** 평이
+#     *"최근 5경기 득점 평균 1.7골, 실점 1.4골 · 원정 1.3/1.5"* 라고 썼다.
+#     🔴 검열은 그 넷을 **놓치고**(상대 오차 5% 가 삼켰다) 엉뚱하게 `5`
+#     (최근 **5**경기)를 잡았다 — **두 방향 다 틀렸다**.
+
+NUMBOX = [
+    "확률 — 홈 33.3% · 무 33.3% · 원정 33.3%",
+    "변수 `S03` — 홈 승률 수치 없음 · λ 홈 배율은 득점 실측(홈 평균 1.6444)",
+    "  axis1 — 홈 0.6250 · 원정 0.0150 · 차 +0.6100",
+]
+
+
+def _num_only(one: str) -> str:
+    from app.core.stages.s6_verdict import num_bad
+    return num_bad(one, "\n".join(NUMBOX))
+
+
+def test_vd23_지어낸_소수를_잡는다() -> None:
+    """VD23 🔴🔴 `1.7`·`1.4` — 묶음의 `1.6444` 와 가깝다고 통과시키지 않는다."""
+    assert "1.7" in _num_only("최근 5경기 득점 평균은 1.7골, 실점 1.4골이다.")
+    assert "1.3" in _num_only("원정은 득점 1.3골에 실점 1.5골이다.")
+
+
+def test_vd24_맨_정수는_안_센다() -> None:
+    """VD24 🔴 `최근 5경기`·`11명`·`3연승` 은 **낱말**이다(거짓 양성 금지)."""
+    assert not _num_only("최근 5경기 자료가 없어 홈 이점만 남았다.")
+    assert not _num_only("11명 명단과 3연승 흐름은 묶음에 없다.")
+
+
+def test_vd25_묶음에_있는_수는_통과() -> None:
+    """VD25 🔴 글자 그대로 있는 수는 지난다."""
+    assert not _num_only("축1 은 홈 0.6250 · 원정 0.0150 이다.")
+    assert not _num_only("확률은 33.3%씩 균등하다.")
+
+
+def test_vd26_퍼센트는_수로_본다() -> None:
+    """VD26 🔴 `42%p` 처럼 **없는 퍼센트**는 여전히 잡는다."""
+    assert "42" in _num_only("홈 승률이 42%p 올라간다.")
+
+
+def test_vd27_없는_폼을_쓰지_말라는_규칙() -> None:
+    """VD27 🔴 프롬프트가 **폼이 없으면 그 수를 쓰지 말라**고 말한다."""
+    import inspect
+    from app.core.stages.s6_verdict import ask
+    src = inspect.getsource(ask)
+    assert "최근 경기 득점·실점 평균이 없으면 그 수를 쓰지 " in src, src[-800:]
