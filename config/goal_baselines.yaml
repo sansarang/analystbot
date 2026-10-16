@@ -1,5 +1,17 @@
 measured_at: '2026-10-14'
 kinds:
+  league:DEN1:
+    goals_per_match: 3.1076
+    home_share: 1.6637
+    n: 446
+    n_home: 446
+    source: fotmob league:DEN1 자체 실측(2026/2027 60경기 · 2025/2026 193경기 · 2024/2025 193경기) · 중립 단계 제외(CC3) · tools/fit_comp_goals.py 2026-10-16
+  league:SCO1:
+    goals_per_match: 2.8413
+    home_share: 1.6032
+    n: 504
+    n_home: 504
+    source: fotmob league:SCO1 자체 실측(2026/2027 48경기 · 2025/2026 228경기 · 2024/2025 228경기) · 중립 단계 제외(CC3) · tools/fit_comp_goals.py 2026-10-16
   league:CRC1:
     goals_per_match: 2.4752
     home_share: 1.4046

@@ -129,7 +129,7 @@ keys:
     baseline: {elo: football_data, fit: "league:BL1"}
   league:FL1:
     kind: domestic_league
-    names: ["ligue 1", "리그앙", "리그 1"]
+    names: ["ligue 1", "리그앙", "리그 1", "리그1"]
     sources:
       football_data_hist: {kind: mmz4281, code: F1}
       espn_slugs: ["fra.1"]
@@ -418,6 +418,54 @@ keys:
       why: 아페르투라·클라우수라 단판 + 플레이오프(2차전 확인 필요)
     seasons: ["2024/25", "2025/26", "2026/27"]
     baseline: {}
+  # ══════════════════════════════════════════════════════════════
+  # 🔴🔴 **스코틀랜드 1부 · 덴마크 1부** — 사용자 지시 2026-10-16(캡처 둘)
+  # ══════════════════════════════════════════════════════════════
+  #
+  #  ⚠️ 실측 2026-10-16: `스코틀랜드 프리미어십` 이 **잉글랜드 `league:PL`**
+  #     로 붙었다(`프리미어` 글자가 걸렸다) — 그 열쇠로 가면 기준 모델·득점
+  #     기준·배당이 전부 **남의 리그 것**이 된다.
+  #  🔴 받아서 확인했다 — fotmob `64` = `Premiership`/**SCO** ·
+  #     `46` = `Superligaen`/**DEN**. ⚠️ `129` 는 같은 이름 `Premiership`/NIR
+  #     (북아일랜드)이고 `540` 은 `Superliga`/UZB 다 — **번호로만 갈린다**.
+  #  🔴 배당 종목 열쇠도 **직접 적는다**(이름 충돌을 끝낸 그 칸) — 피드 실측:
+  #     `soccer_spl | Premiership - Scotland` · `soccer_denmark_superliga`.
+  league:SCO1:
+    kind: domestic_league
+    confederation: UEFA
+    names: ["스코틀랜드 프리미어십", "scottish premiership",
+            "premiership - scotland", "스코틀랜드 1부"]
+    sources:
+      fotmob_ids: [64]
+      fotmob_names: ["Premiership"]
+      fotmob_ccode: "SCO"
+      odds_sport_key: soccer_spl
+      checked_at: "2026-10-16"
+    format:
+      stage_single: ["regular season", "championship round"]
+      two_legs: ["play-off"]
+      neutral: []
+      why: 정규 33R 뒤 상·하위 분할(5R) — 분할은 `split` 로 본다
+    seasons: ["2024/25", "2025/26", "2026/27"]
+    baseline: {}
+  league:DEN1:
+    kind: domestic_league
+    confederation: UEFA
+    names: ["덴마크 수페르리가", "수페르리가", "superligaen",
+            "danish superliga", "덴마크 1부"]
+    sources:
+      fotmob_ids: [46]
+      fotmob_names: ["Superligaen"]
+      fotmob_ccode: "DEN"
+      odds_sport_key: soccer_denmark_superliga
+      checked_at: "2026-10-16"
+    format:
+      stage_single: ["regular season", "championship round"]
+      two_legs: ["play-off", "relegation play-off"]
+      neutral: []
+      why: 정규 22R 뒤 상·하위 분할 + 플레이오프
+    seasons: ["2024/25", "2025/26", "2026/27"]
+    baseline: {}
   league:GUA1:
     kind: domestic_league
     confederation: CONCACAF
@@ -479,7 +527,7 @@ keys:
 
   league:MLS:
     kind: domestic_league
-    names: ["major league soccer", "mls"]
+    names: ["major league soccer", "mls", "메이저리그사커", "메이저 리그 사커"]
     sources:
       football_data_hist: {kind: extra, file: USA, league: "MLS"}
       espn_slugs: ["usa.1"]
