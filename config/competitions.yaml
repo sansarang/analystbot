@@ -275,6 +275,81 @@ keys:
   #  ⚠️ 정정 — 2026-10-15 에 내가 *"남아공은 fotmob 범위 밖"* 이라 적은 것은
   #     **틀렸다**(팀 색인의 열쇠만 훑고 슬러그를 안 봤다). 1부는 있다 ·
   #     `Hope FC` 가 안 됐던 것은 그 팀이 **2부(Motsepe)** 라서다.
+  # ══════════════════════════════════════════════════════════════
+  # 🔴 **유럽 여섯** — 사용자 지시 2026-10-16(라인업 확인 뒤 등록)
+  # ══════════════════════════════════════════════════════════════
+  #
+  #  🔴 라인업 실측(2026-10-16) — 여섯 다 **끝난 경기·다음 경기 모두 11·11 +
+  #     포메이션 + 감독(isCoach 2)** 이다 → 축0·⑤-b·⑤-b2 가 경기 전에 돈다.
+  #     ⚠️ 같은 날 **우즈베키스탄(540)·이라크(524)** 는 `lineup null` 이고
+  #        **요르단**은 fotmob 에 리그·구단이 아예 없어 **등록하지 않았다**.
+  #  🔴 번호는 받아서 확인했다 — 176/SVK · 189/ROU · **182/SRB**(리그 색인에
+  #     없어 Crvena Zvezda 8687 의 국내 경기에서 `parentLeagueId` 로 뽑았다) ·
+  #     252/CRO · 196/POL · 146/GER.
+  #  🔴 배당 피드는 **둘만** 있다(실측) — `soccer_germany_bundesliga2` ·
+  #     `soccer_poland_ekstraklasa`. 나머지 넷은 `none`.
+  #  ⚠️ `1. liga`·`Prva Liga`·`Super Liga` 는 나라마다 겹친다(CZE 122 · SVN 173 ·
+  #     MKD 249 · UZB 540) — 맨 이름을 안 적고 **번호로** 갈랐다.
+  league:SVK1:
+    kind: domestic_league
+    confederation: UEFA
+    names: ["슬로바키아 1부", "슬로바키아 리그", "nike liga", "slovak first league"]
+    sources: {fotmob_ids: [176], fotmob_names: ["1. liga"], fotmob_ccode: "SVK",
+              odds_sport_key: none, checked_at: "2026-10-16"}
+    format: {stage_single: ["regular season"], two_legs: ["play-off"],
+             neutral: [], why: 정규 뒤 상·하위 분할}
+    seasons: ["2024/25", "2025/26", "2026/27"]
+    baseline: {}
+  league:ROU1:
+    kind: domestic_league
+    confederation: UEFA
+    names: ["liga i", "superliga romania", "루마니아 1부", "루마니아 리그"]
+    sources: {fotmob_ids: [189], fotmob_names: ["Liga I"], fotmob_ccode: "ROU",
+              odds_sport_key: none, checked_at: "2026-10-16"}
+    format: {stage_single: ["regular season"], two_legs: ["play-off", "play-out"],
+             neutral: [], why: 정규 30R 뒤 플레이오프·플레이아웃(승점 반감)}
+    seasons: ["2024/25", "2025/26", "2026/27"]
+    baseline: {}
+  league:SRB1:
+    kind: domestic_league
+    confederation: UEFA
+    names: ["세르비아 수퍼리가", "세르비아 1부", "serbian superliga", "super liga srbije"]
+    sources: {fotmob_ids: [182], fotmob_names: ["Super Liga"], fotmob_ccode: "SRB",
+              odds_sport_key: none, checked_at: "2026-10-16"}
+    format: {stage_single: ["regular season"], two_legs: ["championship round"],
+             neutral: [], why: 정규 뒤 상·하위 분할}
+    seasons: ["2024/25", "2025/26", "2026/27"]
+    baseline: {}
+  league:CRO1:
+    kind: domestic_league
+    confederation: UEFA
+    names: ["hnl", "supersport hnl", "크로아티아 1부", "크로아티아 리그"]
+    sources: {fotmob_ids: [252], fotmob_names: ["HNL"], fotmob_ccode: "CRO",
+              odds_sport_key: none, checked_at: "2026-10-16"}
+    format: {stage_single: ["regular season"], two_legs: ["relegation play-off"],
+             neutral: [], why: 10팀 4라운드 로빈}
+    seasons: ["2024/25", "2025/26", "2026/27"]
+    baseline: {}
+  league:POL1:
+    kind: domestic_league
+    confederation: UEFA
+    names: ["ekstraklasa", "폴란드 1부", "폴란드 리그", "엑스트라클라사"]
+    sources: {fotmob_ids: [196], fotmob_names: ["Ekstraklasa"], fotmob_ccode: "POL",
+              odds_sport_key: soccer_poland_ekstraklasa, checked_at: "2026-10-16"}
+    format: {stage_single: ["regular season"], two_legs: ["play-off"],
+             neutral: [], why: 정규 뒤 상·하위 분할}
+    seasons: ["2024/25", "2025/26", "2026/27"]
+    baseline: {}
+  league:BL2:
+    kind: domestic_league
+    confederation: UEFA
+    names: ["2. bundesliga", "독일 2부", "분데스리가2", "분데스리가 2"]
+    sources: {fotmob_ids: [146], fotmob_names: ["2. Bundesliga"], fotmob_ccode: "GER",
+              odds_sport_key: soccer_germany_bundesliga2, checked_at: "2026-10-16"}
+    format: {stage_single: ["regular season"], two_legs: ["relegation play-off"],
+             neutral: [], why: 정규 34R + 승강 플레이오프}
+    seasons: ["2024/25", "2025/26", "2026/27"]
+    baseline: {}
   league:KSA1:
     kind: domestic_league
     confederation: AFC

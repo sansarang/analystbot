@@ -1,5 +1,41 @@
 measured_at: '2026-10-14'
 kinds:
+  league:BL2:
+    goals_per_match: 3.0
+    home_share: 1.6444
+    n: 675
+    n_home: 675
+    source: fotmob league:BL2 자체 실측(2026/2027 63경기 · 2025/2026 306경기 · 2024/2025 306경기) · 중립 단계 제외(CC3) · tools/fit_comp_goals.py 2026-10-16
+  league:POL1:
+    goals_per_match: 2.7786
+    home_share: 1.57
+    n: 700
+    n_home: 700
+    source: fotmob league:POL1 자체 실측(2026/2027 88경기 · 2025/2026 306경기 · 2024/2025 306경기) · 중립 단계 제외(CC3) · tools/fit_comp_goals.py 2026-10-16
+  league:CRO1:
+    goals_per_match: 2.5792
+    home_share: 1.4827
+    n: 404
+    n_home: 404
+    source: fotmob league:CRO1 자체 실측(2026/2027 44경기 · 2025/2026 180경기 · 2024/2025 180경기) · 중립 단계 제외(CC3) · tools/fit_comp_goals.py 2026-10-16
+  league:SRB1:
+    goals_per_match: 2.7586
+    home_share: 1.5202
+    n: 667
+    n_home: 667
+    source: fotmob league:SRB1 자체 실측(2026/2027 75경기 · 2025/2026 296경기 · 2024/2025 296경기) · 중립 단계 제외(CC3) · tools/fit_comp_goals.py 2026-10-16
+  league:ROU1:
+    goals_per_match: 2.4583
+    home_share: 1.4097
+    n: 720
+    n_home: 720
+    source: fotmob league:ROU1 자체 실측(2026/2027 88경기 · 2025/2026 317경기 · 2024/2025 315경기) · 중립 단계 제외(CC3) · tools/fit_comp_goals.py 2026-10-16
+  league:SVK1:
+    goals_per_match: 2.8831
+    home_share: 1.5258
+    n: 445
+    n_home: 445
+    source: fotmob league:SVK1 자체 실측(2026/2027 58경기 · 2025/2026 192경기 · 2024/2025 195경기) · 중립 단계 제외(CC3) · tools/fit_comp_goals.py 2026-10-16
   league:CZE1:
     goals_per_match: 2.6551
     home_share: 1.4415
