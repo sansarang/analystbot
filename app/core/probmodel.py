@@ -368,8 +368,11 @@ def flat_prob(varset, *, ref) -> tuple[dict, str]:
     g_box, f_box = dict(by.get("goals") or {}), dict(by.get("favors") or {})
     g_types = {str(x) for x in (g_box.get("types") or [])}
     f_types = {str(x) for x in (f_box.get("types") or [])}
+    from app.core import routing as _rt
     said: list[str] = []
     n_doc = 0
+    #: 🔴 **맥락 전용이라 안 센 변수** 수(위 머리말 · #3 이름으로 남긴다)
+    n_ctx = 0
     for one in list(getattr(varset, "rows", None) or []):
         kind = str(getattr(one, "type", "") or "")
         rid = str(getattr(one, "id", "") or "")
@@ -387,6 +390,26 @@ def flat_prob(varset, *, ref) -> tuple[dict, str]:
         #     정리한다 — 그 산출(`SL*`)만 센다.
         if bool(getattr(one, "from_doc", False)):
             n_doc += 1
+            continue
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **확률 자리에 배치된 변수만 센다** — 사용자 지시 2026-10-16
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 실사고 2026-10-16(PSIM vs PSM 검수): ⑩ 이 `S01-away` 를
+        #     **맥락 전용**(`자리 ['hypo']`)으로 내렸는데 ⑮ 유도에는
+        #     `[S01-away] home ×1.05` 가 찍혔다 — **표를 던졌다**.
+        #     🔴 이 자리가 `varset.rows` 를 **전부** 훑고 `from_doc` 만
+        #        걸렀기 때문이다. 그래서 어제 넣은 **안전장치**(두 경로 대조·
+        #        말이 되나·누설)와 `s5_verify` 의 *"맥락 전용으로 내린다"* 가
+        #        **확률 경로에서는 지켜지지 않았다**(표본 부족 변수도 같다).
+        #  🔴 배치 규율 그대로다 — *"확률에 닿는 길은 축(또는 λ 상수)뿐"*
+        #     (`core/routing` 머리말). 자리가 그 둘이 아니면 **안 센다**.
+        said_places = [str(x) for x in (getattr(one, "places", None) or [])]
+        if bool(getattr(one, "context_only", False)):
+            n_ctx += 1
+            continue
+        if not any(x in (*_rt.AXES, _rt.CONST) for x in said_places):
+            n_ctx += 1
             continue
         goals = str(getattr(one, "goals", "") or "none")
         key = str(getattr(one, "subject", "") or "")
@@ -423,6 +446,9 @@ def flat_prob(varset, *, ref) -> tuple[dict, str]:
     #  🔴 세는 것은 **순 단계수**다 — 홈 밀기 수 − 원정 밀기 수. 그래서
     #     **상쇄되면 무는 그대로**다(홈1·원정1 → 균등 그대로).
     #  ⚠️ 변수 수가 아니라 **쏠림**을 본다 — 양쪽에 똑같이 많아도 무는 안 깎인다.
+    if n_ctx:
+        said.append(f"⚠️ 맥락 전용 변수 {n_ctx}개는 **안 셌다**(확률 자리에 "
+                    f"배치되지 않았다 — 안전장치·표본 부족)")
     if n_doc:
         said.append(f"⚠️ 기사 변수 {n_doc}개는 **안 셌다**(내용 판단은 전략 "
                     "전문가가 한다 · 개수로 세지 않는다)")

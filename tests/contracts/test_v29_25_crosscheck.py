@@ -162,3 +162,38 @@ def test_cc7_뺀_것을_이름으로_남긴다() -> None:
     assert any("Australia Cup" in x for x in box["cup_dropped"])
     # 🔴 남은 두 경기만 센다
     assert len(box["sequence"]) == 2, box["sequence"]
+
+
+def test_cc8_맥락_전용은_확률을_못_민다() -> None:
+    """CC8 🔴🔴 **안전장치가 확률까지 닿는다** — 사용자 지시 2026-10-16.
+
+    ⚠️ 실사고 2026-10-16(PSIM vs PSM 검수): ⑩ 이 `S01-away` 를 맥락 전용
+       (`자리 ['hypo']`)으로 내렸는데 ⑮ 유도에는 `[S01-away] home ×1.05` 가
+       찍혔다 — **표를 던졌다**. `flat_prob` 가 `varset.rows` 를 전부 훑고
+       `from_doc` 만 걸렀기 때문이다. 🔴 그래서 층2~층4 안전장치도, 표본 부족
+       규칙(R7)도 **확률 경로에서는 무력**이었다.
+    """
+    from app.core import probmodel as pm
+    from app.core.routing import VarRow, VariableSet
+
+    class _Ref:
+        home, away = "H", "A"
+
+    rows = [
+        # 🔴 확률 자리(축)에 있는 변수 — **센다**
+        VarRow(id="S01-home", type="recent_pattern", subject="H",
+               favors="subject", goals="up", places=["axis1", "hypo"]),
+        # 🔴 맥락 전용 — 자리가 `hypo` 뿐이다 → **안 센다**
+        VarRow(id="S01-away", type="recent_pattern", subject="A",
+               favors="subject", goals="up", places=["hypo"]),
+        # 🔴 `context_only` 가 참이면 자리가 있어도 **안 센다**
+        VarRow(id="IR99", type="form_streak", subject="A", favors="subject",
+               places=["axis1"], context_only=True),
+    ]
+    got, why = pm.flat_prob(VariableSet(rows=rows), ref=_Ref())
+    assert "S01-home" in why, why
+    assert "S01-away" not in why, f"CC8 🔴 맥락 전용이 표를 던졌다 — {why}"
+    assert "IR99" not in why, f"CC8 🔴 `context_only` 가 표를 던졌다 — {why}"
+    assert "맥락 전용 변수 2개는 **안 셌다**" in why, why
+    # 🔴 홈 한 표만 들어갔으니 홈이 앞선다
+    assert got["home"] > got["away"], got
