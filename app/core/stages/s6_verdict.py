@@ -761,14 +761,20 @@ def _ruleids(said: str) -> list[str]:
     return list(dict.fromkeys(_RULEID.findall(str(said or ""))))
 
 
-def judge(got: Verdict | None, box: list[str]) -> tuple[str, list[str]]:
+def judge(got: Verdict | None, box: list[str], *,
+          provider: str = "") -> tuple[str, list[str]]:
     """🔴🔴 **지어냈나** — `(결론, 위반 목록)`. 사용자 지시 2026-10-15.
 
     결론은 `지어냈다` · `안 지어냈다` · `못 쟀다` 셋뿐이다.
     🔴 묶음(`box`)이 **참이고** 글이 거기서만 나와야 한다.
+    🔴 `provider` 는 **사유에 적는 이름**이다(사용자 지시 2026-10-17) —
+       ⚠️ 실측 2026-10-17(베네치아 2차): deepseek 이 잘려 평이 없었는데
+       사유가 *"**solar** 가 문장을 안 냈다"* 고 적었다(글자가 박혀 있었다).
+       🔴 **못 낸 쪽을 틀리게 적으면 그것이 거짓 사유다**(#3).
     """
     if got is None or not list(got.sentences or []):
-        return "못 쟀다", ["⬜ 평이 없다 — solar 가 문장을 안 냈다"]
+        return "못 쟀다", [f"⬜ 평이 없다 — {provider or '그 모델'} 가 "
+                          "문장을 안 냈다"]
     said_box = "\n".join(box)
     ok_nums = _nums(said_box)
     # 🔴 **그 모델이 예측한 점수의 수도 허용한다**(지시 2026-10-15) — 격자를
@@ -1049,7 +1055,8 @@ def agree_of(cards: dict, prob) -> str:
 def said_of(got: Verdict | None, box: list[str], *,
             provider: str = "solar") -> str:
     """🔴 카드·보고에 찍는 글 — 평 + **지어냈나 결론**."""
-    verdict, bad = judge(got, box)
+    # 🔴 이름을 **넘긴다** — 사유가 못 낸 쪽을 바로 적는다(위 `judge` 머리말)
+    verdict, bad = judge(got, box, provider=provider)
     head = f"🧭 **종합 평**({provider}) — 지어냄 판정 **{verdict}**"
     if got is None:
         return head + "\n" + "\n".join(f"- {x}" for x in bad)
