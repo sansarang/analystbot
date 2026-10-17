@@ -232,12 +232,12 @@ def test_bj6_수가_없는_갈래는_2단으로_간다() -> None:
     from app.core import ability as _ab
     said_tbl = set(_ab.branch_table())
     bj.set_squad({})
-    for kind in ("세트피스", "역습 성향", "교체 운용", "기사 사실"):
+    for kind in ("세트피스", "역습 성향", "기사 사실"):
         assert kind not in said_tbl, f"🔴 `{kind}` 가 표에 생겼다 — 시험을 옮겨라"
         op, why = bj.by_numbers(_branch(kind), _R(), _F())
         assert op == "" and "2단" in why, (kind, op, why)
     #  🔴 표에 있는데 **재료가 없으면** 왜 못 가렸는지가 남아야 한다(#3)
-    for kind in ("빌드업", "압박 높이"):
+    for kind in ("빌드업", "압박 높이", "교체 운용"):
         op, why = bj.by_numbers(_branch(kind), _R(), _F())
         assert op == "", (kind, op, why)
         assert "능력치" in why, (kind, why)
