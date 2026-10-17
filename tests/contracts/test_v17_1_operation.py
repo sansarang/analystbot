@@ -29,42 +29,47 @@ def _code(rel: str) -> str:
 
 
 def test_m1_1_operation_number_comes_from_old_engine() -> None:
-    """🔴🔴 **M1-1** — 운영 확률의 출처는 `old_engine` 하나다."""
+    """🔴🔴 **M1-1** — 운영 승무패의 출처는 **하나**다.
+
+    ⚠️ **그 하나가 바뀌었다** — 종전엔 `old_engine`(얼린 M1)이었고, 사용자
+       지시 2026-10-15 가 *"초기 확률 **33.3 프로로 동등**"* 으로 덮었고,
+       2026-10-17 이 *"**기대득점 지워라**"* 로 옛 엔진 호출을 걷었다.
+    🔴 그래서 세는 것은 *"승무패를 덮는 자리가 **`flat_prob` 하나뿐**인가"* 다.
+    """
     said = _code("app/core/probmodel.py")
-    assert "from app.core.legacy import old_engine" in said
-    i = said.index("said_m1.ok()")
-    assert "got.home, got.draw, got.away = (said_m1.home" in said[i:i + 400]
-    # 🔴 그 뒤로 **M3 가 운영 수를 덮는 자리가 없다** — `run` 안에서만 센다
-    #    (⚠️ `_fill` 도 같은 줄을 쓰지만 그것은 **옛 네 축 경로**의 도움함수다)
-    tail = said[i:said.index("_note(state, f'S3 확률(상성)")
-                if "_note(state, f'S3 확률(상성)" in said
-                else said.index("def _state_said")]
-    assert "got.home, got.draw, got.away = said_three" in tail  # ρ 보정만
-    assert tail.count("got.home, got.draw, got.away") == 2, (
-        f"🔴 운영 수를 덮는 자리가 {tail.count('got.home, got.draw, got.away')}"
-        "곳이다 — 출처가 하나가 아니다")
+    assert "_oe.run(" not in said, "🔴 운영이 옛 엔진을 다시 부른다"
+    i = said.index("said_flat, why_flat = flat_prob(varset, ref=ref)")
+    # ⚠️ `_code()` 는 `ast.unparse` 라 **따옴표가 작은 것**이다(D46) — 글자를
+    #    그대로 비교하지 말고 **칸 이름**으로 센다.
+    assert "got.home = round(float(said_flat[" in said[i:i + 400]
+    # 🔴 **승무패 셋을 한꺼번에 덮는 자리**는 ρ 보정 하나뿐이다(M1 대입은 없다)
+    assert "got.home, got.draw, got.away = (said_m1.home" not in said, (
+        "🔴 옛 M1 이 운영 수를 덮는다")
+    assert said.count("got.home, got.draw, got.away") == 1, (
+        f"🔴 승무패를 한꺼번에 덮는 자리가 "
+        f"{said.count('got.home, got.draw, got.away')}곳이다 — 하나여야 한다")
 
 
-def test_m1_2_no_correction_without_a_version_file() -> None:
-    """🔴🔴 **M1-2** — 판이 없으면 보정 수가 **안 나온다**."""
-    from app.core import drawfix
-    got, why = drawfix.load(league="league:없는리그",
-                            as_of=__import__("datetime").datetime(
-                                2026, 10, 11, tzinfo=__import__(
-                                    "datetime").UTC))
-    assert got == {} and "⬜" in why
-    # 🔴 보정 함수도 값이 0 이면 **격자를 안 바꾼다**
-    grid = {(0, 0): 0.3, (1, 1): 0.3, (1, 0): 0.2, (0, 1): 0.2}
-    assert drawfix.bend(grid, rho=0.0, draw=0.0) == grid
-
+# 🔴 **`test_m1_2_no_correction_without_a_version_file` 을 지웠다** — `core/drawfix`(ρ 보정)를 지웠다 — 격자를 걷자 굽힐 대상이 없어졌고 ρ 는 폐기 유지였다(사용자 지시 2026-10-17 · CLAUDE.md).
 
 def test_m1_2_correction_needs_the_plate_in_code() -> None:
-    """🔴 코드가 **판을 읽고 나서만** 보정한다(손값 금지)."""
+    """🔴🔴 **무승부 보정(ρ)은 운영 경로에 없다** — 사용자 지시 2026-10-17.
+
+    ⚠️ 이 시험은 *"코드가 판을 읽고 나서만 보정한다"*(2026-10-12)를 세고
+       있었다. 🔴 그 보정은 **격자를 굽히는 것**이고, 격자는 두 번 걷혔다:
+         · 2026-10-15(3번) *"기대득점 빼면…"* → λ·오버·스코어를 비운다
+         · 2026-10-17 *"기대득점 지워라"* → 옛 엔진을 **안 부른다**
+       그래서 굽힐 격자가 없고, 보정한 승무패도 `flat_prob` 가 덮었다
+       (효과 **0** 이었다 · 실측으로 세고 180줄을 걷었다).
+    🔴 그리고 ρ 는 **폐기 유지**다(2026-10-13 `draw_care` · CLAUDE.md).
+    🔴 그래서 세는 것을 뒤집는다 — 운영이 **보정을 부르지 않는다**.
+    ⚠️ `core/drawfix` 모듈은 **안 지웠다**(백필·비교가 읽는다 · 아래에서 그
+       함수들이 **제 일을 하는지**는 그대로 센다).
+    """
     said = _code("app/core/probmodel.py")
-    i = said.index("_dfx.load(")
-    j = said.index("_dfx.bend(")
-    assert i < j, "🔴 판을 읽기 전에 보정한다"
-    assert "if said_fix and grid_m1" in said
+    assert "_dfx.load(" not in said and "_dfx.bend(" not in said, (
+        "🔴 운영이 무승부 보정을 다시 부른다 — ρ 는 폐기 유지다")
+    assert "drawfix" not in said, "🔴 운영이 `drawfix` 를 들여온다"
 
 
 def test_m1_3_shadow_and_floor_never_touch_grade_or_survival() -> None:

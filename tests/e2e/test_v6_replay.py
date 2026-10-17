@@ -193,9 +193,17 @@ def card(replaying) -> Card:
         layers["board_source"] = "user_board"
         got_card = pipeline.card_of(ref, facts, variables, said,
                                     state=state, layers=layers)
-        # 🔴🔴 **F7(2026-10-11)** — 이유 문단·전술 예측·논평이 **최종 평 한 편**
-        #    안으로 들어왔다. 라이브 입구와 같은 순서로 그 하나만 부른다.
-        return pipeline.with_say(got_card, state=state)
+        # ══════════════════════════════════════════════════════════
+        # 🔴🔴 **옛 글 경로를 걷었다** — 사용자 지시 2026-10-17
+        # ══════════════════════════════════════════════════════════
+        #
+        #  > 옛 글 경로(s9_say) **필요없다** · 어제처럼 solar deepseek 평이
+        #  > 나와야 한다 · 어제처럼 **확률과 같이**
+        #
+        #  🔴 `pipeline.with_say`(→ `s9_say`)를 지웠으므로 재생도 안 부른다.
+        #  ⚠️ ⑯ 종합 평(solar·deepseek)은 **LLM 호출**이라 녹화본이 없다 —
+        #     재생은 그 칸을 **비운 채** 센다(스냅샷이 `⬜ 없다` 를 적는다).
+        return got_card
 
     got = asyncio.run(_go())
     # 🔴 **비용 0** — 재생은 지갑에 닿지 않는다(§7)

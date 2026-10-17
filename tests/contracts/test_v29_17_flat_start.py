@@ -89,17 +89,7 @@ def test_λ_는_안_덮는다() -> None:
         assert bad not in src, f"🔴 `{bad}` 를 건드린다"
 
 
-def test_by_var_를_λ_에서_걷었다() -> None:
-    """⚠️ λ 에 걸었더니 총골이 부풀었다(합 2.69 → 3.32 · 오버2.5 50.5→64.7%)."""
-    import inspect
-    src = inspect.getsource(pm.lambda_rules)
-    assert "by_var" not in src or "걷었다" in src, src[-400:]
-
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 **쏠리면 무를 깎는다**(2번) — 사용자 결정 2026-10-15
-# ══════════════════════════════════════════════════════════════════
-
+# 🔴 **`test_by_var_를_λ_에서_걷었다` 을 지웠다** — 같은 까닭 — λ 경로 자체가 없다(설정 `by_var` 는 `flat_prob` 가 읽는다).
 
 def test_쏠리면_무가_내려간다() -> None:
     got, said = pm.flat_prob(rt.place([

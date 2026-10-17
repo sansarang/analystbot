@@ -455,9 +455,9 @@ def _shrunk(names: list[str], table: dict, pos: dict) -> tuple[float, int]:
     return total, len(gone)
 
 
-# ⚠️ **`stat_of` 은 지웠다** — 부르던 곳이 §1 처분(㉔ LLM 서술·검열)과
-#    함께 없어졌다(지시서 2026-10-12 셋째). 🔴 안 이어진 코드는 없는
-#    코드보다 나쁘다(CLAUDE.md #2).
+# 🔴 **`stat_of` 를 지웠다** — 오늘 되살렸는데 **부르던 곳이 옛 글 경로**(`saybundle._stat_of`)였다. 그 경로를 걷자 다시 고아가 됐다 — 처음 지운 판단이 맞았고, 틀린 것은 *부르는 곳이 없다*는 그때 주석뿐이었다(사용자 지시 2026-10-17).
+
+
 def _keyed(table: dict) -> dict:
     """🔴 이름 표를 **열쇠 표**로(순서 없는 이름 열쇠). ⚠️ 겹치면 큰 값을 둔다."""
     from app.core import discover as _d

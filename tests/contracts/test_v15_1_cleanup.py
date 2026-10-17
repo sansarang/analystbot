@@ -213,32 +213,46 @@ def test_w_score_check_exists() -> None:
     (r) 은 낱개 숫자로 쪼개 통과시켰다. 🔴 꼴 그대로 대조하는 검사가 **있어야**
     한다.
     """
-    said = (ROOT / "app/core/stages/s9_say.py").read_text(encoding="utf-8")
+    # ⚠️ **대상이 옮겨졌다**(사용자 지시 2026-10-17) — 옛 글 경로(`s9_say`)를
+    #    걷었고 평문은 **⑯ 종합 평**(`stages/s6_verdict`)이 낸다. 🔴 그 꼴
+    #    검사가 **거기** 있어야 한다(없으면 `4-3` 을 지어내도 안 걸린다).
+    said = (ROOT / "app/core/stages/s6_verdict.py").read_text(encoding="utf-8")
     assert "_SCORE" in said, (
         "(w) 🔴🔴 스코어 꼴 검사가 없다 — `4-3` 을 지어내도 안 걸린다"
         "(이 단계를 지운 그 사고다)")
-    assert "_scores_of" in said and "_scores_in" in said, (
+    assert "_scores(" in said, (
         "(w) 🔴 묶음의 스코어와 문장의 스코어를 둘 다 뽑아야 대조가 된다")
     import sys
     sys.path.insert(0, str(ROOT))
-    from app.core.stages import s9_say
-    assert s9_say._scores_in("전반에 4-3 으로 앞선다") == ["4-3"], (
+    from app.core.stages import s6_verdict as _vd
+    assert _vd._scores("전반에 4-3 으로 앞선다") == ["4-3"], (
         "(w) 🔴 스코어를 못 뽑는다")
-    assert s9_say._scores_in("최근 5경기 득점 2.4골") == [], (
+    assert _vd._scores("최근 5경기 득점 2.4골") == [], (
         "(w) 🔴 무해한 소수를 스코어로 잡는다 — 거짓 위반이 난다")
 
 
 def test_say_does_not_touch_probability() -> None:
-    """🔴🔴 사용자 결정 2026-10-14 — LLM 전술 단계는 **쓰기만** 한다.
+    """🔴🔴 사용자 결정 2026-10-14 — LLM 평 단계는 **쓰기만** 한다.
 
-    `pipeline.with_say` 가 덮는 칸이 **글 칸뿐**인지 센다. 확률·등급 칸을 덮으면
-    절대 규칙(LLM 출력이 `direction`·`weight`·`strength`·`survival`·`verdict` 에
-    닿으면 실패)을 깬다.
+    확률·등급 칸을 덮으면 절대 규칙(LLM 출력이 `direction`·`weight`·
+    `strength`·`survival`·`verdict` 에 닿으면 실패)을 깬다.
+
+    ⚠️ **대상이 바뀌었다**(사용자 지시 2026-10-17) — 옛 글 경로
+       (`pipeline.with_say` → `s9_say`)를 *"필요없다"* 로 지웠고, 평문은 이제
+       **⑯ 종합 평**(`stages/s6_verdict` · solar·deepseek)이 낸다.
+    🔴 그래서 그 ⑯ 블록이 덮는 칸을 센다 — `verdict_say`(글) **하나뿐**이어야
+       한다.
     """
     import ast as _ast
     said = (ROOT / "app/core/pipeline.py").read_text(encoding="utf-8")
-    i = said.index("def with_say(")
-    body = said[i:]
+    # 🔴 **주석이 아니라 코드**를 집는다 — 주석 가운데를 자르면 그 글자가
+    #    파이썬 바깥으로 새어 `SyntaxError` 가 난다(실측 2026-10-17).
+    i = said.index("    try:\n        from app.core.stages import "
+                   "s6_verdict as _vd")
+    j = said.index("_LAST[ref.id] = {", i)
+    body = "def _vd_block():\n" + "\n".join(
+        "    " + x for x in said[i:j].splitlines()
+        if x.strip() and not x.strip().startswith("#"))
     tree = _ast.parse(_ast.unparse(_ast.parse(body).body[0]))
     keys: set[str] = set()
     for node in _ast.walk(tree):
@@ -249,10 +263,12 @@ def test_say_does_not_touch_probability() -> None:
                     for k in kw.value.keys:
                         if isinstance(k, _ast.Constant):
                             keys.add(str(k.value))
-    assert keys, "🔴 `with_say` 가 `model_copy(update=…)` 를 안 쓴다"
+    assert keys, "🔴 ⑯ 블록이 `model_copy(update=…)` 를 안 쓴다"
     banned = {"our_prob", "adj_prob", "market", "judgement", "grade",
               "survival", "verdict", "matchup", "sim", "prob"}
     bad = keys & banned
     assert not bad, (
-        f"🔴🔴 `with_say` 가 확률·판정 칸을 덮는다: {sorted(bad)} — LLM 전술 단계는 "
+        f"🔴🔴 ⑯ 종합 평이 확률·판정 칸을 덮는다: {sorted(bad)} — LLM 평은 "
         "**쓰기만** 한다(사용자 결정 2026-10-14)")
+    # 🔴 덮는 칸은 **글 하나**다
+    assert keys <= {"verdict_say"}, keys

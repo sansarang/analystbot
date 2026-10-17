@@ -101,6 +101,21 @@ def card_text(card: Card, *, debug: bool = False) -> str:
         # 🔴 **결론 바로 아래**가 논평 자리다(지시 ④)
         if num == "8":
             out.append(_comment(card, debug=debug))
+            # ══════════════════════════════════════════════════════════
+            # 🔴🔴 **⑯ 종합 평**(solar · deepseek) — 사용자 지시 2026-10-17
+            # ══════════════════════════════════════════════════════════
+            #
+            #  > 카드 평문은 **llm 이 낸다 · solar, deepseek 가 낸다** ·
+            #  > 확률도 같이 표기된다 · **어제 평문대로 나오게 해라**
+            #
+            #  ⚠️ 실사고 2026-10-17: 그 평이 러너에만 배선돼 있어 봇 카드에
+            #     **한 줄도 없었다**. 🔴 글은 `s6_verdict.said_of`·`agree_of`
+            #     가 만든다 — 여기서는 **그대로 찍는다**(사본 금지).
+            #  ⚠️ 비면 그 사실을 적는다(#3 — 안 돈 것과 구분이 안 된다).
+            said_vd = [str(x) for x in (getattr(card, "verdict_say", None)
+                                        or []) if str(x).strip()]
+            out.append("\n" + ("\n\n".join(said_vd) if said_vd else
+                               "🧭 **종합 평 — ⬜ 없다**(⑯ 이 안 돌았다)"))
     return "\n".join(out)
 
 
@@ -1963,12 +1978,30 @@ def prob_summary(card: Card) -> str:
     mk = _pf.markets_of(grid) if grid else {}
     why = str(pull("why") or pull("gap") or getattr(card, "stance", "")
               or card.conclusion or "사유 없음")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **승무패는 `our_prob` 이 낸다** — 사용자 지시 2026-10-17
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 확률은 **33.3% 동등하게 시작한다** · 변수 전략 등등이 확률을 낸다 ·
+    #  > `card.our_prob` **그 수만 우리한테 주면 된다** · 확률은 **LLM 예측과
+    #  > 별개**로 표시한다
+    #
+    #  ⚠️ 실사고 2026-10-17(JEF 라이브): 이 줄이 **격자**(`sim.scores`)를 읽어
+    #     세 칸이 **전부 ⬜** 로 나갔다 — 그 격자는 *"기대 득점(λ)을 뺐다"*
+    #     (사용자 결정 2026-10-15 3번)로 **비운 것**이다. 🔴 승무패는 λ 를
+    #     안 보고 `flat_prob`(1/3 균등 + 변수)이 낸다 — 그 수가 `our_prob` 다.
+    #  🔴 그래서 승무패 줄은 **`our_prob` 에서** 읽는다. ⚠️ 핸디·오버는 격자가
+    #     있어야 나오므로 그 줄은 **⬜ + 사유**다(지어내지 않는다 · #3).
+    said_ours = getattr(card, "our_prob", None)
+    ours = ({"home": float(said_ours.home), "draw": float(said_ours.draw),
+             "away": float(said_ours.away)} if said_ours is not None else {})
     # 🔴 무와 엮인 줄에 붙는 꼬리표(편차 ≥ 3%p 일 때만 · 2-④)
-    said_flag = _db.flag(mk.get("draw")) if mk else ""
-    out = ["**📈 확률 요약**(맨 위 고정 · 같은 격자 하나에서 · **봇 확률만**)", ""]
-    # ── ① 승무패
+    said_flag = _db.flag(ours.get("draw")) if ours else ""
+    out = ["**📈 확률 요약**(맨 위 고정 · **봇 확률만** · 승무패는 "
+           "`1/3 균등 + 변수`)", ""]
+    # ── ① 승무패 — 🔴 **우리 확률**(격자가 아니다)
     out += ["| 승무패 | 홈 | 무 | 원정 |", "|---|---|---|---|",
-            "| 확률 | " + " | ".join(_pct(mk.get(k)) for k in
+            "| 확률 | " + " | ".join(_pct(ours.get(k)) for k in
                                      ("home", "draw", "away")) + " |", ""]
     # ── ② 핸디 — **홈 기준 한 줄만**
     head = " | ".join(f"{x:+.1f}" for x in AH_LINES)
@@ -1983,11 +2016,12 @@ def prob_summary(card: Card) -> str:
             "| 확률 | " + " | ".join(_pct(dict(mk.get("over") or {}).get(x))
                                      for x in OU_LINES) + " |",
             "언더 = 100 − 오버" + (said_flag if said_flag else ""), ""]
-    # ── ④ 역배 한 줄
-    if mk:
-        fav_home = float(mk["home"]) >= float(mk["away"])
-        dog = float(mk["away"] if fav_home else mk["home"])
-        no_win = 1.0 - float(mk["home"] if fav_home else mk["away"])
+    # ── ④ 역배 한 줄 — 🔴 **우리 확률**로 센다(승무패 세 수면 된다)
+    if ours:
+        mk = ours if not mk else mk
+        fav_home = float(ours["home"]) >= float(ours["away"])
+        dog = float(ours["away"] if fav_home else ours["home"])
+        no_win = 1.0 - float(ours["home"] if fav_home else ours["away"])
         who_dog = (card.match.away_name if fav_home
                    else card.match.home_name)
         who_fav = (card.match.home_name if fav_home
@@ -1998,7 +2032,8 @@ def prob_summary(card: Card) -> str:
     else:
         out.append(f"- **역배** — ⬜ 격자가 없다 — {why}")
     # ── ⑤ 무 구간 실측(표시 전용 · 확률 불변)
-    out.append(f"- **무 신뢰** — {_db.said_of(mk.get('draw') if mk else None)}")
+    out.append(f"- **무 신뢰** — "
+               f"{_db.said_of(ours.get('draw') if ours else None)}")
     # ── ⑥-0 🔴🔴 **보드 블록**(의심 검증 v2 §7) — 사다리가 모은 줄·출처·시각
     said_feed = str(getattr(card, "board_feed", "") or "")
     if said_feed:

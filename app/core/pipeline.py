@@ -788,9 +788,55 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     card = card_of(ref, facts, variables, said, state=st,
                    board_extra=extra, board_bad=bad, layers=layers,
                    changed=(changed or None))
-    # 🔴🔴 **F7 — 글 한 편**(작성 1 + 검열 1). 카드가 다 선 **뒤**다 — 작성자
-    #    입력이 **카드의 사실 목록**이기 때문이다. ⚠️ 이야기가 확률을 못 움직인다.
-    card = with_say(card, state=st)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **옛 글 경로(`with_say` → `s9_say`)를 걷었다** — 사용자 지시 2026-10-17
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 옛 글 경로(s9_say) **필요없다** · 어제처럼 solar deepseek 평이 나와야
+    #  > 한다 · 어제처럼 **확률과 같이**
+    #
+    #  ⚠️ 지시서 2026-10-12(셋째) §1 이 ㉔(최종 평·논평 LLM)를 *"코드 템플릿으로
+    #     교체 · LLM 호출 삭제"* 로 처분했는데 `with_say` 가 **아직 돌고 있었다** —
+    #     그래서 카드에 `🎓 전술 전문가 예측 — 템플릿` 같은 **옛 글**이 찍혔고,
+    #     그 검열이 **삭제된 상성 id** 를 근거로 요구해 평이 떨어졌다
+    #     (실측 2026-10-17 JEF: `[s9say] 템플릿 — (i) 구체성 · (q) 근거 id`).
+    #  🔴 평문은 아래 **⑯ 종합 평**(solar·deepseek) 하나가 낸다.
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **⑯ 종합 평 — solar · deepseek**(사용자 지시 2026-10-17)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 카드 평문은 **llm 이 낸다 · solar, deepseek 가 낸다** · 확률도 같이
+    #  > 표기된다 · **어제 평문대로 나오게 해라 · 로직도**
+    #
+    #  ⚠️ 실사고 2026-10-17(시미즈·JEF 라이브): 어제 지은 ⑯ 이
+    #     **`tools/run_collect.py` 에만** 배선돼 있었다 — `pipeline.py` 에는
+    #     `s6_verdict` 가 **0건**이라 봇 카드에는 평문이 **아예 없었다**
+    #     (내가 그걸 *"평문 실패"* 로 세 번 오보했다).
+    #  🔴 그래서 **러너가 부르는 그 순서·그 함수 그대로** 옮긴다(새 로직 0):
+    #     `chain_of`(묶음 한 번) → `ask`(두 모델이 **같은 묶음**) → `said_of`
+    #     → `agree_of`. ⚠️ 묶음을 두 번 만들지 않는다 — 다시 만들면 미세하게
+    #     달라져 두 평의 비교가 뜻을 잃는다(러너 주석의 그 까닭).
+    #  🔴 확률·등급은 **안 건드린다** — 이 블록은 `verdict_say` 칸만 채운다.
+    try:
+        from app.core.stages import s6_verdict as _vd
+        said_box = _vd.chain_of(ref, prob, mr, varset, docs=docs,
+                                plan=plan, strat=var_sl)
+        said_vd: list[str] = []
+        said_got: dict = {}
+        for pv in ("solar", "deepseek"):
+            one, _b, why_vd = _vd.ask(ref, prob, mr, varset, state=st,
+                                      provider=pv, box=said_box)
+            said_got[pv] = one
+            said_vd.append(_vd.said_of(one, said_box, provider=pv))
+            st.note(f"⑯ 종합 평({pv}) — {why_vd}")
+        # 🔴 **두 평의 공통점 ↔ 확률**(러너와 같은 줄) — 코드가 센다
+        said_vd.append(_vd.agree_of(said_got, prob))
+        card = card.model_copy(update={"verdict_say": said_vd})
+    except Exception as exc:                                # noqa: BLE001
+        # ⚠️ 카드는 **항상** 나온다(§5) — 평이 터져도 사유만 남긴다(#3)
+        st.note(f"⑯ 종합 평 — 🔴 터졌다 {exc!r:.200}")
+        card = card.model_copy(update={
+            "verdict_say": [f"🔴 **⑯ 종합 평이 터졌다** — {exc!r:.200}"]})
     # 🔴 **마지막 실행을 기억한다** — 재분석이 s3·s4 를 다시 돌지 않게(§4-1)
     _LAST[ref.id] = {"at": (now or datetime.now(timezone.utc)), "ref": ref,
                      "docs": docs, "cands": cands, "card": card,
@@ -1634,88 +1680,17 @@ def _market_moved(before: Card, layers: dict, *, state: RunState) -> list[str]:
     return said
 
 
-def with_say(card: Card, *, state: RunState) -> Card:
-    """🔴🔴 **전술 전문가 예측 + 최종 평**(지시 2026-10-14 *"전술예상도 해야 한다"*).
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **`with_say`(옛 글 경로)를 지웠다** — 사용자 지시 2026-10-17
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 옛 글 경로(s9_say) **필요없다** · 어제처럼 solar deepseek 평이 나와야 한다
+#
+#  🔴 호출을 걷자 계약이 **고아 함수**로 잡았다(`test_wiring` — *"부르는 곳이
+#     없다: app.core.pipeline.with_say"*). 🔴 안 이은 코드는 없는 코드보다
+#     나쁘다(#2) — 그래서 함수째 지운다.
+#  ⚠️ `stages/s9_say` 모듈 자체는 **안 지웠다**(다른 계약·도구가 읽는다) —
+#     운영 카드가 그것을 **안 부른다**는 것이 이 변경의 뜻이다.
+#  🔴 평문은 ⑯ 종합 평(`stages/s6_verdict` · solar·deepseek) 하나가 낸다.
 
-    > 전술 전문가다 … **자료로만** … **지어내지 않는다**.
 
-    ⚠️ 확률·등급은 **안 건드린다**(사용자 결정 2026-10-14: *"안 된다 — 쓰기만
-       한다"*) — 이 함수는 `card.model_copy` 로 **글 칸만** 덮는다.
-
-    ## 🔴🔴 왜 한 번 지웠고, 무엇을 고쳐 되살렸나
-    지시서 2026-10-12(셋째) §1 이 이 단계를 지운 까닭은 하나였다(커밋 `a7448733`):
-
-    > 광주 재현에서 LLM 문장이 **근거에 없는 4-3** 을 적었다(그 수가 실제 결과와
-    > 같았다). 검증할 수 없는 서술은 … **누설 위험**만 남긴다.
-
-    🔴 검열 (r)(수치 대조)은 그것을 **못 잡았다** — `4-3` 이 `4`·`3` 낱개로
-       쪼개지고 묶음에는 4 와 3 이 거의 늘 있다. 🔴 그래서 되살리며 검열
-       **(w) 스코어 꼴**을 먼저 더했다(`s9_say._SCORE`): 묶음 글에 그 **글자**가
-       없으면 위반이다.
-    ⚠️ 그래도 3문장을 못 내면 **코드 템플릿**으로 간다(아래) — 고리는 1회다.
-
-    🔴 확정 XI 가 아니어도 **돈다** — 사실 묶음에는 골 내용·폼·확률처럼 XI 와
-       무관한 칸이 많다. 라인업 칸이 비면 묶음이 `없음` 으로 적고 프롬프트가
-       *"그 칸은 말하지 마라"* 로 준다.
-    """
-    from app.core.schema import TacticOut
-    from app.core.stages import s9_say
-    got = s9_say.run(card, state=state)
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **F7 — 한 편이 네 칸을 먹인다**(지시서 2026-10-11)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  카드의 `reason`(1겹 이유 문단)·`tactic`(전술 예측)이 이제 **그 한 편에서**
-    #  나온다. ⚠️ 비면 **사유를 적는다**(빈 칸은 "안 돌았다"와 구분이 안 된다 · #3).
-    #  ⚠️ `commentary`(종합 논평)는 **구조 타입**(`Commentary`)이라 글 한 줄로
-    #     덮지 않는다 — 그 블록은 코드 템플릿이 만들고, 최종 평이 그 위에 선다.
-    from app.core import saybundle as _sb
-    from app.core.schema import TacticLine
-    # 🔴🔴 ④ — **전술 줄에 근거를 붙인다**(모델이 `tactic_refs` 로 준다)
-    said_refs = dict(getattr(got, "tactic_refs", None) or {})
-    said_lines = [TacticLine(slot=k, text=v,
-                             refs=[str(x) for x in (said_refs.get(k) or [])])
-                  for k, v in (
-                      ("운영:home", got.ops_home), ("운영:away", got.ops_away),
-                      ("흐름:전반", got.flow_first),
-                      ("흐름:후반", got.flow_second),
-                      ("승부처", got.decisive_moment)) if v]
-    # 🔴 ④ 계약 — 상성이 있는데 근거가 **하나도 없으면** 그 사실을 판정에 적는다
-    has_mu = bool(getattr(card, "matchup", None))
-    flat = [x for one in said_lines for x in (one.refs or [])]
-    bad_refs = _sb.refs_bad(refs=flat, has_matchup=has_mu)
-    said_audit = str(got.audit or "안 돌았다")
-    if bad_refs:
-        said_audit += " · 🔴 **근거 0**(상성 id 가 있는데 전술 줄이 안 썼다)"
-        state.note("s9say 전술 예측 — 🔴 **근거 0** · 상성 재료가 있는데 "
-                   "전술 줄이 id 를 안 썼다(④ 계약)")
-    said_tactic = TacticOut(
-        lines=said_lines, audit=said_audit,
-        # 🔴 #3 — 실패 사유를 **그 블록이 들고 간다**(`템플릿` 한 글자로 끝내지 않는다)
-        violations=[*(got.violations or []),
-                    *(["🔴 상성 id 가 있는데 전술 줄의 근거가 **0개**다(④)"]
-                      if bad_refs else [])])
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴 카드의 `reason` 은 **문장 묶음**이다(`ReasonPara`)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  평의 한 문단을 문장으로 쪼개 담는다. ⚠️ **3문장이 안 되면**(LLM 이 못 썼거나
-    #  템플릿으로 갔으면) **코드 템플릿 문단**으로 간다 — 글은 `layer1.template_lines`
-    #  **하나**가 짓는다(사본 금지). 🔴 빈 칸을 남기지 않는다(#3).
-    from app.core import layer1 as _l1
-    from app.core.schema import ReasonLine, ReasonPara
-    bits = [x.strip() for x in str(got.reason or "").replace("\n", " ")
-            .split(". ") if x.strip()]
-    if len(bits) >= 3:
-        said_reason = ReasonPara(sentences=[
-            ReasonLine(text=x, fact_refs=[]) for x in bits[:5]])
-    else:
-        rows, refs = _l1.template_lines(card)
-        said_reason = ReasonPara(sentences=[
-            ReasonLine(text=t, fact_refs=r) for t, r in zip(rows, refs)])
-        state.note("s9say 이유 문단 — 🔴 평이 3문장을 못 냈다 → **코드 템플릿**")
-    return card.model_copy(update={
-        "say": got,
-        "reason": said_reason,
-        "reason_audit": (got.audit if len(bits) >= 3 else "템플릿"),
-        "tactic": said_tactic})

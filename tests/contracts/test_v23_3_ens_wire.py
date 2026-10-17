@@ -26,11 +26,18 @@ def _src(rel: str) -> str:
 
 
 def test_probmodel_blends_grids() -> None:
-    """🔴 **EW1** — ⑯ 이 `ensemble.of`(격자 혼합)를 부른다."""
+    """🔴🔴 **EW1 — 앙상블은 운영 경로에 없다**(사용자 지시 2026-10-17).
+
+    ⚠️ 이 시험은 *"⑯ 이 `ensemble.of`(격자 혼합)를 부른다"*(2026-10-13 밤
+       다섯째)를 세고 있었다. 🔴 앙상블은 **격자를 섞는 것**이고 그 격자는
+       걷혔다 — `flat_prob`(1/3 균등 + 변수)이 승무패를 덮고 λ·오버·스코어는
+       비운다. 실측으로 세어 **효과 0** 이었고 그 180줄을 지웠다.
+    🔴 그래서 세는 것을 뒤집는다 — 운영이 **앙상블을 부르지 않는다**.
+    ⚠️ `core/ensemble` 모듈은 **안 지웠다**(백필·비교가 읽는다).
+    """
     from app.core import probmodel as pm
     said = ast.unparse(ast.parse(inspect.getsource(pm.run)))
-    assert "ensemble" in said and "of(" in said
-    # 🔴 승무패만 섞는 길(`mix`)로 운영 확률을 만들지 않는다
+    assert "ensemble" not in said, "🔴 운영이 앙상블을 다시 부른다"
     assert ".mix(" not in said
 
 
@@ -40,9 +47,12 @@ def test_markets_come_from_the_blended_grid() -> None:
     ⚠️ `run` 안에는 `market` 글자를 둘 수 없다(**C1**: S3 가 시장 정보를 읽는
        것을 막는 계약이 그 글자를 센다) — 그래서 **모듈 함수**로 뺐다.
     """
+    # ⚠️ **전제가 바뀌었다**(2026-10-17) — 격자를 걷었으니 `run` 안에서 줄을
+    #    만들지 않는다. 🔴 그래도 **그 함수가 제 일을 하는지는 그대로 센다**
+    #    (백필·비교가 그것을 읽는다 · 운영이 안 부를 뿐이다).
     from app.core import probmodel as pm
     said = ast.unparse(ast.parse(inspect.getsource(pm.run)))
-    assert "_lines_from" in said
+    assert "_lines_from" not in said, "🔴 운영이 격자 줄을 다시 만든다"
     inner = ast.unparse(ast.parse(inspect.getsource(pm._lines_from)))
     assert "markets_of" in inner
 

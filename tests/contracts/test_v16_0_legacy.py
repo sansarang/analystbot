@@ -69,14 +69,31 @@ def test_operation_uses_the_frozen_engine() -> None:
     🔴 그래서 ⑯ 은 `legacy/old_engine.run` 의 수를 **그대로** 쓰고(다시 계산하지
        않는다 · K0), **M3 가 그림자**다.
     """
+    # ══════════════════════════════════════════════════════════════
+    # 🔴🔴 **이 계약의 전제가 덮였다** — 사용자 지시 2026-10-15 · 10-17
+    # ══════════════════════════════════════════════════════════════
+    #
+    #  이 시험은 *"운영 ⑯ 의 수는 **얼린 M1**"*(2026-10-12 결정)을 세고 있었다.
+    #  🔴 그 결정은 두 번 덮였다:
+    #    · 2026-10-15 — *"변수 넣기전 초기 확률 **33.3 프로로 동등**하게 해라"*
+    #      → 승무패는 `flat_prob`(1/3 균등 + 변수)이 낸다(M1 이 아니다).
+    #    · 2026-10-15(3번) — *"기대득점 빼면…"* → λ·오버·스코어를 **비운다**.
+    #    · 2026-10-17 — *"λ 경로 **다 지워라** · **기대득점 지워라**"*
+    #      → 옛 엔진을 **부르지도 않는다**(그가 낸 것은 전부 버려졌다).
+    #  🔴 그래서 세는 것을 **지금 사실**로 바꾼다 — 운영 승무패의 출처가
+    #     `flat_prob` 하나이고, 운영 경로가 옛 엔진을 **안 부른다**는 것이다.
+    #  ⚠️ 얼린 파일 자체는 **지우지 않았다**(백필·비교 도구가 읽는다).
     said = (ROOT / "app/core/probmodel.py").read_text(encoding="utf-8")
-    assert "from app.core.legacy import old_engine" in said
-    # 🔴 운영 수가 M1 에서 온다(그 대입이 있다)
-    i = said.index("said_m1 is not None and said_m1.ok()")
-    assert "got.home, got.draw, got.away = (said_m1.home" in said[i:i + 400]
-    # 🔴 그림자는 M3 다
-    j = said.index("got.shadow = dict(said_m3)")
-    assert j > i and "M3 **새 경로**" in said
+    assert "_oe.run(" not in said, (
+        "🔴 운영이 **옛 엔진을 다시 부른다** — 기대득점은 지웠다"
+        "(사용자 지시 2026-10-17)")
+    # 🔴 운영 승무패는 `flat_prob` 가 낸다
+    i = said.index("said_flat, why_flat = flat_prob(varset, ref=ref)")
+    assert "got.home = round(float(said_flat[\"home\"]), 6)" in said[i:i + 400]
+    # 🔴 λ·오버·스코어는 비운다(지어내지 않는다)
+    assert "got.lam, got.over, got.scores = {}, {}, {}" in said
+    # 🔴 그림자는 M3 다(그 칸은 남는다 · 표시·채점용)
+    assert "got.shadow = dict(said_m3)" in said
 
 
 def test_card_records_both_numbers() -> None:

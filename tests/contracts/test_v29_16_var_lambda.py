@@ -74,21 +74,9 @@ def test_표시_전용_집안은_안_센다() -> None:
     assert abs(got["home"] - 1 / 3) < 1e-9, got
 
 
-def test_λ_규칙에는_사용자가_정한_셋만_남았다() -> None:
-    """🔴 이동·피로·순위 동기 — 그 셋은 **λ** 에 그대로 걸린다."""
-    got, said = pm.lambda_rules(rt.place([
-        V("IR13-away", "travel_schedule", subject="team:100002")]), ref=REF)
-    assert got["away"] == 0.95, (got, said)
-    box = dict(rt.table().get("lambda_rules") or {})
-    assert float(dict(box["travel_away"])["mul"]) == 0.95
+# 🔴 **`test_λ_규칙에는_사용자가_정한_셋만_남았다` 을 지웠다** — `probmodel.lambda_rules`(λ 배율)를 지웠다 — 기대 득점을 지우자 부르는 곳이 없어졌다(사용자 지시 2026-10-17).
 
-
-def test_변수가_λ_를_안_부풀린다() -> None:
-    """⚠️ 이것이 그때 난 사고다 — 변수 열셋이 λ 합을 23% 키웠다."""
-    many = [V(f"S0{i}", "recent_pattern", goals="up") for i in range(1, 9)]
-    got, _ = pm.lambda_rules(rt.place(many), ref=REF)
-    assert got == {"home": 1.0, "away": 1.0}, got
-
+# 🔴 **`test_변수가_λ_를_안_부풀린다` 을 지웠다** — 같은 까닭 — λ 가 없으니 부풀릴 것도 없다.
 
 def test_크기를_새로_짓지_않았다() -> None:
     assert float(dict(_by()["goals"])["down"]) == 0.95

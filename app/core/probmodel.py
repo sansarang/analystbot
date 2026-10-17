@@ -74,73 +74,10 @@ class ProbOut:
                 "share": dict(self.share), "why": self.why}
 
 
-def lambda_rules(varset, *, ref) -> tuple[dict, str]:
-    """🔴🔴 **이동·피로가 λ 를 깎는 배율** — `({"home":배율,"away":배율}, 글자)`.
-
-    > 이동이 멀면 원정이 불리하다 · 홈팀 원정팀의 피로도는 일정과 관련있다
-    > (사용자 지시 2026-10-14)
-
-    🔴 수는 `config/variable_routing.yaml: lambda_rules` 하나다(코드에 안 박는다).
-    🔴 **그 변수가 걸린 팀**의 λ 를 깎는다 — `row.subject` 가 그 팀이다.
-       ⚠️ `favors` 가 아니라 `subject` 다: IR13 은 `favors: opponent`(원정이
-          불리하니 홈에 유리)지만 **깎이는 쪽은 원정**이다.
-    ⚠️ 규칙 번호는 **id 앞토막**으로 센다(`IR13-away` → `IR13`) — `VarRow` 는
-       `from_rule` 칸을 안 들고 간다(실측 2026-10-14).
-    ⚠️ 겹치면 곱하되 `floor_mul` 아래로는 안 내려간다(폭주 방지).
-    ⚠️ 변수가 없으면 배율 **1.0** 이고 글자는 빈 것이다(없는 보정을 적지 않는다).
-    """
-    from app.core import routing as _rt
-    box = dict(_rt.table().get("lambda_rules") or {})
-    if not box:
-        return {"home": 1.0, "away": 1.0}, ""
-    floor = float(box.get("floor_mul") or 0.0) or 0.0
-    want = {str(dict(v).get("rule") or ""): (str(k), float(dict(v).get("mul") or 1.0))
-            for k, v in box.items() if isinstance(v, dict) and dict(v).get("rule")}
-    got = {"home": 1.0, "away": 1.0}
-    said: list[str] = []
-    for one in list(getattr(varset, "rows", None) or []):
-        rid = str(getattr(one, "id", "") or "").split("-", 1)[0]
-        if rid not in want:
-            continue
-        name, mul = want[rid]
-        key = str(getattr(one, "subject", "") or "")
-        side = ("home" if key == str(getattr(ref, "home", "") or "")
-                else "away" if key == str(getattr(ref, "away", "") or "") else "")
-        if not side:
-            continue
-        # ══════════════════════════════════════════════════════════════
-        # 🔴🔴 **어느 쪽을 깎나** — 설정의 `side` 가 정한다(지시 2026-10-14)
-        # ══════════════════════════════════════════════════════════════
-        #
-        #  🔴 뜻이 유형마다 반대다:
-        #     · 이동·피로 → 걸린 팀이 **불리** → 그 팀을 깎는다(`subject`)
-        #     · 순위 동기 → 급한 팀이 **유리** → **상대**를 깎는다(`opponent`)
-        #  ⚠️ `side` 칸이 없으면 `subject` 다(종전 두 규칙이 그 꼴이다).
-        want_side = str(box.get(name, {}).get("side") or "subject") \
-            if isinstance(box.get(name), dict) else "subject"
-        if want_side == "opponent":
-            side = "away" if side == "home" else "home"
-        got[side] *= mul
-        said.append(f"[{rid}] {side} λ ×{mul:g}({name}"
-                    + (" · 상대를 깎는다" if want_side == "opponent" else "")
-                    + ")")
-    # 🔴🔴 **`by_var` 는 λ 에서 걷었다** — 사용자 지시 2026-10-15:
-    #    *"변수 넣기 전 초기 확률 33.3 프로로 동등하게 해라 · 그외에는 아무 의미
-    #    없다"*. ⚠️ λ 에 걸었더니 **총골이 부풀었다**(합 2.69 → 3.32 · 오버2.5
-    #    50.5% → 64.7%). 변수는 *"누가 유리한가"* 를 말한 것이지 총골이 아니다.
-    #    🔴 그래서 변수는 **승무패**(`flat_prob`)로만 간다.
-    cap = float(box.get("cap_mul") or 0.0) or 0.0
-    for side in got:
-        if floor and got[side] < floor:
-            said.append(f"⚠️ {side} 배율이 상한에 걸렸다({got[side]:.3f} → {floor:g})")
-            got[side] = floor
-        if cap and got[side] > cap:
-            said.append(f"⚠️ {side} 배율이 상한에 걸렸다({got[side]:.3f} → {cap:g})")
-            got[side] = cap
-    if not said:
-        return got, ""
-    return got, ("🔴 **λ 보정**(사용자 지정 · 적합 아님) — " + " · ".join(said)
-                 + f" → 홈 ×{got['home']:.3f} · 원정 ×{got['away']:.3f}")
+# 🔴 **`lambda_rules` 를 지웠다** — λ 배율(이동·피로)을 곱하던 함수다.
+#    기대 득점(λ)을 지우자(사용자 지시 2026-10-17) 부르는 곳이 없어졌다(#2).
+#    ⚠️ 설정 표 `config/variable_routing.yaml: lambda_rules` 는 **남는다** —
+#       `flat_prob` 가 그 `by_var` 칸으로 변수 방향을 읽는다(같은 이름 다른 칸).
 
 
 def _kind(ref, facts) -> str:
@@ -639,12 +576,22 @@ def run(ref, facts, mr, varset, *, edge: dict | None = None,
     #     남는다. 🔴 **운영 판단은 사용자가 따로** 내렸다(이 주석이 그 자리다).
     #  🔴 **M1 은 얼린 코드**다(`legacy/old_engine` · 계약 K0) — 이 모듈이 다시
     #     계산하지 않는다. 그래야 운영이 백필의 M1 과 **같은 모형**을 쓴다.
-    from app.core.legacy import old_engine as _oe
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **기대 득점(λ)을 지웠다 — 옛 엔진을 부르지 않는다**
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  사용자 지시 2026-10-17: *"λ 경로(M1 얼린 옛 경로 · legacy-4axis) 로
+    #  찍힙니다 → **다 지워라 · 필요없다**"* · *"**기대득점 지워라**"*
+    #
+    #  ⚠️ 실측 2026-10-17(가시마 라이브): `app.core.legacy.old_engine` 이
+    #     `[S3] 두 팀 경기당 총골 3.444 → 한 팀 평균 1.722 · … λ 이동 …` 을
+    #     **계속 찍고 있었다**. 🔴 그런데 그가 낸 것은 **전부 버려진다** —
+    #     승무패는 `flat_prob`(1/3 균등 + 변수)이 **덮고**, λ·오버·스코어는
+    #     그 아래에서 **비운다**(사용자 결정 2026-10-15 3번).
+    #  🔴 그래서 **부르지 않는다** — 버릴 수를 계산하느라 시간을 쓰지 않는다.
+    #     ⚠️ 얼린 파일(`legacy/old_engine` · 계약 K0)은 **지우지 않았다** —
+    #        백필·비교 도구가 그 모형을 읽는다(운영이 안 부를 뿐이다).
     said_m1 = None
-    try:
-        said_m1 = _oe.run(ref, facts, mr, varset, edge=edge, state=None)
-    except Exception as exc:                                # noqa: BLE001
-        logger.info("[S3] M1(얼린 옛 경로) 실패 — %r", exc)
     said_floor = _floor_triple(floor)
     if said_floor:
         got.floor = {"home": round(said_floor[0], 4),
@@ -682,186 +629,41 @@ def run(ref, facts, mr, varset, *, edge: dict | None = None,
         else:
             said_m3 = {"why": f"🔴 M3 를 못 세웠다 — {why_m0}"}
     # ── 🔴🔴 **운영 수 = M1**(얼린 옛 경로). 못 내면 이 모듈의 네 축 수를 둔다.
-    if said_m1 is not None and said_m1.ok():
-        got.home, got.draw, got.away = (said_m1.home, said_m1.draw,
-                                        said_m1.away)
-        # ══════════════════════════════════════════════════════════════
-        # 🔴🔴 **λ 보정 — 이동 거리·피로도**(사용자 지시 2026-10-14)
-        # ══════════════════════════════════════════════════════════════
-        #
-        #  > 이동이 멀면 원정이 불리하다... **상식이다... 내 지시다** ·
-        #  > 홈팀 원정팀의 피로도는 일정과 관련있다.. **변수에 닿게 해라**
-        #
-        #  🔴🔴 **얼린 파일 밖에서 곱한다**(사용자 결정 2026-10-14) — `old_engine`
-        #     은 K0 로 해시가 고정이다. 그가 낸 λ 에 **여기서** 배율을 걸고
-        #     격자를 그 λ 로 **다시 센다**. ⚠️ 무승부 보정(바로 아래)이 쓰는
-        #     그 방식과 같다 — 얼린 격자 **뒤**에 건다.
-        #  🔴 **왜 축이 아니라 λ 냐** — `matchup.axis2` 는 배치된 변수를
-        #     `refs`(이름표)에만 넣고 값에 안 쓴다. 게다가 `routing._fit_ok` 가
-        #     `fatigue`·`travel_schedule` 의 축 자리를 `T2` 적합까지 닫아 둔다.
-        #     ⚠️ 즉 "축에 꽂는다"는 확률에 **안 닿는다**(실측 2026-10-14).
-        #  🔴 배율은 `config/variable_routing.yaml: lambda_rules` 다 — 코드에
-        #     수를 박지 않는다. ⚠️ **적합된 수가 아니다**(사용자가 정했다 ·
-        #     백필 측정은 반대였고 그 사실을 설정 머리말에 적어 뒀다).
-        said_lr, why_lr = lambda_rules(varset, ref=ref)
-        if why_lr:
-            got.lam = {k: round(float(v) * float(said_lr.get(k) or 1.0), 4)
-                       for k, v in dict(said_m1.lam or {}).items()}
-            if got.lam.get("home") and got.lam.get("away"):
-                _fill(got, _sim.run(float(got.lam["home"]),
-                                    float(got.lam["away"])))
-        # ══════════════════════════════════════════════════════════════
-        # 🔴🔴 **5번 무승부 보정** — 얼린 격자 **뒤**에 건다(K0 를 안 건드린다)
-        # ══════════════════════════════════════════════════════════════
-        #
-        #  🔴 실측(460경기 교차): ρ+0.2 로 로그손실 1.0527 → **1.0474**
-        #     (−0.0054 · 95% −0.0127~+0.0015) · 방향 **49.5% 그대로** ·
-        #     무승부 예측 26.8% → **22.7%**(실제 22.1%).
-        #  ⚠️ 판이 없으면 **보정하지 않는다**(손값 금지) — 사유를 적는다.
-        from app.core import drawfix as _dfx
-        # 🔴🔴 **전체 격자를 한 번 만든다** — 꼴 맞추기(글자 열쇠 → 쌍)를 **여기
-        #    한 곳**에서 한다. ⚠️ 종전에는 무승부 보정이 격자를 굽히고 **그 아래
-        #    줄이 굽지 않은 격자로 다시 덮어썼다** — 그래서 승무패는 보정 뒤 수,
-        #    스코어 줄은 보정 **전** 수였다(한 카드가 두 분포를 말했다 · C2 위반).
-        grid_m1: dict = {}
-        for key, val in dict(said_m1.scores or {}).items():
-            if isinstance(key, str) and "-" in key:
-                h, a = key.split("-", 1)
-                grid_m1[(int(h), int(a))] = float(val)
-            else:
-                grid_m1[(int(key[0]), int(key[1]))] = float(val)
-        said_fix, why_fix = _dfx.load(
-            league=_kind(ref, facts),
-            as_of=getattr(ref, "kickoff_utc", None))
-        if said_fix and grid_m1:
-            bent = _dfx.bend(grid_m1, rho=float(said_fix.get("rho") or 0.0),
-                             draw=float(said_fix.get("draw") or 0.0))
-            said_three = _dfx.triple(bent)
-            # 🔴 **보정 전 수를 남긴다** — 축 기여 분해(`share`)는 **보정 전**
-            #    확률을 설명한다. ⚠️ 그 사실을 칸으로 두지 않으면 카드의 분해 합이
-            #    최종 확률과 안 맞는 이유를 아무도 모른다(계약이 그것을 잡았다).
-            got.draw_fix = {"before_home": round(float(got.home), 6),
-                            "before_draw": round(float(got.draw), 6),
-                            "before_away": round(float(got.away), 6)}
-            got.home, got.draw, got.away = said_three
-            grid_m1 = dict(bent)          # 🔴 **굽힌 격자가 M1 격자다**
-            got.draw_fix.update({"why": why_fix,
-                                 **{k: float(v) for k, v in said_fix.items()
-                                    if isinstance(v, (int, float))}})
-        # ⚠️ **꼴은 위에서 맞췄다** — 얼린 경로는 스코어 열쇠를 `"1-0"` 글자로
-        #    담고, 카드·생존은 `(1, 0)` 쌍을 본다(얼린 파일은 안 고친다 · K0).
-        got.scores = dict(grid_m1)
-        got.over = dict(said_m1.over or {})
-        # ══════════════════════════════════════════════════════════════
-        # 🔴🔴 **앙상블 — ⑯ 안에서 격자로 섞는다**(지시 2026-10-13 밤 다섯째 1번)
-        # ══════════════════════════════════════════════════════════════
-        #
-        #  🔴 판정(누설 제거 뒤 **2,582경기** · 규칙 v2+(d)): **E1 채택** —
-        #     로그 손실 1.0498 vs E0 1.0525 · 짝지은 −0.0026(95% −0.0058~+0.0007)
-        #     · 맥니마 p 0.1334 · 상위 20% 61.43% vs 60.85%.
-        #  ⚠️ **방향은 E0 가 낫다**(46.51% vs 47.37% · 뒤집힌 288경기에서 E0
-        #     109 : E1 87) — 규칙 (b) 는 *"B 우세가 유의하지 않으면 통과"* 라서
-        #     통과했다. 🔴 그 사실을 **카드가 적는다**(숨기지 않는다).
-        #  🔴 **EW1** 섞는 것은 **격자**다(승무패만 섞으면 오버·핸디캡이 그 확률과
-        #     어긋난다 · C2) · **EW2** 판이 없으면 **M1 단독** · **EW3** 섞은 뒤의
-        #     모든 시장 줄은 `probfloor.markets_of` 로 **그 격자 하나**에서 나온다.
-        #  ⚠️ **순서** — 무승부 보정(ρ)을 **먼저** 걸고 그 격자를 섞는다. 두 보정의
-        #     **합성은 아직 안 재 봤다**(각각 M1 대비로만 쟀다) — 후속 과제다.
-        from app.core import ensemble as _en
-        said_plate, why_plate = _en.plate_of(
-            league=_kind(ref, facts), as_of=getattr(ref, "kickoff_utc", None))
-        if not dict(said_plate or {}).get("adopted"):
-            got.ens = {"why": (f"⬜ **앙상블 미적용** — 채택된 판이 없다"
-                               f"(M1 단독 · {why_plate})")}
-        else:
-            box_g: dict = {}
-            why_g = ""
-            for name, one in (("M1", grid_m1),
-                              ("M3", dict(said_m3.get("grid") or {}))):
-                said_n, why_n = _en.normalise(one)
-                if said_n:
-                    box_g[name] = said_n
-                else:
-                    why_g += f" · {name}: {why_n}"
-            mixed, why_mix = _en.of(box_g, plate=dict(said_plate))
-            if not mixed:
-                got.ens = {"why": f"🔴 {why_mix}{why_g}"}
-            else:
-                # 🔴 **C1** — `run` 안에 시장(`market`) 글자를 두지 않는다. 격자
-                #    에서 줄을 뽑는 일은 **모듈 함수**가 한다(`_lines_from`).
-                said_mk = _lines_from(mixed)
-                got.ens = {"w": dict(dict(said_plate).get("w") or {}),
-                           "before": {"home": round(float(got.home), 6),
-                                      "draw": round(float(got.draw), 6),
-                                      "away": round(float(got.away), 6)},
-                           "why": (f"{why_mix} · 판 {why_plate}"),
-                           # 🔴 방향 주의 — 판정에서 **방향은 E0 가 나았다**
-                           "note": ("⚠️ 방향 적중률은 판정에서 **M1 단독이 더 "
-                                    "높았다**(46.5% vs 47.4% · 유의하지 않다)")}
-                got.home = round(float(said_mk["home"]), 6)
-                got.draw = round(float(said_mk["draw"]), 6)
-                got.away = round(float(said_mk["away"]), 6)
-                got.scores = dict(sorted(mixed.items(),
-                                         key=lambda kv: -kv[1])[:40])
-                # 🔴 **EW3** — 오버도 그 격자에서(열쇠 꼴은 시뮬과 같다)
-                got.over = {f"{k}": round(float(v), 4)
-                            for k, v in dict(said_mk.get("over") or {}).items()}
-                got.xg = {"home": round(sum(h * v for (h, _a), v
-                                            in mixed.items()), 4),
-                          "away": round(sum(a * v for (_h, a), v
-                                            in mixed.items()), 4)}
-        # ══════════════════════════════════════════════════════════════
-        # 🔴🔴 **승무패는 1/3 균등 + 변수로 덮는다** — 사용자 지시 2026-10-15
-        # ══════════════════════════════════════════════════════════════
-        #
-        #  > 변수 넣기전 초기 확률 **33.3 프로로 동등**하게 해라 · 그외에는
-        #  > 아무 의미 없다
-        #
-        #  🔴 λ·오버·스코어는 **그대로 둔다**(총골은 리그 실측이 정한다) —
-        #     덮는 것은 **승·무·패 셋**뿐이다.
-        #  ⚠️ 그래서 승무패와 스코어 격자가 **다른 수**가 된다 — 카드가 그
-        #     사실을 적는다(아래 사유 글).
-        said_flat, why_flat = flat_prob(varset, ref=ref)
-        got.home = round(float(said_flat["home"]), 6)
-        got.draw = round(float(said_flat["draw"]), 6)
-        got.away = round(float(said_flat["away"]), 6)
-        _note(state, f"S3 {why_flat}")
-        # ══════════════════════════════════════════════════════════════
-        # 🔴🔴 **기대 득점(λ)을 뺐다** — 사용자 결정 2026-10-15(3번)
-        # ══════════════════════════════════════════════════════════════
-        #
-        #  > 기대득점 빼면 승무패에는 영향이 미치지 않냐 → **3번 해라**
-        #
-        #  🔴 승무패는 λ 를 **안 본다**(`flat_prob` 는 변수 묶음만 읽는다) —
-        #     그래서 λ 를 빼도 승무패는 **그대로**다.
-        #  ⚠️ 그 대신 **오버·스코어·총골이 사라진다** — 그 수는 λ 격자에서
-        #     오던 것이고, 이제 카드에 **⬜ 로 남는다**(지어내지 않는다 · #3).
-        #  🔴 ⑯ 의 **점수 예측도 함께 뺐다**(모델이 고를 격자가 없다).
-        got.lam, got.over, got.scores = {}, {}, {}
-        got.xg, got.share, got.share_refs = {}, {}, {}
-        why_flat += (" · 🔴 **기대 득점(λ)·오버·스코어는 뺐다**"
-                     "(사용자 결정 2026-10-15 3번 — 승무패는 λ 를 안 본다)")
-        # 🔴 λ 보정을 **되덮지 않는다** — 위에서 곱한 값이 운영 λ 다.
-        if not why_lr:
-            got.lam = dict(said_m1.lam or {})
-        got.move = dict(said_m1.move or {})
-        if said_m1.share:
-            got.share = dict(said_m1.share)
-        got.why = (f"🔴🔴 **승무패 = 초기 1/3 균등 + 변수**(사용자 지시 "
-                   f"2026-10-15) — {why_flat} · ⚠️ λ·오버·스코어는 아래 "
-                   f"리그 실측 경로가 낸다(승무패와 **다른 수**다)\n"
-                   f"🔴 λ 경로(M1 얼린 옛 경로 · legacy-4axis) — "
-                   f"{said_m1.why}"
-                   + (f" · {why_lr}" if why_lr else "")
-                   + (f" · 🎯 **무승부 보정** ρ "
-                      f"{float(got.draw_fix.get('rho') or 0.0):+.2f}"
-                      f"({got.draw_fix.get('why')})"
-                      if got.draw_fix else " · ⬜ 무승부 보정 없음(판 없음)")
-                   + (f" · 🕯 그림자 M3 홈 {float(said_m3['home']):.1%}"
-                      if said_m3.get("home") is not None
-                      else f" · 🕯 {said_m3.get('why', '그림자 없음')}"))
-    else:
-        got.why = (f"⚠️ **M1 을 못 냈다** — 이 모듈의 네 축 수로 간다 · {got.why}")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **옛 M1 블록을 지웠다**(180줄) — 사용자 지시 2026-10-17
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > λ 경로 **다 지워라 · 필요없다** · **기대득점 지워라** ·
+    #  > 오늘 로직에서 불필요한 **옛 코드는 더이상 필요하지 않다**
+    #
+    #  🔴 그 블록이 하던 일을 **실측으로 세어** 효과가 0 인 것만 걷었다:
+    #       · λ 보정(이동·피로)   → **0**(바로 아래에서 λ 를 비운다)
+    #       · 무승부 보정(ρ)      → **0**(보정한 승무패를 `flat_prob` 가 덮는다)
+    #       · 앙상블(E1 격자 혼합) → **0**(혼합한 격자를 비운다)
+    #       · 스코어·오버          → **0**(비운다)
+    #     ⚠️ 그런데 **승무패(`flat_prob`)도 그 블록 안에 있었다** — 블록만
+    #        지우면 승무패가 통째로 사라진다(내가 한 번 그렇게 했다). 🔴 그래서
+    #        승무패와 λ 비우기는 **밖으로 꺼내** 늘 돌게 둔다.
+    #  ⚠️ `legacy/old_engine`·`drawfix`·`ensemble` **모듈은 안 지웠다** —
+    #     백필·비교 도구가 그 모형을 읽는다(운영이 안 부를 뿐이다).
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **승무패 = 초기 1/3 균등 + 변수** — 사용자 지시 2026-10-15
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 변수 넣기전 초기 확률 **33.3 프로로 동등**하게 해라 · 그외에는
+    #  > 아무 의미 없다
+    said_flat, why_flat = flat_prob(varset, ref=ref)
+    got.home = round(float(said_flat["home"]), 6)
+    got.draw = round(float(said_flat["draw"]), 6)
+    got.away = round(float(said_flat["away"]), 6)
+    _note(state, f"S3 {why_flat}")
+    # 🔴🔴 **기대 득점(λ)·오버·스코어는 없다**(사용자 결정 2026-10-15 3번 ·
+    #    2026-10-17 *"기대득점 지워라"*) — 카드에 **⬜ 로 남는다**(#3).
+    got.lam, got.over, got.scores = {}, {}, {}
+    got.xg, got.share, got.share_refs = {}, {}, {}
+    got.why = (f"🔴🔴 **승무패 = 초기 1/3 균등 + 변수**(사용자 지시 "
+               f"2026-10-15) — {why_flat} · 🔴 **기대 득점(λ)·오버·스코어는 "
+               f"없다**(2026-10-17 — 승무패는 λ 를 안 본다)")
     got.shadow = dict(said_m3)
     _note(state, f"S3 확률(상성) — 홈 {got.home:.1%} · 무 {got.draw:.1%} · "
                  f"원정 {got.away:.1%} · {got.why}")
