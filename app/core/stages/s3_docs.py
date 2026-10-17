@@ -717,6 +717,20 @@ async def _fetch(sub: Any, ref: MatchRef, kept: list[tuple[Any, str]], *,
         if str(said_won.get("rung") or "원문") != "원문":
             state.note(f"s3/{name} 본문을 **{said_won.get('rung')}** 칸에서 "
                        f"받았다 — {said_won.get('why')}")
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **포털 첫 화면은 문서로 안 센다** — 사용자 지시 2026-10-17
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 실측 2026-10-17(울산 HD vs 부천): 받아 온 본문 22건 중 **11건**이
+        #     경로 없는 첫 화면이었다. 당일 날짜라 날짜를 통과하고 팀 이름이 떠
+        #     있어 신원도 통과한 뒤, 추출에서 *"건진 것이 없다"* 가 됐다.
+        #  🔴 판정은 **주소 꼴 하나**다 — 경로가 없거나(`host/`) 목록 화면
+        #     (`/`, `/kr`, `/news` 같은 한 토막)이면 그 경기 글이 아니다.
+        #     ⚠️ 글자(제목·본문)로 판정하지 않는다 — 첫 화면에도 팀 이름이 뜬다.
+        ok_fp, said_fp = front_page(url)
+        if ok_fp:
+            state.drop(f"s3/{name}/{url[:40]}", DropReason.FRONT_PAGE, said_fp)
+            continue
         # 🔴 **종목 검사**(사용자 지시 2026-10-06 ②) — 받은 뒤 본문으로 본다
         #    ⚠️ 제목·스니펫만으로는 모자랐다(테니스 기사가 통과했다).
         ok_s, said_s = sport_ok(ref.sport, str(getattr(h, "title", "") or ""),
@@ -804,3 +818,39 @@ def tally_to(state: RunState, docs: list) -> None:
     _TALLY.clear()
     # 🔴 같은 URL 은 **한 번만** — 캐시가 그것을 보장한다(§5 s3-4)
     state.set("docs", len(docs or []))
+
+
+#: 🔴 기사 주소가 **아닌** 한 토막 경로 — 목록·섹션 화면이다(실측으로만 늘린다).
+#   ⚠️ 낱말을 지어내지 않는다: 아래는 2026-10-17 실행에서 **실제로 받은** 것들이다.
+SECTION_PATHS: frozenset[str] = frozenset({
+    "kr", "ko", "news", "sports", "sport", "football", "soccer", "home",
+    "index", "main", "hub", "list", "latest", "articles", "article"})
+
+
+def front_page(url: object) -> tuple[bool, str]:
+    """🔴🔴 **포털 첫 화면·목록 화면인가** — `(버린다, 사유)`.
+
+    > 사용자 지시 2026-10-17 — 광범위 검색으로 결과가 늘자 첫 화면이 같이 늘었다.
+
+    🔴 **주소 꼴로만** 본다 — 첫 화면에도 팀 이름과 오늘 날짜가 떠 있어서
+       글자로는 못 가린다(그래서 날짜·신원 검문을 통과했다).
+    ⚠️ 질의 문자열(`?id=…`)이 있으면 **기사일 수 있다** — 버리지 않는다
+       (`gall.dcinside.com/…/view/?id=…` · `asiatoday.co.kr/kn/view.php?key=…`).
+    """
+    said = str(url or "").strip()
+    if not said:
+        return False, ""
+    from urllib.parse import urlparse
+    try:
+        got = urlparse(said)
+    except ValueError:
+        return False, ""
+    if got.query:
+        return False, ""
+    parts = [x for x in str(got.path or "").split("/") if x.strip()]
+    if not parts:
+        return True, f"🔴 **첫 화면이다**(경로가 없다) — `{got.netloc}` · 그 경기 글이 아니다"
+    if len(parts) == 1 and parts[0].lower() in SECTION_PATHS:
+        return True, (f"🔴 **목록 화면이다**(`/{parts[0]}`) — `{got.netloc}` · "
+                      "그 경기 글이 아니다")
+    return False, ""

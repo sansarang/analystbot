@@ -221,3 +221,62 @@ def test_ds9_두_팀_질의가_쪽_둘에_나뉜다() -> None:
     assert not (set(got["home"]) & set(got["away"])), got
     #  🔴 하나도 잃지 않는다
     assert len(got["home"]) + len(got["away"]) == len(pairs), got
+
+
+def test_ds10_포털_첫_화면은_문서로_안_센다() -> None:
+    """🔴🔴 **광범위 검색의 부작용** — 사용자 지시 2026-10-17.
+
+    ⚠️ 실측(울산 HD vs 부천 5차·7차): 받아 온 본문 22건 중 **11건**이 경로 없는
+       첫 화면이었다(`xportsnews.com/`·`yna.co.kr/`·`goal.com/kr`·`mt.co.kr/`).
+    🔴 당일 날짜라 **날짜를 통과**하고 팀 이름이 떠 있어 **신원도 통과**한 뒤,
+       추출에서 *"건진 것이 없다"* 가 된다 — 그 화면에 그 경기 사실이 없다.
+    🔴 그래서 **주소 꼴로만** 가린다(글자로는 못 가린다 · 첫 화면에도 팀 이름이 뜬다).
+    """
+    from app.core.schema import DropReason
+    from app.core.stages.s3_docs import front_page
+
+    assert DropReason.FRONT_PAGE.value == "front_page"
+    #  ① 첫 화면·목록 화면은 버린다
+    for url in ("https://www.xportsnews.com/", "https://www.yna.co.kr/",
+                "https://www.goal.com/kr", "https://www.sportalkorea.com/",
+                "https://www.mt.co.kr/"):
+        ok, why = front_page(url)
+        assert ok, f"🔴 첫 화면을 안 버린다 — {url}"
+        assert why.strip(), f"🔴 사유를 안 적는다(#3) — {url}"
+    #  ② 기사 주소는 **받는다**(질의 문자열이 있으면 기사일 수 있다)
+    for url in ("https://www.xportsnews.com/article/2148485",
+                "https://news.kbs.co.kr/news/pc/view/view.do?ncd=8528032",
+                "https://www.joongboo.com/news/articleView.html?idxno=3637395",
+                "https://ko.wikipedia.org/wiki/%ED%85%8C"):
+        ok, _why = front_page(url)
+        assert not ok, f"🔴 기사 주소를 버린다 — {url}"
+    #  ③ 배선 — 받은 뒤 **종목 검사 앞**에서 본다
+    import inspect
+
+    from app.core.stages import s3_docs
+    src = inspect.getsource(s3_docs._fetch)
+    assert "front_page(url)" in src, "🔴 `_fetch` 가 안 부른다 — 안 이은 코드다(#2)"
+    assert src.index("front_page(url)") < src.index("sport_ok("), (
+        "🔴 종목 검사 뒤에 본다 — 그 앞에서 걸러야 헛일을 안 한다")
+
+
+def test_ds11_비기사_도메인은_표가_막는다() -> None:
+    """🔴 커뮤니티·위키 미러·대진표·굿즈는 **표에서** `deny` 다(코드에 안 박는다).
+
+    ⚠️ 실측 2026-10-17 — 전부 **본문까지 받았던** 주소들이다.
+    """
+    from app import domains
+    for url in ("https://gall.dcinside.com/mgallery/board/view/?id=x",
+                "https://thewiki.kr/", "https://www.ppomppu.co.kr/",
+                "https://cupbracket.com/ko/hub",
+                "https://store.jleague.jp/club/mito/item/P1"):
+        assert domains.tier_of(url) == "deny", f"🔴 `{url}` 가 안 막힌다"
+    #  🔴 **매체는 그대로 산다** — 과하게 막으면 기사를 영영 못 읽는다
+    for url in ("https://www.xportsnews.com/article/2148485",
+                "https://news.kbs.co.kr/news/pc/view/view.do?ncd=1",
+                "https://www.yna.co.kr/view/AKR1"):
+        assert domains.tier_of(url) != "deny", f"🔴 매체를 막았다 — {url}"
+    #  ⚠️ 목록은 **설정 파일**에 있다(코드에 박으면 사용자가 못 고친다 · §13-7)
+    import inspect
+    assert "dcinside" not in inspect.getsource(domains), (
+        "🔴 도메인을 코드에 박았다 — 표가 원본이다(#1)")
