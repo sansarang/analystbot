@@ -32,9 +32,9 @@
 🔁 **역배·보호 줄 없음** — ⑯ 이 격자를 못 만들었다(확률이 없으면 그 줄도 없다)
 
 **1. 자료 한계 고백**
-- 버린 것: `body_missing` 54건 · `identity_mismatch` 90건 · `replay_miss` 1건 · `sport_mismatch` 3건 · `stale` 10건 · `team_tier_mismatch` 6건 · `type_off_catalog` 5건
-- 🔎 **검색** — 질의 26 · 결과 273 · 날짜 통과 134 · 문서 9 · 잃음 — ④ 신원 96 · ③ 본문 54 · ② 질의·날짜 10 · ① 원천 8 · ⬜ 미분류(replay_miss) 1 · ⬜ 원천 등급·사실 종류별 수는 **아직 못 적는다**(카드가 문서 URL 을 안 들고 있다 · §6-5)
-- 문서 9건 · 변수 7개 · 시나리오 0개
+- 버린 것: `body_missing` 17건 · `identity_mismatch` 137건 · `replay_miss` 1건 · `sport_mismatch` 2건 · `stale` 18건 · `team_tier_mismatch` 2건 · `type_off_catalog` 6건
+- 🔎 **검색** — 질의 20 · 결과 337 · 날짜 통과 119 · 문서 5 · 잃음 — ④ 신원 139 · ② 질의·날짜 18 · ③ 본문 17 · ① 원천 8 · ⬜ 미분류(replay_miss) 1 · ⬜ 원천 등급·사실 종류별 수는 **아직 못 적는다**(카드가 문서 URL 을 안 들고 있다 · §6-5)
+- 문서 5건 · 변수 7개 · 시나리오 0개
 - 못 받은 칸 — 오늘 XI 없음(상태 none — IR02·IR03 이 안 돈다) · 감독 미확보 · 순위표 없음
 
 **2. 기준 XI**
@@ -62,33 +62,15 @@
 - 팀 관련 뉴스 — ⬜ **0개**(딥서치가 기사에서 사실을 못 건졌다)
 - 팀내 불화 — ⬜ **없다**(딥서치 0건)
 
-🆕 **새 사실(72시간)** — 🔴 **0건** · 기사 변수 0개(F 하위에서 온 것 0개) · docs 9 · hits 273 · kept_date 134 · queries 26
+🆕 **새 사실(72시간)** — 🔴 **0건** · 기사 변수 0개(F 하위에서 온 것 0개) · docs 5 · hits 337 · kept_date 119 · queries 20
 
 🧾 **손실 표**(버린 단계 · 사유 · 제목)
 
 | 단계 | 사유 | 제목 | 상세 |
 |---|---|---|---|
 | `s4` | `team_tier_mismatch` | ⬜ 제목 없음 | 🔴 다른 등급 낱말이 주어다({'asiad': ['asian games']}) — 이 경기는 `senior` |
-| `s4` | `team_tier_mismatch` | ⬜ 제목 없음 | 🔴 다른 등급 낱말이 주어다({'asiad': ['asian games']}) — 이 경기는 `senior` |
-| `s4` | `team_tier_mismatch` | ⬜ 제목 없음 | 🔴 다른 등급 낱말이 주어다({'asiad': ['asian games']}) — 이 경기는 `senior` |
-| `s4` | `team_tier_mismatch` | ⬜ 제목 없음 | 🔴 다른 등급 낱말이 주어다({'olympic': ['olympic']}) — 이 경기는 `senior` 다 |
-| `s4` | `team_tier_mismatch` | ⬜ 제목 없음 | 🔴 다른 등급 낱말이 주어다({'olympic': ['olympic']}) — 이 경기는 `senior` 다 |
-| `s4` | `team_tier_mismatch` | ⬜ 제목 없음 | 🔴 다른 등급 낱말이 주어다({'women': ['women', "women's"]}) — 이 경기는 `se |
+| `s4` | `team_tier_mismatch` | ⬜ 제목 없음 | 🔴 다른 등급 낱말이 주어다({'u23': ['under-23']}) — 이 경기는 `senior` 다 |
 | `s4` | `replay_miss` | ⬜ 제목 없음 | replay_miss: 카세트 없음 — tests/fixtures/cassettes/nomatch/socce |
-| `s3/도메인` | `type_off_catalog` | South Korea vs Uzbekistan Prediction: The hosts will confirm their cla | 도메인 등급 — 🔴 등급 `tip` — 본문을 받지 않는다(§4-3) · 변수 근거 금지 |
-| `s3/신원` | `identity_mismatch` | Asian Games 2026 Updates: India Clinch Historic Gold in Women's Compou | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'asian games 2026 updates: ind |
-| `s3/신원` | `identity_mismatch` | Asian Games 2026: Sumit Nagal in men's Tennis singles QFs; Dhakshinesw | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — "asian games 2026: sumit nagal |
-| `s3/신원` | `identity_mismatch` | Asian Games 2026: Five golds, historic breakthroughs make archery one  | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'asian games 2026: five golds, |
-| `s3/신원` | `identity_mismatch` | FAO Council · FAO Governing Bodies · Food and Agriculture Organization | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'fao council · fao governing b |
-| `s3/신원` | `identity_mismatch` | J Manual Coffee Grinder | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'j manual coffee grinder 17시간  |
-| `s3/신원` | `identity_mismatch` | Cosmetics, Health & Beauty Fulfilment · J&J | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'cosmetics, health & beauty fu |
-| `s3/신원` | `identity_mismatch` | Endless search for graves of forgotten independence fighters | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'endless search for graves of  |
-| `s3/신원` | `identity_mismatch` | S. Korea's Jang Se-yun wins silver in women's judo at Asian Games | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — "s. korea's jang se-yun wins s |
-| `s3/등급` | `identity_mismatch` | S. Korea's Jang Se-yun wins silver in women's judo | 🔴 **등급이 다르다** — 글은 ['women'] 인데 이 경기는 아니다 |
-| `s3/날짜` | `stale` | South Korea Uzbekistan | 🔴 **7일 밖이다** — 스니펫 날짜 2026-09-14, 지금보다 22일 전 (받지 않는다) |
-| `s3/신원` | `identity_mismatch` | [KOR] The Quantum Mechanics Success Law Changing the Future | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '[kor] the quantum mechanics s |
-| `s3/신원` | `identity_mismatch` | Sahan Bidappa - Gulf Times | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'sahan bidappa - gulf times 4일 |
-| `s3/신원` | `identity_mismatch` | [KOR] The Quantum Mechanics Success Law Changing the Future | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '[kor] the quantum mechanics s |
 | `s3/신원` | `identity_mismatch` | Tennis Player Kwon Soon-woo Retires in 11 Minutes Due to Left Knee Inj | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'tennis player kwon soon-woo r |
 | `s3/신원` | `identity_mismatch` | [ASIAN GAMES] S. Korea reach men's football final | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — "[asian games] s. korea reach  |
 | `s3/신원` | `identity_mismatch` | 축구 뉴스, 페이지 1 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '축구 뉴스, 페이지 1 2일 전‘이미 전용기 타고 사 |
@@ -97,19 +79,37 @@
 | `s3/신원` | `identity_mismatch` | Men's Football Team Beats China in Comeback Win to Reach Final [AG Vid | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — "men's football team beats chi |
 | `s3/등급` | `identity_mismatch` | U22 한국, U20 우즈베키스탄에 2-0 완패ㅋㅋㅋ - 해외축구 갤러리 | 🔴 **등급이 다르다** — 글은 ['u20', 'u22'] 인데 이 경기는 아니다 |
 | `s3/등급` | `identity_mismatch` | South Korea Defeats Chinese Men's, Women's Teams | 🔴 **등급이 다르다** — 글은 ['women'] 인데 이 경기는 아니다 |
-| `s3` | `body_missing` | ⬜ 제목 없음 | 원문 원문: 받았다(상태 200) · 🔴 **본문 0자** · AMP ⬜ **AMP 없다** — 원문에 `r |
+| `s3` | `body_missing` | ⬜ 제목 없음 | 원문 원문: 상태 ? · 재시도도 실패 · AMP ⬜ **AMP 없다** — 원문에 `rel=amphtml` |
+| `s3` | `body_missing` | ⬜ 제목 없음 | 원문 원문: 상태 ? · 재시도도 실패 · AMP ⬜ **AMP 없다** — 원문에 `rel=amphtml` |
+| `s3` | `body_missing` | ⬜ 제목 없음 | 원문 원문: 상태 ? · 재시도도 실패 · AMP ⬜ **AMP 없다** — 원문에 `rel=amphtml` |
+| `s3` | `body_missing` | ⬜ 제목 없음 | 원문 원문: 상태 ? · 재시도도 실패 · AMP ⬜ **AMP 없다** — 원문에 `rel=amphtml` |
 | `s3` | `body_missing` | ⬜ 제목 없음 | 원문 원문: 상태 ? · 재시도도 실패 · AMP ⬜ **AMP 없다** — 원문에 `rel=amphtml` |
 | `s3` | `sport_mismatch` | ⬜ 제목 없음 | 🔴 본문에 **soccer 낱말이 없다**(football, fútbol, nogomet, soccer …) |
 | `s3` | `body_missing` | ⬜ 제목 없음 | 원문 원문: 상태 ? · 재시도도 실패 · AMP ⬜ **AMP 없다** — 원문에 `rel=amphtml` |
-| `s3` | `body_missing` | ⬜ 제목 없음 | 원문 원문: 상태 ? · 재시도도 실패 · AMP ⬜ **AMP 없다** — 원문에 `rel=amphtml` |
-| `s3` | `body_missing` | ⬜ 제목 없음 | 원문 원문: 상태 ? · 재시도도 실패 · AMP ⬜ **AMP 없다** — 원문에 `rel=amphtml` |
-| `s3` | `body_missing` | ⬜ 제목 없음 | 원문 원문: 상태 ? · 재시도도 실패 · AMP ⬜ **AMP 없다** — 원문에 `rel=amphtml` |
-| `s3` | `body_missing` | ⬜ 제목 없음 | 원문 원문: 상태 ? · 재시도도 실패 · AMP ⬜ **AMP 없다** — 원문에 `rel=amphtml` |
-| `s3` | `body_missing` | ⬜ 제목 없음 | 원문 원문: 상태 ? · 재시도도 실패 · AMP ⬜ **AMP 없다** — 원문에 `rel=amphtml` |
-| `s3` | `body_missing` | ⬜ 제목 없음 | 원문 원문: 상태 ? · 재시도도 실패 · AMP ⬜ **AMP 없다** — 원문에 `rel=amphtml` |
-| `s3` | `body_missing` | ⬜ 제목 없음 | 원문 원문: 상태 ? · 재시도도 실패 · AMP ⬜ **AMP 없다** — 원문에 `rel=amphtml` |
-- ⚠️ **129줄 더 있다**(표는 40줄까지 적는다)
-- 합계 — `s3/body_missing` 54건 · `s3/sport_mismatch` 3건 · `s3/날짜/stale` 10건 · `s3/도메인/type_off_catalog` 5건 · `s3/등급/identity_mismatch` 13건 · `s3/신원/identity_mismatch` 77건 · `s4/replay_miss` 1건 · `s4/team_tier_mismatch` 6건
+| `s3` | `sport_mismatch` | ⬜ 제목 없음 | 🔴 본문에 **soccer 낱말이 없다**(football, fútbol, nogomet, soccer …) |
+| `s3/신원` | `identity_mismatch` | 스페인, 프랑스에 2-0 승리: 논란 속에서도 라민 야말의 활약. | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '스페인, 프랑스에 2-0 승리: 논란 속에서도 라민  |
+| `s3/신원` | `identity_mismatch` | 2024-25 AFC Champions League Elite/Round of 16 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '2024-25 afc champions league  |
+| `s3/도메인` | `type_off_catalog` | THE 15 BEST Things to Do in Uzbekistan (2026) - Must-See Attractions | 도메인 등급 — 🔴 등급 `deny` — 본문을 받지 않는다(§4-3) · 검색 결과에서 제거 |
+| `s3/신원` | `identity_mismatch` | 크리스티아누 호날두/국가대표 경력/2026 FIFA 월드컵 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '크리스티아누 호날두/국가대표 경력/2026 fifa  |
+| `s3/날짜` | `stale` | 메인비즈협회(한국경영혁신중소기업협회) | 🔴 **7일 밖이다** — 스니펫 날짜 2026-08-20, 지금보다 47일 전 (받지 않는다) |
+| `s3/신원` | `identity_mismatch` | 스페인 2-0 프랑스: 라민 야말의 맹활약, 옐로우 카드 한 장 받지 않고 무난하게 .... | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '스페인 2-0 프랑스: 라민 야말의 맹활약, 옐로우  |
+| `s3/신원` | `identity_mismatch` | FotMob - Soccer Live Scores - Apps on Google Play | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'fotmob - soccer live scores - |
+| `s3/신원` | `identity_mismatch` | 2024-25 AFC Champions League Elite/League Stage/West Asia | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '2024-25 afc champions league  |
+| `s3/신원` | `identity_mismatch` | 학생생활기록부 작성법 07. 자기소개서 컨설팅 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '학생생활기록부 작성법 07. 자기소개서 컨설팅 sop |
+| `s3/날짜` | `stale` | Mom's Touch adds Uzbekistan to its global fast-food market - The Korea | 🔴 **7일 밖이다** — 주소 날짜 2025-09-01, 지금보다 400일 전 (받지 않는다) |
+| `s3/날짜` | `stale` | Korea to play Uzbekistan in Davis Cup qualifier - The Korea Times | 🔴 **7일 밖이다** — 주소 날짜 2017-02-01, 지금보다 3534일 전 (받지 않는다) |
+| `s3/날짜` | `stale` | US strikes down T-50 exports to Uzbekistan - The Korea Times | 🔴 **7일 밖이다** — 주소 날짜 2015-10-25, 지금보다 3999일 전 (받지 않는다) |
+| `s3/날짜` | `stale` | 우즈베키스탄 Made in Uzbekistan 상품 소개 온라인 설명회 신청서-1.pdf | 🔴 **7일 밖이다** — 스니펫 날짜 2021-05-28, 지금보다 1957일 전 (받지 않는다) |
+| `s3/신원` | `identity_mismatch` | Scorpio Horoscope Today, October 6, 2026: Will Maintain Humility, Will | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'scorpio horoscope today, octo |
+| `s3/등급` | `identity_mismatch` | Uzbekistan U23 테이블 및 순위 - 2026 | 🔴 **등급이 다르다** — 글은 ['u23'] 인데 이 경기는 아니다 |
+| `s3/신원` | `identity_mismatch` | Stock market outlook today, 6 Oct: Sensex, Nifty prediction - DJIA, S& | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'stock market outlook today, 6 |
+| `s3/신원` | `identity_mismatch` | NYT Pips hints, answers for October 6, 2026 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'nyt pips hints, answers for o |
+| `s3/신원` | `identity_mismatch` | NYT Connections Sports Edition hints and answers for October 6: Tips t | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'nyt connections sports editio |
+| `s3/신원` | `identity_mismatch` | NYT Strands hints, answers for October 6, 2026 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'nyt strands hints, answers fo |
+| `s3/신원` | `identity_mismatch` | Cardano (ADA), XRP, Zcash (ZEC) and Sui (SUI) Price Analysis October 6 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'cardano (ada), xrp, zcash (ze |
+| `s3/신원` | `identity_mismatch` | APOD: 2026 October 6 - A Complete Auroral Oval from SMILE - NASA Scien | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'apod: 2026 october 6 - a comp |
+- ⚠️ **143줄 더 있다**(표는 40줄까지 적는다)
+- 합계 — `s3/body_missing` 17건 · `s3/sport_mismatch` 2건 · `s3/날짜/stale` 18건 · `s3/도메인/type_off_catalog` 6건 · `s3/등급/identity_mismatch` 14건 · `s3/신원/identity_mismatch` 123건 · `s4/replay_miss` 1건 · `s4/team_tier_mismatch` 2건
 
 **🧠 라인업 전략 (자세히)** — 판정 `🟡 **예상 XI 판정**(확정 전 · 규칙 풀림 2026-10-15)`
 - **South Korea** — `평소 그대로` · 근거 [] · 🔴 **코드 판정**(LLM 판정을 버렸다) — 방향을 읽을 신호가 없다 — 바뀐 자리 못 쟀다 · ΔA 못 쟀다 · ΔD 못 쟀다 · 핵심 선수 표 없음 · 🔴 **임시값**(적합 전)

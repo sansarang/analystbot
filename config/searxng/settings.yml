@@ -143,7 +143,19 @@ engines:
   # timeout`). `brave` 는 `Suspended: too many requests` 로 늘 정지다.
   # 🔴 켜 둬도 **0건**이고 기다림만 늘린다 → 끈다. ⚠️ 되살아나면 다시 켠다
   #    (이 저장소의 실측은 엔진이 하루 만에 뒤집힌다고 적는다).
+  # 🔴🔴 **다시 켠다 — 사용자 지시 2026-10-17**
+  #
+  #  > llm 서치를 **한국어 사이트만** 하는게 아니라 **광범위하게** 하는거다 …
+  #  > 한국사이트만 하지 말고 **포털사이트들을 다 검색**해야 한다
+  #
+  #  🔴 실측 2026-10-17 — 살아 있는 엔진이 **셋뿐**이었다:
+  #       naver 6/13건 · yep 0/20건 · duckduckgo news 2/0건
+  #       google · google news · qwant · bing news · brave.news · reuters
+  #       · wikinews · wikipedia 는 **전부 0건**
+  #  ⚠️ 그래서 한국 경기 검색이 사실상 `naver` 하나로 좁아졌다 — 그것이
+  #     *"한국 사이트만"* 으로 보인 까닭이다.
+  #  🔴 위 주석(10-10)은 *"되살아나면 다시 켠다"* 고 적었다. 지금 켠다.
   - name: duckduckgo
-    disabled: true
+    disabled: false
   - name: brave
-    disabled: true
+    disabled: false

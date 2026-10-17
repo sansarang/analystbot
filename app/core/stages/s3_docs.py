@@ -442,11 +442,15 @@ async def gap_docs(ref: MatchRef, *, state: RunState, chain: Any, net: Any,
         state.note(f"s3/{tag} — 표적 질의가 **지나간 문서 0건**"
                    "(신원·날짜·도메인에서 다 떨어졌다)")
         return []
-    # 🔴 **질의 1개당 받기 1건** — 옛 딥서치의 비율이다(위 `_fetch` 의 까닭)
+    # 🔴🔴 **상위 몇 건을 열까 — 표가 정한다**(사용자 지시 2026-10-17)
+    #    ⚠️ 종전엔 **질의 수**였다(질의 1개당 1건). 질의가 3개면 받기도 3건이라
+    #       날짜를 통과한 **42건 중 4건**만 열었다(실측: 울산 HD vs 부천 4차).
+    #    🔴 수는 `config/llm.yaml` 의 `budget.harvest.fetch_per_side` 다.
+    from app.core.stages.s4b_gapsearch import fetch_per_side as _fps
     got = await _fetch(sub, ref, rows, state=state, net=net,
                        cache=dict(cache if cache is not None else {}),
                        claimed=set(cache or {}), tag=tag,
-                       top=max(1, len(queries or [])))
+                       top=max(1, _fps()))
     state.note(f"s3/{tag} — 표적 질의 {len(queries)}개 → 후보 {len(rows)} → "
                f"문서 **{len(got)}건**")
     return got

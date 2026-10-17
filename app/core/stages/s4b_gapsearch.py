@@ -127,6 +127,38 @@ LANGS: tuple[str, ...] = ("nl", "it", "es", "de", "fr", "pt", "ja", "ko",
                           "zh", "tr", "ru", "ar", "en")
 
 #: 🔴 질의 상한 — `querywriter.MAX_QUERIES` 와 **따로** 둔다(이쪽은 표적이라 적다)
+#: 🔴🔴 **LLM 이 쓸 질의 수 상한** — 사용자 지시 2026-10-17 *"둘다 해라"*.
+#
+#  🔴 수는 **설정이 든다**(`config/llm.yaml` 의 `budget.harvest.queries`) —
+#     코드에 박으면 사용자가 못 고친다(§13-7). ⚠️ 설정이 없으면 **6**(종전 값).
+#  ⚠️ 실측 2026-10-17: 질의 3개로는 받기도 3건이라 날짜 통과 42건 중 **4건만**
+#     열었다 — 옛 딥서치는 질의 24개였다(하위 여덟 × 3).
+def max_q() -> int:
+    """🔴 질의 수 상한 — 표가 든다. ⚠️ 못 읽으면 종전 값 6."""
+    try:
+        from app import solar
+        got = int(dict(solar.budget_cfg().get("harvest") or {}).get("queries") or 0)
+        return got if got > 0 else 6
+    except Exception:                                       # noqa: BLE001
+        return 6
+
+
+def fetch_per_side() -> int:
+    """🔴 한 쪽에서 **열어 볼 문서 수** — 표가 든다(질의 수와 **떼어 놨다**).
+
+    ⚠️ 종전엔 `len(mine)`(질의 수)이었다 — 질의가 3개면 받기도 3건이어서
+       날짜를 통과한 42건을 두고 4건만 열었다(실측 2026-10-17).
+    🔴 옛 딥서치 총량(하위 여덟 × 받기 3 = 24)을 쪽 둘로 나눈 수가 기본이다.
+    """
+    try:
+        from app import solar
+        got = int(dict(solar.budget_cfg().get("harvest") or {})
+                  .get("fetch_per_side") or 0)
+        return got if got > 0 else 3
+    except Exception:                                       # noqa: BLE001
+        return 3
+
+
 MAX_Q = 6
 #: 🔴 질의 글자 상한(`app/llm.query_ok` 의 1~6낱말 규칙과 맞춘다)
 MAX_LEN = 80
@@ -371,7 +403,7 @@ def ask(ref: MatchRef, facts, *, state: RunState, want: dict,
                             for k, v in dict(thin or {}).items()) + "\n"
                if dict(thin or {}) else "")
             + f"쓸 언어: {', '.join(langs or ['en'])}\n\n"
-            f"🔴 `queries` — 위 **못 찾은 칸을 겨냥한** 검색어 {MAX_Q}개 이하.\n"
+            f"🔴 `queries` — 위 **못 찾은 칸을 겨냥한** 검색어 {max_q()}개 이하.\n"
             "🔴🔴 **`포메이션` 칸이 있으면 예상 라인업 기사를 노린다** — `predicted lineup` · `probable XI` · `starting XI` · 그 나라 말로도(`予想スタメン`·`先発予想`·`예상 선발`·`首发预测`·`alineación probable`)**(사용자 결정 "
             "2026-10-15) — 라인업이 아직 안 나온 경기다. ⚠️ 네 기억으로 명단을 "
             "**지어내지 마라** — 찾는 것은 **기사**다.\n"
@@ -422,8 +454,50 @@ def ask(ref: MatchRef, facts, *, state: RunState, want: dict,
             "  ⑦ **팀내 불화**·분위기     ⑧ 홈 전력·**원정 일정**·이동\n"
             "⚠️ **배당·예측·스코어 사이트는** 노리지 마라 — 기사가 없다"
             "(실측: 받은 문서 7건이 전부 그런 곳이었고 기사는 0건이었다).\n"
-            "🔴 각 질의에 **위 팀 표기 중 하나를 반드시** 넣는다.\n"
-            "🔴🔴 **현지어를 먼저** 쓴다 — **두 팀의 나라 말로도** 한두 개 쓴다"
+            # ══════════════════════════════════════════════════════
+            # 🔴🔴 **두 팀을 다 넣는다** — 사용자 지시 2026-10-17
+            # ══════════════════════════════════════════════════════
+            #
+            #  > 질의를 웹검색해라 … **질의하는게 문제**가 …
+            #
+            #  🔴 **실측 2026-10-17(울산 HD vs 부천 · 봇의 그 검문으로 셌다)**
+            #     꼴마다 결과를 받아 `identity_ok`·`datehint.too_old` 로 센 수:
+            #
+            #       | 질의 꼴                        | 결과 | 신원 | 날짜 |
+            #       | `울산 HD 예상 선발 라인업`(한 팀) |  9 | **0** | **0** |
+            #       | `울산 부천 예상 선발`(두 팀)      | 13 |  12 |   9 |
+            #       | `울산 부천 2026-10-17`          | 22 |  17 |  13 |
+            #       | `울산 HD vs 부천 FC 1995`        | 17 |  17 |  14 |
+            #       | `Ulsan HD vs Bucheon FC 1995`  | 30 |  29 |  25 |
+            #       | `Ulsan Bucheon starting lineup`| 35 |  31 |  30 |
+            #
+            #  🔴 **한 팀 질의는 신원 통과가 0이다** — 팀 일반 기사가 와서
+            #     *"두 팀 어느 이름도 없다"* 로 전부 버려졌다. 그것이 기사
+            #     변수 0개의 뿌리였다(질의 16개·결과 287건을 긁고도 문서 0).
+            "🔴🔴 **각 질의에 두 팀 표기를 다 넣는다** — 한 팀만 넣으면 "
+            "그 경기 글이 아니라 **팀 일반 기사**가 와서 검문이 전부 버린다"
+            "(실측 2026-10-17: 한 팀 질의는 그 경기 글 **0건** · 두 팀 질의는 "
+            "13건 중 **12건**).\n"
+            "   ⚠️ 선수 이름을 쓸 때도 **두 팀을 같이** 넣는다"
+            "(예 `울산 부천 서명관 부상` — 네 낱말이다).\n"
+            # ══════════════════════════════════════════════════════
+            # 🔴🔴 **현지어로 쓰라고 못 박는다** — 사용자 지시 2026-10-17
+            # ══════════════════════════════════════════════════════
+            #
+            #  > 한국어 질의 나가게 고쳐라 · **현지어가 우선**이다
+            #
+            #  ⚠️ 실측 2026-10-17(울산 HD vs 부천 · 두 번): 프롬프트가 이미
+            #     *"쓸 언어: ko, en"* 과 *"현지어를 먼저"* 를 적었는데 모델이
+            #     **영어로만** 썼다(`Bucheon FC 1995 predicted lineup`).
+            #     🔴 언어 꼬리표는 **엔진·시장**을 바꿀 뿐이고 **글자**를 바꾸지
+            #        않는다 — 그래서 한국 매체 기사를 한 건도 못 집었다.
+            #  🔴 그래서 **몇 개를 그 언어로 쓸지** 수로 말한다.
+            + (f"🔴🔴 **질의 {max(1, max_q() // 2)}개 이상을 `{langs[0]}` 의 "
+               f"글자로 쓴다** — 팀 이름도 그 나라 표기로(예 `울산`·`水戸`). "
+               "⚠️ 영어로만 쓰면 **그 나라 매체가 한 건도 안 걸린다**"
+               "(실측 2026-10-17: 한국 경기에 영어 질의만 가서 기사 0건).\n"
+               if (langs or []) and str(langs[0]) != "en" else "")
+            + "🔴🔴 **현지어를 먼저** 쓴다 — **두 팀의 나라 말로도** 한두 개 쓴다"
             "(그 나라 매체가 그 말로 적는다 · 한자·크메르 문자 그대로 써도 된다).\n"
             "그다음\n"
             "   영어다. `langs` 에 **그 순서로** 언어 코드를 적는다(예 "
@@ -477,7 +551,7 @@ def ask(ref: MatchRef, facts, *, state: RunState, want: dict,
     state.note(f"s4b 표적 검색 — {why}")
     _LAST_LANGS.clear()
     _LAST_LANGS.extend(langs_got or list(langs or ["en"]))
-    return ok[:MAX_Q], why
+    return ok[:max_q()], why
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -584,18 +658,49 @@ async def harvest(ref: MatchRef, facts, *, state: RunState, chain, net,
 
     want = need(facts, keys=keys, conflict_docs=n_conf, names=names, sides=sides)
     thin = thin_kinds(variables)
-    rows, why_q = ask(ref, facts, state=state, want=want, thin=thin)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **언어는 리그가 정한다 — 현지어가 먼저**(사용자 지시 2026-10-17)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 한국어 질의 나가게 고쳐라 **각 리그에 맞게** 고쳐라 · **현지어가 우선**이다
+    #
+    #  ⚠️ 실사고 2026-10-17(울산 HD vs 부천): 한국 경기인데 던진 질의가
+    #     `Bucheon FC away travel distance`·`Bucheon FC coach conflict`
+    #     **영어 둘**이었고 한국어는 **0개**였다. 같은 실행의 2차는
+    #     `['ko','en']` 을 받았다 — 즉 **모델이 줄 때만** 현지어가 섰다.
+    #  🔴 그래서 언어를 **모델에 맡기지 않는다** — 판정하는 곳은
+    #     `subtasks.local_lang_of` 하나다(이름표·자동 등록·CLDR 을 본다 ·
+    #     K리그·코리아컵 → `ko` · J리그 → `ja` · 실측으로 확인했다).
+    #  ⚠️ 못 알아보면 **빈 글자**이고 그러면 종전처럼 모델이 고른다(퇴로가 있다).
+    said_lang = _local_lang(ref)
+    said_want = [x for x in (said_lang, "en") if x]
+    rows, why_q = ask(ref, facts, state=state, want=want, thin=thin,
+                      langs=said_want or None)
     if not rows:
         return [], f"{why_q} · 🔴 **질의 0개** — 던질 것이 없다"
 
-    # 🔴 질의마다 **언어**를 준다 — 원정팀을 담은 질의는 그 나라 말이다
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **같은 질의를 언어마다 던진다 — 포털을 다 본다**
+    #      사용자 지시 2026-10-17
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > llm 서치를 **한국어 사이트만** 하는게 아니라 **광범위하게** 하는거다 …
+    #  > 한국사이트만 하지 말고 **포털사이트들을 다 검색**해야 한다
+    #
+    #  ⚠️ 종전엔 질의마다 **언어 하나**를 골라 줬다(원정팀 이름이 들었으면
+    #     둘째 언어). 🔴 언어 꼬리표는 **엔진·시장**을 고르는 자이므로, 하나만
+    #     주면 그 언어권 포털만 본다 — 실측 2026-10-17: 한국 경기 검색이
+    #     `naver` 하나로 좁았다.
+    #  🔴 그래서 **언어를 돌려가며 같은 질의를 던진다**. 같은 낱말이라도
+    #     `ko` 로 던지면 네이버·한국 포털이, `en` 으로 던지면 duckduckgo·yep
+    #     이 받는다(같은 날 실측: `Ulsan Bucheon lineup` → yep 20건).
+    #  ⚠️ **질의가 늘지 않는다** — 같은 글자의 다른 통로다. 상한은 사슬이
+    #     질의마다 보고(`search_cap`), 그 상한은 받은 짝 수로 잡는다.
     said_langs = langs_of() or ["en"]
     pairs: list[tuple[str, str]] = []
     for one in rows:
-        lang = said_langs[0]
-        if len(said_langs) > 1 and str(getattr(ref, "away_name", "") or "") in one:
-            lang = said_langs[1]
-        pairs.append((str(one), str(lang)))
+        for lang in said_langs:
+            pairs.append((str(one), str(lang)))
 
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **매체 표로 좁힌다** — 사용자 지시 2026-10-17(매체 표)
@@ -728,14 +833,50 @@ def _side_queries(ref, pairs: list, side: str):
 
     from app.research.subtasks import Subtask, _budget
     nm = str(getattr(ref, f"{side}_name", "") or "")
-    head = nm.split()[0] if nm else ""
-    mine = [x for x in (pairs or []) if head and head in str(x[0])]
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **별칭 전부로 가른다** — 실사고 2026-10-17(울산 HD vs 부천 · 3차)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 종전엔 **영문 첫 낱말**(`Ulsan`)로만 갈랐다. 현지어 질의를 쓰게
+    #     고치자 `울산 선발 명단` 이 그 글자를 안 담아 **양쪽 모두 0개**가 됐고
+    #     1차 수확이 **아무것도 안 던졌다**(깔때기: 질의 0 · 결과 0 · 문서 0).
+    #  🔴 별칭 표는 **이미 안다** — `discover.aliases_of('Ulsan HD FC')` 가
+    #     `['Ulsan HD FC','Ulsan HD','울산 HD','울산','울산hd']` 를 준다.
+    #     ⚠️ 검문(`querywriter.keep`)도 그 표로 통과시켰다 — 즉 질의는
+    #        멀쩡했고 **내 쪽 나누기만** 영문이었다.
+    #  🔴 긴 별칭을 **먼저** 본다 — 짧은 것이 남의 질의에 섞여 걸리지 않게.
+    from app.core import discover as _d
+    marks = sorted({str(x) for x in (_d.aliases_of(nm) or []) if str(x).strip()},
+                   key=len, reverse=True) or ([nm.split()[0]] if nm else [])
+    mine = [x for x in (pairs or [])
+            if any(m.lower() in str(x[0]).lower() for m in marks)]
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **두 팀이 다 든 질의는 번갈아 나눈다** — 2026-10-17
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 질의에 두 팀을 다 넣게 고치자(위 실측) **모든 질의가 양쪽에 걸린다**
+    #     — 그러면 같은 질의를 두 하위가 던져 예산이 절반으로 낭비된다.
+    #     ⚠️ 사슬이 같은 낱말 집합을 한 번만 던지므로 결과는 같지만, **받기
+    #        상한**은 하위마다 따로여서 한쪽이 다 쓰고 다른 쪽이 굶는다.
+    #  🔴 그래서 **양쪽에 다 걸린 질의는 번갈아** 준다(home 짝수·away 홀수).
+    #     ⚠️ 한쪽 팀만 든 질의는 **그 쪽이 그대로** 가진다.
+    other = "away" if side == "home" else "home"
+    o_nm = str(getattr(ref, f"{other}_name", "") or "")
+    o_marks = sorted({str(x) for x in (_d.aliases_of(o_nm) or []) if str(x).strip()},
+                     key=len, reverse=True) or ([o_nm.split()[0]] if o_nm else [])
+    both = [x for x in mine
+            if any(m.lower() in str(x[0]).lower() for m in o_marks)]
+    if both:
+        keep = {id(x) for i, x in enumerate(both)
+                if (i % 2 == 0) == (side == "home")}
+        mine = [x for x in mine
+                if id(x) in keep or not any(
+                    m.lower() in str(x[0]).lower() for m in o_marks)]
     if not mine:
         return [], None
     kinds = harvest_kinds()
     if not kinds:
         return mine, None
-    other = "away" if side == "home" else "home"
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **LLM 이 쓴 질의는 전부 던진다** — #3 조용한 0 금지(2026-10-17)
     # ══════════════════════════════════════════════════════════════════
@@ -747,8 +888,10 @@ def _side_queries(ref, pairs: list, side: str):
     #  🔴 그래서 이 하위의 상한은 **받은 질의 수**다 — 수를 코드에 박는 것이
     #     아니라 *"쓴 것은 다 던진다"* 는 규칙이다. ⚠️ 질의 수의 상한은
     #     위(`MAX_Q`)와 LLM 이 정한다 — 여기서 늘리는 것이 아니다.
+    # 🔴 질의는 **쓴 것을 전부** 던진다(#3) · 받기는 **표가 정한다**(질의 수와
+    #    떼어 놨다 — 질의 3개로 42건 중 4건만 열던 그 자리다)
     said_b = _dc.replace(_budget(), search_cap=max(1, len(mine)),
-                         fetch_cap=max(1, len(mine)))
+                         fetch_cap=max(1, fetch_per_side()))
     sub = Subtask(name=f"F-{side}", group="F", label="표적(LLM 서치)",
                   kinds=kinds, side=side, team=nm,
                   opp=str(getattr(ref, f"{other}_name", "") or ""),
@@ -756,3 +899,24 @@ def _side_queries(ref, pairs: list, side: str):
                   opp_key=str(getattr(ref, other, "")),
                   seed="", rerank_query=HARVEST_RERANK, budget=said_b)
     return mine, sub
+
+
+def _local_lang(ref) -> str:
+    """🔴🔴 그 경기의 **현지어 코드** — 판정하는 곳은 `subtasks.local_lang_of` 다.
+
+    🔴 리그 이름과 **두 팀 이름**을 함께 준다 — 실측 2026-10-17:
+       `local_lang_of(league="K-League 1")` 는 **빈 글자**지만 팀을 같이 주면
+       `ko` 다(이름표가 나라를 안다). ⚠️ 그래서 팀을 빼면 영어로 떨어진다.
+    ⚠️ 못 알아보면 **빈 글자**다(지어내지 않는다 · 모델이 고르는 종전 길로 간다).
+    """
+    try:
+        from app.research.subtasks import local_lang_of
+        teams = tuple(str(getattr(ref, f"{s}_name", "") or "")
+                      for s in ("home", "away"))
+        got = str(local_lang_of(
+            league=str(getattr(ref, "competition", "") or ""),
+            teams=tuple(x for x in teams if x)) or "")
+        return got if got in set(LANGS) else ""
+    except Exception as exc:                                # noqa: BLE001
+        logger.info("[표적] 현지어를 못 정했다 — %r", exc)
+        return ""

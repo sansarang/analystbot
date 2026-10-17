@@ -201,13 +201,7 @@ def langs_for(league: str, *teams: str) -> tuple[tuple[str, ...], str]:
     #
     #  🔴 별칭을 그 언어로 선언한 것 자체가 *"이 팀 기사는 그 언어로 나온다"* 는
     #     뜻이다 — 같은 사실을 `search_langs.yaml` 에 **또 적지 않는다**(사본 금지).
-    from app import entities
-    for t in teams:
-        for lang in entities.langs_of(str(t or "")):
-            if lang != "en" and lang not in local:
-                local.append(lang)
-                if str(t) not in named:
-                    named.append(str(t))
+    # 🔴🔴 **별칭 언어는 맨 뒤로 옮겼다** — 실사고 2026-10-17(아래 `_alias_langs`).
     if local:
         return ("en", *local), f"영어 + 팀 현지어 {named} → {['en'] + local}"
     if league in LANGS:
@@ -247,6 +241,31 @@ def langs_for(league: str, *teams: str) -> tuple[tuple[str, ...], str]:
         rest = [x for x in _auto["langs"] if x != "en"]
         return ("en", *rest), (f"영어 + **자동 등록** `{_key}`"
                                f"({_auto.get('ccode')}) 현지어 → {['en'] + rest}")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **별칭이 선언된 언어는 맨 마지막 퇴로다** — 실사고 2026-10-17
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 **거짓 수였다** — 이 검사는 `entities.yaml` 의 별칭 언어를
+    #     *"이 팀 기사는 그 언어로 난다"* 로 읽었고, **리그보다 먼저** 썼다.
+    #     ⚠️ 그런데 그 파일의 `ko` 별칭은 *"사용자가 한국어로 물었다"* 는
+    #        기록이다(`source:` 칸이 그렇게 적혀 있다). 그래서
+    #        **`Mito Hollyhock`(일본 J2)이 `ko`** 로 나왔고, 우라와 경기
+    #        검색이 한국어로 갔다(실측 2026-10-17: `('en','ko')`).
+    #        🔴 `Kashiwa Reysol` 은 `entities.yaml` 에 없어서 리그 경로로
+    #           떨어져 **`ja`** 가 맞게 나왔다 — 그 차이가 증거다.
+    #  🔴 그래서 **순서만 바꿨다**(검사를 지우지 않았다) — 파라과이 별칭
+    #     `Albirroja`(es)가 생긴 까닭은 대표팀 친선이라 **리그가 없는** 경기
+    #     였다. 그 경기는 여기까지 내려와 그대로 `es` 를 받는다.
+    from app import entities
+    for t in teams:
+        for lang in entities.langs_of(str(t or "")):
+            if lang != "en" and lang not in local:
+                local.append(lang)
+                if str(t) not in named:
+                    named.append(str(t))
+    if local:
+        return ("en", *local), (f"영어 + **별칭 선언** 현지어 {named} → "
+                                f"{['en'] + local}(리그 쪽은 몰랐다)")
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **리그를 모르면 팀으로 되묻는다**(사용자 지시 2026-10-03)
     # ══════════════════════════════════════════════════════════════════
