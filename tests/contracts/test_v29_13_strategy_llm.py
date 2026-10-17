@@ -355,3 +355,28 @@ def test_sl12_전력_누수() -> None:
         if (ROOT2 := __import__("pathlib").Path(__file__).resolve().parents[2]) \
         else ""
     assert 'add("leak"' in said_code and "got.leak, got.leak_why = leak_of(" in said_code
+
+
+def test_sl13_라인업_정밀_비교() -> None:
+    """🔴🔴 SL13 — 사용자 지시 2026-10-16:
+
+    > 기존 라인업에서 **큰 변화를 준 의도**를 전력분석가가 예측해야 한다 ·
+    > 왜 이렇게 라인업과 포메이션을 줬는지 · **상대방 라인업과 정밀 비교**해야
+    > 한다 · 프롬프트가 **더 정밀해야** 한다
+
+    ⚠️ 실측 2026-10-16: 이 자리는 **포메이션 글자만** 넘겼다(`4-4-2`) — 선수도
+       자리도 없어 *"누가 어디서 누구와 맞붙나"* 를 쓸 재료가 아예 없었고,
+       그래서 평이 늘 *"중원 숫자"* 수준에 머물렀다.
+    """
+    src = inspect.getsource(sl.ask)
+    # ① 의도 추론
+    assert "왜 이렇게 냈나(의도)" in src, src[-1200:]
+    for w in ("바뀐 자리", "전력 누수", "일정·피로도", "순위 동기"):
+        assert w in src, w
+    assert "지어내지 마라" in src
+    # ② 상대와 자리별 비교
+    assert "상대 라인업과 자리별" in src
+    for w in ("GK/DF/MF/FW", "측면(왼·중앙·오른)", "비는 자리"):
+        assert w in src, w
+    # ③ 재료 — 라인업을 **자리별 선수**로 넘긴다(포메이션 글자만이 아니다)
+    assert '_rows(s)' in src and 'getattr(pl, "pos"' in src, src[:1500]
