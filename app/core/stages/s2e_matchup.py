@@ -298,6 +298,16 @@ def _adv_of(box: dict, *, mine_home: bool) -> dict:
 
 
 
+def _score_pair(raw: object) -> tuple[int, int] | None:
+    """🔴 `"3 - 3"` → `(3, 3)`. 못 읽으면 `None`(지어내지 않는다 · #4).
+
+    ⚠️ fotmob 은 공백을 넣어 준다(`"3 - 3"`) — 실측 2026-10-17.
+    """
+    import re as _re
+    m = _re.match(r"\s*(\d+)\s*-\s*(\d+)\s*$", str(raw or ""))
+    return (int(m.group(1)), int(m.group(2))) if m else None
+
+
 def games_of(rows: list[dict]) -> list[dict]:
     """🔴🔴 ① — **한 원천의 경기 목록**. 두 창(5·10)을 이 목록에서 자른다.
 
@@ -338,6 +348,30 @@ def games_of(rows: list[dict]) -> list[dict]:
                 xgf += float(val)
             else:
                 xga += float(val)
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **스코어 글자와 대조한다** — 사용자 지적 2026-10-17
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > "직전 경기 승/무/패"로 나와야 하는거 아니냐? · **무는 어떻게
+        #  > 표시돼는지 fotmob 에** 확인해봐라
+        #
+        #  🔴 fotmob 은 **두 가지로** 준다 — `resultString: "D"` 와
+        #     `score: "3 - 3"`(실측 2026-10-17 나고야 vs 파지아노 10-14).
+        #  ⚠️ 그런데 위는 **골 목록을 세고 있었다**(`gf += 1`). 골 줄이 비거나
+        #     하나를 못 읽으면 **`3-3` 이 `3-2`(승)** 가 된다 — 무승부가
+        #     통째로 사라진다. 독스트링이 *"스코어 글자를 다시 파싱하지
+        #     않는다"* 고 적었는데, 그 선택이 이 병을 만들었다.
+        #  🔴 그래서 **스코어가 있으면 그것이 이긴다**(출처가 직접 말한 수다).
+        #     ⚠️ 어긋나면 그 사실을 줄에 남긴다(#3) — 조용히 고르지 않는다.
+        said_score = _score_pair(box.get("score"))
+        said_gap = ""
+        if said_score is not None:
+            s_home, s_away = said_score
+            g_home, g_away = ((gf, ga) if mine_home else (ga, gf))
+            if (s_home, s_away) != (g_home, g_away):
+                said_gap = (f"🔴 골 목록 {g_home}-{g_away} ↔ 스코어 "
+                            f"{s_home}-{s_away} — **스코어를 쓴다**")
+                gf, ga = ((s_home, s_away) if mine_home else (s_away, s_home))
         at_home, at_away = ((gf, ga) if mine_home else (ga, gf))
         # ══════════════════════════════════════════════════════════════
         # 🔴🔴 **고급 지표**(지시서 2026-10-12 ①②) — 이 줄의 재료는 전부
@@ -358,6 +392,8 @@ def games_of(rows: list[dict]) -> list[dict]:
             "opp": str(box.get("away_name") if mine_home
                        else box.get("home_name")),
             "score": f"{at_home}-{at_away}",
+            # 🔴 두 경로가 어긋났으면 **그 사실을 줄에 싣는다**(#3)
+            "score_gap": said_gap,
             "gf": gf, "ga": ga,
             # 🔴 **운 요소 재료**(T12) — 득점한 골의 xG 합과 그 수(폼이 아니다)
             "luck_xgf": round(xgf, 3), "luck_xga": round(xga, 3),

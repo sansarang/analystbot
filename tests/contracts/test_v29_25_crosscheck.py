@@ -157,11 +157,25 @@ def test_cc7_뺀_것을_이름으로_남긴다() -> None:
     """CC7 🔴 창이 얇아진 까닭이 보여야 한다(조용한 0 금지)."""
     from app.core.stages.s2_facts import _recent_from_games
 
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **컵을 빼지 않는다** — 사용자 지시 2026-10-17
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > **빼면 안된다** · **피로도하고 관련이 깊다**
+    #
+    #  ⚠️ 10-16 지시는 *"폼 창은 리그만"* 이었고 이 시험이 *"뺀 것을 이름으로
+    #     남긴다"* 를 지켰다. 🔴 그런데 빼면 **휴식일·일정 부담이 거짓**이
+    #     된다 — 실측 2026-10-17: 나고야의 10-14 르방컵 3-3 무가 창에서 빠져
+    #     휴식일이 **3일인데 6일로** 보였다(가시와도 8일로 보였다).
+    #  🔴 그래서 **전부 센다**. ⚠️ 어느 경기가 컵인지는 **이름으로 남긴다**
+    #     (`cup_in_window`) — 그 규율은 그대로다(#3 조용한 0 금지).
     box = _recent_from_games(CUPMIX, kickoff=None)
-    assert box.get("cup_dropped"), box
-    assert any("Australia Cup" in x for x in box["cup_dropped"])
-    # 🔴 남은 두 경기만 센다
-    assert len(box["sequence"]) == 2, box["sequence"]
+    assert box.get("cup_in_window"), box
+    assert any("Australia Cup" in x for x in box["cup_in_window"])
+    # 🔴 **전부** 센다 — 컵도 그 팀이 실제로 뛴 경기다
+    assert len(box["sequence"]) == len(CUPMIX), box["sequence"]
+    #  ⚠️ 그리고 **옛 칸은 없어야** 한다(둘이 같이 있으면 읽는 쪽이 갈린다)
+    assert "cup_dropped" not in box, box
 
 
 def test_cc8_맥락_전용은_확률을_못_민다() -> None:

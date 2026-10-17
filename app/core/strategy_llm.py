@@ -809,14 +809,33 @@ def past_of(facts, ref, side: str, ability_box: dict | None = None) -> list[str]
     rows = list(box.get("sequence") or [])
     if not rows:
         return [f"- ⬜ {side} 직전 경기 목록이 없다"]
-    #  🔴 포메이션·선발은 `past_xi` 가 든다 — 같은 순서라고 **가정하지 않는다**
-    #     (날짜로 맞춘다 · 못 맞추면 그 사실을 적는다).
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **상대 이름으로 맞춘다** — 실사고 2026-10-17
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 처음엔 **날짜**(`XI.fetched_at`)로 맞췄다. 그런데 그 칸은 **받아온
+    #     시각**이고 실측에서 **전부 `None`** 이었다 — 그래서 열 경기 모두
+    #     *"그 경기 포메이션·선발을 못 받았다"* 로 나갔다. 자료는 **다 있었다**
+    #     (포메이션 `3-4-2-1` · 선발 11명).
+    #  🔴 `XI.source_url` 이 **그 경기 주소**다(`…/kashiwa-reysol-vs-port-fc/…`)
+    #     — 상대 팀 이름이 그 글자에 들어 있다. 그것으로 맞춘다.
+    #  ⚠️ 못 맞추면 그 사실을 적는다(#3) — 조용히 아무 XI 나 붙이지 않는다.
     said_xi = list((getattr(facts, "past_xi", None) or {}).get(key) or [])
-    by_date: dict[str, object] = {}
+    by_opp: list[tuple[str, object]] = []
     for one in said_xi:
-        when = str(getattr(one, "fetched_at", "") or "")[:10]
-        if when:
-            by_date.setdefault(when, one)
+        said_u = str(getattr(one, "source_url", "") or "").lower()
+        by_opp.append((said_u, one))
+
+    def _pick(opp: str):
+        """🔴 상대 이름이 주소에 든 XI. ⚠️ 두 토막 이상 겹쳐야 받는다."""
+        words = [w for w in str(opp or "").lower().replace("fc", " ").split()
+                 if len(w) >= 3]
+        if not words:
+            return None
+        for said_u, one in by_opp:
+            if sum(1 for w in words if w in said_u) >= min(2, len(words)):
+                return one
+        return None
     out: list[str] = []
     cuts = _ab.cuts() if hasattr(_ab, "cuts") else (0.0, 0.0)
     for i, raw in enumerate(rows[:5]):
@@ -829,7 +848,7 @@ def past_of(facts, ref, side: str, ability_box: dict | None = None) -> list[str]
                 f"**{r.get('result') or '?'}** "
                 f"{gf if gf is not None else '?'}-"
                 f"{ga if ga is not None else '?'}")
-        one = by_date.get(when)
+        one = _pick(str(r.get("opponent") or ""))
         if one is None:
             out.append(head + " · ⬜ 그 경기 포메이션·선발을 못 받았다")
             continue

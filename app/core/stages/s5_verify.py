@@ -1501,7 +1501,23 @@ def _games_said(box: dict) -> str:
         said.append(f"{when} {r.get('result') or '?'} "
                     f"{gf if gf is not None else '?'}-"
                     f"{ga if ga is not None else '?'}")
-    return "최신순 " + " · ".join(said)
+    got = "최신순 " + " · ".join(said)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **창에서 뺀 경기를 적는다** — 사용자 지적 2026-10-17
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > "직전 경기 승/무/패"로 나와야 하는거 아니냐?
+    #
+    #  ⚠️ 실측 2026-10-17: 나고야의 **10-14 르방컵 3-3 무**가 폼 수열에 없었다.
+    #     폼 창은 **리그만** 센다(10-16 지시)라 뺀 것이 맞는데, **그 사실이
+    #     아무 데도 안 적혀** 있었다 — `cup_dropped` 칸에 남겼지만 **읽는 곳이
+    #     0** 이었다(어제 §4 의 그 병: *"남겼다"와 "읽을 수 있다"는 다르다*).
+    #  🔴 그래서 **직전 경기가 컵이면** 사람이 그 사실을 보게 적는다.
+    said_cut = [str(x) for x in (box.get("cup_dropped") or []) if str(x).strip()]
+    if said_cut:
+        got += (f" · ⚠️ **컵·친선 {len(said_cut)}경기는 창에서 뺐다**"
+                f"(폼 창은 리그만 · 2026-10-16) — " + " · ".join(said_cut[:3]))
+    return got
 
 
 def _ir_var(rid: str, kind: str, row: dict, key: str, claim: str, ref: MatchRef,

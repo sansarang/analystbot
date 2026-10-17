@@ -1192,9 +1192,22 @@ def _recent_from_games(games: list[dict], *, kickoff=None) -> dict:
     """
     from app.collect import fotmob as _fm
     from app.core import form as _form
-    # 🔴🔴 **컵·친선을 뺀다**(사용자 지시 2026-10-16 · `form.league_only` 머리말)
-    #    ⚠️ 뺀 것을 **이름으로 남긴다** — 창이 얇아진 까닭이 보여야 한다(#3).
-    rows, said_cut = _form.league_only([dict(g) for g in (games or [])])
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **컵을 빼지 않는다** — 사용자 지시 2026-10-17
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > **빼면 안된다** · **피로도하고 관련이 깊다**
+    #
+    #  ⚠️ 10-16 지시는 *"폼 창은 리그 경기만"* 이었다(시드니 실사고: 폼 다섯이
+    #     호주컵 넷 + 친선 하나였다). 🔴 그런데 컵을 빼면 **휴식일·일정 부담이
+    #     거짓**이 된다 — 그 팀은 실제로 그 경기를 뛰었다.
+    #     실측 2026-10-17: 나고야의 **10-14 르방컵 3-3 무**가 창에서 빠져
+    #     직전 경기가 10-11 로 보였다(휴식일도 그만큼 길게 보인다).
+    #  🔴 그래서 **전부 센다**. ⚠️ 대신 경기마다 **대회 이름**을 싣는다
+    #     (`tournament`) — 리그가 아닌 경기를 사람과 모델이 가릴 수 있다.
+    #  ⚠️ `form.league_only` 는 **안 지웠다** — 되돌리라면 그 자리에 꽂는다.
+    rows = [dict(g) for g in (games or [])]
+    _said_league, said_cut = _form.league_only(rows)
     five = _form.window_sums(rows, 5)
     # 🔴🔴 **칸 이름과 순서를 `fotmob.parse_form` 과 맞춘다**(사본 금지의 반대쪽
     #    함정): ⚠️ 실측 2026-10-11 — 내가 `conceded` 로만 적었더니 `s5_verify.
@@ -1230,7 +1243,8 @@ def _recent_from_games(games: list[dict], *, kickoff=None) -> dict:
     n = int(five["n"])
     return {
         # 🔴 **폼 창에서 뺀 경기**(컵·친선·대륙) — 카드·평이 그 사실을 본다
-        "cup_dropped": said_cut,
+        # 🔴 **빼지 않는다**(2026-10-17) — 이름만 남긴다(어느 경기가 컵인지)
+        "cup_in_window": said_cut,
         # 🔴 승패 글자는 **득실로 센다**(다른 파서의 글자를 베끼지 않는다)
         "last5": [x["result"] for x in seq],
         # ══════════════════════════════════════════════════════════════
