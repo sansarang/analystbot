@@ -288,9 +288,24 @@ def chain_of(ref: MatchRef, prob, mr, varset, *,
     if said_sl:
         rows.append(f"전략 변수 {len(said_sl)}개(부등호는 **홈 기준**):")
         for one in said_sl[:8]:
+            # ══════════════════════════════════════════════════════════
+            # 🔴🔴 **판정 꼬리를 자르지 않는다** — 실사고 2026-10-17(가시와 2차)
+            # ══════════════════════════════════════════════════════════
+            #
+            #  ⚠️ 여기서 `claim` 을 **220자로 잘랐다**. 그런데 ⑤-b3 판정은
+            #     글 **끝에 꼬리로** 붙는다(`🔎 갈래 판정 … 능력치 touches·
+            #     defensive_actions — 홈 0.71 ↔ 원정 0.57 → `>``).
+            #     🔴 그래서 **두 모델의 주장만 가고 판정 결과는 안 갔다** —
+            #        `deepseek` 는 다른 자리에서 그 수를 읽었지만 `solar` 는
+            #        못 읽고 *"원정 5명이 홈 4명을 누른다"* 로 썼다(머릿수).
+            #        판정은 **능력치로 홈이 앞섰다** 였다.
+            #  🔴 어제 §4 의 그 병이다 — *"남겼다"와 "읽을 수 있다"는 다르다*.
+            #     쪼개는 곳은 `crosscheck.tails_of` 하나다(#1 사본 금지).
+            head, tails = _cc.tails_of(str(getattr(one, "claim", "") or ""))
             rows.append(f"  전략 `{getattr(one, 'id', '?')}` "
-                        f"[{getattr(one, 'type', '') or ''}] — "
-                        f"{str(getattr(one, 'claim', '') or '')[:220]}")
+                        f"[{getattr(one, 'type', '') or ''}] — {head[:220]}")
+            for said_tail in tails:
+                rows.append(f"    └ {said_tail}")
     if said_doc:
         rows.append(f"기사에서 나온 사실 {len(said_doc)}개 "
                     "— **확률에는 안 셌다**(개수로 세지 않는다 · 내용으로 읽는다):")
