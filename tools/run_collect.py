@@ -406,6 +406,8 @@ async def main(argv: list[str]) -> int:
         print(f"- {said_bj}")
         for one in said_branch:
             print(f"    [{one.mode}] `{one.kind}` — {one.why or '⬜ 사유 없음'}")
+            # 🔴 양쪽 주장 한 줄은 `Branch.said()` 하나가 만든다(사본 금지)
+            print(f"        주장 — {one.said()}")
             for c in one.claims:
                 print(f"        `{c.provider}` `{c.cmp}` 판정 "
                       f"{c.verdict or '⬜ 안 물었다'}"

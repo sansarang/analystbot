@@ -688,10 +688,12 @@ async def cross(branch: Branch, ref, *, state, net, chain=None) -> str:
                       f"「{one.quote[:90]}」 · {one.url}")
         return branch.why + " · " + head
     if len(good) > 1:
+        # 🔴 **서로 옳다가 엇갈렸다** — 사용자 지시 2026-10-16 의 그 갈림이다.
+        #    ⚠️ 여기서 한쪽을 고르면 그것이 **투표**다(측정도 근거도 아니다).
         branch.why = (f"{HELD} · 🔴 **서로 옳다가 엇갈렸다**(" +
                       " ↔ ".join(f"{c.provider}=`{c.cmp}`(판정 {c.judge_pv})"
                                  for c in good)
-                      + ") — 맥락 전용으로 둔다")
+                      + f") — 맥락 전용으로 둔다 · 주장 {branch.said()}")
         return branch.why + " · " + head
     # 🔴 보류여도 **무엇을 읽었나**가 변수 글에 남아야 한다(④) — 그래야 다음
     #    사람이 *"질의가 나빴나 · 글이 그 말을 안 했나"* 를 가릴 수 있다.
