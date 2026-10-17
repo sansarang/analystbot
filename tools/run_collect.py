@@ -375,6 +375,9 @@ async def main(argv: list[str]) -> int:
                               recent=_sl.recent_of(variables),
                               # 🔴 **기사 사실도 넘긴다**(지시 2026-10-15) —
                               #    확률은 기사를 안 세고, 내용 판단은 여기서 한다
+                              # 🔴 **피로도 재료**(지시 2026-10-16) — 휴식일·
+                              #    직전 경기일·최근 경기 수(코드가 센 수다)
+                              rest=_sl.rest_of(ref, facts),
                               news=_sl.news_of(variables))
     print("## ⑤-b2 전략 전문가(LLM)")
     print(f"- {said_sl}")

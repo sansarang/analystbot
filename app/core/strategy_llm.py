@@ -35,6 +35,10 @@ logger = logging.getLogger(__name__)
 KINDS: tuple[str, ...] = (
     "압박 높이", "수비 라인", "빌드업", "측면 집중", "중원 수싸움",
     "역습 성향", "세트피스", "교체 운용",
+    # 🔴🔴 **일정·피로도**(사용자 지시 2026-10-16) — *"그 팀의 **피로도**를
+    #    변수에 넣게 한다"*. ⚠️ 재료는 **휴식일·최근 경기 간격**이고 아래
+    #    `rest_of` 가 넘긴다(모델이 날짜를 세지 않는다).
+    "일정·피로도",
     # 🔴🔴 **기사 사실**(사용자 지시 2026-10-15) — 기사 여러 줄을 **내용으로**
     #    읽어 **한 줄의 부등호**로 정리하는 자리다(개수로 세지 않는다).
     "기사 사실",
@@ -148,6 +152,37 @@ def news_of(variables: list | None) -> list[str]:
     return out
 
 
+def rest_of(ref: MatchRef, facts: Facts) -> list[str]:
+    """🔴🔴 **피로도 재료** — 사용자 지시 2026-10-16.
+
+    > 그 일정이 나오면 LLM 전략분석가가 그 팀의 **피로도**를 변수에 넣게 한다
+
+    🔴 코드가 **센 수만** 넘긴다 — 휴식일(`rest_days`)·직전 경기일·최근 창
+       경기 수. ⚠️ 모델이 날짜를 세지 않는다(세면 그 수가 거짓이 된다).
+    ⚠️ 못 잰 칸은 **이름으로** 적는다(#3) — `⬜ 휴식일 못 쟀다`.
+    """
+    out: list[str] = []
+    box = dict(getattr(facts, "recent", None) or {})
+    sched = dict(getattr(facts, "schedule", None) or {})
+    for side in ("home", "away"):
+        key = str(getattr(ref, side, "") or "")
+        nm = str(getattr(ref, f"{side}_name", "") or "") or side
+        one = dict(box.get(key) or {})
+        said: list[str] = []
+        rest = one.get("rest_days")
+        said.append(f"휴식 {rest}일" if rest is not None else "⬜ 휴식일 못 쟀다")
+        if one.get("last_match_utc"):
+            said.append(f"직전 경기 {str(one['last_match_utc'])[:10]}")
+        seq = [x for x in (one.get("sequence") or []) if isinstance(x, dict)]
+        if seq:
+            said.append(f"최근 {len(seq)}경기 치렀다")
+        got_s = dict(sched.get(key) or {})
+        if got_s.get("games_14d") is not None:
+            said.append(f"14일 {got_s['games_14d']}경기")
+        out.append(f"- {side} `{nm}` — " + " · ".join(said))
+    return out
+
+
 def recent_of(variables: list | None) -> list[str]:
     """🔴 최근 5경기·맞대결·연속 기록 변수의 **글**만 추린다(사본 금지)."""
     out: list[str] = []
@@ -160,6 +195,7 @@ def recent_of(variables: list | None) -> list[str]:
 
 def ask(ref: MatchRef, facts: Facts, plan: object, *, state: RunState,
         recent: list[str] | None = None, news: list[str] | None = None,
+        rest: list[str] | None = None,
         providers: tuple = ("deepseek", "solar")) -> tuple[list[Variable], str]:
     """🔴 전략 전문가에게 **변수 글**을 받는다. `(변수 목록, 사유)`.
 
@@ -176,6 +212,8 @@ def ask(ref: MatchRef, facts: Facts, plan: object, *, state: RunState,
     xi = dict(getattr(facts, "xi", None) or {})
     said_recent = "\n".join(list(recent or [])[:8])
     said_news = "\n".join(list(news or [])[:10])
+    #: 🔴 **피로도 재료**(사용자 지시 2026-10-16) — `rest_of` 가 센 수다
+    said_rest = "\n".join(list(rest or [])[:4])
     said_xi = "\n".join(
         f"- {str(getattr(ref, f'{s}_name', '') or '')}: "
         f"{getattr(xi.get(str(getattr(ref, s, '') or '')), 'formation', '') or '⬜'}"
@@ -199,6 +237,9 @@ def ask(ref: MatchRef, facts: Facts, plan: object, *, state: RunState,
             # 🔴 **최근 5경기 기준**으로도 갈래를 찾는다(지시 2026-10-15)
             + (f"\n최근 5경기·맞대결 재료:\n{said_recent}\n" if said_recent
                else "\n최근 5경기 재료: ⬜ 없다\n")
+            # 🔴🔴 **피로도**(사용자 지시 2026-10-16) — 일정 재료를 준다
+            + (f"\n일정·피로도 재료(코드가 셌다):\n{said_rest}\n"
+               if said_rest else "")
             + (f"\n기사에서 나온 사실({len(list(news or []))}줄):\n{said_news}\n"
                if said_news else "\n기사에서 나온 사실: ⬜ 없다\n")
             # ══════════════════════════════════════════════════════
@@ -233,6 +274,14 @@ def ask(ref: MatchRef, facts: Facts, plan: object, *, state: RunState,
               "`측면 집중`·`빌드업` 갈래로 읽는다\n"
               "   ⚠️ 라인업 이탈만 보고 수비를 판단하지 마라 — **그 팀이 실제로 "
               "얼마나 먹혔나**(실점 평균)가 더 센 증거다.\n"
+            # 🔴🔴 **피로도를 갈래로 적는다** — 사용자 지시 2026-10-16
+            #  ⚠️ 그 재료는 위 `일정·피로도 재료` 줄이다(코드가 셌다) —
+            #     모델이 날짜를 세지 않는다.
+            + "🔴🔴 **일정·피로도**를 한 갈래로 적는다 — 위 `일정·피로도 재료` "
+              "의 **휴식일·직전 경기일·최근 경기 수**를 견줘 **어느 쪽이 더 "
+              "지쳤나**를 부등호로 낸다(`일정·피로도` 갈래). ⚠️ 휴식일이 **짧은 "
+              "쪽이 불리**하다 — 그 쪽을 `cmp` 에서 작은 쪽으로 둔다. 재료가 "
+              "`⬜ 못 쟀다` 면 그 갈래를 **내지 마라**.\n"
             + "🔴🔴 **기사는 줄 수로 세지 마라** — 같은 이야기가 여러 줄로 쪼개져 "
               "있다. **내용을 읽어** 그 경기에 무엇을 뜻하는지 판단하고 "
               "`기사 사실` 갈래 **한 줄**로 정리한다(여러 줄 금지).\n"

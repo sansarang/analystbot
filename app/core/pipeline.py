@@ -338,6 +338,9 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     from app.core import strategy_llm as _sl
     var_sl, said_sl = _sl.ask(ref, facts, plan, state=st,
                               recent=_sl.recent_of(variables),
+                              # 🔴 **피로도 재료**(사용자 지시 2026-10-16) —
+                              #    휴식일·직전 경기일·최근 경기 수(코드가 센 수)
+                              rest=_sl.rest_of(ref, facts),
                               # 🔴 **기사 사실도 넘긴다**(지시 2026-10-15) —
                               #    확률은 기사를 안 세고, 내용 판단은 여기서 한다
                               news=_sl.news_of(variables))

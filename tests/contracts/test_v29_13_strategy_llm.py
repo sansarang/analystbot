@@ -278,3 +278,44 @@ def test_sl10_포메이션_맞붙기_프롬프트() -> None:
     src = inspect.getsource(sl.ask)
     assert "두 포메이션이 맞붙는 모양" in src, "SL10 🔴 그 규칙이 없다"
     assert "중원 숫자" in src and "변화가 " in src, src[-600:]
+
+
+def test_sl11_피로도_변수() -> None:
+    """🔴🔴 SL11 — 사용자 지시 2026-10-16:
+
+    > 그 일정이 나오면 LLM 전략분석가가 그 팀의 **피로도**를 변수에 넣게 한다
+
+    🔴 수는 **코드가 센다**(`rest_of`) — 모델은 **부등호만** 낸다(절대규칙 5).
+    """
+    class _R:
+        home, away = "h", "a"
+        home_name, away_name = "A팀", "B팀"
+
+    class _F:
+        recent = {"h": {"rest_days": 3, "last_match_utc": "2026-10-11T18:00",
+                        "sequence": [{}] * 5},
+                  "a": {"rest_days": 7, "last_match_utc": "2026-10-07T18:00",
+                        "sequence": [{}] * 5}}
+        schedule = {"h": {"games_14d": 4}, "a": {"games_14d": 2}}
+
+    rows = sl.rest_of(_R(), _F())
+    assert len(rows) == 2, rows
+    assert "휴식 3일" in rows[0] and "14일 4경기" in rows[0], rows[0]
+    assert "휴식 7일" in rows[1], rows[1]
+
+    # 🔴 못 잰 칸은 **이름으로** 남긴다(#3 조용한 0 금지)
+    class _F0:
+        recent: dict = {}
+        schedule: dict = {}
+
+    assert all("⬜ 휴식일 못 쟀다" in x for x in sl.rest_of(_R(), _F0()))
+    # 🔴 갈래 목록과 프롬프트에 들어 있다
+    assert "일정·피로도" in sl.KINDS
+    src = inspect.getsource(sl.ask)
+    assert "일정·피로도 재료" in src and "휴식일이 **짧은 " in src, src[-700:]
+    assert "rest" in inspect.signature(sl.ask).parameters
+    # 🔴 러너가 그 재료를 넘긴다(배선)
+    said = (ROOT / "tools/run_collect.py").read_text(encoding="utf-8") \
+        if (ROOT := __import__("pathlib").Path(__file__).resolve().parents[2]) \
+        else ""
+    assert "rest=_sl.rest_of(ref, facts)" in said, "SL11 🔴 러너가 안 넘긴다"

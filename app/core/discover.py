@@ -283,6 +283,63 @@ def has_match(rows: list[dict], ref: object) -> bool:
     return False
 
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **색인에 없는 팀은 검색으로 번호를 뗀다** — 사용자 지시 2026-10-16
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 실사고 2026-10-16(Gulf United FC vs Emirates Club · UAE 2부): 봇이
+#     `openworld_not_found` 로 멈췄다. 그런데 fotmob 에는 **있었다** —
+#     `Emirates Club` 팀 번호 **102121**, 일정 15경기, 경기 페이지까지 정상.
+#     🔴 못 찾은 까닭은 팀 번호 풀이가 **sitemap 색인 하나에만** 기대서다
+#        (`team_index` 6,027팀에 UAE 2부·남아공 2부·체코 2부는 없다).
+#  🔴 그래서 색인이 0건이면 **검색으로 fotmob 팀 주소를 찾아 번호를 뗀다**.
+#     ⚠️ 그 번호가 맞는지 **팀 페이지를 받아 이름으로 확인**한다(추측 금지).
+
+#: 🔴 fotmob 팀 주소에서 번호·슬러그를 뗀다
+_TEAM_URL = re.compile(r"fotmob\.com/(?:[a-z]{2}/)?teams/(\d+)/[a-z]+/([\w-]+)")
+
+
+async def team_id_by_search(net, name: str, *, chain=None, state=None
+                            ) -> tuple[str, str] | None:
+    """🔴🔴 **검색으로 fotmob 팀 번호**를 찾는다. `(번호, 슬러그)` 또는 `None`.
+
+    🔴 쓰는 곳은 `pick_team` 하나다(색인이 0건일 때만 · 사본 금지).
+    """
+    if chain is None:
+        from app import search as _s
+        chain = _s.build_chain()
+    said = f"fotmob {name}".strip()
+    try:
+        hits = await chain.query(said, lang="en")
+    except Exception as exc:                                # noqa: BLE001
+        if state is not None:
+            state.note(f"색인 밖 번호 풀이 — 검색 실패 `{said}`: {exc!r}")
+        return None
+    for h in list(hits)[:12]:
+        got = _TEAM_URL.search(str(getattr(h, "url", "") or ""))
+        if not got:
+            continue
+        tid, slug = got.group(1), got.group(2)
+        # 🔴 **받아서 확인한다** — 그 팀 페이지가 그 이름인가
+        try:
+            page = await net.get(f"https://www.fotmob.com/teams/{tid}/overview")
+        except Exception:                                   # noqa: BLE001
+            continue
+        text = str(getattr(page, "text", "") or "")
+        if not text:
+            continue
+        if not same_any(name, [slug.replace("-", " ")], loose=True) and \
+                norm_name(name) not in norm_name(text[:4000]):
+            continue
+        if state is not None:
+            state.note(f"색인 밖 번호 풀이 — `{name}` → fotmob **{tid}**"
+                       f"(`{slug}` · 검색으로 찾아 팀 페이지로 확인했다)")
+        return tid, slug
+    if state is not None:
+        state.note(f"색인 밖 번호 풀이 — 🔴 `{name}` 을 검색으로도 못 찾았다")
+    return None
+
+
 async def pick_team(net, name: str, *, ref: object, state: object = None,
                     page_of=None) -> tuple[str, str] | None:
     """🔴🔴 색인 후보 중 **이 경기를 가진 팀**을 고른다. `(id, 슬러그)` 또는 `None`.
@@ -297,7 +354,9 @@ async def pick_team(net, name: str, *, ref: object, state: object = None,
     idx = await fm.team_index(net)
     hits = _slug_hit(idx, name)
     if not hits:
-        return None
+        # 🔴 **색인 밖 팀**(위 머리말) — 검색으로 번호를 뗀다
+        got = await team_id_by_search(net, name, state=state)
+        return got
     if len(hits) == 1:
         return hits[0]
     for tid, slug in hits[:PICK_TRY]:
