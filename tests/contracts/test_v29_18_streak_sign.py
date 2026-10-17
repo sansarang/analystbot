@@ -34,44 +34,72 @@ def _vars(home: dict, away: dict) -> dict:
     return {v.id: v for v in got}
 
 
-def test_무승은_그_팀을_깎는다() -> None:
-    got = _vars({"streak_winless": 4}, {"streak_unbeaten": 5})
+
+def _seq(*results: str) -> dict:
+    """🔴 폼 묶음 대역 — **운영 모양**(`sequence` · 최신이 앞 · 날짜·득실 포함).
+
+    ⚠️ 2026-10-17 부터 `IR12` 는 **직전 경기 하나**로 방향을 정한다
+       (*"연승은 표현하지 않는다"* · *"직전 경기에 패했으면 경기력은 더
+       안좋아지는거나"*). 그래서 대역도 **경기 줄**을 준다 — 종전처럼
+       `{"streak_winless": 4}` 만 주면 운영에 없는 꼴이다(#5).
+    """
+    rows = []
+    for i, r in enumerate(results):
+        rows.append({"date": f"2026-10-{20 - i * 3:02d}", "result": r,
+                     "goals_for": 2 if r == "W" else (1 if r == "D" else 0),
+                     "goals_against": 0 if r == "W" else (1 if r == "D" else 2)})
+    #  🔴 **연패 간절함**(`IR12D`)이 보는 칸 — 운영은 같은 수열에서 센다
+    n_lose = 0
+    for r in results:
+        if r != "L":
+            break
+        n_lose += 1
+    return {"sequence": rows, "last5": list(results), "streak_losing": n_lose}
+
+
+def test_직전_패는_그_팀을_깎는다() -> None:
+    #  🔴 홈은 **직전 패**, 원정은 **직전 승**
+    got = _vars(_seq("L", "W", "W"), _seq("W", "L", "L"))
     one = got["IR12-home"]
     assert one.favors == "away", (one.favors, one.claim)
-    assert "불리" in one.claim, one.claim
+    assert "불리" in one.claim and "직전 경기 **패**" in one.claim, one.claim
+    #  🔴 **경기마다 한 줄**이 글에 있다(통합하지 않는다)
+    assert "최신순" in one.claim and one.claim.count("·") >= 3, one.claim
+    #  🔴 **연승이라는 말을 쓰지 않는다**(사용자 지시 2026-10-17)
+    assert "연승" not in one.claim and "무패" not in one.claim, one.claim
 
 
-def test_무패는_그_팀을_올린다() -> None:
-    got = _vars({"streak_winless": 4}, {"streak_unbeaten": 5})
+def test_직전_승은_그_팀을_올린다() -> None:
+    got = _vars(_seq("L", "W", "W"), _seq("W", "L", "L"))
     one = got["IR12-away"]
     assert one.favors == "away", (one.favors, one.claim)
-    assert "유리" in one.claim, one.claim
+    assert "유리" in one.claim and "직전 경기 **승**" in one.claim, one.claim
 
 
 def test_확률에서도_방향이_맞다() -> None:
-    """🔴 무승인 팀의 승 확률이 **내려가야** 한다(그게 삭감이다)."""
-    got = _vars({"streak_winless": 4}, {"streak_unbeaten": 5})
+    """🔴 직전에 진 팀의 승 확률이 **내려가야** 한다(그게 삭감이다)."""
+    got = _vars(_seq("L", "W", "W"), _seq("W", "L", "L"))
     one = got["IR12-home"]
     p, said = pm.flat_prob(rt.place([one]), ref=REF)
     assert p["home"] < 1 / 3 < p["away"], (p, said)
 
 
 def test_둘이_같이_있으면_한쪽으로_몰린다() -> None:
-    got = _vars({"streak_winless": 4}, {"streak_unbeaten": 5})
+    got = _vars(_seq("L", "W", "W"), _seq("W", "L", "L"))
     rows = [got["IR12-home"], got["IR12-away"]]
     p, _ = pm.flat_prob(rt.place(rows), ref=REF)
     assert p["away"] > p["home"], p
 
 
 def test_표는_그대로다() -> None:
-    """🔴 표의 `favors: subject` 는 **무패 기준**이다 — 그 줄에서만 바꿔 넘긴다."""
+    """🔴 표의 `favors: subject` 는 **직전 승 기준**이다 — 그 줄에서만 바꿔 넘긴다."""
     assert str(_row().get("favors")) == "subject"
 
 
 def test_연패_간절함은_여전히_표시_전용이다() -> None:
     """⚠️ 같은 사실의 다른 해석 — 그것은 확률에 닿지 않는다(`mood`)."""
-    got = _vars({"streak_winless": 4, "streak_losing": 4},
-                {"streak_unbeaten": 5})
+    #  🔴 홈이 **4연패** — 대역도 운영 모양(경기 줄)으로 준다(#5)
+    got = _vars(_seq("L", "L", "L", "L"), _seq("W", "L", "L"))
     one = got["IR12D-home"]
     assert one.type == "mood", one.type
     p, _ = pm.flat_prob(rt.place([one]), ref=REF)

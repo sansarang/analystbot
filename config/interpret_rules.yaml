@@ -309,8 +309,12 @@ ir_table:
     #   ⚠️ 종전 `team_stats` 는 순위·무승·분위기가 섞인 쓰레기통이었다.
     type: form_streak
     sports: [soccer]
-    when: 연승·연패가 이어질 때
-    needs: [recent.streak_unbeaten, recent.streak_winless]
+    when: 직전 경기 결과가 있을 때(연승으로 뭉치지 않는다)
+    # 🔴🔴 **직전 경기 하나**가 방향을 정한다(사용자 지시 2026-10-17 —
+    #    *"연승은 표현하지 않는다"* · *"직전 경기에 패했으면 경기력은
+    #    더 안좋아지는거나"*). ⚠️ 종전엔 `streak_unbeaten`·
+    #    `streak_winless`(승과 무를 묶은 수)를 요구했다.
+    needs: [recent.sequence]
     claim: "{team} {streak}"
     favors: subject
     goals: none

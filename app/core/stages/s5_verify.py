@@ -1474,6 +1474,36 @@ def _rid_for(rid: str, key: str, ref: MatchRef) -> str:
     return f"{rid}-{'home' if key == ref.home else 'away'}"
 
 
+#: 🔴 변수 글에 적을 **경기 수** — 폼 창이 다섯이라 다섯이다(#1: 창은 저쪽이 든다).
+GAMES_SAID = 5
+
+
+def _games_said(box: dict) -> str:
+    """🔴🔴 **경기마다 한 줄** — 사용자 지시 2026-10-17.
+
+    > 따로따로 각 경기마다 리스트 만들어서 해라 · **통합하지 말어라** ·
+    > 승무패·경기 **득점 실점도 각각 경기마다**
+
+    ⚠️ 수 하나(`무패 3경기`)로 뭉치면 *어떤 경기였는지*가 사라진다 — 모델도
+       사람도 그 뒤를 못 본다. 🔴 그래서 **승무패·득점·실점을 경기마다** 적는다.
+    ⚠️ `sequence` 는 **최신이 앞**이다(`_recent_from_games` 가 그렇게 만든다) —
+       그 순서를 그대로 쓰고 글에도 적는다(사람이 읽는 방향을 안다).
+    🔴 못 받은 칸은 `?` 로 남긴다(0 으로 때우지 않는다 · #3).
+    """
+    rows = list(box.get("sequence") or [])
+    if not rows:
+        return "⬜ 경기 목록이 없다"
+    said: list[str] = []
+    for one in rows[:GAMES_SAID]:
+        r = dict(one or {})
+        when = str(r.get("date") or "")[:10] or "?"
+        gf, ga = r.get("goals_for"), r.get("goals_against")
+        said.append(f"{when} {r.get('result') or '?'} "
+                    f"{gf if gf is not None else '?'}-"
+                    f"{ga if ga is not None else '?'}")
+    return "최신순 " + " · ".join(said)
+
+
 def _ir_var(rid: str, kind: str, row: dict, key: str, claim: str, ref: MatchRef,
             *, usable: bool = True, goals: str = "") -> Variable:
     """🔴 규칙이 만든 변수 한 개 — 방향은 **표의 칸**이 정한다(§3)."""
@@ -1564,10 +1594,39 @@ def _ir_soccer(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
         for key, raw in facts.recent.items():
             box = dict(raw) if isinstance(raw, dict) else {}
             said, fav = "", ""
-            if int(box.get("streak_unbeaten") or 0) >= 3:
-                said, fav = f"무패 {box['streak_unbeaten']}경기", "subject"
-            elif int(box.get("streak_winless") or 0) >= 3:
-                said, fav = f"무승 {box['streak_winless']}경기", "opponent"
+            # ══════════════════════════════════════════════════════════
+            # 🔴🔴 **승·무·패를 묶지 않는다** — 사용자 지시 2026-10-17
+            # ══════════════════════════════════════════════════════════
+            #
+            #  > **무패가 뭐냐고? 승무패 아니냐고?** · 따로따로 각 경기마다
+            #  > 리스트 만들어서 해라 · **통합하지 말어라** ·
+            #  > 승무패·경기 득점 실점도 **각각 경기마다**
+            #
+            #  ⚠️ 실측 2026-10-17: 가시와 최신 3경기가 **W W W**(3연승)인데
+            #     *"무패 3경기"* 로 적혔다 — 승과 무를 묶으니 흐름의 세기가
+            #     사라진다. 나고야는 **W** 하나로 *"무패 1경기"* 였다.
+            #  🔴 **연승은 표현하지 않는다**(사용자 지시 2026-10-17) — 방향은
+            #     **직전 경기 하나**가 정한다: *"직전 경기에 패했으면 경기력은
+            #     더 안좋아지는거나"*. ⚠️ 무면 **어느 쪽도 안 민다**.
+            #  🔴 그리고 글에는 **경기마다 승무패·득점·실점**을 한 줄씩 적는다
+            #     (수 하나로 뭉치지 않는다 · `_games_said`).
+            #  ⚠️ 수열은 **최신이 앞**이다 — fotmob 날짜로 정렬한다(실측
+            #     2026-10-17: 10-09 → 09-02 순으로 들어온다).
+            rows_g = list(box.get("sequence") or [])
+            last = dict(rows_g[0] or {}) if rows_g else {}
+            said_last = str(last.get("result") or "")
+            if said_last == "W":
+                said, fav = "직전 경기 **승**", "subject"
+            elif said_last == "L":
+                said, fav = "직전 경기 **패**", "opponent"
+            elif said_last == "D":
+                said, fav = "직전 경기 **무**", ""
+            if said:
+                gf, ga = last.get("goals_for"), last.get("goals_against")
+                said += (f"({gf if gf is not None else '?'}-"
+                         f"{ga if ga is not None else '?'} · "
+                         f"{str(last.get('date') or '')[:10]}) — "
+                         + _games_said(box))
             if said:
                 out.append(_ir_var(_rid_for(rid, key, ref), kind,
                                    {**dict(row), "favors": fav}, key,
@@ -1576,7 +1635,8 @@ def _ir_soccer(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
                                       if fav == "opponent" else
                                       "(그 팀이 유리하다)"), ref))
         if not out:
-            state.note(f"s5 {rid} — 3경기 이상 연속이 없다")
+            state.note(f"s5 {rid} — 직전 경기 결과를 못 읽었다"
+                       "(경기 목록이 비었다)")
         # ══════════════════════════════════════════════════════════════
         # 🔴🔴 **연패 = 간절함**(사용자 지시 2026-10-11) — **가설 근거로만**
         # ══════════════════════════════════════════════════════════════

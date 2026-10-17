@@ -1070,7 +1070,21 @@ async def _fill_form(ref: MatchRef, box: dict, *, state: RunState, net: Any,
         got_new["cross_ok"] = said_cross
         got_new["cross_why"] = why_cross
         got_new["flags"] = said_flags
-        box.setdefault("recent", {})[key] = {**old_box, **got_new}
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **두 경로를 섞지 않는다** — 사용자 지시 2026-10-17
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 종전엔 `{**old_box, **got_new}` 였다. `got_new`(경로 B · 리그만
+        #     자른 창)에 **없는 칸**은 `old_box`(경로 A · 경기 페이지 teamForm ·
+        #     컵 포함)의 값이 **그대로 살아남았다**. 두 경로는 **다른 경기
+        #     묶음**이라 한 줄에 섞이면 거짓이 된다:
+        #        `last5` W W W L L (B) ↔ `streak_unbeaten` 5 (A)
+        #     🔴 그 거짓 수가 변수 `IR12` 로 **확률을 밀었다**(×1.05).
+        #  🔴 그래서 **폼 칸은 B 것만 쓴다** — B 가 그 칸을 만들지 않으면
+        #     **아예 없는 것**이다(#3 · `None` 이 아니라 칸이 빠진다).
+        #     ⚠️ B 와 무관한 칸(대조 결과·깃발 등)은 그대로 물려받는다.
+        said_keep = {k: v for k, v in old_box.items() if k not in _FORM_KEYS}
+        box.setdefault("recent", {})[key] = {**said_keep, **got_new}
         state.note(f"s2 ① 폼 한 원천 — `{name}` {len(made)}경기 목록에서 "
                    f"두 창을 잘랐다(상성과 같은 목록) · 대조 {why_cross[:60]}")
         if said_flags:
@@ -1151,6 +1165,18 @@ async def _fill_squad(ref: MatchRef, box: dict, *, state: RunState, net: Any,
         box["player_stats_team"] = mine
 
 
+#: 🔴🔴 **폼 창이 만드는 칸** — 두 경로를 합칠 때 **A 것을 물려받으면 안 되는**
+#   칸들이다(사용자 지시 2026-10-17). ⚠️ `_recent_from_games` 가 내는 칸과
+#   **같아야 한다** — 계약이 그것을 센다(한쪽만 늘면 또 섞인다).
+_FORM_KEYS: frozenset[str] = frozenset({
+    "last5", "sequence", "games", "windows",
+    "streak_win", "streak_draw",
+    "streak_unbeaten", "streak_winless", "streak_scored",
+    "streak_clean_sheet", "streak_losing",
+    "recent_scored_avg", "recent_conceded_avg", "recent_trimmed_avg",
+    "recent_avg_goals", "load_14d"})
+
+
 def _recent_from_games(games: list[dict], *, kickoff=None) -> dict:
     """🔴🔴 ① — **상성이 쓰는 그 경기 목록**으로 `facts.recent` 를 만든다.
 
@@ -1207,6 +1233,47 @@ def _recent_from_games(games: list[dict], *, kickoff=None) -> dict:
         "cup_dropped": said_cut,
         # 🔴 승패 글자는 **득실로 센다**(다른 파서의 글자를 베끼지 않는다)
         "last5": [x["result"] for x in seq],
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **연속·총골을 이 수열에서 센다** — 사용자 지시 2026-10-17
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > 가시와 무패 5 · 나고야 무패 3 **이거는 무슨말이야?**
+        #
+        #  🔴 **거짓 수였다.** 이 묶음은 `{**old_box, **got_new}` 로 합쳐지는데
+        #     (아래 `_facts_of`), 여기서 안 만든 칸은 **경로 A**(경기 페이지
+        #     `teamForm`)의 값이 **그대로 살아남았다**. 두 경로는 **다른 경기
+        #     묶음**이다 — A 는 컵·친선을 포함하고, B(여기)는 **리그만** 자른
+        #     창이다(10-16 지시).
+        #  ⚠️ 그래서 한 줄에 이렇게 섞였다(실측 2026-10-17 가시와 vs 나고야):
+        #        `last5` = W W W L L  (B · 리그만)
+        #        `streak_unbeaten` = 5 (A · 다른 5경기)  ← 🔴 말이 안 된다
+        #        `recent_avg_goals` = 6.2 (A) ↔ 득 2.2 + 실 2.0 = 4.2 (B)
+        #     그 변수(`IR12`)가 **확률을 직접 밀었다**(×1.05).
+        #  🔴 그래서 **같은 수열에서** 다시 센다. ⚠️ `seq` 는 **최신이 앞**이다
+        #     (`_recent_from_games` 가 그렇게 만든다) — `_streak` 이 그 순서를
+        #     요구한다(최신부터 끊길 때까지).
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **승·무·패를 묶지 않는다** — 사용자 지시 2026-10-17
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > **무패가 뭐냐고? 승무패 아니냐고?** · 따로따로 각 경기마다 리스트
+        #  > 만들어서 해라 · **통합하지 말어라**
+        #
+        #  ⚠️ `무패`(= 지지 않았다)는 **승과 무를 한 덩어리**로 묶은 말이다.
+        #     실측 2026-10-17: 가시와 최신 3경기가 **W W W**(3연승)인데 변수는
+        #     *"무패 3경기"* 라고 적었다 — 얼마나 좋은 흐름인지가 사라진다.
+        #     나고야는 **W** 하나뿐인데 *"무패 1경기"* 로 뜻 없는 말이 됐다.
+        #  🔴 그래서 **셋을 따로** 센다. 묶은 둘(`unbeaten`·`winless`)도 남기되
+        #     **쓰는 쪽이 따로 센 것을 먼저 본다**(`IR12`).
+        "streak_win": _fm._streak(seq, lambda r: r["result"] == "W"),
+        "streak_draw": _fm._streak(seq, lambda r: r["result"] == "D"),
+        "streak_unbeaten": _fm._streak(seq, lambda r: r["result"] != "L"),
+        "streak_winless": _fm._streak(seq, lambda r: r["result"] != "W"),
+        "streak_scored": _fm._streak(seq, lambda r: r["goals_for"] > 0),
+        "streak_clean_sheet": _fm._streak(seq, lambda r: r["goals_against"] == 0),
+        # 🔴 **총골 평균도 이 창에서** — 득점 평균 + 실점 평균과 맞아야 한다
+        "recent_avg_goals": (round((five["gf"] + five["ga"]) / n, 3)
+                             if n else None),
         # 🔴🔴 **연패**(사용자 지시 2026-10-11) — *"연패한 팀일수록 승리에 더
         #    간절하다"* 를 가설에 넣으려면 그 수가 있어야 한다.
         #  🔴 **최신부터 연속**인 것만 센다(가운데 무승부·승리에서 끊긴다).
