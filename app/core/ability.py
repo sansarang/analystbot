@@ -58,11 +58,10 @@ NONE_MARK = "⬜"
 _CUTS: dict | None = None
 
 
-def cuts() -> tuple[float, float]:
-    """🔴 `(강점 문턱, 약점 문턱)` — 표가 없으면 **쓰지 않는다**(빈 꼴).
+def _load() -> dict:
+    """🔴 표를 읽는 곳은 **하나**다 — `config/ability.yaml`(#1 사본 금지).
 
-    ⚠️ 여기서 수를 짓지 않는다 — `config/ability.yaml` 이 원본이다. 표가 없으면
-       `(0, 0)` 이고 부르는 쪽이 *"문턱 표가 없다"* 를 사유로 적는다(#3).
+    ⚠️ 한 번 읽고 기억한다. 없으면 **빈 꼴**이고 부르는 쪽이 그 사실을 적는다.
     """
     global _CUTS
     if _CUTS is None:
@@ -72,7 +71,16 @@ def cuts() -> tuple[float, float]:
         p = pathlib.Path(CONF)
         _CUTS = (dict(yaml.safe_load(p.read_text(encoding="utf-8")) or {})
                  if p.exists() else {})
-    box = dict(_CUTS)
+    return dict(_CUTS)
+
+
+def cuts() -> tuple[float, float]:
+    """🔴 `(강점 문턱, 약점 문턱)` — 표가 없으면 **쓰지 않는다**(빈 꼴).
+
+    ⚠️ 여기서 수를 짓지 않는다 — `config/ability.yaml` 이 원본이다. 표가 없으면
+       `(0, 0)` 이고 부르는 쪽이 *"문턱 표가 없다"* 를 사유로 적는다(#3).
+    """
+    box = _load()
     try:
         return float(box["strong"]), float(box["weak"])
     except (KeyError, TypeError, ValueError):
@@ -262,3 +270,188 @@ def said_of(rows: list[dict], box: dict[str, dict], *, ref=None) -> list[str]:
             out.append(f"    `{nm}` [{one.get('group') or '비교 묶음 미상'}]"
                        f" {said}")
     return out
+
+
+# ══════════════════════════════════════════════════════════════════════
+# 🔴🔴 **전술 갈래를 능력치로 가른다** — 사용자 지시 2026-10-17
+# ══════════════════════════════════════════════════════════════════════
+#
+#  > 선발 명단·후보명단이 들어오면 **그 선수들의 능력치로 변수를 결정**하게
+#  > 한다 … 전술에 관련해서는 … **변수에 그렇게 들어가야 한다**
+#
+#  ⚠️ 실측 2026-10-17(가시와 vs 나고야): ⑤-b3 1단이 `중원 수싸움` 을
+#     **머릿수**(`3-4-2-1` → 4 ↔ `4-3-3` → 3)로 갈랐다. 선수가 누구든 수만
+#     같으면 같은 답이 나온다.
+#  🔴 그래서 **누가 서 있느냐**로 가린다 — 자리에 맞는 선수들의 백분위 평균.
+#     ⚠️ 백분위는 **그 포지션군 대비**이므로(출처가 묶음을 고른다) 같은 자리
+#        끼리만 견준다. 지표·자리·문턱은 **표가 든다**(`config/ability.yaml`).
+
+
+def branch_table() -> dict:
+    """🔴 갈래 → `{pos, flank, traits, why}` 표. 없으면 **빈 꼴**이다."""
+    return dict(_load().get("branches") or {})
+
+
+def branch_gap() -> float:
+    """🔴 두 팀 평균 백분위 차 문턱 — 표가 든다. 없으면 **0**(안 가린다)."""
+    try:
+        return float(_load().get("branch_gap") or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def branch_min() -> int:
+    """🔴 한쪽 최소 인원 — 이보다 적으면 평균이 한 사람에 휘둘린다."""
+    try:
+        return int(_load().get("branch_min") or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def squad_cap() -> int:
+    """🔴 한 팀에서 능력치를 받을 **선수 수 상한**(선발 + 벤치)."""
+    try:
+        got = int(_load().get("squad_cap_per_side") or 0)
+    except (TypeError, ValueError):
+        got = 0
+    return got if got > 0 else 11
+
+
+def squad_of(facts, ref, side: str) -> tuple[list[dict], str]:
+    """🔴🔴 그 팀의 **선발 + 벤치** — `([{name,pid,pos,flank,bench}], 사유)`.
+
+    🔴 재료는 `XI.lineup`(자리·측면·번호)과 `XI.bench` 다 — 둘 다 `s2_facts`
+       가 fotmob 에서 싣는다. ⚠️ 번호(`pid`)가 없는 선수는 **안 담는다**(선수
+       페이지를 못 연다) — 그 수를 사유에 적는다(#3).
+    """
+    from app.core.schema import XI                          # noqa: F401
+    box = dict(getattr(facts, "xi", None) or {})
+    key = str(getattr(ref, side, "") or "")
+    one = box.get(key)
+    if one is None:
+        return [], f"{NONE_MARK} `{side}` XI 가 없다"
+    got: list[dict] = []
+    n_nopid = 0
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **벤치는 이름만 온다** — 실측 2026-10-17
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ `XI.bench` 는 **`list[str]`**(이름 글자)이고 `XI.lineup` 만
+    #     `Player`(자리·측면·**번호**)다. 번호가 없으면 선수 페이지를 못 연다.
+    #  🔴 그래서 지금 능력치를 받는 것은 **선발뿐**이다 — 그 사실을 사유에
+    #     적는다(#3 조용한 0 금지). ⚠️ 카드의 InfoQ 가 이미 *"벤치 id 확정"*
+    #     을 빠진 칸으로 세고 있다 — 그 칸이 차면 벤치도 받는다.
+    for p in list(getattr(one, "lineup", None) or []):
+        pid = getattr(p, "pid", None)
+        nm = str(getattr(p, "name", "") or "").strip()
+        if not nm:
+            continue
+        if not isinstance(pid, int) or pid <= 0:
+            n_nopid += 1
+            continue
+        got.append({"name": nm, "pid": pid,
+                    "pos": str(getattr(p, "pos", "") or ""),
+                    "flank": str(getattr(p, "flank", "") or ""),
+                    "bench": False})
+    n_bench = len(list(getattr(one, "bench", None) or []))
+    said = f"{side} 선발 **{len(got)}명**"
+    if n_bench:
+        said += (f" · {NONE_MARK} 벤치 {n_bench}명은 **이름만 와서** 능력치를 "
+                 f"못 받는다(`XI.bench` 에 번호가 없다)")
+    if n_nopid:
+        said += f" · {NONE_MARK} 번호 없는 선발 {n_nopid}명"
+    if not got:
+        return [], said
+    return got[:squad_cap()], said
+
+
+async def squad_fetch(net, facts, ref, *, clock=None
+                      ) -> tuple[dict[str, dict], str]:
+    """🔴🔴 **양 팀 선발+벤치의 능력치**. `({이름: 묶음}, 사유)`.
+
+    ⚠️ 한 명이 ~2초다 — 팀당 18명이면 두 팀 **~72초**다. 카드 상한
+       (`clock`)이 바닥이면 `fetch` 가 그 자리에서 멈추고 사유를 남긴다.
+    """
+    rows: list[dict] = []
+    said: list[str] = []
+    for side in ("home", "away"):
+        one, why = squad_of(facts, ref, side)
+        said.append(why)
+        if one:
+            rows.append({"players": [(x["name"], x["pid"]) for x in one]})
+    if not rows:
+        return {}, " · ".join(said)
+    box, why_f = await fetch(net, rows, clock=clock)
+    return box, " · ".join([*said, why_f])
+
+
+def _pct_of(one: dict, traits: list[str]) -> float | None:
+    """🔴 그 선수의 **고른 지표 평균 백분위**. 하나도 없으면 `None`."""
+    items = list(dict(one or {}).get("items") or [])
+    want = {str(x) for x in (traits or [])}
+    got = [float(x.get("value")) for x in items
+           if str(x.get("key") or "") in want
+           and isinstance(x.get("value"), (int, float))]
+    return (sum(got) / len(got)) if got else None
+
+
+def side_pct(facts, ref, side: str, box: dict, rule: dict
+             ) -> tuple[float | None, int, str]:
+    """🔴🔴 그 팀에서 **그 자리 선수들의 평균 백분위**. `(값, 인원, 사유)`.
+
+    🔴 자리는 표가 고른다(`pos`·`flank`) — `flank` 가 빈 목록이면 **안 가린다**.
+    ⚠️ **선발만** 센다(벤치는 오늘 안 뛴다) — 벤치 능력치는 모델이 읽는 글자로
+       만 간다(교체 짝 가설). 그 사실을 사유에 적는다.
+    """
+    rows, why = squad_of(facts, ref, side)
+    if not rows:
+        return None, 0, why
+    want_pos = {str(x) for x in (rule.get("pos") or [])}
+    want_fl = {str(x) for x in (rule.get("flank") or [])}
+    traits = [str(x) for x in (rule.get("traits") or [])]
+    got: list[float] = []
+    n_seen = 0
+    for p in rows:
+        if p["bench"]:
+            continue
+        if want_pos and p["pos"] not in want_pos:
+            continue
+        if want_fl and p["flank"] not in want_fl:
+            continue
+        n_seen += 1
+        pct = _pct_of(box.get(p["name"]) or {}, traits)
+        if pct is not None:
+            got.append(pct)
+    if not got:
+        return None, n_seen, (f"{NONE_MARK} 그 자리 선발 {n_seen}명의 능력치를 "
+                              f"못 받았다")
+    return sum(got) / len(got), len(got), f"{len(got)}명"
+
+
+def judge_branch(kind: str, facts, ref, box: dict) -> tuple[str, str]:
+    """🔴🔴 **전술 갈래를 능력치로 가린다** — `(부등호, 사유)`.
+
+    🔴 빈 부등호면 **안 가려졌다**(2단으로 간다). 사유는 늘 돌려준다(#3).
+    ⚠️ `>` 는 **홈이 낫다**는 뜻이다(⑤-b3 의 그 약속과 같다).
+    """
+    rule = dict(branch_table().get(str(kind or "")) or {})
+    if not rule:
+        return "", f"{NONE_MARK} `{kind}` 는 능력치 표에 없다(`{CONF}`)"
+    if not box:
+        return "", f"{NONE_MARK} 능력치를 **한 명도 못 받았다**"
+    h, nh, why_h = side_pct(facts, ref, "home", box, rule)
+    a, na, why_a = side_pct(facts, ref, "away", box, rule)
+    said_t = "·".join(str(x) for x in (rule.get("traits") or []))
+    head = f"능력치 `{said_t}` — "
+    if h is None or a is None:
+        return "", head + f"{NONE_MARK} 못 쟀다(홈 {why_h} · 원정 {why_a})"
+    low = branch_min()
+    if nh < low or na < low:
+        return "", (head + f"홈 {nh}명 ↔ 원정 {na}명 — 한쪽이 **{low}명 미만**"
+                           f"이라 평균이 한 사람에 휘둘린다(안 가린다)")
+    said = (head + f"홈 **{h:.2f}** ({nh}명) ↔ 원정 **{a:.2f}** ({na}명)"
+            f" · {rule.get('why') or ''}")
+    gap = branch_gap()
+    if abs(h - a) < gap:
+        return "", said + f" — 차이가 {gap:g} 미만이다(안 가린다)"
+    return (">" if h > a else "<"), said + f" → `{'>' if h > a else '<'}`"

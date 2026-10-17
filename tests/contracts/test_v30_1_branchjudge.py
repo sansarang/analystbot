@@ -27,6 +27,9 @@ class _XI:
         self.formation = form
         self.players: list = []
         self.lineup = list(rows or [])
+        # 🔴 운영은 `XI.bench` 를 **이름 글자 목록**으로 싣는다(번호가 없다 ·
+        #    실측 2026-10-17) — 그래서 벤치 능력치는 못 받는다.
+        self.bench: list[str] = []
 
 
 class _P:
@@ -38,10 +41,13 @@ class _P:
        좌표가 없으면 **빈 글자**다(CLAUDE.md #5 — 대역은 운영 모양으로).
     """
 
-    def __init__(self, pos: str = "", flank: str = "") -> None:
+    def __init__(self, pos: str = "", flank: str = "", name: str = "x",
+                 pid: int | None = None) -> None:
         from app.collect import fotmob as _fm
         assert flank in ("", *_fm.FLANKS), f"🔴 운영에 없는 측면 글자: {flank!r}"
-        self.name, self.pos, self.flank = "x", pos, flank
+        self.name, self.pos, self.flank = name, pos, flank
+        # 🔴 운영은 `Player.pid`(fotmob 선수 번호)를 싣는다 — 능력치의 열쇠다
+        self.pid = pid
 
 
 class _R:
@@ -74,24 +80,83 @@ def _branch(kind: str, mode: str = "충돌",
 # ══════════════════════════════════════════════════════════════════
 
 
-def test_bj1_중원_수로_가린다() -> None:
-    """🔴 두 포메이션의 **가운데 수** — `4-1-4-1`(5) vs `4-2-2-2`(4)."""
-    from app.core import strategy as st
-    assert st.mid_line("4-1-4-1") == 5 and st.mid_line("4-2-2-2") == 4
-    # ⚠️ 칸이 둘뿐이면 가운데가 **없다**(0 이 아니다 · #3)
-    assert st.mid_line("4-4") is None and st.mid_line("") is None
-    facts = _F(xi={"team:000001": _XI("4-1-4-1"),
-                   "team:000002": _XI("4-4-2")})
+
+def _mid_box(h: float, a: float, n: int = 3) -> dict:
+    """🔴 중앙 MF 능력치 대역 — **표가 고른 지표**로만 만든다(#1 사본 금지)."""
+    from app.core import ability as _ab
+    traits = list(dict(_ab.branch_table()["중원 수싸움"]).get("traits") or [])
+    def _one(v: float) -> dict:
+        return {"items": [{"key": k, "value": v} for k in traits]}
+    return {**{f"H{i}": _one(h) for i in range(1, n + 1)},
+            **{f"A{i}": _one(a) for i in range(1, n + 1)}}
+
+
+def _mid_facts(n: int = 3) -> "_F":
+    """🔴 양 팀 중앙 MF `n` 명씩 — **포메이션은 같게**(머릿수로는 못 가린다)."""
+    return _F(xi={"team:000001": _XI("4-3-3", [
+                      _P("MF", "중앙", f"H{i}", i) for i in range(1, n + 1)]),
+                  "team:000002": _XI("4-3-3", [
+                      _P("MF", "중앙", f"A{i}", 10 + i)
+                      for i in range(1, n + 1)])})
+
+
+def test_bj1_중원은_능력치로_가린다() -> None:
+    """🔴🔴 **머릿수가 아니라 능력치다** — 사용자 지시 2026-10-17.
+
+    > 선발 명단·후보명단이 들어오면 **그 선수들의 능력치로 변수를 결정**하게
+    > 한다 … 전술에 관련해서는 … **변수에 그렇게 들어가야 한다**
+
+    ⚠️ 실측 2026-10-17(가시와 vs 나고야): 1단이 `중원 수싸움` 을 머릿수로
+       갈랐다(`3-4-2-1`=4 ↔ `4-3-3`=3 → 홈). 선수가 누구든 수만 같으면 같은
+       답이다. 🔴 **포메이션이 같아도 능력치가 다르면 답이 달라야 한다** —
+       그것을 여기서 센다.
+    """
+    #  🔴 포메이션을 **똑같이** 둔다 — 머릿수로는 절대 못 가린다
+    facts = _F(xi={"team:000001": _XI("4-3-3", [
+                       _P("MF", "중앙", "H1", 1), _P("MF", "중앙", "H2", 2),
+                       _P("MF", "중앙", "H3", 3)]),
+                   "team:000002": _XI("4-3-3", [
+                       _P("MF", "중앙", "A1", 4), _P("MF", "중앙", "A2", 5),
+                       _P("MF", "중앙", "A3", 6)])})
+    def _box(h: float, a: float) -> dict:
+        from app.core import ability as _ab
+        traits = list(dict(_ab.branch_table()["중원 수싸움"]).get("traits") or [])
+        def _one(v: float) -> dict:
+            return {"items": [{"key": k, "value": v} for k in traits]}
+        return {**{f"H{i}": _one(h) for i in (1, 2, 3)},
+                **{f"A{i}": _one(a) for i in (1, 2, 3)}}
+    #  ① 홈 중원이 낫다 → `>`
+    bj.set_squad(_box(0.80, 0.30))
     op, why = bj.by_numbers(_branch("중원 수싸움"), _R(), facts)
     assert op == ">", (op, why)
-    assert "중앙 수 홈 **5**" in why and "원정 **4**" in why, why
+    assert "0.80" in why and "0.30" in why, why
+    assert "능력치" in why, why
+    #  ② **같은 포메이션인데 능력치를 뒤집으면 답도 뒤집힌다**(머릿수였다면 못 한다)
+    bj.set_squad(_box(0.30, 0.80))
+    op2, why2 = bj.by_numbers(_branch("중원 수싸움"), _R(), facts)
+    assert op2 == "<", (op2, why2)
+    #  ③ 능력치를 **한 명도 못 받았으면** 빈 부등호다(2단으로 간다 · #3)
+    bj.set_squad({})
+    op3, why3 = bj.by_numbers(_branch("중원 수싸움"), _R(), facts)
+    assert op3 == "" and "못 받았다" in why3, (op3, why3)
 
 
 def test_bj2_차이가_작으면_안_가린다() -> None:
-    """🔴 문턱 아래면 **안 가린다** — `=` 를 채택하지 않는다."""
-    facts = _F(xi={"team:000001": _XI("4-4-2"), "team:000002": _XI("4-4-2")})
-    op, why = bj.by_numbers(_branch("중원 수싸움"), _R(), facts)
+    """🔴 문턱 아래면 **안 가린다** — `=` 를 채택하지 않는다.
+
+    ⚠️ 2026-10-17 부터 전술 갈래는 **능력치**로 가린다 — 문턱도 백분위 차다
+       (`config/ability.yaml` 의 `branch_gap`).
+    """
+    from app.core import ability as _ab
+    gap = _ab.branch_gap()
+    #  🔴 차이를 문턱 **바로 아래**로 둔다 — 지어낸 수가 아니라 표에서 끌어온다
+    bj.set_squad(_mid_box(0.50 + gap / 4.0, 0.50 - gap / 4.0))
+    op, why = bj.by_numbers(_branch("중원 수싸움"), _R(), _mid_facts())
     assert op == "" and "안 가린다" in why, (op, why)
+    #  ⚠️ 그리고 **문턱을 넘기면** 가린다(검사가 늘 빈손이 아니다)
+    bj.set_squad(_mid_box(0.50 + gap, 0.50 - gap))
+    op2, _why2 = bj.by_numbers(_branch("중원 수싸움"), _R(), _mid_facts())
+    assert op2 == ">", op2
 
 
 def test_bj3_측면은_lineup_에서_센다() -> None:
@@ -161,10 +226,21 @@ def test_bj5_수비는_실점_평균으로_가리고_무엇을_쟀는지_적는�
 
 
 def test_bj6_수가_없는_갈래는_2단으로_간다() -> None:
-    for kind in ("빌드업", "세트피스", "역습 성향", "교체 운용", "기사 사실",
-                 "압박 높이"):
+    #  🔴 **표에 있는 갈래는 빼고 본다** — `빌드업`·`압박 높이` 는 이제 능력치가
+    #     가린다(2026-10-17). 그 둘은 재료가 없으면 *"능력치를 못 받았다"* 로
+    #     떨어지고, 그 사유를 끝까지 들고 간다(아래에서 따로 센다).
+    from app.core import ability as _ab
+    said_tbl = set(_ab.branch_table())
+    bj.set_squad({})
+    for kind in ("세트피스", "역습 성향", "교체 운용", "기사 사실"):
+        assert kind not in said_tbl, f"🔴 `{kind}` 가 표에 생겼다 — 시험을 옮겨라"
         op, why = bj.by_numbers(_branch(kind), _R(), _F())
         assert op == "" and "2단" in why, (kind, op, why)
+    #  🔴 표에 있는데 **재료가 없으면** 왜 못 가렸는지가 남아야 한다(#3)
+    for kind in ("빌드업", "압박 높이"):
+        op, why = bj.by_numbers(_branch(kind), _R(), _F())
+        assert op == "", (kind, op, why)
+        assert "능력치" in why, (kind, why)
 
 
 def test_bj7_1단은_투표가_아니라_측정이다() -> None:
@@ -172,15 +248,15 @@ def test_bj7_1단은_투표가_아니라_측정이다() -> None:
     one = _branch("중원 수싸움", claims=[
         bj.Claim(provider="deepseek", cmp="<", goals_cmp="=", text="원정"),
         bj.Claim(provider="solar", cmp="<", goals_cmp="=", text="원정")])
-    facts = _F(xi={"team:000001": _XI("4-1-4-1"),
-                   "team:000002": _XI("4-4-2")})
-    said = bj.stage1([one], _R(), facts)
+    #  🔴 **두 모델 다 `<` 라고 했는데** 능력치는 홈이 낫다 → 수가 이긴다
+    bj.set_squad(_mid_box(0.85, 0.25))
+    said = bj.stage1([one], _R(), _mid_facts())
     assert one.picked == ">" and one.by == "수", (one.picked, one.by)
     assert one.picked_pv == "" and "어느 모델도" in one.why, one.why
     assert "수로 가렸다" in said, said
     # 🔴 그 수를 사유에 적는다(승격 근거다)
     ok, why = bj.may_promote(one)
-    assert ok and "중앙 수" in why, why
+    assert ok and "능력치" in why and "0.85" in why, why
 
 
 def test_bj7b_1단은_총골_방향을_올리지_않는다() -> None:
@@ -198,9 +274,9 @@ def test_bj7b_1단은_총골_방향을_올리지_않는다() -> None:
     one = _branch("중원 수싸움", claims=[
         bj.Claim(provider="deepseek", cmp=">", goals_cmp="<", text="홈 중원"),
         bj.Claim(provider="solar", cmp="<", goals_cmp="<", text="원정 중원")])
-    facts = _F(xi={"team:000001": _XI("4-1-4-1"),
-                   "team:000002": _XI("4-4-2")})
-    bj.stage1([one], _R(), facts)
+    #  🔴 능력치가 홈을 가리킨다 → `deepseek`(`>`) 과 같은 쪽이다
+    bj.set_squad(_mid_box(0.85, 0.25))
+    bj.stage1([one], _R(), _mid_facts())
     assert one.picked == ">" and one.picked_pv == "deepseek"
     # 🔴 **총골은 안 올린다** — 모델이 `<`(적겠다) 라고 했어도 `=` 다
     assert one.picked_goals == "=", one.picked_goals

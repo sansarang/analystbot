@@ -363,10 +363,29 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #     카드 상한(`st.clock`)이 바닥이면 그 자리에서 멈춘다.
     #  🔴 수(백분위)는 `core/ability` 에서 멈추고 모델에게는 **글자**만 간다.
     from app.core import ability as _ab3
+    from app.core import branchjudge as _bj
     said_tg, said_why_tg = _ab3.targets(ref, facts, plan)
     said_box, said_why_ab = await _ab3.fetch(net, said_tg, clock=st.clock)
     said_ability = _ab3.said_of(said_tg, said_box, ref=ref)
     st.note(f"⑤-b1 선수 능력치 — {said_why_tg} · {said_why_ab}")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **⑤-b1b 선발 전원 능력치 — 전술 갈래를 가릴 재료**
+    #      사용자 지시 2026-10-17
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 선발 명단·후보명단이 들어오면 **그 선수들의 능력치로 변수를 결정**하게
+    #  > 한다 … 전술에 관련해서는 … **변수에 그렇게 들어가야 한다**
+    #
+    #  🔴 위 `said_box` 는 **교체 짝 + 핵심 선수 6명**뿐이다 — 전술 갈래를
+    #     가리려면 **그 자리의 선발 전원**이 있어야 한다(중앙 MF · 측면 · DF).
+    #  ⚠️ 한 명이 ~2초다(실측) — 양 팀 선발이면 **~44초**다. 카드 상한
+    #     (`st.clock`)이 바닥이면 `fetch` 가 그 자리에서 멈추고 사유를 남긴다.
+    #  ⚠️ **벤치는 못 받는다** — `XI.bench` 가 이름 글자뿐이라 선수 페이지를
+    #     열 번호가 없다(InfoQ 의 *"벤치 id 확정"* 칸이 그것을 세고 있다).
+    #  🔴 수는 `core/ability` 에서 멈춘다 — 1단이 **부등호 하나**만 받는다.
+    said_sq, said_why_sq = await _ab3.squad_fetch(net, facts, ref, clock=st.clock)
+    _bj.set_squad(said_sq)
+    st.note(f"⑤-b1b 선발 능력치 — {said_why_sq}")
     # 🔴🔴 **충돌·단독 갈래를 담는 그릇**(사용자 지시 2026-10-16) — 아래
     #    ⑤-b3 가 그것을 **상대 모델이 서치해서** 판정한다.
     said_branch: list = []
@@ -397,7 +416,6 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #     승격된 변수가 확률 자리에 들어간다.
     #  ⚠️ 갈래 수 상한(`branchjudge.MAX_JUDGE`)·카드 상한 안에서만 돈다.
     if var_sl and said_branch:
-        from app.core import branchjudge as _bj
         # ⚠️ 사유를 수첩에 적는 곳은 `branchjudge.run` **하나**다(사본 금지) —
         #    여기서 또 적으면 카드에 같은 줄이 두 번 찍힌다.
         var_sl, _said_bj = await _bj.run(said_branch, var_sl, ref, facts,

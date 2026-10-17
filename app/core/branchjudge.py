@@ -52,6 +52,7 @@ from dataclasses import dataclass, field
 
 from pydantic import BaseModel, Field
 
+from app.core import ability as _ab
 from app.core import crosscheck as _cc
 
 logger = logging.getLogger(__name__)
@@ -104,6 +105,18 @@ PROVIDERS: tuple[str, ...] = _providers()
 #: ✅ 판정이 **선** 갈래 표시 — 카드·평이 이 글자를 읽는다
 #  ⚠️ 꼬리표(`MARK`)가 이미 *"갈래 판정"* 이라고 말한다 — 여기서 같은 말을
 #     반복하지 않는다(실측 2026-10-17: `🔎 갈래 판정 ✅ 갈래 판정 ·` 로 찍혔다).
+#: 🔴🔴 **그 실행의 선발 능력치** — `{이름: 묶음}`. 운영이 ⑤-b1 뒤에 채운다.
+#   ⚠️ 비어 있으면 `judge_branch` 가 *"한 명도 못 받았다"* 로 빈 부등호를 낸다
+#      (조용히 머릿수로 떨어지지 않는다 · #3).
+_SQUAD: dict = {}
+
+
+def set_squad(box: dict | None) -> None:
+    """🔴 ⑤-b1 이 받은 **선발 능력치**를 1단에 건넨다(실행마다 새로 채운다)."""
+    _SQUAD.clear()
+    _SQUAD.update(dict(box or {}))
+
+
 JUDGED = "✅ **채택**"
 #: 🔴🔴 **변수 글에서 판정 사유가 시작되는 글자** — 읽는 자리가 여기서 쪼개
 #   **둘째 줄로 온전히** 적는다(자르면 근거가 사라진다 · 2026-10-17 실사고).
@@ -270,25 +283,38 @@ def by_numbers(branch: Branch, ref, facts, plan=None) -> tuple[str, str]:
     🔴 **투표가 아니라 측정**이다 — 모델이 뭐라 했든 수가 가리킨 쪽이다.
     """
     kind = str(branch.kind or "")
-    # ── 중원 수싸움 — 두 포메이션의 **가운데 수** ─────────────────
-    if kind == "중원 수싸움":
-        from app.core import strategy as _st
-        h = _st.mid_line(getattr(_xi_of(facts, ref, "home"), "formation", ""))
-        a = _st.mid_line(getattr(_xi_of(facts, ref, "away"), "formation", ""))
-        if h is None or a is None:
-            return "", f"⬜ 포메이션에서 중앙 수를 못 읽었다(홈 {h} · 원정 {a})"
-        op = _pick(h, a, gap=MID_GAP, home_big=True)
-        said = f"중앙 수 홈 **{h}** ↔ 원정 **{a}**"
-        return op, (said + (f" → `{op}`" if op
-                            else f" — 차이가 {MID_GAP} 미만이다(안 가린다)"))
-    # ── 측면 집중 — 선발의 **측면 선수 수** ───────────────────────
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **전술 갈래는 능력치가 가린다** — 사용자 지시 2026-10-17
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 선발 명단·후보명단이 들어오면 **그 선수들의 능력치로 변수를 결정**하게
+    #  > 한다 … 전술에 관련해서는 … **변수에 그렇게 들어가야 한다**
+    #
+    #  ⚠️ 실측 2026-10-17(가시와 vs 나고야): 여기서 `중원 수싸움` 을
+    #     **머릿수**로 갈랐다 — `mid_line("3-4-2-1")=4` ↔ `mid_line("4-3-3")=3`
+    #     → 홈. 🔴 선수가 누구든 수만 같으면 같은 답이다. 중원 싸움의 답은
+    #     **누가 서 있느냐**다.
+    #  🔴 자리·지표·문턱은 **표가 든다**(`config/ability.yaml` 의 `branches`) —
+    #     여기서 짓지 않는다(#1). 수는 `core/ability` 에서 멈춘다.
+    #  ⚠️ 능력치를 못 받았으면 빈 부등호다 → **2단(문서)으로 간다**(#3).
+    #  🔴 **능력치가 먼저다.** 못 가렸으면 아래 **퇴로**(수)로 간다 — 그 사실을
+    #     사유에 이어 붙인다(#3). ⚠️ `수비 라인` 의 실점 평균처럼 **진짜 측정**인
+    #     퇴로가 있으므로 능력치가 없다고 그냥 2단으로 보내지 않는다.
+    said_ab = ""
+    if kind in _ab.branch_table():
+        op, why = _ab.judge_branch(kind, facts, ref, dict(_SQUAD))
+        if op:
+            return op, why
+        said_ab = why + " · 그래서 **수로 다시 본다**"
+    # ── 측면 집중(퇴로) — **선발의 측면 선수 수** ─────────────────
     if kind == "측면 집중":
         h, why_h = _flank_n(facts, ref, "home")
         a, why_a = _flank_n(facts, ref, "away")
         if h is None or a is None:
             return "", f"⬜ 측면 선수를 못 셌다(홈 {why_h or h} · 원정 {why_a or a})"
         op = _pick(h, a, gap=FLANK_GAP, home_big=True)
-        said = f"측면(왼·오른) 선발 홈 **{h}명** ↔ 원정 **{a}명**"
+        said = ((said_ab + " · " if said_ab else "")
+                + f"측면(왼·오른) 선발 홈 **{h}명** ↔ 원정 **{a}명**")
         return op, (said + (f" → `{op}`" if op
                             else f" — 차이가 {FLANK_GAP}명 미만이다(안 가린다)"))
     # ── 일정·피로도 — **휴식일**(짧은 쪽이 불리 = 작은 쪽) ────────
@@ -312,7 +338,8 @@ def by_numbers(branch: Branch, ref, facts, plan=None) -> tuple[str, str]:
         a = _recent_of(facts, ref, "away").get("recent_conceded_avg")
         if h is not None and a is not None:
             op = _pick(float(h), float(a), gap=CONCEDE_GAP, home_big=False)
-            said = (f"최근 5경기 **실점 평균** 홈 {float(h):.2f} ↔ 원정 "
+            said = ((said_ab + " · " if said_ab else "")
+                    + f"최근 5경기 **실점 평균** 홈 {float(h):.2f} ↔ 원정 "
                     f"{float(a):.2f}(적은 쪽이 낫다) ⚠️ 이 수는 **라인 높이가 "
                     f"아니라 수비 상태**다")
             if op:
@@ -330,6 +357,11 @@ def by_numbers(branch: Branch, ref, facts, plan=None) -> tuple[str, str]:
         return op, (said_hold + " · " + said2
                     + (f" → `{op}`" if op
                        else f" — 차이가 {DD_GAP:g}%p 미만이다(안 가린다)"))
+    # 🔴 능력치로도 수로도 못 가렸다 — **왜 못 가렸는지를 끝까지 들고 간다**(#3).
+    #    ⚠️ 여기서 사유를 갈아치우면 *"능력치를 못 받았다"* 가 사라지고 사람이
+    #       **표가 없는 갈래**와 구별할 수 없게 된다.
+    if said_ab:
+        return "", said_ab + " · ⬜ 그 갈래는 코드가 잴 다른 수도 없다"
     return "", f"⬜ `{kind}` 는 코드가 잰 수가 없다 — 2단(교차 검증)으로 간다"
 
 

@@ -385,7 +385,17 @@ def test_ab16_문턱_표가_설정에_있다() -> None:
     import yaml
     said = (ROOT / ab.CONF).read_text(encoding="utf-8")
     box = yaml.safe_load(said)
-    assert set(box) == {"strong", "weak"}, box
+    #  🔴 **표가 자랐다**(2026-10-17) — 전술 갈래를 능력치로 가리는 칸이 더해졌다.
+    #     ⚠️ 그래도 *"우리가 고르는 수만 여기 있다"* 는 규율은 같다 — 지표
+    #        이름·비교 묶음은 **출처가 준다**(여기 안 적는다 · #1).
+    assert set(box) == {"strong", "weak", "branches", "branch_gap",
+                        "branch_min", "squad_cap_per_side"}, sorted(box)
+    #  🔴 갈래 표는 **지표 이름만** 적는다(값·계수가 아니다)
+    for kind, rule in dict(box["branches"]).items():
+        assert set(rule) == {"pos", "flank", "traits", "why"}, (kind, rule)
+        assert rule["traits"], f"🔴 `{kind}` 에 지표가 없다"
+        assert str(rule["why"]).strip(), f"🔴 `{kind}` 에 **왜**가 없다(#3)"
+    assert 0.0 < float(box["branch_gap"]) < 1.0, box["branch_gap"]
     # ⚠️ 그 수가 **확률 계수가 아니라는 것**을 파일이 말한다
     assert "확률 계수가 아니다" in said
     assert "원장으로 맞추지 않는다" in said
