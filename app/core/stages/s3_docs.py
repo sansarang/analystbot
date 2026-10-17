@@ -505,6 +505,30 @@ def gate_ok(said: str) -> tuple[bool, str]:
        모두 통과시키는 쪽"* 이라 했으므로 그 하나로 모은다.
     """
     from app import llm as _llm
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **`site:` 는 알맹이를 본다** — 실사고 2026-10-17(우라와 두 번째)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 매체 표를 붙이고 robots 까지 확인했는데 **`site:` 질의가 한 건도 안
+    #     던져졌다**. §12-b 가 *"사이트 연산자 금지"* 라서 문지기가 **전부**
+    #     버렸다(`site:soccer-king.jp 浦和レッズ 先発予想` → 막힘).
+    #  🔴 그런데 ⑤-b3 2단은 **같은 꼴을 던지고 있었다** — 거기서는 문지기를
+    #     **먼저** 통과시키고 `site:` 를 **그 뒤에** 붙인다
+    #     (`branchjudge:591` → `:659`). 즉 §12-b 가 막으려던 것은 **모델이
+    #     지어낸 연산자**이고, **확인된 매체로 좁히는 것**은 이미 허용된 길이다
+    #     (사용자 지시 2026-10-17 ① *"현지어 매체를 `site:` 로 · robots 확인
+    #     뒤에만"*).
+    #  🔴 그래서 **규칙을 걷지 않고 순서만 맞춘다** — 접두 `site:<호스트>` 를
+    #     떼고 **남은 알맹이**를 §12-b 로 잰다(낱말 수·따옴표·마이너스·연도는
+    #     그대로 걸린다). ⚠️ 호스트 꼴은 `querywriter.hosts` 가 본다(사본 금지).
+    said_in = str(said or "").strip()
+    head, _sp, rest = said_in.partition(" ")
+    if head.lower().startswith("site:") and rest.strip():
+        from app.core import querywriter as _qw
+        got, _bad = _qw.hosts([head.split(":", 1)[1]])
+        if len(got) == 1:
+            ok, why = gate_ok(rest)
+            return ok, (f"{why} · `site:{got[0]}` 로 좁혔다" if ok else why)
     n = len(str(said or "").split())
     if _llm.query_ok(said):
         return True, f"낱말 {n}개"
@@ -568,7 +592,7 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, chain: Any,
     #  🔴 LLM 은 **글자만** 낸다(질의·도메인) — 사실·숫자·판정에 닿지 않는다.
     #     던지는 통로는 **기존 사슬**이고, 매체는 `site:` 질의로 들어간다.
     #  ⚠️ 실패하면 빈 목록이고 **코드 질의가 그대로 돈다**(퇴로가 있다).
-    said_extra = await _llm_queries(ref, state=state, net=net)
+    said_extra = await _llm_queries(ref, facts, state=state, net=net)
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **표 기반 새 질의**(지시 2026-10-13 밤 넷째 3번 · §6-2)
     # ══════════════════════════════════════════════════════════════════
@@ -681,8 +705,8 @@ class _RefShim:
         self.langs = tuple(ref.langs)
 
 
-async def _llm_queries(ref: MatchRef, *, state: RunState, net: Any
-                       ) -> list[tuple[str, str]]:
+async def _llm_queries(ref: MatchRef, facts: Facts, *, state: RunState,
+                       net: Any) -> list[tuple[str, str]]:
     """🔴🔴 ②③ — LLM 질의 + 확인된 매체의 `site:` 질의. `[(질의, 언어)]`.
 
     🔴 언어 꼬리표는 **`und`**(모름)로 붙인다 — 현지어가 섞여 있어 한 언어로
@@ -700,10 +724,31 @@ async def _llm_queries(ref: MatchRef, *, state: RunState, net: Any
     langs = list(getattr(ref, "langs", None) or ["en"])
     rows, sites, _why = _qw.ask(ref, state=state, aliases=aliases,
                                 langs=langs)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **리그별 현지 매체 표를 먼저 쓴다** — 사용자 지시 2026-10-17
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 매체 표 구현하고 … **우선 일본 매체표만** 해봐라
+    #
+    #  ⚠️ 실측 2026-10-17(세 경기): 질의 68개·결과 **1,913건**으로 기사 변수
+    #     **2개**였고, 가장 큰 손실이 ④ **신원**이었다(가시마 **749건**).
+    #     🔴 검문이 센 것이 아니라 **엔진이 그 경기 글을 못 찾는다**.
+    #     그 와중에 `site:soccer-king.jp セレッソ大阪 日程` 은 **28건**을 줬다.
+    #  🔴 그래서 **표의 매체를 모델 제안보다 앞에** 둔다 — 질의 글자는 그대로고
+    #     `site:` 만 붙는다(새 엔진·새 fetch 경로 0).
+    #  ⚠️ 표에 없는 리그는 **빈 목록**이고 그러면 종전처럼 돈다(없는 매체로
+    #     좁혀 0건을 만들지 않는다 · #3 — 사유를 수첩에 적는다).
+    from app.core import media as _md
+    said_key = _md.key_of(ref, facts)
+    said_tbl, why_tbl = _md.hosts_of(said_key)
+    state.note(f"②③ 매체 표 — {why_tbl}")
+    # 🔴 표 매체도 **robots 를 받아 확인한 뒤에만** 쓴다(#4 · 모델 제안과 같은 길)
+    want = [*said_tbl, *[x for x in (sites or []) if x not in said_tbl]]
     ok: list[str] = []
-    if sites:
-        ok, _said = await _qw.check_hosts(net, sites, state=state)
-    said = [*rows, *_qw.site_queries(ok, rows)]
+    if want:
+        ok, _said = await _qw.check_hosts(net, want, state=state)
+    # 🔴 **표 매체로 좁힌 질의를 앞에 둔다** — 상한에 걸리면 그것이 먼저 산다
+    said = [*_qw.site_queries(ok, rows), *rows]
     return [(q, "und") for q in said[:_qw.MAX_QUERIES]]
 
 
