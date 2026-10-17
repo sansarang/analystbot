@@ -435,5 +435,13 @@ def test_sl14_두_모델을_다_쓴다() -> None:
     assert "deepseek `<`" in conf[0].claim and "solar `>`" in conf[0].claim, \
         conf[0].claim
     assert conf[0].claim.count("라인 높다") >= 2, conf[0].claim
+    # 🔴🔴 **합의만 확률에 닿는다**(사용자 지시 2026-10-16 · 길 A) —
+    #    한 모델만 낸 갈래도 **맥락 전용**이다(버리지는 않는다 · 확인 거리다).
+    assert sl.ALONE and sl.CONFLICT
+    alone = sl.StrategyRead(rows=[sl.StrategyRow(
+        kind="기사 사실", cmp="<", goals_cmp="<",
+        text=f"{sl.ALONE} [deepseek] 8경기 중 7경기 1.5골 이하")])
+    got = sl.vars_of(alone, _R())
+    assert got and got[0].usable_as_basis is False, got
     assert agree[0].usable_as_basis is True, agree[0]
     assert box  # 변수 둘 다 섰다

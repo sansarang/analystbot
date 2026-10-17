@@ -34,6 +34,10 @@ logger = logging.getLogger(__name__)
 #: 🔴 LLM 이 고를 수 있는 **전술 읽기 갈래** — 표에 있는 글자만(지어내기 금지)
 #: 🔴 **두 모델이 갈린 줄** 표시(맥락 전용으로 내린다)
 CONFLICT = "🔴 모델 충돌"
+#: 🔴 **한 모델만 낸 줄** — 합의가 아니므로 확률에 안 닿는다(사용자 지시
+#   2026-10-16: *"llm 둘 다 **같은 것만** 변수에 반영되어야 한다"*).
+#   ⚠️ 버리지 않는다 — 맥락 전용으로 남겨 **어느 쪽이 맞는지 확인**할 거리다.
+ALONE = "🟡 한 모델만"
 
 KINDS: tuple[str, ...] = (
     "압박 높이", "수비 라인", "빌드업", "측면 집중", "중원 수싸움",
@@ -384,8 +388,10 @@ def ask(ref: MatchRef, facts: Facts, plan: object, *, state: RunState,
     keep, said_note = [], []
     for kind, rows in said_rows.items():
         if len(rows) == 1:
+            # 🔴 **합의가 아니다** — 다른 모델은 동의한 게 아니라 **안 본**
+            #    것이다. 확률에 안 닿게 내린다(위 `ALONE` 머리말).
             pv, row = rows[0]
-            row.text = f"[{pv} 혼자] {row.text}"
+            row.text = f"{ALONE} [{pv}] {row.text}"
             keep.append(row)
             continue
         cmps = {str(getattr(r, "cmp", "=")) for _pv, r in rows}
@@ -520,7 +526,7 @@ def vars_of(got: StrategyRead, ref: MatchRef, *, why: str = "") -> list[Variable
         # 🔴🔴 **모델이 갈린 갈래는 확률에 안 닿는다**(사용자 지시 2026-10-16)
         #    ⚠️ 같은 재료로 반대 결론이면 믿을 수 없다. 그래도 **버리지 않고**
         #       맥락 전용으로 남긴다 — 평이 *"두 모델이 갈렸다"* 를 읽어야 한다.
-        said_conf = CONFLICT in text
+        said_conf = (CONFLICT in text) or (ALONE in text)
         side = fav if fav in ("home", "away") else "home"
         tail = f" [{kind} 홈{op}원정 · 총골{gop}기준]"
         # 🔴 승인된 표가 있으면 **그 표가 이긴다**(사람이 정한 값이 위다)
