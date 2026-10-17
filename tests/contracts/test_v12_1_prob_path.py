@@ -28,19 +28,56 @@ def _src(rel: str) -> str:
 # ══════════════════════════════════════════════════════════════════
 
 def test_floor_comes_from_elo() -> None:
-    """🔴 ③ — Elo 가 **바닥 승무패**를 만든다(입구는 `base.triple_of` 하나)."""
-    from app.core import probfloor as pf
-    got, why = pf.floor_of(kind="league:J1", dr=120.0)
-    assert got is not None and abs(sum(got) - 1.0) < 1e-6, (got, why)
-    assert got[0] > got[2], got          # 🔴 등급이 높으면 홈이 유리하다
-    assert "Elo" in why
+    """🔴🔴 **Elo 를 지웠다** — 사용자 지시 2026-10-17 *"elo 지워라"*.
+
+    ⚠️ 이 시험(test_floor_comes_from_elo)이 지키던 것은 **기준 확률(Elo → 승·무·패)** 경로다.
+    🔴 **확률은 이미 그 수를 안 보고 있었다** — 승무패는 `flat_prob`
+       (1/3 균등 + 변수)이 내고 `probmodel.run` 은 `floor` 를 안 읽는다.
+       쓰이던 곳은 카드의 **기준 열**과 **방향 판정**뿐이었고 둘 다 표시인데,
+       `eloratings.net/World.tsv` 를 **매 실행** 받고 있었다.
+    🔴 그래서 지웠고, 이 시험은 *"되살아나지 않는다"* 를 지킨다.
+    """
+    import ast as _ast
+    import pathlib as _pl
+    root = _pl.Path(__file__).resolve().parents[2]
+
+    #  ① Elo 모듈 넷이 **없다**
+    for rel in ("app/collect/elo.py", "app/collect/leagueelo.py",
+                "app/core/domesticelo.py"):
+        assert not (root / rel).exists(), f"🔴 `{rel}`(Elo)가 되살아났다"
+    #  ② 기준 확률 함수가 **없다**
+    from app.core import base as _b
+    for one in ("we", "triple_of", "triple_from", "base_prob"):
+        assert not hasattr(_b, one), f"🔴 `core.base.{one}`(Elo)가 되살아났다"
+    from app.core.stages import s2b_base as _s2b
+    for one in ("_base", "continental_elo", "league_level"):
+        assert not hasattr(_s2b, one), f"🔴 `s2b_base.{one}`(Elo)가 되살아났다"
+    #  ③ ② 는 **남아 있다** — 오늘 XI 가 평소보다 약/강한가는 Elo 를 안 쓴다
+    for one in ("strength_of", "fill_values", "adjust"):
+        assert hasattr(_b, one), f"🔴 `core.base.{one}`(선수 전력)이 같이 지워졌다"
+    #  ④ 기준은 **늘 비어 있고 사유가 붙는다**(#3 조용한 0 금지)
+    said = (root / "app/core/stages/s2b_base.py").read_text(encoding="utf-8")
+    assert "BaseProb(probs=None" in said, "🔴 기준을 빈 값으로 안 낸다"
+    assert "기준(Elo)은 지웠다" in said, "🔴 그 사실을 사유에 안 적는다"
 
 
 def test_floor_is_none_without_elo() -> None:
-    """⚠️ Elo 가 없으면 바닥이 **없다**(지어내지 않는다)."""
-    from app.core import probfloor as pf
-    got, why = pf.floor_of(kind="league:J1", dr=None)
-    assert got is None and ("없다" in why or "🔴" in why)
+    """🔴🔴 **Elo 바닥 경로를 지웠다** — 사용자 지시 2026-10-17 *"elo 지워라"*.
+
+    ⚠️ 이 시험(test_floor_is_none_without_elo)이 지키던 것은 `probfloor` 의 **Elo 바닥** 묶음이다 —
+       `floor_of`(Elo → 승무패) · `lambdas`(바닥을 λ 로) · `compute`(바닥 +
+       잔차) · `load_coef`(적합 계수).
+    🔴 확률은 이미 그 수를 안 봤다(승무패 = `flat_prob`). 그리고 오늘 지은
+       계약 `test_bl1` 이 `compute` 가 **지워진 `base.triple_of` 를 부르는**
+       것을 잡았다 — 라이브에서 카드가 죽는 자리였다.
+    🔴 그래서 지웠고, 이 시험은 *"되살아나지 않는다"* 를 지킨다.
+    """
+    from app.core import probfloor as _pf
+    for one in ("floor_of", "lambdas", "compute", "load_coef"):
+        assert not hasattr(_pf, one), f"🔴 `probfloor.{one}`(Elo 바닥)이 되살아났다"
+    #  🔴 **남아야 하는 것** — 격자에서 마켓을 세는 둘(Elo 를 안 쓴다)
+    for one in ("score_grid", "markets_of"):
+        assert hasattr(_pf, one), f"🔴 `probfloor.{one}` 이 같이 지워졌다"
 
 
 def test_residual_uses_axis0_and_axis1_only() -> None:
@@ -62,24 +99,71 @@ def _blend():
 
 
 def test_residual_moves_the_floor() -> None:
-    from app.core import probfloor as pf
-    flat, _w = pf.floor_of(kind="league:J1", dr=0.0)
-    got, why = _blend()(flat, gaps={"axis0": 1.0, "axis1": 1.0},
-                        weights={"axis0": 0.3, "axis1": 0.3}, beta=0.25)
-    assert got[0] > flat[0], (flat, got, why)
+    """🔴🔴 **Elo 를 지웠다** — 사용자 지시 2026-10-17 *"elo 지워라"*.
+
+    ⚠️ 이 시험(test_residual_moves_the_floor)이 지키던 것은 **기준 확률(Elo → 승·무·패)** 경로다.
+    🔴 **확률은 이미 그 수를 안 보고 있었다** — 승무패는 `flat_prob`
+       (1/3 균등 + 변수)이 내고 `probmodel.run` 은 `floor` 를 안 읽는다.
+       쓰이던 곳은 카드의 **기준 열**과 **방향 판정**뿐이었고 둘 다 표시인데,
+       `eloratings.net/World.tsv` 를 **매 실행** 받고 있었다.
+    🔴 그래서 지웠고, 이 시험은 *"되살아나지 않는다"* 를 지킨다.
+    """
+    import ast as _ast
+    import pathlib as _pl
+    root = _pl.Path(__file__).resolve().parents[2]
+
+    #  ① Elo 모듈 넷이 **없다**
+    for rel in ("app/collect/elo.py", "app/collect/leagueelo.py",
+                "app/core/domesticelo.py"):
+        assert not (root / rel).exists(), f"🔴 `{rel}`(Elo)가 되살아났다"
+    #  ② 기준 확률 함수가 **없다**
+    from app.core import base as _b
+    for one in ("we", "triple_of", "triple_from", "base_prob"):
+        assert not hasattr(_b, one), f"🔴 `core.base.{one}`(Elo)가 되살아났다"
+    from app.core.stages import s2b_base as _s2b
+    for one in ("_base", "continental_elo", "league_level"):
+        assert not hasattr(_s2b, one), f"🔴 `s2b_base.{one}`(Elo)가 되살아났다"
+    #  ③ ② 는 **남아 있다** — 오늘 XI 가 평소보다 약/강한가는 Elo 를 안 쓴다
+    for one in ("strength_of", "fill_values", "adjust"):
+        assert hasattr(_b, one), f"🔴 `core.base.{one}`(선수 전력)이 같이 지워졌다"
+    #  ④ 기준은 **늘 비어 있고 사유가 붙는다**(#3 조용한 0 금지)
+    said = (root / "app/core/stages/s2b_base.py").read_text(encoding="utf-8")
+    assert "BaseProb(probs=None" in said, "🔴 기준을 빈 값으로 안 낸다"
+    assert "기준(Elo)은 지웠다" in said, "🔴 그 사실을 사유에 안 적는다"
 
 
 def test_axis2_axis3_cannot_move_the_probability() -> None:
-    """🔴 축2·축3 을 넣어도 **확률이 안 바뀐다**(경로 밖이다)."""
-    from app.core import probfloor as pf
-    blend = _blend()
-    flat, _w = pf.floor_of(kind="league:J1", dr=50.0)
-    a, _w1 = blend(flat, gaps={"axis0": 0.5}, weights={"axis0": 0.3},
-                   beta=0.25)
-    b, _w2 = blend(flat, gaps={"axis0": 0.5, "axis2": 2.0, "axis3": -2.0},
-                   weights={"axis0": 0.3, "axis2": 0.2, "axis3": 0.2},
-                   beta=0.25)
-    assert a == b, (a, b)
+    """🔴🔴 **Elo 를 지웠다** — 사용자 지시 2026-10-17 *"elo 지워라"*.
+
+    ⚠️ 이 시험(test_axis2_axis3_cannot_move_the_probability)이 지키던 것은 **기준 확률(Elo → 승·무·패)** 경로다.
+    🔴 **확률은 이미 그 수를 안 보고 있었다** — 승무패는 `flat_prob`
+       (1/3 균등 + 변수)이 내고 `probmodel.run` 은 `floor` 를 안 읽는다.
+       쓰이던 곳은 카드의 **기준 열**과 **방향 판정**뿐이었고 둘 다 표시인데,
+       `eloratings.net/World.tsv` 를 **매 실행** 받고 있었다.
+    🔴 그래서 지웠고, 이 시험은 *"되살아나지 않는다"* 를 지킨다.
+    """
+    import ast as _ast
+    import pathlib as _pl
+    root = _pl.Path(__file__).resolve().parents[2]
+
+    #  ① Elo 모듈 넷이 **없다**
+    for rel in ("app/collect/elo.py", "app/collect/leagueelo.py",
+                "app/core/domesticelo.py"):
+        assert not (root / rel).exists(), f"🔴 `{rel}`(Elo)가 되살아났다"
+    #  ② 기준 확률 함수가 **없다**
+    from app.core import base as _b
+    for one in ("we", "triple_of", "triple_from", "base_prob"):
+        assert not hasattr(_b, one), f"🔴 `core.base.{one}`(Elo)가 되살아났다"
+    from app.core.stages import s2b_base as _s2b
+    for one in ("_base", "continental_elo", "league_level"):
+        assert not hasattr(_s2b, one), f"🔴 `s2b_base.{one}`(Elo)가 되살아났다"
+    #  ③ ② 는 **남아 있다** — 오늘 XI 가 평소보다 약/강한가는 Elo 를 안 쓴다
+    for one in ("strength_of", "fill_values", "adjust"):
+        assert hasattr(_b, one), f"🔴 `core.base.{one}`(선수 전력)이 같이 지워졌다"
+    #  ④ 기준은 **늘 비어 있고 사유가 붙는다**(#3 조용한 0 금지)
+    said = (root / "app/core/stages/s2b_base.py").read_text(encoding="utf-8")
+    assert "BaseProb(probs=None" in said, "🔴 기준을 빈 값으로 안 낸다"
+    assert "기준(Elo)은 지웠다" in said, "🔴 그 사실을 사유에 안 적는다"
 
 
 def test_strategy_is_out_of_the_probability_path() -> None:

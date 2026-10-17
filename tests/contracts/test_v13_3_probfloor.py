@@ -21,14 +21,22 @@ COEF = {"b0": 0.25, "b1": 0.31, "b2": 0.0, "h_league": 0.07, "rho": -0.08}
 
 
 def test_lambdas_come_from_the_formula() -> None:
-    """🔴 λ 는 **그 식 하나**에서 나온다(손값 β 가 없다)."""
-    import math
+    """🔴🔴 **Elo 바닥 경로를 지웠다** — 사용자 지시 2026-10-17 *"elo 지워라"*.
 
-    from app.core import probfloor as pf
-    got, why = pf.lambdas(diff=0.6, player_diff=0.0, coef=COEF)
-    assert abs(got["home"] - math.exp(0.25 + 0.31 * 0.6 + 0.07)) < 1e-9, why
-    assert abs(got["away"] - math.exp(0.25 - 0.31 * 0.6)) < 1e-9, why
-    assert "b1" in why and "h_league" in why
+    ⚠️ 이 시험(test_lambdas_come_from_the_formula)이 지키던 것은 `probfloor` 의 **Elo 바닥** 묶음이다 —
+       `floor_of`(Elo → 승무패) · `lambdas`(바닥을 λ 로) · `compute`(바닥 +
+       잔차) · `load_coef`(적합 계수).
+    🔴 확률은 이미 그 수를 안 봤다(승무패 = `flat_prob`). 그리고 오늘 지은
+       계약 `test_bl1` 이 `compute` 가 **지워진 `base.triple_of` 를 부르는**
+       것을 잡았다 — 라이브에서 카드가 죽는 자리였다.
+    🔴 그래서 지웠고, 이 시험은 *"되살아나지 않는다"* 를 지킨다.
+    """
+    from app.core import probfloor as _pf
+    for one in ("floor_of", "lambdas", "compute", "load_coef"):
+        assert not hasattr(_pf, one), f"🔴 `probfloor.{one}`(Elo 바닥)이 되살아났다"
+    #  🔴 **남아야 하는 것** — 격자에서 마켓을 세는 둘(Elo 를 안 쓴다)
+    for one in ("score_grid", "markets_of"):
+        assert hasattr(_pf, one), f"🔴 `probfloor.{one}` 이 같이 지워졌다"
 
 
 def test_no_hand_beta_left() -> None:
@@ -74,20 +82,41 @@ def test_rho_moves_the_low_scores_only() -> None:
 
 
 def test_p3_home_edge_only_through_h_league() -> None:
-    """🔴🔴 **P3** — 홈 이점은 `h_league` **한 자리**로만 들어간다."""
-    from app.core import probfloor as pf
-    a, _w1 = pf.lambdas(diff=0.0, player_diff=0.0,
-                        coef={**COEF, "h_league": 0.0})
-    assert abs(a["home"] - a["away"]) < 1e-9, a
-    b, _w2 = pf.lambdas(diff=0.0, player_diff=0.0, coef=COEF)
-    assert b["home"] > b["away"]
+    """🔴🔴 **Elo 바닥 경로를 지웠다** — 사용자 지시 2026-10-17 *"elo 지워라"*.
+
+    ⚠️ 이 시험(test_p3_home_edge_only_through_h_league)이 지키던 것은 `probfloor` 의 **Elo 바닥** 묶음이다 —
+       `floor_of`(Elo → 승무패) · `lambdas`(바닥을 λ 로) · `compute`(바닥 +
+       잔차) · `load_coef`(적합 계수).
+    🔴 확률은 이미 그 수를 안 봤다(승무패 = `flat_prob`). 그리고 오늘 지은
+       계약 `test_bl1` 이 `compute` 가 **지워진 `base.triple_of` 를 부르는**
+       것을 잡았다 — 라이브에서 카드가 죽는 자리였다.
+    🔴 그래서 지웠고, 이 시험은 *"되살아나지 않는다"* 를 지킨다.
+    """
+    from app.core import probfloor as _pf
+    for one in ("floor_of", "lambdas", "compute", "load_coef"):
+        assert not hasattr(_pf, one), f"🔴 `probfloor.{one}`(Elo 바닥)이 되살아났다"
+    #  🔴 **남아야 하는 것** — 격자에서 마켓을 세는 둘(Elo 를 안 쓴다)
+    for one in ("score_grid", "markets_of"):
+        assert hasattr(_pf, one), f"🔴 `probfloor.{one}` 이 같이 지워졌다"
 
 
 def test_coef_comes_from_a_version_file() -> None:
-    """🔴 계수는 **판 파일**이다(손값 금지 · §0). 없으면 🔴 사유 + 확률 미산출."""
-    from app.core import probfloor as pf
-    got, why = pf.load_coef(league="league:없는리그", as_of=AS_OF)
-    assert got is None and "🔴" in why
+    """🔴🔴 **Elo 바닥 경로를 지웠다** — 사용자 지시 2026-10-17 *"elo 지워라"*.
+
+    ⚠️ 이 시험(test_coef_comes_from_a_version_file)이 지키던 것은 `probfloor` 의 **Elo 바닥** 묶음이다 —
+       `floor_of`(Elo → 승무패) · `lambdas`(바닥을 λ 로) · `compute`(바닥 +
+       잔차) · `load_coef`(적합 계수).
+    🔴 확률은 이미 그 수를 안 봤다(승무패 = `flat_prob`). 그리고 오늘 지은
+       계약 `test_bl1` 이 `compute` 가 **지워진 `base.triple_of` 를 부르는**
+       것을 잡았다 — 라이브에서 카드가 죽는 자리였다.
+    🔴 그래서 지웠고, 이 시험은 *"되살아나지 않는다"* 를 지킨다.
+    """
+    from app.core import probfloor as _pf
+    for one in ("floor_of", "lambdas", "compute", "load_coef"):
+        assert not hasattr(_pf, one), f"🔴 `probfloor.{one}`(Elo 바닥)이 되살아났다"
+    #  🔴 **남아야 하는 것** — 격자에서 마켓을 세는 둘(Elo 를 안 쓴다)
+    for one in ("score_grid", "markets_of"):
+        assert hasattr(_pf, one), f"🔴 `probfloor.{one}` 이 같이 지워졌다"
 
 
 def test_p1_one_place_makes_lambda() -> None:
@@ -137,40 +166,76 @@ def test_terms_are_named_and_ordered() -> None:
 
 
 def test_p4_unadopted_terms_do_nothing() -> None:
-    """🔴🔴 **P4·S1** — 채택 목록이 비면 λ 는 **바닥 식 그대로**다."""
-    from app.core import probfloor as pf
-    bare, _w1 = pf.lambdas(diff=0.6, player_diff=0.1, coef=FULL)
-    got, why = pf.compute(COV, coef=FULL, adopted=set())
-    assert abs(got["home"] - bare["home"]) < 1e-12, (got, bare, why)
-    assert abs(got["away"] - bare["away"]) < 1e-12
-    assert "채택 0" in why or "채택된 항 없음" in why
+    """🔴🔴 **Elo 바닥 경로를 지웠다** — 사용자 지시 2026-10-17 *"elo 지워라"*.
+
+    ⚠️ 이 시험(test_p4_unadopted_terms_do_nothing)이 지키던 것은 `probfloor` 의 **Elo 바닥** 묶음이다 —
+       `floor_of`(Elo → 승무패) · `lambdas`(바닥을 λ 로) · `compute`(바닥 +
+       잔차) · `load_coef`(적합 계수).
+    🔴 확률은 이미 그 수를 안 봤다(승무패 = `flat_prob`). 그리고 오늘 지은
+       계약 `test_bl1` 이 `compute` 가 **지워진 `base.triple_of` 를 부르는**
+       것을 잡았다 — 라이브에서 카드가 죽는 자리였다.
+    🔴 그래서 지웠고, 이 시험은 *"되살아나지 않는다"* 를 지킨다.
+    """
+    from app.core import probfloor as _pf
+    for one in ("floor_of", "lambdas", "compute", "load_coef"):
+        assert not hasattr(_pf, one), f"🔴 `probfloor.{one}`(Elo 바닥)이 되살아났다"
+    #  🔴 **남아야 하는 것** — 격자에서 마켓을 세는 둘(Elo 를 안 쓴다)
+    for one in ("score_grid", "markets_of"):
+        assert hasattr(_pf, one), f"🔴 `probfloor.{one}` 이 같이 지워졌다"
 
 
 def test_adopted_term_moves_lambda_both_ways() -> None:
-    from app.core import probfloor as pf
-    base, _w = pf.compute(COV, coef=FULL, adopted=set())
-    got, why = pf.compute(COV, coef=FULL, adopted={"rest_d"})
-    # 🔴 홈이 더 쉬었으면(restΔ>0) 홈 λ 가 오르고 **원정 λ 가 내려간다**
-    assert got["home"] > base["home"] and got["away"] < base["away"], why
-    assert "rest_d" in why
+    """🔴🔴 **Elo 바닥 경로를 지웠다** — 사용자 지시 2026-10-17 *"elo 지워라"*.
+
+    ⚠️ 이 시험(test_adopted_term_moves_lambda_both_ways)이 지키던 것은 `probfloor` 의 **Elo 바닥** 묶음이다 —
+       `floor_of`(Elo → 승무패) · `lambdas`(바닥을 λ 로) · `compute`(바닥 +
+       잔차) · `load_coef`(적합 계수).
+    🔴 확률은 이미 그 수를 안 봤다(승무패 = `flat_prob`). 그리고 오늘 지은
+       계약 `test_bl1` 이 `compute` 가 **지워진 `base.triple_of` 를 부르는**
+       것을 잡았다 — 라이브에서 카드가 죽는 자리였다.
+    🔴 그래서 지웠고, 이 시험은 *"되살아나지 않는다"* 를 지킨다.
+    """
+    from app.core import probfloor as _pf
+    for one in ("floor_of", "lambdas", "compute", "load_coef"):
+        assert not hasattr(_pf, one), f"🔴 `probfloor.{one}`(Elo 바닥)이 되살아났다"
+    #  🔴 **남아야 하는 것** — 격자에서 마켓을 세는 둘(Elo 를 안 쓴다)
+    for one in ("score_grid", "markets_of"):
+        assert hasattr(_pf, one), f"🔴 `probfloor.{one}` 이 같이 지워졌다"
 
 
 def test_pb_home_scales_the_rating_gap() -> None:
-    """🔴 §9 F1 — `pb_home` 은 **diff 의 설명력을 깎는다**(c3 상호작용)."""
-    from app.core import probfloor as pf
-    off = dict(COV, pb_home=0)
-    on = dict(COV, pb_home=1)
-    a, _w1 = pf.compute(off, coef=FULL, adopted={"pb_home"})
-    b, why = pf.compute(on, coef=FULL, adopted={"pb_home"})
-    # 🔴 diff>0 이므로 깎이면 홈 λ 가 **내려간다**
-    assert b["home"] < a["home"], (a, b, why)
+    """🔴🔴 **Elo 바닥 경로를 지웠다** — 사용자 지시 2026-10-17 *"elo 지워라"*.
+
+    ⚠️ 이 시험(test_pb_home_scales_the_rating_gap)이 지키던 것은 `probfloor` 의 **Elo 바닥** 묶음이다 —
+       `floor_of`(Elo → 승무패) · `lambdas`(바닥을 λ 로) · `compute`(바닥 +
+       잔차) · `load_coef`(적합 계수).
+    🔴 확률은 이미 그 수를 안 봤다(승무패 = `flat_prob`). 그리고 오늘 지은
+       계약 `test_bl1` 이 `compute` 가 **지워진 `base.triple_of` 를 부르는**
+       것을 잡았다 — 라이브에서 카드가 죽는 자리였다.
+    🔴 그래서 지웠고, 이 시험은 *"되살아나지 않는다"* 를 지킨다.
+    """
+    from app.core import probfloor as _pf
+    for one in ("floor_of", "lambdas", "compute", "load_coef"):
+        assert not hasattr(_pf, one), f"🔴 `probfloor.{one}`(Elo 바닥)이 되살아났다"
+    #  🔴 **남아야 하는 것** — 격자에서 마켓을 세는 둘(Elo 를 안 쓴다)
+    for one in ("score_grid", "markets_of"):
+        assert hasattr(_pf, one), f"🔴 `probfloor.{one}` 이 같이 지워졌다"
 
 
 def test_contributions_are_reported_per_term() -> None:
-    """🔴 §4 — `ProbOut` 이 적을 **항별 기여**(log λ 단위)를 함께 돌려준다."""
-    from app.core import probfloor as pf
-    got, why, parts = pf.compute(COV, coef=FULL, adopted={"rest_d", "load_d"},
-                                 detail=True)
-    assert set(parts) >= {"바닥", "홈 이점", "rest_d", "load_d"}
-    assert abs(sum(v for k, v in parts.items()) - __import__("math").log(
-        got["home"])) < 1e-9, parts
+    """🔴🔴 **Elo 바닥 경로를 지웠다** — 사용자 지시 2026-10-17 *"elo 지워라"*.
+
+    ⚠️ 이 시험(test_contributions_are_reported_per_term)이 지키던 것은 `probfloor` 의 **Elo 바닥** 묶음이다 —
+       `floor_of`(Elo → 승무패) · `lambdas`(바닥을 λ 로) · `compute`(바닥 +
+       잔차) · `load_coef`(적합 계수).
+    🔴 확률은 이미 그 수를 안 봤다(승무패 = `flat_prob`). 그리고 오늘 지은
+       계약 `test_bl1` 이 `compute` 가 **지워진 `base.triple_of` 를 부르는**
+       것을 잡았다 — 라이브에서 카드가 죽는 자리였다.
+    🔴 그래서 지웠고, 이 시험은 *"되살아나지 않는다"* 를 지킨다.
+    """
+    from app.core import probfloor as _pf
+    for one in ("floor_of", "lambdas", "compute", "load_coef"):
+        assert not hasattr(_pf, one), f"🔴 `probfloor.{one}`(Elo 바닥)이 되살아났다"
+    #  🔴 **남아야 하는 것** — 격자에서 마켓을 세는 둘(Elo 를 안 쓴다)
+    for one in ("score_grid", "markets_of"):
+        assert hasattr(_pf, one), f"🔴 `probfloor.{one}` 이 같이 지워졌다"

@@ -32,23 +32,20 @@ logger = logging.getLogger(__name__)
 #: 🔴🔴 **잔차로 쓰는 축** — 백필에서 개선이 **양수**였던 둘뿐이다.
 #  ⚠️ 늘리려면 **백필 전진 선택에서 양수**임을 먼저 보여야 한다(지시 2번).
 RESIDUAL_AXES: tuple[str, ...] = ("axis0", "axis1")
+# ══════════════════════════════════════════════════════════════════════
+# 🔴🔴 **Elo 바닥 쪽을 지웠다** — 사용자 지시 2026-10-17 *"elo 지워라"*
+# ══════════════════════════════════════════════════════════════════════
+#
+#  🔴 `floor_of`(Elo → 바닥 승무패) · `lambdas`(바닥을 λ 로 번역) ·
+#     `compute`(바닥 + 잔차 → 확률) · `load_coef`(적합 계수) — 넷이 한 묶음이고
+#     **전부 Elo 바닥 경로**다. 🔴 오늘 지은 계약(`test_bl1`)이 `compute` 가
+#     지운 `base.triple_of` 를 부르는 것을 잡았다 — **라이브에서 카드가 죽는
+#     자리**였다.
+#  🔴 **남긴 것** — `score_grid`(저장된 격자를 글로) · `markets_of`(그 격자
+#     하나에서 핸디·오버·BTTS 를 센다). 둘은 Elo 를 안 쓴다.
+#     ⚠️ 지금 격자(`card.scores`)는 **비어 있다**(λ 를 지웠다) → 카드가 ⬜ 로
+#        적는다. 그 둘을 지우면 격자가 생겼을 때 셀 곳이 없어진다.
 
-
-def floor_of(*, kind: str, dr: float | None) -> tuple[list[float] | None, str]:
-    """🔴🔴 ③ — **Elo 바닥 승무패**. `([홈, 무, 원정], 사유)`. 없으면 `(None, 사유)`.
-
-    🔴 입구는 `app/core/base.triple_of` **하나다**(사본 금지) — 대회 유형별로
-       적합된 순서형 로짓이고, 그 적합이 없으면 바닥도 **없다**.
-    ⚠️ `dr` 은 **경기 전** 등급 차다(누설 금지 · L1).
-    """
-    if dr is None:
-        return None, "🔴 Elo 등급 차가 **없다** — 바닥을 만들지 않는다"
-    from app.core import base as _base
-    got, why = _base.triple_of(str(kind), float(dr))
-    if got is None:
-        return None, f"🔴 Elo 바닥 없음 — {why}"
-    return ([float(got.home), float(got.draw), float(got.away)],
-            f"Elo 바닥(순서형 로짓 · 등급 차 {float(dr):+.1f}) — {why}")
 # ══════════════════════════════════════════════════════════════════════
 # 🔴🔴 **상성·시뮬과 함께 지웠다** — 사용자 지시 2026-10-17
 # ══════════════════════════════════════════════════════════════════════
@@ -90,29 +87,6 @@ COEF_TABLE = "probfloor"
 COEF_NAMES: tuple[str, ...] = ("b0", "b1", "b2", "h_league", "rho")
 
 
-def lambdas(*, diff: float, player_diff: float, coef: dict,
-            extra_home: float = 0.0, extra_away: float = 0.0
-            ) -> tuple[dict, str]:
-    """🔴🔴 §3 — **λ 두 개**를 그 식 하나로 만든다. `({home, away}, 사유)`.
-
-    🔴 `extra_*` 는 **§6 에서 채택된 항**만 들어오는 자리다(채택 안 된 항은 0 —
-       계약 C6-2). ⚠️ 홈 이점은 `h_league` 로만 들어온다(계약 P3).
-    """
-    b0 = float(dict(coef).get("b0") or 0.0)
-    b1 = float(dict(coef).get("b1") or 0.0)
-    b2 = float(dict(coef).get("b2") or 0.0)
-    h = float(dict(coef).get("h_league") or 0.0)
-    log_h = b0 + b1 * float(diff) + b2 * float(player_diff) + h + float(extra_home)
-    log_a = b0 - b1 * float(diff) - b2 * float(player_diff) + float(extra_away)
-    out = {"home": math.exp(log_h), "away": math.exp(log_a)}
-    said = (f"λ {out['home']:.3f}/{out['away']:.3f} ← b0 {b0:+.3f} · "
-            f"diff {float(diff):+.3f}×b1 {b1:.3f} · 선수 차 "
-            f"{float(player_diff):+.3f}×b2 {b2:.3f} · h_league {h:+.3f}")
-    if extra_home or extra_away:
-        said += f" · 채택 항 홈 {float(extra_home):+.3f}/원정 {float(extra_away):+.3f}"
-    return out, said
-
-
 #: 🔴🔴 **λ 후보 항**(지시 §4·§9) — 전진 선택이 **이 목록만** 흔든다.
 #  ⚠️ `pb_home` 은 더하는 항이 아니라 **diff 를 깎는 상호작용**이다(§9 F1).
 #  🔴 `bench_d` 는 여기 **없다** — λ 식이 아니라 시뮬 60분 이후 배율이다(§8 · C8-2).
@@ -123,60 +97,6 @@ TERMS: tuple[str, ...] = ("rest_d", "load_d", "cup_d", "pb_home",
 TERM_COEF: dict[str, str] = {"rest_d": "c1", "load_d": "c2", "cup_d": "c5",
                              "abs_d": "c4", "form3_d": "c6",
                              "pb_home": "c3"}
-
-
-def compute(cov: dict, *, coef: dict, adopted=None, detail: bool = False):
-    """🔴🔴 §4 ⑯ — **λ 두 개**를 공변량 묶음에서 만든다. 🔴 식은 **여기 하나**다(P1).
-
-    `(λ, 사유)` — `detail=True` 면 `(λ, 사유, 항별 기여)`.
-
-    🔴🔴 **P4·S1** — `adopted` 에 **없는 항은 식에 없다**. `adopted=None` 이면
-       *"아직 아무 항도 채택되지 않았다"* 로 보고 **바닥 식만** 쓴다 — 채택 판정
-       없이 λ 가 움직이는 길을 **만들지 않는다**.
-    ⚠️ `pb_home` 은 `b1·diff·(1 − c3·pb_home)` 로 들어간다(더하기가 아니다).
-    """
-    said = set(adopted or ())
-    box = dict(cov or {})
-    c = dict(coef or {})
-    b0 = float(c.get("b0") or 0.0)
-    b1 = float(c.get("b1") or 0.0)
-    b2 = float(c.get("b2") or 0.0)
-    h = float(c.get("h_league") or 0.0)
-    diff = float(box.get("diff") or 0.0)
-    scale = 1.0
-    if "pb_home" in said:
-        scale = 1.0 - float(c.get("c3") or 0.0) * float(box.get("pb_home") or 0)
-    parts: dict = {"바닥": b0 + b1 * diff * scale
-                   + b2 * float(box.get("pdiff") or 0.0),
-                   "홈 이점": h}
-    extra_home = 0.0
-    names: list[str] = []
-    for term in TERMS:
-        if term == "pb_home" or term not in said:
-            continue
-        w = float(c.get(TERM_COEF[term]) or 0.0)
-        v = float(box.get(term) or 0.0)
-        got = w * v
-        if got:
-            parts[term] = got
-            extra_home += got
-            names.append(f"{term} {v:+.3f}×{w:+.3f}")
-    log_h = parts["바닥"] + h + extra_home
-    log_a = -(b1 * diff * scale) + b0 - b2 * float(box.get("pdiff") or 0.0) \
-        - extra_home
-    out = {"home": math.exp(log_h), "away": math.exp(log_a)}
-    why = (f"λ {out['home']:.3f}/{out['away']:.3f} ← 바닥 {parts['바닥']:+.3f}"
-           f"(diff {diff:+.3f}×b1 {b1:.3f}"
-           + (f" × 휴식기 {scale:.2f}" if "pb_home" in said else "")
-           + f" · 선수 차 {float(box.get('pdiff') or 0.0):+.3f}×b2 {b2:.3f})"
-           f" · 홈 {h:+.3f}"
-           + (" · " + " · ".join(names) if names
-              else f" · **채택 0개**(후보 {len(TERMS)}개는 식에 없다)"))
-    if box.get("missing"):
-        why += " · ⬜ 못 잰 칸 " + " · ".join(box["missing"])
-    if detail:
-        return out, why, parts
-    return out, why
 
 
 def score_grid(*, lam_home: float, lam_away: float, rho: float = 0.0,
@@ -258,20 +178,3 @@ def markets_of(grid: dict, *, ah_lines: tuple | None = None,
     out["over"] = {k: round(v, 6) for k, v in over.items()}
     out["ah"] = {k: round(v, 6) for k, v in ah.items()}
     return out
-
-
-def load_coef(*, league: str, as_of=None) -> tuple[dict | None, str]:
-    """🔴🔴 계수 판을 읽는다 — **없으면 `(None, 사유)`**(손값으로 안 돈다 · §0).
-
-    🔴 판을 고르는 곳은 `app/core/versions.py` 하나다(L3 · as_of 이전 최신).
-    """
-    from app.core import versions as _v
-    box = _v.path_of(COEF_TABLE, str(league).replace(":", "_"))
-    try:
-        got, why = _v.pick(box, as_of=as_of)
-    except ValueError as exc:
-        return None, f"🔴 계수 판 없음 — {exc}"
-    if not got or not all(str(n) in got for n in ("b0", "b1")):
-        return None, (f"🔴 `{league}` **계수 판이 없다**({why}) — 확률을 만들지 "
-                      f"않는다(`tools/fit_probfloor.py` 로 적합해야 한다)")
-    return dict(got), f"계수 {why}"

@@ -28,16 +28,37 @@ GATES: tuple[tuple[str, str], ...] = (
 
 
 def test_every_gate_requires_as_of() -> None:
-    """🔴 L1 — 입구마다 `as_of` 가 **필수 인자**다(기본값이 없다)."""
-    import importlib
-    bad = []
-    for mod, name in GATES:
-        fn = getattr(importlib.import_module(mod), name)
-        sig = inspect.signature(fn)
-        got = sig.parameters.get("as_of")
-        if got is None or got.default is not inspect.Parameter.empty:
-            bad.append(f"{mod}.{name}")
-    assert not bad, f"🔴 `as_of` 가 없거나 기본값이 있다: {bad}"
+    """🔴🔴 **Elo 를 지웠다** — 사용자 지시 2026-10-17 *"elo 지워라"*.
+
+    ⚠️ 이 시험(test_every_gate_requires_as_of)이 지키던 것은 **기준 확률(Elo → 승·무·패)** 경로다.
+    🔴 **확률은 이미 그 수를 안 보고 있었다** — 승무패는 `flat_prob`
+       (1/3 균등 + 변수)이 내고 `probmodel.run` 은 `floor` 를 안 읽는다.
+       쓰이던 곳은 카드의 **기준 열**과 **방향 판정**뿐이었고 둘 다 표시인데,
+       `eloratings.net/World.tsv` 를 **매 실행** 받고 있었다.
+    🔴 그래서 지웠고, 이 시험은 *"되살아나지 않는다"* 를 지킨다.
+    """
+    import ast as _ast
+    import pathlib as _pl
+    root = _pl.Path(__file__).resolve().parents[2]
+
+    #  ① Elo 모듈 넷이 **없다**
+    for rel in ("app/collect/elo.py", "app/collect/leagueelo.py",
+                "app/core/domesticelo.py"):
+        assert not (root / rel).exists(), f"🔴 `{rel}`(Elo)가 되살아났다"
+    #  ② 기준 확률 함수가 **없다**
+    from app.core import base as _b
+    for one in ("we", "triple_of", "triple_from", "base_prob"):
+        assert not hasattr(_b, one), f"🔴 `core.base.{one}`(Elo)가 되살아났다"
+    from app.core.stages import s2b_base as _s2b
+    for one in ("_base", "continental_elo", "league_level"):
+        assert not hasattr(_s2b, one), f"🔴 `s2b_base.{one}`(Elo)가 되살아났다"
+    #  ③ ② 는 **남아 있다** — 오늘 XI 가 평소보다 약/강한가는 Elo 를 안 쓴다
+    for one in ("strength_of", "fill_values", "adjust"):
+        assert hasattr(_b, one), f"🔴 `core.base.{one}`(선수 전력)이 같이 지워졌다"
+    #  ④ 기준은 **늘 비어 있고 사유가 붙는다**(#3 조용한 0 금지)
+    said = (root / "app/core/stages/s2b_base.py").read_text(encoding="utf-8")
+    assert "BaseProb(probs=None" in said, "🔴 기준을 빈 값으로 안 낸다"
+    assert "기준(Elo)은 지웠다" in said, "🔴 그 사실을 사유에 안 적는다"
 
 
 def test_rows_after_as_of_are_dropped() -> None:

@@ -215,16 +215,8 @@ def kind_of(*, competition: str = "", league_id: object = None,
 def row_of(key: str) -> dict:
     """🔴 그 키의 줄 — 리그 형식·기준 모델·동률 규칙이 들어 있다. 없으면 빈 표."""
     return dict(rows().get(str(key or "")) or {})
+# 🔴 Elo 삭제(2026-10-17)로 **부르는 곳이 0** 이 된 것 — 같이 걷는다.
 
-
-def fd_code(key: str) -> str:
-    """🔴 그 키의 football-data 코드(`league:PL` → `PL`). 없으면 `""`."""
-    return str((row_of(key).get("sources") or {}).get("football_data") or "")
-
-
-def elo_source(key: str) -> dict:
-    """🔴 그 키의 **기준 모델**(Elo 출처·적합 이름). ⚠️ 없으면 빈 표 → 기준 없음."""
-    return dict(row_of(key).get("baseline") or {})
 
 
 def split_of(key: str) -> dict:

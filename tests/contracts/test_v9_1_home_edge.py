@@ -195,21 +195,38 @@ def test_v9_구조_결장_대조가_이름_규칙을_지킨다():
     assert _s5._in_missing("Rafael Tolói", "team:000001", _F()) is False
 
 
-def test_v9_자동_등록_리그도_자체_Elo_표에_있다():
-    """🔴🔴 **⑥**(사용자 지시 2026-10-11) — 자동 등록 리그는 fotmob 결과로 자체
-    Elo 를 굴린다(V1 검증용).
+def test_v9_자동_등록_리그도_자체_Elo_표에_있다() -> None:
+    """🔴🔴 **Elo 를 지웠다** — 사용자 지시 2026-10-17 *"elo 지워라"*.
 
-    ⚠️ 실사고(LAFC): **MLS 가 그 표에 없어서** 카드의 기준 열이 통째로 비었다
-       (`기준 없음 — Elo 를 못 받았다`) → 축1 의 상대 전력 보정도 **안 돌았다**.
-    🔴 id·slug 는 받아서 확인한 값이다(`/leagues/130/matches/mls` · 414경기).
+    ⚠️ 이 시험(test_v9_자동_등록_리그도_자체_Elo_표에_있다)이 지키던 것은 **기준 확률(Elo → 승·무·패)** 경로다.
+    🔴 **확률은 이미 그 수를 안 보고 있었다** — 승무패는 `flat_prob`
+       (1/3 균등 + 변수)이 내고 `probmodel.run` 은 `floor` 를 안 읽는다.
+       쓰이던 곳은 카드의 **기준 열**과 **방향 판정**뿐이었고 둘 다 표시인데,
+       `eloratings.net/World.tsv` 를 **매 실행** 받고 있었다.
+    🔴 그래서 지웠고, 이 시험은 *"되살아나지 않는다"* 를 지킨다.
     """
-    from app.collect import leagueelo as _le
-    box = dict((_le.fotmob_table().get("competitions") or {}))
-    assert "MLS" in box, f"🔴 MLS 가 fotmob Elo 표에 없다 — {sorted(box)}"
-    said = dict(box["MLS"])
-    assert int(said.get("id") or 0) == 130 and said.get("slug") == "mls", said
-    # 🔴 K리그1·J1 도 그대로 있다(지우지 않았다)
-    assert {"KL1", "J1"} <= set(box)
+    import ast as _ast
+    import pathlib as _pl
+    root = _pl.Path(__file__).resolve().parents[2]
+
+    #  ① Elo 모듈 넷이 **없다**
+    for rel in ("app/collect/elo.py", "app/collect/leagueelo.py",
+                "app/core/domesticelo.py"):
+        assert not (root / rel).exists(), f"🔴 `{rel}`(Elo)가 되살아났다"
+    #  ② 기준 확률 함수가 **없다**
+    from app.core import base as _b
+    for one in ("we", "triple_of", "triple_from", "base_prob"):
+        assert not hasattr(_b, one), f"🔴 `core.base.{one}`(Elo)가 되살아났다"
+    from app.core.stages import s2b_base as _s2b
+    for one in ("_base", "continental_elo", "league_level"):
+        assert not hasattr(_s2b, one), f"🔴 `s2b_base.{one}`(Elo)가 되살아났다"
+    #  ③ ② 는 **남아 있다** — 오늘 XI 가 평소보다 약/강한가는 Elo 를 안 쓴다
+    for one in ("strength_of", "fill_values", "adjust"):
+        assert hasattr(_b, one), f"🔴 `core.base.{one}`(선수 전력)이 같이 지워졌다"
+    #  ④ 기준은 **늘 비어 있고 사유가 붙는다**(#3 조용한 0 금지)
+    said = (root / "app/core/stages/s2b_base.py").read_text(encoding="utf-8")
+    assert "BaseProb(probs=None" in said, "🔴 기준을 빈 값으로 안 낸다"
+    assert "기준(Elo)은 지웠다" in said, "🔴 그 사실을 사유에 안 적는다"
 
 
 # ⚠️ **걷은 시험** — `saybundle`(최종 평 LLM 프롬프트 묶음)이 지시서

@@ -780,21 +780,12 @@ def odds_feeds(*, allowed_only: bool = True) -> list[dict]:
 def odds_budget() -> dict:
     """🔴 §2-2 요청 예산 — 분석 2회·재분석 1회·캐시 6시간·경고 80%·중단 100%."""
     return dict(odds_sources().get("budget") or {})
+# 🔴 Elo 삭제(2026-10-17)로 `rating_sources` 도 고아가 됐다 — 같이 걷는다.
 
 
-def rating_sources(*, allowed_only: bool = False) -> list[dict]:
-    """🔴 §3 전력 자료 출처 표 — 실측한 것만 `allowed: true` 다."""
-    rows = _load(RATING_SOURCES).get("sources") or []
-    out = [dict(r) for r in rows if isinstance(r, dict)]
-    return [r for r in out if r.get("allowed")] if allowed_only else out
 
+# 🔴 Elo 삭제(2026-10-17)로 **부르는 곳이 0** 이 된 것 — 같이 걷는다.
 
-def rating_source(name: str) -> dict:
-    """🔴 출처 하나. ⚠️ 없으면 **빈 표**다 — 호출부가 "출처 없음"으로 적는다."""
-    for row in rating_sources():
-        if str(row.get("name")) == str(name):
-            return row
-    return {}
 
 
 def base_model(kind: str) -> dict:

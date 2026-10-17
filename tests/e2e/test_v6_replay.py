@@ -580,8 +580,12 @@ def test_불변식20_모든_확률_셋은_합이_1이다(card: Card):
     for p in [x for x in said if isinstance(x, ProbTriple)]:
         assert abs(p.home + p.draw + p.away - 1.0) < 0.001, p
         assert all(0.0 <= v <= 1.0 for v in (p.home, p.draw, p.away)), p
-    assert card.base_prob.probs is not None, \
-        f"🔴 이 고정물에서는 ① 이 나와야 한다 — {card.base_prob.why}"
+    # 🔴🔴 **① 기준(Elo)은 지웠다** — 사용자 지시 2026-10-17 *"elo 지워라"*.
+    #    ⚠️ 종전엔 *"이 고정물에서는 ① 이 나와야 한다"* 였다. 이제 **안 나오는
+    #       것이 맞고**, 그 자리에 **사유가 있어야** 한다(#3 조용한 0 금지).
+    assert card.base_prob.probs is None, "🔴 기준(Elo)이 되살아났다"
+    assert "지웠다" in str(card.base_prob.why), \
+        f"🔴 기준이 빈 까닭을 안 적었다 — {card.base_prob.why}"
 
 
 def test_불변식21_시장_열에_출처와_시각이_적혀_있다(card: Card):
@@ -631,9 +635,13 @@ def test_불변식25_기준이나_시장이_없으면_사유와_함께_열이_�
         assert "기준 없음" in said and card.base_prob.why
     if not card.market.probs:
         assert "시장 없음" in said and card.market.why
-    # 🔴 ② 가 못 돌면 그 사유가 블록 3c 에 있다
-    if card.adj_prob.probs is None:
-        assert card.adj_prob.why and card.adj_prob.why[:12] in said, card.adj_prob.why
+    # 🔴🔴 **② 는 이제 확률을 안 움직인다** — 사용자 지시 2026-10-17 *"elo 지워라"*.
+    #    ⚠️ 종전엔 ② 가 `ΔS` 를 **Elo 점수 차로 환산**해 승무패를 다시 냈다.
+    #       기준(Elo)을 지워 그 가지가 영원히 안 도므로 `probs` 는 **늘 `None`**
+    #       이고, ② 는 **전력 변화율과 선수별 기여**만 낸다.
+    #    🔴 그래도 **사유는 있어야 한다**(#3 조용한 0 금지) — 그것만 지킨다.
+    assert card.adj_prob.probs is None, "🔴 ② 가 확률을 다시 움직인다(Elo 가 살았나)"
+    assert str(card.adj_prob.why).strip(), "🔴 ② 가 사유를 안 적는다"
 
 
 # ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다

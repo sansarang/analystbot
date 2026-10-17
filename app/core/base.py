@@ -28,77 +28,18 @@ USUAL_XI_MATCHES = 5
 MIN_USUAL_SAMPLE = 3
 #: 🔴 §4-3 — 값 없는 선수를 채운 수가 이보다 많으면 ② 는 **표시만** 한다
 MAX_ESTIMATED = 3
+# ══════════════════════════════════════════════════════════════════════
+# 🔴🔴 **Elo 부분만 지웠다** — 사용자 지시 2026-10-17 *"elo 지워라"*
+# ══════════════════════════════════════════════════════════════════════
+#
+#  🔴 이 파일에는 **두 가지**가 섞여 있었다:
+#       ① Elo → 승·무·패 : `we`(기대승률) · `_logistic` · `triple_from` ·
+#          `triple_of`(순서형 로짓) · `base_prob` — **지웠다**
+#       ② 선수 전력(§4)  : `strength_of` · `fill_values` · `pct_change` ·
+#          `adjust` · `_share` — **남긴다**(Elo 를 안 쓴다 · 오늘 XI 가 평소
+#          XI 보다 얼마나 약/강한가를 **선수 가치**로 센다)
+#  ⚠️ ② 는 `s2b_base._adjust`·`_deltas` 가 부른다 — 지우면 라인업 보정이 죽는다.
 
-
-def we(dr: float) -> float:
-    """🔴 §3-1 — `We = 1 / (10^(−dr/400) + 1)`. ⚠️ `dr` 은 **Elo 점수 차**다.
-
-    실측 검사(계약): `dr=0 → 0.5` · `dr=+400 → 0.909`.
-    """
-    return 1.0 / (10.0 ** (-float(dr) / 400.0) + 1.0)
-
-
-def _logistic(x: float) -> float:
-    return 1.0 / (1.0 + math.exp(-x))
-
-
-def triple_from(*, c1: float, c2: float, b_dr: float, dr: float) -> ProbTriple:
-    """🔴🔴 **순서형 로짓 한 줄** — 계수를 **받아서** 승·무·패를 낸다.
-
-    🔴 `triple_of`(설정에서 계수를 읽는 길)와 **같은 식**이다 — 사본 금지. 시즌
-       교차 시험(사용자 지시 2026-10-12 판정 시험 1번)은 *다른 시즌에서 적합한*
-       계수를 들고 와야 해서 이 입구가 필요하다.
-    """
-    eta = float(b_dr) * float(dr) / 100.0
-    lo, hi = _logistic(float(c1) - eta), _logistic(float(c2) - eta)
-    hi = max(hi, lo)
-    home, draw, away = 1.0 - hi, hi - lo, lo
-    tot = home + draw + away
-    h6, d6 = round(home / tot, 6), round(draw / tot, 6)
-    return ProbTriple(home=h6, draw=d6, away=round(1.0 - h6 - d6, 6))
-
-
-def triple_of(kind: str, dr: float) -> tuple[ProbTriple | None, str]:
-    """🔴 §3-2 — 순서형 로짓으로 `dr` 을 승·무·패로 나눈다. `(확률, 사유)`.
-
-    🔴 **같은 대회 유형 계수만** 쓴다(§3 "다른 대회 값 금지"). 없으면 `(None, 사유)`.
-    ⚠️ 계수가 `venue: home_only` 면 **중립 경기에 쓰지 않는다** — 그 자료(중립 줄)가
-       결과순으로 적혀 있어 적합에서 빠졌다(`config/base_model.yaml` 머리말).
-    """
-    m = rules.base_model(kind)
-    if not m:
-        return None, f"`{kind}` 대회 유형의 계수가 없다 — 적합한 적이 없다"
-    try:
-        c1, c2, b = float(m["c1"]), float(m["c2"]), float(m["b_dr"])
-    except (KeyError, TypeError, ValueError):
-        return None, f"`{kind}` 계수 칸이 깨졌다({sorted(m)})"
-    if float(m.get("logloss", 0.0)) >= float(m.get("logloss_base", 1e9)):
-        return None, (f"`{kind}` 모형이 기준선보다 나쁘다"
-                      f"({m.get('logloss')} ≥ {m.get('logloss_base')})")
-    got = triple_from(c1=c1, c2=c2, b_dr=b, dr=float(dr))
-    return got, (f"순서형 로짓 `{kind}`(표본 {m.get('n')}경기 · 적합 "
-                 f"{m.get('fitted_at')} · logloss {m.get('logloss')})")
-
-
-def base_prob(*, kind: str, home_elo: float | None, away_elo: float | None,
-              neutral: bool, source: str, data_date: str) -> BaseProb:
-    """🔴 ① 한 경기의 기준 확률. ⚠️ 못 만들면 **사유를 담은 빈 BaseProb** 다."""
-    if home_elo is None or away_elo is None:
-        miss = [n for n, v in (("홈", home_elo), ("원정", away_elo)) if v is None]
-        return BaseProb(why=f"{'·'.join(miss)} 팀 Elo 를 못 받았다", comp_kind=kind,
-                        source=source, data_date=data_date)
-    dr = float(home_elo) - float(away_elo)
-    said = we(dr)
-    if neutral:
-        # 🔴 중립 경기엔 계수를 쓰지 않는다 — 적합 자료가 홈 개최뿐이다
-        return BaseProb(why=("중립 경기다 — 계수는 홈 개최 경기로만 적합했다"
-                             "(`venue: home_only`) · 승무패를 나누지 않는다"),
-                        home_elo=home_elo, away_elo=away_elo, dr=dr,
-                        comp_kind=kind, source=source, data_date=data_date, we=said)
-    probs, why = triple_of(kind, dr)
-    return BaseProb(probs=probs, why=why, home_elo=home_elo, away_elo=away_elo,
-                    dr=dr, comp_kind=kind, source=source, data_date=data_date,
-                    we=said)
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -175,18 +116,20 @@ def adjust(base: BaseProb, *, kind: str, delta_s: dict[str, float],
     fit = dict(m.get("ds_fit") or {})
     moved = False
     probs = base.probs
-    if coef is not None and base.probs is not None and base.dr is not None:
-        step = float(coef) * (delta_s.get(str(home), 0.0) - delta_s.get(str(away), 0.0))
-        got, said = triple_of(kind, base.dr + step)
-        if got is not None:
-            # 🔴 **홈 승 %p 변화** — 카드가 적는 그 수다(기준 대비)
-            shift = (got.home - base.probs.home) * 100.0
-            probs, moved = got, True
-            why = (f"{why} · ΔS→dr {step:+.1f}점 → 홈 승 {shift:+.1f}%p"
-                   f"(환산 R² {fit.get('r2', '?')} · 표본 {fit.get('n', '?')})")
-            deltas = _share(deltas, shift, home=str(home), away=str(away),
-                            delta_s=delta_s)
-    elif coef is None:
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **확률을 움직이는 가지를 지웠다** — 사용자 지시 2026-10-17
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > **elo 지워라**
+    #
+    #  ⚠️ 이 가지는 `ΔS`(전력 변화)를 **Elo 점수 차(`dr`)로 환산**해 `triple_of`
+    #     (순서형 로짓)로 승·무·패를 다시 내던 길이다. 🔴 Elo 를 지워
+    #     `base.probs`·`base.dr` 이 **늘 `None`** 이므로 **영원히 안 돈다**.
+    #  🔴 그래서 ② 는 이제 **전력 변화율만** 낸다(확률을 안 움직인다) — 그것이
+    #     `measured=False` 이고, 결장 무게는 변수 쪽이 그대로 든다.
+    #  ⚠️ 전력 변화율(`strength_pct`)·선수별 기여(`deltas`)는 **그대로 낸다** —
+    #     카드가 그 줄을 적는다(지우면 라인업 보정이 통째로 사라진다).
+    if coef is None:
         why = (f"{why} · 🔴 ΔS→dr 환산 계수가 없다 — **확률을 움직이지 않았다**"
                f"(전력 변화율만 보인다)")
     # 🔴🔴 `measured` 는 **움직였을 때만** 참이다 — §4 마지막 줄이 *"그 영향은 ② 의
