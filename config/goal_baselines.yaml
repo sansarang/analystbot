@@ -1,5 +1,11 @@
 measured_at: '2026-10-14'
 kinds:
+  league:MEX1:
+    goals_per_match: 2.9142
+    home_share: 1.6589
+    n: 431
+    n_home: 431
+    source: fotmob league:MEX1 자체 실측(2026/2027 - Apertura 97경기 · 2025/2026 - Clausura 167경기 · 2025/2026 - Apertura 167경기) · 중립 단계 제외(CC3) · tools/fit_comp_goals.py 2026-10-17
   league:UAE1:
     goals_per_match: 3.0376
     home_share: 1.594

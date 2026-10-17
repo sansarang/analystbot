@@ -332,7 +332,7 @@ keys:
     kind: domestic_league
     confederation: UEFA
     names: ["swiss super league", "스위스 1부", "스위스 수퍼리그", "스위스 슈퍼리그"]
-    sources: {fotmob_ids: [69], fotmob_names: ["Super League"], fotmob_ccode: "SUI",
+    sources: {fotmob_ids: [69], fotmob_names_seen: ["Super League"], fotmob_ccode: "SUI",
               odds_sport_key: soccer_switzerland_superleague, checked_at: "2026-10-16"}
     format: {stage_single: ["regular season"], two_legs: ["championship round",
              "relegation play-off"], neutral: [], why: 정규 뒤 상·하위 분할}
@@ -362,7 +362,7 @@ keys:
     kind: domestic_league
     confederation: UEFA
     names: ["슬로바키아 1부", "슬로바키아 리그", "nike liga", "slovak first league"]
-    sources: {fotmob_ids: [176], fotmob_names: ["1. liga"], fotmob_ccode: "SVK",
+    sources: {fotmob_ids: [176], fotmob_names_seen: ["1. liga"], fotmob_ccode: "SVK",
               odds_sport_key: none, checked_at: "2026-10-16"}
     format: {stage_single: ["regular season"], two_legs: ["play-off"],
              neutral: [], why: 정규 뒤 상·하위 분할}
@@ -461,7 +461,7 @@ keys:
             "체코 1부", "체코 리그"]
     sources:
       fotmob_ids: [122]
-      fotmob_names: ["1. Liga"]
+      fotmob_names_seen: ["1. Liga"]
       fotmob_ccode: "CZE"
       odds_sport_key: none
       checked_at: "2026-10-16"
@@ -479,7 +479,7 @@ keys:
             "러시아 프리미어리그", "러시아 1부"]
     sources:
       fotmob_ids: [63]
-      fotmob_names: ["Premier League"]
+      fotmob_names_seen: ["Premier League"]
       fotmob_ccode: "RUS"
       odds_sport_key: soccer_russia_premier_league
       checked_at: "2026-10-16"
@@ -497,7 +497,7 @@ keys:
             "우크라이나 프리미어리그", "우크라이나 1부"]
     sources:
       fotmob_ids: [441]
-      fotmob_names: ["Premier League"]
+      fotmob_names_seen: ["Premier League"]
       fotmob_ccode: "UKR"
       odds_sport_key: none
       checked_at: "2026-10-16"
@@ -515,7 +515,7 @@ keys:
             "인도네시아 슈퍼리그", "인도네시아 1부", "liga 1 indonesia"]
     sources:
       fotmob_ids: [8983]
-      fotmob_names: ["Super League"]
+      fotmob_names_seen: ["Super League"]
       fotmob_ccode: "IDN"
       odds_sport_key: none
       checked_at: "2026-10-16"
@@ -749,6 +749,25 @@ keys:
   #     predicted 로 11·11 + 포메이션 + 감독(isCoach 2)** → 축0·⑤-b·⑤-b2 가
   #     경기 전에 돈다(사우디·중국·러시아급).
   #  🔴 배당 피드에는 **없다**(종목 85개에 uae·emirates 0건) → `none`.
+  # 🔴 **멕시코 Liga MX** — 사용자 지시 2026-10-16
+  #  🔴 받아서 확인했다: fotmob `230` = `Liga MX`/**MEX**(일정 153경기 ·
+  #     CF América 6576 의 리그 경기에서 `parentLeagueId` 로 풀었다).
+  #  🔴 라인업 실측 — **다음 경기도** 11·11 + 포메이션(4-1-4-1 / 4-2-2-2) +
+  #     감독(isCoach 2) → 축0·⑤-b·⑤-b2 가 경기 전에 돈다.
+  #  🔴 배당 열쇠 실측 — `soccer_mexico_ligamx | Liga MX`.
+  #  ⚠️ 2부(`8976 liga-de-expansion-mx`)는 **안 쟀다** — 등록하지 않았다.
+  league:MEX1:
+    kind: domestic_league
+    confederation: CONCACAF
+    names: ["liga mx", "리가 mx", "멕시코 1부", "멕시코 리그"]
+    sources: {fotmob_ids: [230], fotmob_names: ["Liga MX"],
+              fotmob_ccode: "MEX", odds_sport_key: soccer_mexico_ligamx,
+              checked_at: "2026-10-16"}
+    format: {stage_single: ["apertura", "clausura", "regular season"],
+             two_legs: ["liguilla", "quarter-final", "semi-final", "final"],
+             neutral: [], why: 아페르투라·클라우수라 + 리기야(플레이오프 홈앤어웨이)}
+    seasons: ["2024/25", "2025/26", "2026/27"]
+    baseline: {}
   league:UAE1:
     kind: domestic_league
     confederation: AFC
@@ -766,7 +785,7 @@ keys:
     confederation: AFC
     names: ["chinese super league", "china super league", "중국 슈퍼리그",
             "중국 1부", "중국 수퍼리그"]
-    sources: {fotmob_ids: [120], fotmob_names: ["Super League"],
+    sources: {fotmob_ids: [120], fotmob_names_seen: ["Super League"],
               fotmob_ccode: "CHN", odds_sport_key: soccer_china_superleague,
               checked_at: "2026-10-16"}
     format: {stage_single: ["regular season"], two_legs: [], neutral: [],
@@ -784,7 +803,7 @@ keys:
       #   이름(`Liga Nacional`·`Primera Division`)으로 찾으면 **스페인 라리가**에
       #   걸린다(실사고 2026-10-16). 그래서 **직접 적는다**.
       odds_sport_key: none
-      fotmob_names: ["Primera Division"]
+      fotmob_names_seen: ["Primera Division"]
       fotmob_ccode: "CRC"
       checked_at: "2026-10-16"
     format:
@@ -813,7 +832,7 @@ keys:
             "premiership - scotland", "스코틀랜드 1부"]
     sources:
       fotmob_ids: [64]
-      fotmob_names: ["Premiership"]
+      fotmob_names_seen: ["Premiership"]
       fotmob_ccode: "SCO"
       odds_sport_key: soccer_spl
       checked_at: "2026-10-16"
@@ -853,7 +872,7 @@ keys:
       #   이름(`Liga Nacional`·`Primera Division`)으로 찾으면 **스페인 라리가**에
       #   걸린다(실사고 2026-10-16). 그래서 **직접 적는다**.
       odds_sport_key: none
-      fotmob_names: ["Liga Nacional"]
+      fotmob_names_seen: ["Liga Nacional"]
       fotmob_ccode: "GUA"
       checked_at: "2026-10-16"
     format:
@@ -874,7 +893,7 @@ keys:
       #   이름(`Liga Nacional`·`Primera Division`)으로 찾으면 **스페인 라리가**에
       #   걸린다(실사고 2026-10-16). 그래서 **직접 적는다**.
       odds_sport_key: none
-      fotmob_names: ["Liga Nacional"]
+      fotmob_names_seen: ["Liga Nacional"]
       fotmob_ccode: "HON"
       checked_at: "2026-10-16"
     format:

@@ -85,11 +85,19 @@ def test_afc_가_uefa_로_안_간다() -> None:
     assert c.key_of(competition="UEFA Champions League")[0] == "league:UCL"
 
 
-def test_자동_등록_열쇠는_지시문이_없다() -> None:
-    """⚠️ 전부터 그렇다(내 수정과 무관) — 맨 `Champions League` 는
-    `league:fotmob42`(자동 등록)로 가고 그 행에 `kind` 가 없어 **빈 글자**다.
-    🔴 지어내지 않는 쪽이 맞다 — 유형을 모르면 지시문을 붙이지 않는다."""
+def test_자동_등록이_손표를_가리지_않는다() -> None:
+    """🔴🔴 **바뀐 사실**(2026-10-16) — 자동 등록 파일이 **손 표를 가렸다**.
+
+    ⚠️ 종전엔 맨 `Champions League` 가 `league:fotmob42`(자동 등록)로 갔다 —
+       `key_of` 가 자동 등록을 **③ 글자 표기보다 먼저** 보기 때문이다. 같은 병이
+       오늘 `Liga MX`(→ `league:fotmob230`)에서 다시 났다.
+    🔴 그래서 **손 표에 있는 번호의 자동 파일 13개를 치웠다**(원본이 둘이면
+       안 된다 · 사본 금지). 이제 그 이름들은 **손 표**로 선다.
+    """
     from app.core import competition as c
     key, _why = c.key_of(competition="Champions League")
-    assert key.startswith("league:fotmob"), key
-    assert comp_hint(R("Champions League")) == ""
+    assert key == "league:UCL", key
+    assert comp_hint(R("Champions League")) != ""
+    # 🔴 번호로도 같은 곳으로 간다
+    assert c.key_of(league_id=42)[0] == "league:UCL"
+    assert c.key_of(league_id=230)[0] == "league:MEX1"
