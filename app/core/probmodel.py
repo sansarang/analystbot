@@ -103,39 +103,18 @@ class _RefShim:
         self.sport = "soccer"
         self.home = self.away = ""
         self.home_name = self.away_name = ""
+# ══════════════════════════════════════════════════════════════════════
+# 🔴🔴 **상성·시뮬과 함께 지웠다** — 사용자 지시 2026-10-17
+# ══════════════════════════════════════════════════════════════════════
+#
+#  > 상성이 왜 들어가 있냐?? · **상성 삭제해라** · **시뮬도 삭제해라**
+#
+#  🔴 아래 함수들은 λ(기대 득점)를 세우던 재료다 — 리그 평균·홈/원정 배율·
+#     λ 기울기 이분법. 승무패가 `flat_prob`(1/3 균등 + 변수)로 바뀌고
+#     λ·오버·스코어가 비워지면서 **부르는 곳이 0** 이 됐다(#2).
+#  ⚠️ `app/core/sim.py`(몬테카를로) 모듈은 **안 지웠다** — `tools/` 의 백필·
+#     비교 측정 도구들이 그 모형을 읽는다(운영이 안 부를 뿐이다).
 
-
-def league_mean(facts, *, ref=None) -> tuple[float | None, str]:
-    """🔴 3-1 — **리그 평균 득점**(한 팀 몫 = 경기당 총골 ÷ 2).
-
-    🔴 출처는 **둘이고 좁은 쪽이 먼저**다(사본 금지 — 둘 다 이미 있는 것이다):
-      ① `facts.standings["match_total_baseline"]` — **이 두 팀**의 경기당 총골
-      ② `rules.goal_share(대회 유형)` — **대회 실측 평균**(`config/goal_baselines.yaml`)
-    🔴🔴 **①은 표본으로 ②에 수축한다**(수정 지시 2026-10-13 4번) —
-       `w = min(1, 표본/BASE_FULL)` · 표본 ≥8경기면 ① 그대로다.
-    ⚠️ 둘 다 없으면 `(None, 사유)` — S3 를 **안 돈다**(지어내지 않는다 · #4).
-    """
-    from app import rules
-    box_std = dict(getattr(facts, "standings", None) or {})
-    got = box_std.get("match_total_baseline")
-    kind = _kind(ref, facts)
-    if got is not None:
-        # 🔴🔴 **수축은 ③ 에서 이미 했다**(`core/goalbase.shrink` · 한 곳) —
-        #    여기서 다시 하지 않는다(두 번 수축하면 수가 또 틀린다).
-        #    ⚠️ 운영 확률은 **얼린 M1** 이 내고 그것도 같은 칸을 읽는다 — 그래서
-        #       칸을 고치는 것이 유일한 길이다(K0).
-        return float(got) / 2.0, (f"두 팀 경기당 총골 {float(got):g}"
-                                  + (f" · {box_std['match_total_why']}"
-                                     if box_std.get("match_total_why")
-                                     else ""))
-    said = rules.goal_share(kind)
-    if said is not None:
-        box = rules.goal_baseline(kind)
-        return float(said), (f"대회 유형 `{kind}` 실측 평균 "
-                             f"{float(box.get('goals_per_match') or 0):g}"
-                             f"(표본 {box.get('n')})")
-    return None, (f"🔴 리그 평균 득점을 **모른다**(두 팀 기준도, 대회 유형 "
-                  f"`{kind}` 표도 없다) — S3 를 안 돈다")
 
 
 #: 🔴🔴 **두 팀 총골 기준을 그대로 쓰기 시작하는 표본**(그보다 적으면 대회 실측
@@ -186,44 +165,16 @@ def team_home_mul(games: list[dict], *, league: float) -> tuple[float, str]:
     return round(got, 4), (f"팀별 홈 효과 ×{raw:.3f}(홈 {gf_h:.2f}골 ÷ 원정 "
                            f"{gf_a:.2f}골) · 표본 {n}쌍 → 수축 가중 {w:.0%} · "
                            f"리그 ×{float(league):.3f} → **×{got:.3f}**")
+# ══════════════════════════════════════════════════════════════════════
+# 🔴🔴 **상성·시뮬과 함께 지웠다** — 사용자 지시 2026-10-17
+# ══════════════════════════════════════════════════════════════════════
+#
+#  > 상성이 왜 들어가 있냐?? · **상성 삭제해라** · **시뮬도 삭제해라**
+#
+#  🔴 아래 함수들은 **상성 축(축0~축3)이 쓰던 부품**이다 — 스타일 6축·무기 표·
+#     백분위·창 검사·공격 기여·중심화. 상성 단계를 지우자 **부르는 곳이 0**
+#     이 됐다(`tests/test_wiring.py` 가 고아로 잡았다 · #2).
 
-
-def away_mul(*, home_share: float | None, per_team: float | None
-             ) -> tuple[float, str]:
-    """🔴🔴 2(b) — **원정 배율**. `(배율, 사유)`. 실측이 없으면 `1.0`.
-
-    > λ 기준: … **원정 λ 에 원정 배율**(원정 평균 ÷ 한 팀 몫)이 들어가는가.
-
-    🔴 감사 2026-10-12: 종전 식은 `lam_a = mean`(= 한 팀 평균)이었다 — 원정 팀이
-       평균보다 **덜 넣는다**는 실측을 버린 것이다. 라리가 per_team 1.3444 ·
-       home_share 1.5296 → away_share **1.1592** 인데 1.3444 를 써서 **+16% 과대**.
-    🔴 `away_share = 2 × per_team − home_share`(총골 = 홈 몫 + 원정 몫).
-    """
-    if home_share is None or not per_team:
-        return 1.0, "⬜ 원정 배율 — 실측이 **없다**(1.0 · 다른 대회에서 안 빌린다)"
-    away = 2.0 * float(per_team) - float(home_share)
-    if away <= 0:
-        return 1.0, "🔴 원정 몫이 0 이하다 — 1.0 으로 둔다(수가 이상하다)"
-    got = away / float(per_team)
-    return got, (f"원정 몫 {away:.4f} ÷ 한 팀 몫 {float(per_team):.4f} = "
-                 f"×{got:.3f}")
-
-
-def side_center(*, home_share: float | None, per_team: float | None
-                ) -> tuple[float, str]:
-    """🔴🔴 2(a) — **쪽 폼 중심화 값 Δ**. `(Δ, 사유)`. 실측이 없으면 `0.0`.
-
-    🔴 홈에서 뛴 팀의 득실차에는 **홈 이점이 이미** 들어 있다:
-       기대 득 `home_share` − 기대 실 `away_share` = **Δ**.
-       그 Δ 가 축1 로 들어가고 λ 홈 배율이 **또** 걸리면 **이중 계산**이다.
-    🔴 그래서 쪽 폼에서 Δ 를 뺀다(원정 쪽은 더한다).
-    """
-    if home_share is None or not per_team:
-        return 0.0, "⬜ 중심화 — 홈 이점 실측이 없다(0.0)"
-    away = 2.0 * float(per_team) - float(home_share)
-    got = float(home_share) - away
-    return got, (f"중심화 Δ = 홈 몫 {float(home_share):.4f} − 원정 몫 "
-                 f"{away:.4f} = {got:.4f}")
 
 
 def home_mul(facts, varset, *, ref=None,
@@ -406,266 +357,39 @@ def flat_prob(varset, *, ref) -> tuple[dict, str]:
 
 def run(ref, facts, mr, varset, *, edge: dict | None = None,
         state=None, floor: object = None) -> ProbOut:
-    """🔴🔴 S3 — **상성만으로** λ 를 세고 시뮬로 바꾼다.
+    """🔴🔴 S3 — **승무패 = 초기 1/3 균등 + 변수**. 그것뿐이다.
 
-    `mr` 은 `matchup.MatchupReport` 다. ⚠️ `facts` 에서 읽는 것은 **리그 평균**
-    하나다(C1: Elo·동기·일정·감독·맞대결·시장은 안 읽는다).
+    ══════════════════════════════════════════════════════════════════
+    🔴🔴 **상성·시뮬을 지웠다** — 사용자 지시 2026-10-17
+    ══════════════════════════════════════════════════════════════════
+
+    > 상성이 왜 들어가 있냐?? · **상성 삭제해라** · **시뮬도 삭제해라**
+
+    ⚠️ 종전에는 이 함수가 **237줄**을 돌았다: 리그 평균 → 홈 배율 → 축 차로
+       λ 기울기 → 분 단위 몬테카를로 시뮬 → 축별 기여 분해 → 그림자 확률.
+    🔴 **그 결과가 전부 버려지고 있었다.** 마지막 세 줄이 승무패를
+       `flat_prob` 으로 덮고 `lam`·`over`·`scores` 를 비웠기 때문이다
+       (2026-10-15 *"33.3 프로로 동등하게"* · 2026-10-17 *"기대득점 지워라"*).
+       그래서 `eloratings.net` 통신과 시뮬을 돌리고 **버렸다**.
+    🔴 지금 하는 일은 하나다 — `flat_prob(varset)`.
+       ⚠️ `mr`·`edge`·`floor` 는 **안 읽는다**(인자는 부르는 쪽 때문에 남긴다 —
+          카드·러너가 같은 꼴로 부른다). 그 사실을 사유에 적는다(#3).
     """
-    from app.core import matchup as _m
-    from app.core import sim as _sim
     got = ProbOut()
-    mean, why_mean = league_mean(facts, ref=ref)
-    if mean is None:
-        got.gap = why_mean
-        _note(state, f"S3 {why_mean}")
-        return got
-    conf = dict(_m.table().get("lambda_model") or {})
-    fit = dict(_m.table().get("fit") or {})
-    got.provisional = bool(fit.get("provisional", True))
-    beta = float(conf.get("beta") or 0.0)
-    cap = float(conf.get("cap_pct") or 35.0) / 100.0
-    # 🔴 E — **홈팀의 경기 목록**을 넘긴다(팀별 홈 효과로 수축한다)
-    said_games = list(dict((getattr(facts, "recent", None) or {})
-                           .get(str(getattr(ref, "home", "")) or "") or {})
-                      .get("games") or [])
-    mul, why_home = home_mul(facts, varset, ref=ref, home_games=said_games)
-    if mul is None:
-        # 🔴 홈 이점을 못 쟀으면 **S3 를 안 돈다** — 조용히 1.0 으로 가지 않는다.
-        got.gap = why_home
-        _note(state, f"S3 {why_home}")
-        return got
-    # 🔴 3-1 — 축 차 하나로 두 팀 λ 를 **반대 방향으로** 기울인다
-    gaps = mr.gaps()
-    weights = dict(_m.table().get("weights") or {})
-    tilt = sum(float(weights.get(k) or 0.0) * float(v) for k, v in gaps.items())
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **F3 — 쪽마다 자기 식**(지시서 2026-10-11)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  log λ홈  = log(리그 평균) + 홈 이점 + Σ_축 β_축 ·(홈 공격_축 − 원정 수비_축)
-    #  log λ원정 = log(리그 평균)          + Σ_축 β_축 ·(원정 공격_축 − 홈 수비_축)
-    #
-    #  ⚠️ 종전에는 **축 종합 하나**로 `exp(+move)`·`exp(-move)` 를 만들었다 — 두 λ 가
-    #     거울이라 *"홈이 좋으면 원정이 그만큼 나쁘다"* 가 **식에 박혀** 있었다.
-    #  🔴 `tilt` 는 이제 **보고용**이다(카드가 종합을 적는다) — λ 는 안 만든다.
-    sides = {k: mr.axis(k).sides() for k in weights}
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **상성을 삭제했다** — 사용자 결정 2026-10-15
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  > 그냥 **상성 삭제**하라고
-    #
-    #  🔴 축 종합·쪽값이 λ 를 **움직이지 않는다**(이동 0 고정). 축 값 자체는
-    #     계속 센다 — 카드가 **근거로** 적는다(표시·검증).
-    #  ⚠️ 그래서 두 팀 전력·폼 차가 확률에 **안 들어간다** — 남는 재료는 리그
-    #     실측 총골 · 홈 이점 · 팀별 홈 효과 · λ 규칙(IR13·IR11·IR14)뿐이다
-    #     (실측 2026-10-15: 여섯 경기 홈 확률 퍼짐 7.7% → 6.0%).
-    move = {"home": 0.0, "away": 0.0}
-    tilt = 0.0
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **상성을 뺀다** — 사용자 결정 2026-10-15
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  > 상성을 빼라 … 빼고 노리치 경기가 어떻게 바뀄는지 확인해라
-    #
-    #  🔴 빼면 λ 는 **리그 실측 총골 + 홈 이점 + 팀별 홈 효과 + λ 규칙**만으로
-    #     선다 — 두 팀의 **전력·폼 차가 확률에 안 들어간다**(실측 2026-10-15:
-    #     여섯 경기 홈 확률 퍼짐 7.7% → 6.0%).
-    #  ⚠️ 축 값은 **그대로 센다**(카드가 근거로 적는다) — λ 에만 안 넣는다.
-    #  🔴 되돌릴 수 있게 플래그다(`m1v2.flags.matchup_off`).
-    said_off = ""
-    from app.core import m1v2 as _c
-    if _c.on("matchup_off"):
-        said_off = (f"🔴 **상성 뺐다**(`matchup_off`) — 종전 이동 홈 "
-                    f"{move['home']:+.3f} · 원정 {move['away']:+.3f} 를 **0 으로** "
-                    "둔다(축 값은 카드에 그대로 적는다)")
-        move = {k: 0.0 for k in move}
-        _note(state, f"S3 {said_off}")
-    # 🔴🔴 2(b) — **원정 배율을 건다**(사용자 지시 2026-10-12). ⚠️ 종전엔 원정이
-    #    `mean`(한 팀 평균)이었다 — 원정 팀이 덜 넣는다는 실측을 버린 식이다.
-    from app import rules as _rules
-    said_kind = _kind(ref, facts)
-    said_base = _rules.goal_baseline(said_kind)
-    mul_a, why_mul_a = away_mul(home_share=said_base.get("home_share"),
-                                per_team=_rules.goal_share(said_kind))
-    lam_h = mean * mul * math.exp(move["home"])
-    lam_a = mean * mul_a * math.exp(move["away"])
-    got.lam = {"home": round(lam_h, 4), "away": round(lam_a, 4)}
-    # 🔴 C4 — **상성이 민 방향**을 따로 싣는다(상수를 뺀 수다)
-    got.move = {k: round(float(v), 4) for k, v in dict(move).items()}
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **3-2 시간대·경기 상태** — 축3 이 구간과 상태 배율을 준다
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  > 축3 **시간대 비중**으로 λ 를 구간 분할, **리드 유지력·추격력**으로
-    #  > 상태별 배율.
-    #
-    #  🔴 그 재료를 만드는 곳은 `goals.sim_input` 하나다(사본 금지) — 발동 규칙의
-    #     `lambda_own_late`·T11 상태 배율을 거기서 읽는다.
-    #  ⚠️ C9 — `관찰만` 규칙은 그 함수가 **빼고** 준다(λ 에 안 들어간다).
-    from app.core import goals as _g
-    # 🔴 F3/R4 — **규칙 λ 를 더하지 않는다**(축 안에서 이미 한 번 셌다).
-    #    시간대·상태 배율만 시뮬 안으로 보낸다(`sim_extras` 는 λ 를 안 준다).
-    args = _g.sim_extras(dict(edge or {}))
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **[2c] 상태별 득점률 표를 시뮬로 넘긴다**(지시서 2026-10-12)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  > ⑪ 분 단위 시뮬 루프 안. 매 분 현재 스코어로 각 팀 상태를 정하고
-    #  > λ분당 × 그 상태 배율. 기존 축3 시간대 배율과 **한 표로 합친다**.
-    #
-    #  🔴 표가 있으면 시뮬이 **T11 임시 배율을 끈다**(`sim.run` 의 S1 규율) —
-    #     같은 효과를 두 번 곱하지 않는다.
-    #  ⚠️ 표는 ③ 이 `facts.state_rates` 에 실어 온다. 비면 **없는 것**이고
-    #     T11 이 그대로 돈다(퇴로).
-    said_state = dict(getattr(facts, "state_rates", None) or {})
-    out = _sim.run(lam_h, lam_a,
-                   late_home=args["late_home"], late_away=args["late_away"],
-                   lead_mul=args["lead_mul"],
-                   state_mult=(said_state or None))
-    _fill(got, out)
-    why_rules = str(args.get("why") or "")
-    # 🔴 3-4 — **리그 평균 대비** 축별 기여(합 = 전체 변화)
-    # 🔴 기준선도 **같은 식**이어야 한다 — 원정 배율을 빼면 분해 합이 안 맞는다
-    #    (계약 `test_v7_기여_합이_리그_평균_대비_변화와_같다` 가 그것을 센다)
-    base = _sim.run(mean * mul, mean * mul_a)
-    got.share, got.share_refs = _share(mean, mul, beta, cap, weights, gaps, mr,
-                                       base=base, mul_a=mul_a)
-    got.why = (f"{why_mean} → 한 팀 평균 {mean:.3f} · {why_home} · "
-               f"{why_mul_a} · 축 종합 "
-               f"{tilt:+.3f} × β {beta:g} → λ 이동 홈 {move['home']:+.3f} · "
-               f"원정 {move['away']:+.3f}"
-               + (f"(상한 ±{cap:.0%})"
-                  if max(abs(move['home']), abs(move['away'])) >= cap else "")
-               + (f" · 규칙(축 안에서 셌다) {why_rules}" if why_rules else "")
-
-               + (" · 📜 **상태 배율**(실측 표 · T11 끔) "
-                  + _state_said(facts) if said_state else "")
-               + (f" · {_m.PROVISIONAL}" if got.provisional else ""))
-    # 🔴🔴 **C4 재정의**(사용자 결정 2026-10-12) — 상성이 민 방향과 **최종 확률**이
-    #    다르면 그 사실을 사유에 적는다: *"상성 X 우위 · 홈 이점이 뒤집음(배율)"*.
-    said_edge = mr.edge_of() if hasattr(mr, "edge_of") else ""
-    said_win = "home" if got.home >= got.away else "away"
-    if said_edge and said_win != said_edge:
-        got.why += (f" · 🔴 **상성 {said_edge} 우위 · 홈 이점이 뒤집음**"
-                    f"(배율 홈 ×{mul:.3f} · 원정 ×{mul_a:.3f})")
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **⑯ 배선 — 새 구조가 판정이다**(사용자 결정 2026-10-12 (a))
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  > (a) 새 구조로 운영 ⑯ 을 잇는다. 옛 구조는 **그림자 확률**로 카드에 함께
-    #  > 기록(표시만, 판정은 새 구조).
-    #
-    #  🔴 새 구조 = **Elo 바닥**(③)을 λ 로 번역하고 그 위에 **축0·축1 잔차**만 얹는다.
-    #     축2·축3 은 백필에서 **손실**이었다(−0.0038 · −0.0039) → 확률 경로 밖이다.
-    #  ⚠️ 바닥이 없으면(Elo 없음) **옛 구조가 그대로 남는다** — 그 사실을 사유에 적는다.
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **운영 교체 — ⑯ = M1(옛 경로) · 그림자 = M3**(사용자 결정 2026-10-12)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  > 운영 교체: 운영 ⑯ = **M1**(옛 경로 legacy-4axis), 그림자 = **M3**.
-    #  > 근거: M3 가 **어느 지표에서도 M1 을 앞서지 못함**(방향·선택 적중률·로그
-    #  > 손실 점추정 모두 M1 우세). 2층 통로·경고·InfoQ·역배 표시·코드 서술은
-    #  > 유지(**확률 엔진만** 교체).
-    #
-    #  🔴 비교 시험(460경기 · 시즌 교차): M1 로그손실 **1.0471** vs M3 1.0548 ·
-    #     방향 **51.5%** vs 45.7% · 상위 30/20/10% **57.2/58.7/65.2** vs
-    #     50.0/54.3/56.5 · 맥니마 b=54·c=27·p=0.0036.
-    #  ⚠️ **규칙 해석으로는 M3 유지**였다(§7 (a) 의 구간 상한 +0.005 를 못 넘었다)
-    #     — 그 기록은 `docs/fable/stages/2026-10-12_compare_paths.md` 에 그대로
-    #     남는다. 🔴 **운영 판단은 사용자가 따로** 내렸다(이 주석이 그 자리다).
-    #  🔴 **M1 은 얼린 코드**다(`legacy/old_engine` · 계약 K0) — 이 모듈이 다시
-    #     계산하지 않는다. 그래야 운영이 백필의 M1 과 **같은 모형**을 쓴다.
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **기대 득점(λ)을 지웠다 — 옛 엔진을 부르지 않는다**
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  사용자 지시 2026-10-17: *"λ 경로(M1 얼린 옛 경로 · legacy-4axis) 로
-    #  찍힙니다 → **다 지워라 · 필요없다**"* · *"**기대득점 지워라**"*
-    #
-    #  ⚠️ 실측 2026-10-17(가시마 라이브): `app.core.legacy.old_engine` 이
-    #     `[S3] 두 팀 경기당 총골 3.444 → 한 팀 평균 1.722 · … λ 이동 …` 을
-    #     **계속 찍고 있었다**. 🔴 그런데 그가 낸 것은 **전부 버려진다** —
-    #     승무패는 `flat_prob`(1/3 균등 + 변수)이 **덮고**, λ·오버·스코어는
-    #     그 아래에서 **비운다**(사용자 결정 2026-10-15 3번).
-    #  🔴 그래서 **부르지 않는다** — 버릴 수를 계산하느라 시간을 쓰지 않는다.
-    #     ⚠️ 얼린 파일(`legacy/old_engine` · 계약 K0)은 **지우지 않았다** —
-    #        백필·비교 도구가 그 모형을 읽는다(운영이 안 부를 뿐이다).
-    said_m1 = None
-    said_floor = _floor_triple(floor)
-    if said_floor:
-        got.floor = {"home": round(said_floor[0], 4),
-                     "draw": round(said_floor[1], 4),
-                     "away": round(said_floor[2], 4)}
-    # ── 🔴 **M3(새 경로)를 먼저 세운다** — 이제 그것이 **그림자**다
-    said_m3: dict = {}
-    if said_floor:
-        from app.core import probfloor as _pf
-        m0, why_m0 = _pf.solve_move(said_floor, mean=mean, mul_home=mul,
-                                    mul_away=mul_a)
-        if m0 is not None:
-            res = sum(float(weights.get(k) or 0.0)
-                      * float(gaps.get(k) or 0.0) for k in _pf.RESIDUAL_AXES)
-            rmove = max(-cap, min(cap, beta * res))
-            lam_h3 = mean * mul * math.exp(m0 + rmove)
-            lam_a3 = mean * mul_a * math.exp(-(m0 + rmove))
-            out3 = _sim.run(lam_h3, lam_a3,
-                            late_home=args["late_home"],
-                            late_away=args["late_away"],
-                            lead_mul=args["lead_mul"],
-                            state_mult=(said_state or None))
-            said_m3 = {"home": out3.home, "draw": out3.draw,
-                       "away": out3.away,
-                       # 🔴 **격자를 들고 있는다** — 앙상블이 승무패가 아니라
-                       #    **격자**를 섞는다(C2 · EW1)
-                       "grid": {(int(h), int(a)): float(v)
-                                for (h, a), v in dict(out3.scores or {}).items()},
-                       "lam": {"home": round(lam_h3, 4),
-                               "away": round(lam_a3, 4)},
-                       "why": (f"M3 **새 경로**(Elo 바닥 + 축0·축1 잔차) — "
-                               f"{why_m0} · 잔차 {res:+.3f}×β {beta:g} → "
-                               f"λ 이동 {rmove:+.3f} · 표시·채점용이고 "
-                               f"**판정에 안 쓴다**")}
-        else:
-            said_m3 = {"why": f"🔴 M3 를 못 세웠다 — {why_m0}"}
-    # ── 🔴🔴 **운영 수 = M1**(얼린 옛 경로). 못 내면 이 모듈의 네 축 수를 둔다.
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **옛 M1 블록을 지웠다**(180줄) — 사용자 지시 2026-10-17
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  > λ 경로 **다 지워라 · 필요없다** · **기대득점 지워라** ·
-    #  > 오늘 로직에서 불필요한 **옛 코드는 더이상 필요하지 않다**
-    #
-    #  🔴 그 블록이 하던 일을 **실측으로 세어** 효과가 0 인 것만 걷었다:
-    #       · λ 보정(이동·피로)   → **0**(바로 아래에서 λ 를 비운다)
-    #       · 무승부 보정(ρ)      → **0**(보정한 승무패를 `flat_prob` 가 덮는다)
-    #       · 앙상블(E1 격자 혼합) → **0**(혼합한 격자를 비운다)
-    #       · 스코어·오버          → **0**(비운다)
-    #     ⚠️ 그런데 **승무패(`flat_prob`)도 그 블록 안에 있었다** — 블록만
-    #        지우면 승무패가 통째로 사라진다(내가 한 번 그렇게 했다). 🔴 그래서
-    #        승무패와 λ 비우기는 **밖으로 꺼내** 늘 돌게 둔다.
-    #  ⚠️ `legacy/old_engine`·`drawfix`·`ensemble` **모듈은 안 지웠다** —
-    #     백필·비교 도구가 그 모형을 읽는다(운영이 안 부를 뿐이다).
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **승무패 = 초기 1/3 균등 + 변수** — 사용자 지시 2026-10-15
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  > 변수 넣기전 초기 확률 **33.3 프로로 동등**하게 해라 · 그외에는
-    #  > 아무 의미 없다
     said_flat, why_flat = flat_prob(varset, ref=ref)
     got.home = round(float(said_flat["home"]), 6)
     got.draw = round(float(said_flat["draw"]), 6)
     got.away = round(float(said_flat["away"]), 6)
-    _note(state, f"S3 {why_flat}")
-    # 🔴🔴 **기대 득점(λ)·오버·스코어는 없다**(사용자 결정 2026-10-15 3번 ·
-    #    2026-10-17 *"기대득점 지워라"*) — 카드에 **⬜ 로 남는다**(#3).
+    # 🔴 **기대 득점(λ)·오버·스코어는 없다** — 카드에 ⬜ 로 남는다(#3)
     got.lam, got.over, got.scores = {}, {}, {}
     got.xg, got.share, got.share_refs = {}, {}, {}
+    got.shadow = {}
     got.why = (f"🔴🔴 **승무패 = 초기 1/3 균등 + 변수**(사용자 지시 "
                f"2026-10-15) — {why_flat} · 🔴 **기대 득점(λ)·오버·스코어는 "
-               f"없다**(2026-10-17 — 승무패는 λ 를 안 본다)")
-    got.shadow = dict(said_m3)
-    _note(state, f"S3 확률(상성) — 홈 {got.home:.1%} · 무 {got.draw:.1%} · "
+               f"없다**(2026-10-17) · 🔴 **상성·시뮬은 지웠다**"
+               f"(2026-10-17 — 결과가 버려지는 계산이었다)")
+    _note(state, f"S3 {why_flat}")
+    _note(state, f"S3 확률 — 홈 {got.home:.1%} · 무 {got.draw:.1%} · "
                  f"원정 {got.away:.1%} · {got.why}")
     logger.info("[S3] %s", got.why)
     return got
@@ -718,55 +442,20 @@ def _fill(got: ProbOut, out) -> None:
     got.by_bucket = {k: dict(v) for k, v in dict(out.by_bucket).items()}
     got.first_then_win = dict(out.first_then_win)
     got.first_wins = out.first_wins
+# ══════════════════════════════════════════════════════════════════════
+# 🔴🔴 **`_share`·`league_base` 를 지웠다** — 사용자 지시 2026-10-17
+# ══════════════════════════════════════════════════════════════════════
+#
+#  > 상성 삭제해라 · **시뮬도 삭제해라**
+#
+#  ⚠️ `_share` 는 **축별 기여 분해**(리그 평균 대비)였고 `run` 의 삭제된 몸통
+#     하나만 불렀다 — 부르는 곳이 0 이 됐다(#2).
+#  ⚠️ `league_base` 는 기여 분해의 **잠정 열**(리그 평균 확률)을 시뮬로 만들던
+#     함수다. 기여(`share`)가 비었으니 그 열도 뜻이 없다.
+#  🔴 둘 다 `app/core/sim.py`(몬테카를로)를 부르던 자리다.
 
-
-def _share(mean: float, mul: float, beta: float, cap: float, weights: dict,
-           gaps: dict, mr, *, base, mul_a: float = 1.0, move0: float = 0.0
-           ) -> tuple[dict, dict]:
-    """🔴🔴 3-4 — 축별 기여(%p). **합이 리그 평균 대비 변화와 같다**.
-
-    🔴 재는 법: 축을 **하나씩 더해** 가며 홈 승 확률의 차를 적는다(겹침 없이
-       합이 정확하다 · 잔차 0).
-    """
-    from app.core import sim as _sim
-    out: dict = {}
-    refs: dict = {}
-    run = 0.0
-    prev = float(base.home)
-    for name in ("axis0", "axis1", "axis2", "axis3"):
-        run += float(weights.get(name) or 0.0) * float(gaps.get(name) or 0.0)
-        move = max(-cap, min(cap, beta * run)) + float(move0)
-        # 🔴 **λ 식과 같은 꼴**이어야 한다 — 원정 배율을 빼면 합이 안 맞는다
-        now = _sim.run(mean * mul * math.exp(move),
-                       mean * mul_a * math.exp(-move))
-        out[name] = round((float(now.home) - prev) * 100.0, 2)
-        prev = float(now.home)
-        refs[name] = list(mr.axis(name).refs)[:3]
-    return out, refs
 
 
 def _note(state, said: str) -> None:
     if state is not None:
         state.note(said)
-
-
-def league_base(ref, facts, varset) -> dict | None:
-    """🔴 3-4 의 기준선 — **리그 평균만**으로 돈 확률(축 기여가 0일 때의 수).
-
-    ⚠️ 리그 평균이 없으면 `None`(지어내지 않는다).
-    """
-    from app.core import sim as _sim
-    mean, _why = league_mean(facts, ref=ref)
-    if mean is None:
-        return None
-    mul, _said = home_mul(facts, varset, ref=ref)
-    if mul is None:
-        return None            # 🔴 기준 분포도 홈 이점 없이는 안 만든다
-    # 🔴 **λ 식과 같은 꼴** — 원정 배율도 건다(2026-10-12 2-b). ⚠️ 여기만 빠지면
-    #    기여 분해의 합이 리그 평균 대비 변화와 **안 맞는다**(계약이 센다).
-    from app import rules as _r2
-    said_kind2 = _kind(ref, facts)
-    mul_a2, _w = away_mul(home_share=_r2.goal_baseline(said_kind2).get(
-        "home_share"), per_team=_r2.goal_share(said_kind2))
-    out = _sim.run(mean * mul, mean * mul_a2)
-    return {"home": out.home, "draw": out.draw, "away": out.away}

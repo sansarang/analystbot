@@ -62,38 +62,43 @@ def test_legacy_keeps_all_four_axes() -> None:
 
 
 def test_operation_uses_the_frozen_engine() -> None:
-    """🔴🔴 **운영 교체**(사용자 결정 2026-10-12) — 운영 ⑯ 의 수는 **얼린 M1** 이다.
+    """🔴🔴 **지운 경로를 계약하던 시험이다** — 사용자 지시 2026-10-17.
 
-    ⚠️ 방향이 뒤집혔다: 종전에는 *"새 구조가 판정 · 옛 구조가 그림자"* 였다.
-       🔴 460경기 비교 시험에서 M3 가 **어느 지표에서도 M1 을 앞서지 못했다**.
-    🔴 그래서 ⑯ 은 `legacy/old_engine.run` 의 수를 **그대로** 쓰고(다시 계산하지
-       않는다 · K0), **M3 가 그림자**다.
+    > 상성이 왜 들어가 있냐?? · **상성 삭제해라** · **시뮬도 삭제해라**
+
+    ⚠️ 이 시험이 지키던 것(test_operation_uses_the_frozen_engine)은 **상성 축 · λ(기대 득점) · 몬테카를로
+       시뮬** 경로다. 그 경로의 결과가 **전부 버려지고 있었다** —
+       `probmodel.run` 마지막 세 줄이 승무패를 `flat_prob`(1/3 균등 + 변수)로
+       덮고 `lam`·`over`·`scores` 를 비웠기 때문이다.
+    🔴 그래서 **지웠고**, 이 시험은 *"되살아나지 않는다"* 를 지키는 쪽으로
+       바꾼다(지우면 되살아나도 아무도 안 본다).
     """
-    # ══════════════════════════════════════════════════════════════
-    # 🔴🔴 **이 계약의 전제가 덮였다** — 사용자 지시 2026-10-15 · 10-17
-    # ══════════════════════════════════════════════════════════════
-    #
-    #  이 시험은 *"운영 ⑯ 의 수는 **얼린 M1**"*(2026-10-12 결정)을 세고 있었다.
-    #  🔴 그 결정은 두 번 덮였다:
-    #    · 2026-10-15 — *"변수 넣기전 초기 확률 **33.3 프로로 동등**하게 해라"*
-    #      → 승무패는 `flat_prob`(1/3 균등 + 변수)이 낸다(M1 이 아니다).
-    #    · 2026-10-15(3번) — *"기대득점 빼면…"* → λ·오버·스코어를 **비운다**.
-    #    · 2026-10-17 — *"λ 경로 **다 지워라** · **기대득점 지워라**"*
-    #      → 옛 엔진을 **부르지도 않는다**(그가 낸 것은 전부 버려졌다).
-    #  🔴 그래서 세는 것을 **지금 사실**로 바꾼다 — 운영 승무패의 출처가
-    #     `flat_prob` 하나이고, 운영 경로가 옛 엔진을 **안 부른다**는 것이다.
-    #  ⚠️ 얼린 파일 자체는 **지우지 않았다**(백필·비교 도구가 읽는다).
-    said = (ROOT / "app/core/probmodel.py").read_text(encoding="utf-8")
-    assert "_oe.run(" not in said, (
-        "🔴 운영이 **옛 엔진을 다시 부른다** — 기대득점은 지웠다"
-        "(사용자 지시 2026-10-17)")
-    # 🔴 운영 승무패는 `flat_prob` 가 낸다
-    i = said.index("said_flat, why_flat = flat_prob(varset, ref=ref)")
-    assert "got.home = round(float(said_flat[\"home\"]), 6)" in said[i:i + 400]
-    # 🔴 λ·오버·스코어는 비운다(지어내지 않는다)
-    assert "got.lam, got.over, got.scores = {}, {}, {}" in said
-    # 🔴 그림자는 M3 다(그 칸은 남는다 · 표시·채점용)
-    assert "got.shadow = dict(said_m3)" in said
+    import ast as _ast
+    import pathlib as _pl
+    root = _pl.Path(__file__).resolve().parents[2]
+
+    def _code(rel: str) -> str:
+        """🔴 D46 — 독스트링·주석을 뺀 **코드만** 본다."""
+        t = _ast.parse((root / rel).read_text(encoding="utf-8"))
+        for n in _ast.walk(t):
+            if isinstance(n, (_ast.Module, _ast.FunctionDef, _ast.AsyncFunctionDef,
+                              _ast.ClassDef)) and _ast.get_docstring(n):
+                n.body = n.body[1:]
+        return _ast.unparse(t)
+
+    #  ① 상성 단계가 **안 돈다**
+    assert "_s2e.run(" not in _code("app/core/pipeline.py"), (
+        "🔴 상성 단계가 되살아났다")
+    from app.core.stages import s2e_matchup as _s2e
+    assert not hasattr(_s2e, "run"), "🔴 `s2e_matchup.run`(상성)이 되살아났다"
+    #  ② 확률 경로가 **시뮬을 안 부른다**
+    said = _code("app/core/probmodel.py")
+    assert "_sim.run(" not in said, "🔴 확률 경로가 몬테카를로를 다시 부른다"
+    assert "flat_prob(varset" in said, "🔴 승무패가 `flat_prob` 에서 안 나온다"
+    #  ③ λ 재료 함수들이 **없다**
+    from app.core import probmodel as _pm
+    for one in ("league_mean", "away_mul", "_share", "league_base"):
+        assert not hasattr(_pm, one), f"🔴 `probmodel.{one}`(λ 재료)가 되살아났다"
 
 
 def test_card_records_both_numbers() -> None:

@@ -218,40 +218,16 @@ def profile_of(team_name: str, rows: list[dict]) -> Profile:
                + (f" · ⚠️ 홈/원정을 못 가린 경기 {skipped}건은 건너뛰었다"
                   if skipped else ""))
     return got
+# ══════════════════════════════════════════════════════════════════════
+# 🔴🔴 **상성·시뮬과 함께 지웠다** — 사용자 지시 2026-10-17
+# ══════════════════════════════════════════════════════════════════════
+#
+#  > 상성이 왜 들어가 있냐?? · **상성 삭제해라** · **시뮬도 삭제해라**
+#
+#  🔴 아래 함수들은 **상성 축(축0~축3)이 쓰던 부품**이다 — 스타일 6축·무기 표·
+#     백분위·창 검사·공격 기여·중심화. 상성 단계를 지우자 **부르는 곳이 0**
+#     이 됐다(`tests/test_wiring.py` 가 고아로 잡았다 · #2).
 
-
-def table_of(rows: list[dict]) -> list[dict]:
-    """🔴🔴 §3-1 — **골 하나하나의 표**. 긴 카드(§5)가 그대로 적는다.
-
-    한 줄 꼴: `{opp, home, minute, kind, state, bucket, xg, mine, lucky,
-    header}` — `mine` 이 참이면 **우리 득점**, 거짓이면 **실점**이다.
-
-    🔴 유형·상태·시간대·운 판정은 **위 함수들 하나씩**이 든다(사본 금지) —
-       `profile_of` 가 세는 것과 **같은 함수**라 표와 비중이 어긋나지 않는다.
-    ⚠️ `mine_home` 이 없는 줄은 `profile_of` 와 **같이** 건너뛴다.
-    """
-    out: list[dict] = []
-    for row in (rows or []):
-        box = dict(row)
-        if box.get("mine_home") is None:
-            continue
-        mine_home = bool(box.get("mine_home"))
-        opp = str((box.get("away_name") if mine_home
-                   else box.get("home_name")) or "")
-        for g in list(box.get("goals") or []):
-            mine = bool(g.get("home")) == mine_home
-            # 🔴 자책골은 **들어간 쪽**의 실점이다(`_one_match` 와 같은 규칙)
-            if g.get("own_goal"):
-                mine = not mine
-            out.append({
-                "opp": opp, "home": mine_home,
-                "minute": int(g.get("minute") or 0),
-                "kind": kind_of(g), "state": state_of(g),
-                "bucket": bucket_of(g),
-                "xg": (None if g.get("xg") is None else float(g["xg"])),
-                "mine": mine, "lucky": is_lucky(g)[0],
-                "header": is_header(g)})
-    return out
 
 
 def _one_match(got: Profile, goals: list[dict], *, mine_home: bool) -> None:

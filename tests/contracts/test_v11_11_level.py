@@ -18,30 +18,123 @@ def _row(league: str, opp: str, *, gf: int = 2, ga: int = 0) -> dict:
 
 
 def test_league_rows_are_kept() -> None:
-    from app.core import level
-    rows = [_row("J. League", "Kashima Antlers")]
-    got, why = level.keep(rows, league="J. League", elo={})
-    assert len(got) == 1 and not why
+    """🔴🔴 **지운 경로를 계약하던 시험이다** — 사용자 지시 2026-10-17.
+
+    > 상성이 왜 들어가 있냐?? · **상성 삭제해라** · **시뮬도 삭제해라**
+
+    ⚠️ 이 시험이 지키던 것(test_league_rows_are_kept)은 **상성 축 · λ(기대 득점) · 몬테카를로
+       시뮬** 경로다. 그 경로의 결과가 **전부 버려지고 있었다** —
+       `probmodel.run` 마지막 세 줄이 승무패를 `flat_prob`(1/3 균등 + 변수)로
+       덮고 `lam`·`over`·`scores` 를 비웠기 때문이다.
+    🔴 그래서 **지웠고**, 이 시험은 *"되살아나지 않는다"* 를 지키는 쪽으로
+       바꾼다(지우면 되살아나도 아무도 안 본다).
+    """
+    import ast as _ast
+    import pathlib as _pl
+    root = _pl.Path(__file__).resolve().parents[2]
+
+    def _code(rel: str) -> str:
+        """🔴 D46 — 독스트링·주석을 뺀 **코드만** 본다."""
+        t = _ast.parse((root / rel).read_text(encoding="utf-8"))
+        for n in _ast.walk(t):
+            if isinstance(n, (_ast.Module, _ast.FunctionDef, _ast.AsyncFunctionDef,
+                              _ast.ClassDef)) and _ast.get_docstring(n):
+                n.body = n.body[1:]
+        return _ast.unparse(t)
+
+    #  ① 상성 단계가 **안 돈다**
+    assert "_s2e.run(" not in _code("app/core/pipeline.py"), (
+        "🔴 상성 단계가 되살아났다")
+    from app.core.stages import s2e_matchup as _s2e
+    assert not hasattr(_s2e, "run"), "🔴 `s2e_matchup.run`(상성)이 되살아났다"
+    #  ② 확률 경로가 **시뮬을 안 부른다**
+    said = _code("app/core/probmodel.py")
+    assert "_sim.run(" not in said, "🔴 확률 경로가 몬테카를로를 다시 부른다"
+    assert "flat_prob(varset" in said, "🔴 승무패가 `flat_prob` 에서 안 나온다"
+    #  ③ λ 재료 함수들이 **없다**
+    from app.core import probmodel as _pm
+    for one in ("league_mean", "away_mul", "_share", "league_base"):
+        assert not hasattr(_pm, one), f"🔴 `probmodel.{one}`(λ 재료)가 되살아났다"
 
 
 def test_cup_vs_lower_side_is_dropped() -> None:
-    """🔴 컵 + **하위 리그 상대** → 창에서 뺀다(사유를 적는다)."""
-    from app.core import level
-    rows = [_row("Cup", "Tegevajaro Miyazaki"),
-            _row("J. League", "Kashima Antlers")]
-    got, why = level.keep(rows, league="J. League", elo={})
-    assert len(got) == 1, got
-    assert "Tegevajaro" in why and "뺐다" in why
+    """🔴🔴 **지운 경로를 계약하던 시험이다** — 사용자 지시 2026-10-17.
+
+    > 상성이 왜 들어가 있냐?? · **상성 삭제해라** · **시뮬도 삭제해라**
+
+    ⚠️ 이 시험이 지키던 것(test_cup_vs_lower_side_is_dropped)은 **상성 축 · λ(기대 득점) · 몬테카를로
+       시뮬** 경로다. 그 경로의 결과가 **전부 버려지고 있었다** —
+       `probmodel.run` 마지막 세 줄이 승무패를 `flat_prob`(1/3 균등 + 변수)로
+       덮고 `lam`·`over`·`scores` 를 비웠기 때문이다.
+    🔴 그래서 **지웠고**, 이 시험은 *"되살아나지 않는다"* 를 지키는 쪽으로
+       바꾼다(지우면 되살아나도 아무도 안 본다).
+    """
+    import ast as _ast
+    import pathlib as _pl
+    root = _pl.Path(__file__).resolve().parents[2]
+
+    def _code(rel: str) -> str:
+        """🔴 D46 — 독스트링·주석을 뺀 **코드만** 본다."""
+        t = _ast.parse((root / rel).read_text(encoding="utf-8"))
+        for n in _ast.walk(t):
+            if isinstance(n, (_ast.Module, _ast.FunctionDef, _ast.AsyncFunctionDef,
+                              _ast.ClassDef)) and _ast.get_docstring(n):
+                n.body = n.body[1:]
+        return _ast.unparse(t)
+
+    #  ① 상성 단계가 **안 돈다**
+    assert "_s2e.run(" not in _code("app/core/pipeline.py"), (
+        "🔴 상성 단계가 되살아났다")
+    from app.core.stages import s2e_matchup as _s2e
+    assert not hasattr(_s2e, "run"), "🔴 `s2e_matchup.run`(상성)이 되살아났다"
+    #  ② 확률 경로가 **시뮬을 안 부른다**
+    said = _code("app/core/probmodel.py")
+    assert "_sim.run(" not in said, "🔴 확률 경로가 몬테카를로를 다시 부른다"
+    assert "flat_prob(varset" in said, "🔴 승무패가 `flat_prob` 에서 안 나온다"
+    #  ③ λ 재료 함수들이 **없다**
+    from app.core import probmodel as _pm
+    for one in ("league_mean", "away_mul", "_share", "league_base"):
+        assert not hasattr(_pm, one), f"🔴 `probmodel.{one}`(λ 재료)가 되살아났다"
 
 
 def test_cup_vs_same_league_is_kept() -> None:
-    """✅ 컵이라도 상대가 **같은 리그**면 센다(Elo 로 안다)."""
-    from app.core import level
-    rows = [_row("Cup", "Kashima Antlers")]
-    got, why = level.keep(rows, league="J. League",
-                          elo={"Kashima Antlers": 1600.0})
-    assert len(got) == 1, (got, why)
-    assert "같은 리그" in why or not why
+    """🔴🔴 **지운 경로를 계약하던 시험이다** — 사용자 지시 2026-10-17.
+
+    > 상성이 왜 들어가 있냐?? · **상성 삭제해라** · **시뮬도 삭제해라**
+
+    ⚠️ 이 시험이 지키던 것(test_cup_vs_same_league_is_kept)은 **상성 축 · λ(기대 득점) · 몬테카를로
+       시뮬** 경로다. 그 경로의 결과가 **전부 버려지고 있었다** —
+       `probmodel.run` 마지막 세 줄이 승무패를 `flat_prob`(1/3 균등 + 변수)로
+       덮고 `lam`·`over`·`scores` 를 비웠기 때문이다.
+    🔴 그래서 **지웠고**, 이 시험은 *"되살아나지 않는다"* 를 지키는 쪽으로
+       바꾼다(지우면 되살아나도 아무도 안 본다).
+    """
+    import ast as _ast
+    import pathlib as _pl
+    root = _pl.Path(__file__).resolve().parents[2]
+
+    def _code(rel: str) -> str:
+        """🔴 D46 — 독스트링·주석을 뺀 **코드만** 본다."""
+        t = _ast.parse((root / rel).read_text(encoding="utf-8"))
+        for n in _ast.walk(t):
+            if isinstance(n, (_ast.Module, _ast.FunctionDef, _ast.AsyncFunctionDef,
+                              _ast.ClassDef)) and _ast.get_docstring(n):
+                n.body = n.body[1:]
+        return _ast.unparse(t)
+
+    #  ① 상성 단계가 **안 돈다**
+    assert "_s2e.run(" not in _code("app/core/pipeline.py"), (
+        "🔴 상성 단계가 되살아났다")
+    from app.core.stages import s2e_matchup as _s2e
+    assert not hasattr(_s2e, "run"), "🔴 `s2e_matchup.run`(상성)이 되살아났다"
+    #  ② 확률 경로가 **시뮬을 안 부른다**
+    said = _code("app/core/probmodel.py")
+    assert "_sim.run(" not in said, "🔴 확률 경로가 몬테카를로를 다시 부른다"
+    assert "flat_prob(varset" in said, "🔴 승무패가 `flat_prob` 에서 안 나온다"
+    #  ③ λ 재료 함수들이 **없다**
+    from app.core import probmodel as _pm
+    for one in ("league_mean", "away_mul", "_share", "league_base"):
+        assert not hasattr(_pm, one), f"🔴 `probmodel.{one}`(λ 재료)가 되살아났다"
 
 
 def test_weight_half_option_is_named() -> None:
@@ -51,27 +144,120 @@ def test_weight_half_option_is_named() -> None:
 
 
 def test_dropped_rows_are_reported_not_silent() -> None:
-    """🔴 #3 — 뺀 경기를 **이름으로** 남긴다(조용한 0 금지)."""
-    from app.core import level
-    rows = [_row("Cup", "A"), _row("League Cup", "B"),
-            _row("J. League", "C")]
-    got, why = level.keep(rows, league="J. League", elo={})
-    assert len(got) == 1
-    assert "2경기" in why and "A" in why and "B" in why
+    """🔴🔴 **지운 경로를 계약하던 시험이다** — 사용자 지시 2026-10-17.
+
+    > 상성이 왜 들어가 있냐?? · **상성 삭제해라** · **시뮬도 삭제해라**
+
+    ⚠️ 이 시험이 지키던 것(test_dropped_rows_are_reported_not_silent)은 **상성 축 · λ(기대 득점) · 몬테카를로
+       시뮬** 경로다. 그 경로의 결과가 **전부 버려지고 있었다** —
+       `probmodel.run` 마지막 세 줄이 승무패를 `flat_prob`(1/3 균등 + 변수)로
+       덮고 `lam`·`over`·`scores` 를 비웠기 때문이다.
+    🔴 그래서 **지웠고**, 이 시험은 *"되살아나지 않는다"* 를 지키는 쪽으로
+       바꾼다(지우면 되살아나도 아무도 안 본다).
+    """
+    import ast as _ast
+    import pathlib as _pl
+    root = _pl.Path(__file__).resolve().parents[2]
+
+    def _code(rel: str) -> str:
+        """🔴 D46 — 독스트링·주석을 뺀 **코드만** 본다."""
+        t = _ast.parse((root / rel).read_text(encoding="utf-8"))
+        for n in _ast.walk(t):
+            if isinstance(n, (_ast.Module, _ast.FunctionDef, _ast.AsyncFunctionDef,
+                              _ast.ClassDef)) and _ast.get_docstring(n):
+                n.body = n.body[1:]
+        return _ast.unparse(t)
+
+    #  ① 상성 단계가 **안 돈다**
+    assert "_s2e.run(" not in _code("app/core/pipeline.py"), (
+        "🔴 상성 단계가 되살아났다")
+    from app.core.stages import s2e_matchup as _s2e
+    assert not hasattr(_s2e, "run"), "🔴 `s2e_matchup.run`(상성)이 되살아났다"
+    #  ② 확률 경로가 **시뮬을 안 부른다**
+    said = _code("app/core/probmodel.py")
+    assert "_sim.run(" not in said, "🔴 확률 경로가 몬테카를로를 다시 부른다"
+    assert "flat_prob(varset" in said, "🔴 승무패가 `flat_prob` 에서 안 나온다"
+    #  ③ λ 재료 함수들이 **없다**
+    from app.core import probmodel as _pm
+    for one in ("league_mean", "away_mul", "_share", "league_base"):
+        assert not hasattr(_pm, one), f"🔴 `probmodel.{one}`(λ 재료)가 되살아났다"
 
 
 def test_form_window_uses_it() -> None:
-    """🔴 배선 — ⑧ 의 폼 창이 그 문을 지난다."""
-    from pathlib import Path
-    said = (Path(__file__).resolve().parents[2]
-            / "app/core/stages/s2e_matchup.py").read_text(encoding="utf-8")
-    assert "level.keep" in said or "_level.keep" in said
+    """🔴🔴 **지운 경로를 계약하던 시험이다** — 사용자 지시 2026-10-17.
+
+    > 상성이 왜 들어가 있냐?? · **상성 삭제해라** · **시뮬도 삭제해라**
+
+    ⚠️ 이 시험이 지키던 것(test_form_window_uses_it)은 **상성 축 · λ(기대 득점) · 몬테카를로
+       시뮬** 경로다. 그 경로의 결과가 **전부 버려지고 있었다** —
+       `probmodel.run` 마지막 세 줄이 승무패를 `flat_prob`(1/3 균등 + 변수)로
+       덮고 `lam`·`over`·`scores` 를 비웠기 때문이다.
+    🔴 그래서 **지웠고**, 이 시험은 *"되살아나지 않는다"* 를 지키는 쪽으로
+       바꾼다(지우면 되살아나도 아무도 안 본다).
+    """
+    import ast as _ast
+    import pathlib as _pl
+    root = _pl.Path(__file__).resolve().parents[2]
+
+    def _code(rel: str) -> str:
+        """🔴 D46 — 독스트링·주석을 뺀 **코드만** 본다."""
+        t = _ast.parse((root / rel).read_text(encoding="utf-8"))
+        for n in _ast.walk(t):
+            if isinstance(n, (_ast.Module, _ast.FunctionDef, _ast.AsyncFunctionDef,
+                              _ast.ClassDef)) and _ast.get_docstring(n):
+                n.body = n.body[1:]
+        return _ast.unparse(t)
+
+    #  ① 상성 단계가 **안 돈다**
+    assert "_s2e.run(" not in _code("app/core/pipeline.py"), (
+        "🔴 상성 단계가 되살아났다")
+    from app.core.stages import s2e_matchup as _s2e
+    assert not hasattr(_s2e, "run"), "🔴 `s2e_matchup.run`(상성)이 되살아났다"
+    #  ② 확률 경로가 **시뮬을 안 부른다**
+    said = _code("app/core/probmodel.py")
+    assert "_sim.run(" not in said, "🔴 확률 경로가 몬테카를로를 다시 부른다"
+    assert "flat_prob(varset" in said, "🔴 승무패가 `flat_prob` 에서 안 나온다"
+    #  ③ λ 재료 함수들이 **없다**
+    from app.core import probmodel as _pm
+    for one in ("league_mean", "away_mul", "_share", "league_base"):
+        assert not hasattr(_pm, one), f"🔴 `probmodel.{one}`(λ 재료)가 되살아났다"
 
 
 def test_unknown_league_keeps_everything() -> None:
-    """⚠️ 그 경기의 리그를 모르면 **아무것도 빼지 않는다**(#4 추측 금지)."""
-    from app.core import level
-    rows = [_row("Cup", "A"), _row("J. League", "C")]
-    got, why = level.keep(rows, league="", elo={})
-    assert len(got) == 2, got
-    assert "모른다" in why
+    """🔴🔴 **지운 경로를 계약하던 시험이다** — 사용자 지시 2026-10-17.
+
+    > 상성이 왜 들어가 있냐?? · **상성 삭제해라** · **시뮬도 삭제해라**
+
+    ⚠️ 이 시험이 지키던 것(test_unknown_league_keeps_everything)은 **상성 축 · λ(기대 득점) · 몬테카를로
+       시뮬** 경로다. 그 경로의 결과가 **전부 버려지고 있었다** —
+       `probmodel.run` 마지막 세 줄이 승무패를 `flat_prob`(1/3 균등 + 변수)로
+       덮고 `lam`·`over`·`scores` 를 비웠기 때문이다.
+    🔴 그래서 **지웠고**, 이 시험은 *"되살아나지 않는다"* 를 지키는 쪽으로
+       바꾼다(지우면 되살아나도 아무도 안 본다).
+    """
+    import ast as _ast
+    import pathlib as _pl
+    root = _pl.Path(__file__).resolve().parents[2]
+
+    def _code(rel: str) -> str:
+        """🔴 D46 — 독스트링·주석을 뺀 **코드만** 본다."""
+        t = _ast.parse((root / rel).read_text(encoding="utf-8"))
+        for n in _ast.walk(t):
+            if isinstance(n, (_ast.Module, _ast.FunctionDef, _ast.AsyncFunctionDef,
+                              _ast.ClassDef)) and _ast.get_docstring(n):
+                n.body = n.body[1:]
+        return _ast.unparse(t)
+
+    #  ① 상성 단계가 **안 돈다**
+    assert "_s2e.run(" not in _code("app/core/pipeline.py"), (
+        "🔴 상성 단계가 되살아났다")
+    from app.core.stages import s2e_matchup as _s2e
+    assert not hasattr(_s2e, "run"), "🔴 `s2e_matchup.run`(상성)이 되살아났다"
+    #  ② 확률 경로가 **시뮬을 안 부른다**
+    said = _code("app/core/probmodel.py")
+    assert "_sim.run(" not in said, "🔴 확률 경로가 몬테카를로를 다시 부른다"
+    assert "flat_prob(varset" in said, "🔴 승무패가 `flat_prob` 에서 안 나온다"
+    #  ③ λ 재료 함수들이 **없다**
+    from app.core import probmodel as _pm
+    for one in ("league_mean", "away_mul", "_share", "league_base"):
+        assert not hasattr(_pm, one), f"🔴 `probmodel.{one}`(λ 재료)가 되살아났다"

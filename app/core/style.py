@@ -184,64 +184,16 @@ def _axis_of(one: Style, name: str) -> float | None:
         return one.aerial
     got = dict(one.axis or {}).get(name)
     return float(got) if got is not None else None
+# ══════════════════════════════════════════════════════════════════════
+# 🔴🔴 **상성·시뮬과 함께 지웠다** — 사용자 지시 2026-10-17
+# ══════════════════════════════════════════════════════════════════════
+#
+#  > 상성이 왜 들어가 있냐?? · **상성 삭제해라** · **시뮬도 삭제해라**
+#
+#  🔴 아래 함수들은 **상성 축(축0~축3)이 쓰던 부품**이다 — 스타일 6축·무기 표·
+#     백분위·창 검사·공격 기여·중심화. 상성 단계를 지우자 **부르는 곳이 0**
+#     이 됐다(`tests/test_wiring.py` 가 고아로 잡았다 · #2).
 
-
-def off_weapons(read, prof, *, usual: set[str] | None = None,
-                out_today: set[str] | None = None) -> list[str]:
-    """🔴🔴 §2 둘째 줄 — **오늘 XI 에서 꺼진 무기**.
-
-    > 오늘 XI 에서 무기를 쥔 선수가 빠졌거나 벤치면 그 무기는 **꺼진 것**으로 본다.
-
-    🔴 지금 셀 수 있는 것은 **핵심 선수(득점+도움 상위)가 명단에서 빠졌나**다 —
-       `strategy.read` 가 그 상태를 이미 들고 있다(`key_state`).
-    ⚠️ *"어느 선수가 어느 축의 무기인가"* 를 가리는 자료(선수별 크로스·공중볼)는
-       받는 통로가 없다. 🔴 그래서 **핵심 선수가 빠지면 공격 쪽 축 셋**
-       (`forward`·`box_entry`·`direct`)을 끈다 — 그 범위를 여기 적어 둔다.
-    """
-    said = dict(getattr(read, "key_state", None) or {})
-    gone = [nm for nm, st in said.items() if st in ("명단 제외", "벤치")]
-    # 🔴🔴 ③ — **오늘 결장**도 받는다(사용자 지시 2026-10-11 ③). ⚠️ `key_state` 는
-    #    리그 페이지의 **팀당 상위 2명**만 들어서 뮐러처럼 자주 뛰는 선수의 결장이
-    #    통째로 빠졌다(실측 2026-10-11: 밴쿠버 꺼진 무기 0).
-    for nm in sorted(out_today or ()):
-        if nm not in gone:
-            gone.append(nm)
-    if not gone:
-        return []           # 🔴 고정물 — **빠진 선수가 없으면 꺼진 무기도 없다**
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **평소 XI 에 있었던 선수만 끈다**(사용자 지시 2026-10-11 ③)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  > "평소 XI(최근 폼 계산 기간)에 있었는데 오늘 빠진 선수"만 무기를 끈다.
-    #  > 그 기간 내내 빠져 있던 **장기 결장(에보비세)은 폼에 이미 들어 있으니 끄지
-    #  > 않는다(이중 계산)**. 이번에 새로 빠진 뮐러·바드왈은 공격 기여 비중으로 센다.
-    #
-    #  🔴 `usual` 은 **폼 창의 선발 명단 합집합**이다(`s2e_matchup.usual_xi`).
-    #  ⚠️ `usual` 을 **안 주면 거르지 않는다** — 그 자료가 없는 호출부(백필·옛
-    #     테스트)에서 *"없는 것을 없다"* 로 바꿔 조용히 무기를 켜지 않기 위해서다.
-    if usual is not None:
-        gone = [nm for nm in gone if _same_player(nm, usual)]
-        if not gone:
-            return []
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **비중으로 끈다**(사용자 지시 2026-10-11 ③)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  > 무기 꺼짐은 결장·벤치 선수가 **그 무기의 주 기여자일 때만**.
-    #
-    #  ⚠️ 실사고 2026-10-11: 이 함수가 **상수**(`forward`·`box_entry`·`direct`)를
-    #     돌려줬다 — 그래서 LAFC·밴쿠버가 **둘 다 3/3**, 김천–안양도 3/3 이었다.
-    #     양 팀이 늘 같은 값이면 축2 의 차는 **언제나 0** 이다(실제로 그랬다).
-    #  🔴 이제 **빠진 선수의 공격 기여 비중**으로 센다 — 그 비중이 클수록 더 많은
-    #     공격 축이 꺼진다. ⚠️ *"어느 선수가 어느 축의 무기인가"* 를 가리는 자료는
-    #     여전히 **없다**(선수별 크로스·공중볼 통로가 없다) — 그래서 **비중**으로만
-    #     가르고 그 한계를 여기 적어 둔다(#4).
-    share = _att_share(read, gone)
-    if share >= 0.30:
-        return ["forward", "box_entry", "direct"]
-    if share >= 0.15:
-        return ["forward"]
-    return []
 
 
 #: 🔴 빠진 선수의 공격 기여가 팀의 이만큼이면 **공격 축 셋**이 꺼진다
@@ -297,37 +249,6 @@ def _att_share(read, gone: list[str]) -> float:
     return max(0.0, min(1.0, mine / total))
 
 
-def off_from_vars(varset, side: str) -> tuple[list[str], list[str]]:
-    """🔴🔴 **F2** — 배치된 변수에서 **꺼진 무기 · 켜진 무기**.
-
-    > 결장·징계 변수 → 그 선수가 쥔 무기 **꺼짐**, 복귀 변수 → **켜짐**.
-    >   — 지시서 2026-10-11 F2
-
-    🔴 유형으로 가린다(`absence`·`def_absence`·`absence_att`·`suspension` → 꺼짐,
-       `returning`·`national_duty_return` → 켜짐). ⚠️ *"어느 선수가 어느 축의
-       무기인가"* 를 가리는 자료는 **없다**(선수별 크로스·공중볼 통로가 없다) —
-       그래서 `off_weapons` 와 **같은 범위**를 쓴다(공격 축 셋). 범위를 여기 적어
-       둔다(#4 — 모르는 것을 아는 척하지 않는다).
-    """
-    OFF = {"absence", "def_absence", "absence_att", "suspension"}
-    ON = {"returning", "national_duty_return"}
-    gone, back = [], []
-    for row in (varset.of("axis2") if varset is not None else []):
-        kind = str(getattr(row, "type", "") or "")
-        rid = str(getattr(row, "id", "") or "")
-        # 🔴 **어느 팀 것인가는 id 의 꼬리로만 본다**(`IR02-home`) — ⚠️ `VarRow` 에
-        #    `side` 칸이 없고, `favors`(누구에게 유리한가)로 뒤집어 재면 그것은
-        #    **추측**이다(#4). 꼬리가 없으면 **어느 쪽에도 안 붙인다**.
-        if not rid.endswith(f"-{side}"):
-            continue
-        if kind in OFF:
-            gone.append(rid)
-        elif kind in ON:
-            back.append(rid)
-    axes = ["forward", "box_entry", "direct"]
-    return (axes if gone and not back else []), (axes if back else [])
-
-
 #: 🔴 전략 판정이 6축을 어느 쪽으로 미는가 — **임시값**(적합 전)
 #  ⚠️ 수를 지어내지 않는다: 방향만 적고 크기는 한 칸(`STRATEGY_STEP`)이다.
 STRATEGY_STEP = 0.15
@@ -337,43 +258,3 @@ STRATEGY_MOVE: dict[str, dict[str, float]] = {
     "로테이션·체력 관리": {"press": -1},
     "squad_turnover": {"press": -1, "forward": -1},
 }
-
-
-def adjust(prof: Style, verdict: str) -> Style:
-    """🔴🔴 **F2** — 전략 판정으로 **스타일 6축을 조정**한다.
-
-    > 전략(수비 위주·3백 전환 등) → 스타일 6축 조정.  — 지시서 2026-10-11 F2
-
-    🔴 방향만 표에 적고 크기는 **한 칸**(`STRATEGY_STEP`)이다 — 🔴 **임시값**이고
-       사유에 그렇게 남는다. ⚠️ 표에 없는 판정이면 **안 건드린다**.
-    """
-    move = STRATEGY_MOVE.get(str(verdict or ""), {})
-    if not move or not prof.axis:
-        return prof
-    axis = dict(prof.axis)
-    said = []
-    for key, way in move.items():
-        if axis.get(key) is None:
-            continue
-        axis[key] = float(axis[key]) + way * STRATEGY_STEP
-        said.append(f"{key} {way * STRATEGY_STEP:+.2f}")
-    if not said:
-        return prof
-    return Style(team=prof.team, n=prof.n, axis=axis, aerial=prof.aerial,
-                 why=(prof.why + f" · 전략 `{verdict}` 조정 {' · '.join(said)}"
-                      f"(🔴 임시값)"))
-
-
-def late_weapons(read) -> list[str]:
-    """🔴 §2 마지막 줄 — **후반 무기**(교체 전문 선수 중 득점 기여 상위).
-
-    > 교체 전문 선수(시즌 선발 비율 30% 미만·득점 기여 상위)는 *"후반 무기"* 로
-    > 따로 표시.
-
-    🔴 선발 비율은 `strategy.read` 가 이미 셌다(`bench_regulars`).
-    ⚠️ *"득점 기여 상위"* 는 `key_state` 에 그 이름이 있는지로 본다(핵심 선수 표가
-       득점+도움 상위다).
-    """
-    rows = [dict(x) for x in (getattr(read, "bench_regulars", None) or [])]
-    key = set(dict(getattr(read, "key_state", None) or {}))
-    return [x["name"] for x in rows if x.get("name") in key]

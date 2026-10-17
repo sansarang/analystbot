@@ -31,344 +31,28 @@ def _plan_of(strategy: Any, side: str) -> str:
         if str(getattr(one, "side", "")) == side:
             return str(getattr(one, "strategy", "") or "")
     return ""
+# ══════════════════════════════════════════════════════════════════════
+# 🔴🔴 **상성 단계(`run`)를 지웠다** — 사용자 지시 2026-10-17
+# ══════════════════════════════════════════════════════════════════════
+#
+#  > 상성이 왜 들어가 있냐?? · **상성 삭제해라**
+#
+#  🔴 **까닭 — 결과가 버려지고 있었다.** `run` 이 축0~축3(Elo 잔차·폼·스타일·
+#     시간대)을 모아 `probmodel` 의 λ 시뮬로 보냈는데, 같은 함수 마지막 세 줄이
+#     승무패를 `flat_prob`(1/3 균등 + 변수)로 **덮고** `lam`·`over`·`scores` 를
+#     **비웠다**. 즉 `eloratings.net` 통신과 몬테카를로를 돌리고 **버렸다**.
+#     ⚠️ 울산 실행 로그가 그 낭비를 적었다: `[s2e] Elo 를 못 찾은 팀 1곳`.
+#
+#  🔴 **남긴 것 — 이 파일은 이제 "경기 이력·폼 재료"다**(상성이 아니다):
+#       `_history`   그 팀의 지난 경기 목록(10경기) — `s2_facts` 가 쓴다
+#       `games_of`   경기 한 줄 꼴 — 폼·결장·전략이 읽는 그 꼴이다
+#       `usual_xi`   폼 창의 선발 합집합 — `style` 이 쓴다
+#       `adv_players` 공격 기여 — `strategy` 가 쓴다
+#     ⚠️ 그 넷은 **② 바닥 사실의 재료**이지 상성 계산이 아니다. 지우면
+#        폼·결장·전략이 같이 죽는다(실측으로 확인하고 남겼다).
 
 
-async def run(ref: MatchRef, facts: Facts, *, state: RunState, net: Any,
-              varset: Any = None, turnover: dict | None = None,
-              strategy: Any = None) -> dict:
-    """🔴🔴 세 축을 모은다. ⚠️ 못 모은 축은 **사유를 담아** 돌려준다.
 
-    ══════════════════════════════════════════════════════════════════
-    🔴🔴 **F2 — 변수·깃발·전략이 재료로 들어온다**(지시서 2026-10-11)
-    ══════════════════════════════════════════════════════════════════
-
-    > ⑧ 입력 시그니처: `(ref, facts, varset_axis, turnover, strategy)`.
-    >   · 결장·징계 변수 → 그 선수가 쥔 무기 **꺼짐**, 복귀 변수 → **켜짐**
-    >   · 교체 운용 선수(선발 비율 30% 미만) → **후반 무기**
-    >   · turnover r → 폼·골 내용·스타일 집계에서 **과거 경기 가중**
-    >   · 전략(수비 위주·3백 전환 등) → **스타일 6축 조정**
-    > 규칙 T1~T13 발동은 **이 조정된 재료**로 판정한다.
-
-    🔴 그래서 **전략 판정(⑦)이 이 단계보다 먼저** 돈다(파이프라인이 그 순서다).
-    """
-    from app.core import form as _form
-    from app.core import goals as _goals
-    out: dict = {}
-    rows = {}
-    for side in ("home", "away"):
-        name = str(getattr(ref, f"{side}_name", "") or "")
-        # 🔴 as-of 는 **킥오프**다 — 그 뒤 경기는 어떤 목록에도 없다(L1)
-        said_ids = dict(dict(getattr(facts, "standings", None) or {})
-                        .get("team_ids") or {})
-        got = await _history(
-            net, name, state=state, ref=ref,
-            as_of=getattr(ref, "kickoff_utc", None),
-            tid_hint=str(said_ids.get(str(getattr(ref, side, "")) or "")
-                         or ""))
-        if got is None:
-            out[f"{side}_why"] = f"🔴 `{name}` 의 과거 경기를 못 받았다"
-            continue
-        # 🔴🔴 **고급 지표를 줄에 붙인다**(지시서 2026-10-12 ② 축3·무기 표) —
-        #    `goals.profile_of` 가 `xg_min`·`xg_group` 을 그 줄에서 읽는다.
-        #    🔴 세는 함수는 `_adv_of` **하나다**(사본 금지 · `games_of` 도 그것을 쓴다).
-        for one in got:
-            if one.get("mine_home") is None:
-                continue
-            adv = _adv_of(one, mine_home=bool(one["mine_home"]))
-            one["xg_min"] = adv["xg_min"]
-            one["xg_group"] = adv["xg_group"]
-        rows[side] = got
-    if len(rows) != 2:
-        # 🔴 **어느 쪽이 왜 비었나**를 함께 적는다(P1) — 종전에는 *"두 팀"* 이라고만
-        #    적어 어느 팀이 막혔는지 카드에서 알 수 없었다(실측: 꽁안 하노이).
-        said_gap = " · ".join(
-            str(out.get(f"{s2}_why") or "")
-            for s2 in ("home", "away") if out.get(f"{s2}_why"))
-        out["axis2_why"] = ("🔴 두 팀 과거 경기를 다 못 받아 축2 를 안 센다"
-                            + (f" — {said_gap}" if said_gap else ""))
-        out["why"] = ("🔴 두 팀 과거 경기를 다 못 받아 **상성을 안 센다**"
-                      + (f" — {said_gap}" if said_gap else ""))
-        state.note(f"s2e 상성 — {out['why']}")
-        return out
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 ① **한 경기 목록** — 폼 블록·축1·두 창이 전부 이것을 본다
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  ⚠️ 실사고 2026-10-11(LAFC–밴쿠버): 카드의 폼 블록은 **fotmob 폼 블록**
-    #     (5경기)을, 축1 은 **경기 페이지 목록**(10경기)을 읽었다 — 그래서
-    #     *"최근5 실점 10, 최근10 실점 9"* 라는 **불가능한 수**가 나란히 찍혔다.
-    games = {side: games_of(rows[side]) for side in ("home", "away")}
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **ⓒ 대회 수준 — 폼 창은 리그 경기만**(사용자 지시 2026-10-12)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  🔴 컵은 상대가 **같은 리그면 센다**(리그 Elo 표에 있나로 가린다) —
-    #     하위 리그 상대 컵 경기는 **뺀다**. 뺀 경기는 사유에 **이름으로** 남는다.
-    #  ⚠️ 실측 2026-10-12(가와사키): 창 9경기 중 **3경기가 컵**이고 상대가 하위
-    #     리그였다 — 그 득점이 축1 을 +1.085(강)로 끌어올렸다.
-    from app.core import level as _level
-    # 🔴🔴 **기준은 "이 경기의 대회"다**(실사고 2026-10-13 · 토리노–우디네세):
-    #    종전에는 **지난 경기 목록의 첫 줄**에서 대회 이름을 집었다. 토리노의 첫
-    #    줄이 `Coppa Italia` 라 기준이 컵이 되고, **세리에A 경기 3건이 전부
-    #    "다른 대회"로 빠졌다**(로그: `Milan[Serie A]`·`Sassuolo[Serie A]`·
-    #    `Fiorentina[Serie A]` 제거) — 그래서 축1 폼이 친선·컵만 봤다.
-    #  🔴 그 경기의 대회 이름은 `ref` 가 든다(`competition`·`competition_short`).
-    #  ⚠️ 그것도 비면 **아무것도 빼지 않는다**(#4 추측 금지) — `level.keep` 이
-    #     그 사실을 사유로 적는다.
-    said_lg = str(getattr(ref, "competition", "") or "")
-    if not said_lg:
-        said_lg = str(getattr(ref, "competition_short", "") or "")
-    elo_tab = _elo_of(ref, rows)
-    level_why: dict = {}
-    for side in ("home", "away"):
-        kept, why_lv = _level.keep(games[side], league=said_lg, elo=elo_tab)
-        level_why[side] = why_lv
-        if kept and len(kept) != len(games[side]):
-            games[side] = kept
-    out["level_why"] = level_why
-    if any(level_why.values()):
-        state.note("s2e ⓒ 대회 수준 — "
-                   + " / ".join(f"{s} {level_why[s]}"
-                                for s in ("home", "away") if level_why[s]))
-    # 🔴🔴 ④ — **평소 XI·오늘 빠짐을 id 로** 센다(사용자 지시 2026-10-11 ④).
-    #    ⚠️ 실사고 2026-10-11(가와사키): 캡처가 한글(`이즈미`)이고 결장 명단이
-    #       로마자(`Ryuji Izumi`)라 글자로는 **다른 사람**이었다 — 그래서 선발이
-    #       무기 꺼짐으로도 들어갔다.
-    from app.core import playerid as _pid
-    pid_box = {side: _pid.build(rows=_pid_rows(facts, getattr(ref, side, ""),
-                                               games[side]),
-                                ko=_ko_players())
-               for side in ("home", "away")}
-    usual = {side: {_pid.resolve(pid_box[side], said=x)[0] or f"name:{x}"
-                    for x in usual_xi(rows[side])}
-             for side in ("home", "away")}
-    # 🔴 ① 계약 — 창이 어긋나면 **축1 미계산 + 운영자 알림**
-    window_bad = {side: _form.windows_bad(games[side])
-                  for side in ("home", "away")}
-    out["games"] = games
-    out["window_bad"] = window_bad
-    out["usual_xi"] = {s: sorted(v) for s, v in usual.items()}
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **(가) 라인업 표시 — 확률에 안 닿는다**(사용자 결정 2026-10-13 밤)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  🔴 보정 세 판(L1·L6·L9)이 모두 판정을 못 넘었다 → *"라인업은 확률에 넣지
-    #     않고 카드 표시·검증만. **L9 값**과 **평소 대비 공격 기여 −X%** 를 카드에
-    #     적는다."* ⚠️ 그래서 아래 수는 **λ·격자·확률에 가지 않는다**(계약이 센다).
-    said_view, why_view = _lineup_view(ref, facts, pid_box=pid_box,
-                                       usual=usual)
-    out["lineup_view"] = said_view
-    out["lineup_view_why"] = why_view
-    state.note(f"s2e (가) 라인업 표시 — {why_view}")
-    for side, said in window_bad.items():
-        if said:
-            state.note(f"🔴🔴 **운영자 알림** — {side} 경기 목록의 두 창이 "
-                       f"어긋났다: {said} → 축1 을 안 센다")
-            logger.error("[s2e] 창 불일치 %s — %s", side, said)
-    # ── 축3 골 프로필
-    prof = {side: _goals.profile_of(str(getattr(ref, f"{side}_name", "")),
-                                    rows[side])
-            for side in ("home", "away")}
-    rest = {side: _rest_days(facts, getattr(ref, side)) for side in
-            ("home", "away")}
-    fired = _goals.fire(prof["home"], prof["away"], rest=rest)
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **축2 — 스타일 프로필 6축 + T1~T6**(사용자 지시 §2)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  🔴 재료는 **같은 경기 페이지의 통계**다(새 통신이 없다) — 실측 2026-10-10
-    #     에 그 표가 28칸이었다(`expected_goals_set_play`·`aerials_won` 포함).
-    #  🔴 **꺼진 무기**(§2 둘째 줄)는 `strategy.read` 의 핵심 선수 상태로 센다 —
-    #     확정 XI 가 아니면 빈 목록이다(그 사실이 사유에 남는다).
-    from app.core import strategy as _strat
-    from app.core import style as _style
-    styles = {side: _style.profile_of(
-        str(getattr(ref, f"{side}_name", "")), rows[side])
-        for side in ("home", "away")}
-    # 🔴🔴 **선수 기여표에 xG+xA 를 먹인다**(지시서 2026-10-12 ②) — 창 안
-    #    경기를 더한 표다(`adv_players`). ⚠️ 비면 득점+도움으로 간다(퇴로).
-    advs = {side: adv_players(rows[side]) for side in ("home", "away")}
-    reads = {side: _strat.read(ref, facts, side=side, adv=advs[side])
-             for side in ("home", "away")}
-    # 🔴 F2 — **전략으로 6축을 조정한 뒤** 규칙을 발동한다(재료가 먼저 굳으면
-    #    전략은 뒤늦은 장식이 된다)
-    said_plan = {side: _plan_of(strategy, side) for side in ("home", "away")}
-    styles = {side: _style.adjust(styles[side], said_plan[side])
-              for side in ("home", "away")}
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 ③ **평소 XI 의 결장만 무기를 끈다** — 사용자 지시 2026-10-11 ③
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  ⚠️ 실측 2026-10-11: `strategy._key_state` 는 리그 페이지의 **팀당 상위
-    #     2명**만 든다 — 그래서 뮐러(6/8 선발 · 오늘 결장)가 **어디에도 안 세어져**
-    #     밴쿠버의 꺼진 무기가 0 이었다. 🔴 그래서 **오늘 빠진 선수**를
-    #     `facts.missing`(결장 목록)에서 직접 받아 넘긴다.
-    #  🔴 끄는 대상은 **평소 XI ∩ 오늘 빠짐**이다 — 로테이션으로 빠진 선수(결장
-    #     사실이 없는)는 **세지 않는다**(모르는 것을 결장으로 바꾸지 않는다 · #4).
-    out_today = {side: {_pid.resolve(pid_box[side], said=x)[0] or f"name:{x}"
-                        for x in _out_today(facts, getattr(ref, side, ""))}
-                 for side in ("home", "away")}
-    offs = {side: _style.off_weapons(reads[side], styles[side],
-                                     usual=usual[side],
-                                     out_today=out_today[side])
-            for side in ("home", "away")}
-    # 🔴 #3 — **왜 0 인가**를 적는다(평소 XI 없음 · 빠짐 없음 · 비중 모자람)
-    off_why = {}
-    for side in ("home", "away"):
-        hit = sorted(usual[side] & out_today[side])
-        att = dict(getattr(reads[side], "att_table", None) or {})
-        off_why[side] = _off_why(
-            usual=usual[side], out_today=out_today[side],
-            share=_style._att_share(reads[side], hit) if hit else 0.0,
-            table=len(att))
-    out["off_why"] = off_why
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 D **빠진 주전(핵심)의 비중을 축0 으로**(사용자 지시 2026-10-11)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  > 결장을 λ 에 닿게 · **결장선수가 핵심선수인지 확인하고** 닿게 해라.
-    #
-    #  🔴 "핵심"은 둘 중 하나다 — ① 공격 기여 비중 ≥ 문턱 · ② 리그 페이지가 꼽은
-    #     핵심 선수(`key_state`). ⚠️ 기여표가 비면 **못 쟀다**고 적고 0 이다(#3).
-    miss_share: dict = {}
-    miss_why: dict = {}
-    for side in ("home", "away"):
-        hit = sorted(usual[side] & out_today[side])
-        att = dict(getattr(reads[side], "att_table", None) or {})
-        shares = {x: _style._att_share(reads[side], [x]) for x in hit}
-        said_keys = {
-            _pid.resolve(pid_box[side], said=nm)[0] or f"name:{nm}"
-            for nm, st in dict(getattr(reads[side], "key_state", None)
-                               or {}).items()
-            if st in ("명단 제외", "벤치")}
-        from app.core import matchup as _mu0
-        got_share, said = _mu0.key_miss(shares=shares, keys=said_keys,
-                                       table=len(att))
-        miss_share[side] = got_share
-        miss_why[side] = said
-    out["miss_share"] = miss_share
-    out["miss_why"] = miss_why
-    state.note("s2e D 빠진 주전 — "
-               + " · ".join(f"{s} {miss_share[s]:.0%}({miss_why[s]})"
-                            for s in ("home", "away")))
-    state.note("s2e ③ 꺼진 무기 — "
-               + " · ".join(f"{s} {off_why[s]}" for s in ("home", "away")))
-    # 🔴 F2 — **변수(결장·복귀)도 무기를 끄고 켠다**(XI 만 보던 자리다)
-    for side in ("home", "away"):
-        gone, back = _style.off_from_vars(varset, side)
-        # 🔴 ③ — **변수 경로도 같은 문을 지난다**(실측 2026-10-11: `IR02-home`
-        #    이 에보비세(3/10 선발)로 공격 축 셋을 통째로 껐다)
-        hit0 = sorted(usual[side] & out_today[side])
-        gone = _gate_off(gone, usual=usual[side], out_today=out_today[side],
-                         share=(_style._att_share(reads[side], hit0)
-                                if hit0 else 0.0))
-        offs[side] = sorted({*offs[side], *gone} - set(back))
-    late = {side: _style.late_weapons(reads[side]) for side in ("home", "away")}
-    fired2 = _style.fire(styles["home"], styles["away"], off=offs)
-    # 🔴 F2/R3 — **r 가중**(선수단 교체)을 재료에 적어 둔다 — 축1·축3 이 그 수로
-    #    과거 경기를 깎고, 보고가 그 사실을 적는다(조용히 깎지 않는다 · #3)
-    from app.core import matchup as _mu
-    # 🔴 3a(2026-10-12) — **핵심 선수 상태**를 쓰는 곳이 둘이 됐다(꺼진 무기 ·
-    #    무너뜨릴 조건 K1). 그 읽은 것을 재료로 내보낸다(두 번 읽지 않는다).
-    # 🔴🔴 [2b] — **상태 배율을 TeamRead 에 싣는다**(지시서 2026-10-12).
-    #    ⚠️ 확률은 ⑪ 에서만 쓴다 — 축3 합산에 **또 더하지 않는다**(S1).
-    #       여기 싣는 까닭은 카드·축3 **근거 줄**(관찰)과 반증 K 조건이다.
-    said_state = dict(getattr(facts, "state_rates", None) or {})
-    for side in ("home", "away"):
-        got_one = dict(said_state.get(side) or {})
-        if got_one and reads.get(side) is not None:
-            reads[side].state_mult = got_one
-    if said_state:
-        from app.core import staterates as _sr
-        out["state_said"] = _sr.said_of(
-            said_state, dict(getattr(facts, "state_rates_why", None) or {}))
-        state.note("s2e [2b] 상태 배율 — " + out["state_said"])
-    out["reads"] = reads
-    out["r"] = _mu.r_of(varset, ref, turnover=turnover)
-    out["turnover"] = dict(turnover or {})
-    out["strategy_move"] = {s: said_plan[s] for s in ("home", "away")}
-    state.note(f"s2e F2 — 전략 {said_plan} · r {out['r']} · "
-               f"꺼진 무기 { {s: len(v) for s, v in offs.items()} }")
-    out.update({"style": styles, "fired2": fired2, "off": offs, "late": late,
-                "axis2_why": (
-                    " · ".join(f"{s} {one.why}" for s, one in styles.items())
-                    + f" · 발동 {len(fired2)}건"
-                    + (f" · 꺼진 무기 {offs}" if any(offs.values()) else "")
-                    # 🔴 #3 — 0 이어도 **까닭**을 적는다
-                    + " · 꺼짐 판정 " + " / ".join(
-                        f"{s} {off_why[s]}" for s in ("home", "away"))
-                    + (f" · 후반 무기 {late}" if any(late.values()) else ""))})
-    # ── 축1 보정 폼(운 요소 할인은 축3 의 T12 가 준다)
-    elo = _elo_of(ref, rows)
-    cut = {side: _luck_cut(fired, side) for side in ("home", "away")}
-    # 🔴🔴 **홈 이점 중심화 Δ**(사용자 지시 2026-10-12 2-a) — 쪽 폼에서 뺀다.
-    #    ⚠️ Δ 는 실측(`goal_baselines`)에서 온다 — 없으면 0.0(안 한다).
-    from app.core import probmodel as _pm0
-    from app import rules as _rules0
-    said_kind = _pm0._kind(ref, facts)
-    said_base = _rules0.goal_baseline(said_kind)
-    side_mid, why_mid = _pm0.side_center(
-        home_share=said_base.get("home_share"),
-        per_team=_rules0.goal_share(said_kind))
-    if side_mid:
-        state.note(f"s2e 2-a 홈 이점 중심화 — {why_mid}")
-    form = {side: _form.form_of(
-        str(getattr(ref, f"{side}_name", "")),
-        _as_form(rows[side], str(getattr(ref, f"{side}_name", ""))),
-        elo=elo, luck_goals=cut[side], games=games[side],
-        # 🔴 C — 홈팀은 **홈 경기 폼**, 원정팀은 **원정 경기 폼**으로 본다
-        side_at=side, side_center=side_mid)
-        for side in ("home", "away")}
-    pool = [f.index() for f in form.values() if f.index() is not None]
-    for side, one in form.items():
-        one.pct_att = _form.percentile(one.index(), pool)
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **xG 판 폼도 함께 센다**(사용자 결정 2026-10-12 — 3번 b)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  > 4번 검수: 같은 경기 득실판 vs xG판 확률 비교 … (b) 두 판을 카드에
-    #  > 나란히 적어 둔다 — 백필이 쌓일 때까지 **기본값은 득실판**이다.
-    #
-    #  🔴 두 판은 **같은 경기 목록**을 본다(`games[side]`) — 다른 것은 지수뿐이다
-    #     (100% xG · 운 할인 끔). ⚠️ 계수도 따로다(`matchup.table(xg=True)`).
-    form_xg = {side: _form.form_of(
-        str(getattr(ref, f"{side}_name", "")),
-        _as_form(rows[side], str(getattr(ref, f"{side}_name", ""))),
-        elo=elo, games=games[side], side_at=side, xg_only=True,
-        side_center=side_mid)
-        for side in ("home", "away")}
-    ok_xg = all(one.xg_only and one.index() is not None
-                for one in form_xg.values())
-    out["form_xg"] = form_xg if ok_xg else {}
-    out["xg_why"] = ("" if ok_xg else
-                     "🔴 xG 판 없음 — "
-                     + " · ".join(f"{s} {one.why[-60:]}"
-                                  for s, one in form_xg.items()))
-    # 🔴🔴 §5 — 긴 카드가 적는 **골 목록 표**(분·유형·상태·xG). 같은 함수들로
-    #    세므로 표와 비중이 어긋나지 않는다(`goals.table_of`).
-    out["table"] = {side: _goals.table_of(rows[side])
-                    for side in ("home", "away")}
-    out.update({"form": form, "profile": prof, "fired": fired, "rest": rest,
-                # 🔴 ① — 축1 이 이 칸을 보고 **안 센다**(틀린 수가 λ 로 가는 길을 끊는다)
-                "window_bad": window_bad,
-                "why": (f"축1 폼 {', '.join(f'{s} {f.index()}' for s, f in form.items())}"
-                        f" · 축3 발동 {len(fired)}건")})
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 §4 — **분 단위 시뮬레이션**(해석 계산 · 같은 입력이면 같은 수)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  🔴 λ 는 **이 경기 총골 기준**에서 나눈다(새 기준선을 만들지 않는다) —
-    #     그 기준은 `facts.standings["match_total_baseline"]` 하나다.
-    #  ⚠️ 기준이 없으면 시뮬레이션을 **안 돈다**(λ 를 지어내지 않는다 · #4).
-    # 🔴🔴 ④ — **시뮬레이션은 여기서 돌지 않는다**(사용자 지시 2026-10-10).
-    #    확률층(①→②→③)이 `ours` 를 낸 **뒤**에 `final_sim` 이 한 번 돌고, 그
-    #    결과가 **최종 확률**이다. ⚠️ 여기서 폼만으로 한 번 돌리면 그 수가
-    #    카드에 남아 최종과 **두 답**이 된다(실사고 2026-10-10: 52% 대 38%).
-    out["sim"] = {"why": "🔴 아직 안 돌았다 — 확률층 뒤에 `final_sim` 이 돈다"}
-    state.note(f"s2e 상성 — {out['why']}")
-    logger.info("[s2e] 상성 — %s · 발동 %s", out["why"],
-                [f.rule for f in fired])
-    return out
 
 
 async def _history(net: Any, name: str, *, state: RunState, as_of,
@@ -602,43 +286,16 @@ def _adv_of(box: dict, *, mine_home: bool) -> dict:
                                  if in_box_t is not None else None),
         "why": " · ".join(why),
     }
+# ══════════════════════════════════════════════════════════════════════
+# 🔴🔴 **상성·시뮬과 함께 지웠다** — 사용자 지시 2026-10-17
+# ══════════════════════════════════════════════════════════════════════
+#
+#  > 상성이 왜 들어가 있냐?? · **상성 삭제해라** · **시뮬도 삭제해라**
+#
+#  🔴 아래 함수들은 **상성 축(축0~축3)이 쓰던 부품**이다 — 스타일 6축·무기 표·
+#     백분위·창 검사·공격 기여·중심화. 상성 단계를 지우자 **부르는 곳이 0**
+#     이 됐다(`tests/test_wiring.py` 가 고아로 잡았다 · #2).
 
-
-def adv_players(rows: list[dict], *, mine_home_key: str = "mine_home"
-                ) -> dict[str, dict]:
-    """🔴🔴 창 안 경기를 **더해** 우리 팀 선수의 `{이름: {xg, xa, n}}`.
-
-    > 선수 기여표: xG+xA(없으면 득점+도움) — 사용자 지시 2026-10-12 ②
-
-    🔴 우리 팀 선수만 센다 — 편은 `side_ids` + `mine_home` 으로 가린다(이름 비교
-       금지 · 신원 계약). ⚠️ 한 경기도 못 읽으면 **빈 표**다(0 이 아니다 · #3).
-    🔴🔴 **열쇠는 선수 id** 이고 이름은 값 안에 있다(표시용) — 지시서 §3.
-    """
-    out: dict[str, dict] = {}
-    for row in (rows or []):
-        box = dict(row)
-        if box.get(mine_home_key) is None:
-            continue
-        ids = tuple(box.get("side_ids") or ("", ""))
-        mine_id = (ids[0] if box[mine_home_key] else ids[1]) \
-            if len(ids) == 2 else ""
-        for pid, one in dict(box.get("player_adv") or {}).items():
-            said = dict(one)
-            if mine_id and str(said.get("team_id") or "") != mine_id:
-                continue
-            name = str(said.get("name") or "")
-            if not str(pid or "").strip():
-                continue
-            # 🔴🔴 **열쇠는 선수 id 다**(§3 · 2026-10-13) — 전에는 **이름**이었고,
-            #    쓰는 쪽(`usual`·`out_today`)은 **신원표를 지난 id** 였다. 그래서
-            #    `style._att_share` 가 언제나 빈손이었고 *"빠진 주전"* 비중이
-            #    **늘 0** 이었다(공격 기여표 "공백"의 진짜 원인).
-            got = out.setdefault(str(pid), {"xg": 0.0, "xa": 0.0, "n": 0,
-                                            "name": name})
-            got["xg"] = round(got["xg"] + float(said.get("xg") or 0.0), 3)
-            got["xa"] = round(got["xa"] + float(said.get("xa") or 0.0), 3)
-            got["n"] += 1
-    return out
 
 
 def games_of(rows: list[dict]) -> list[dict]:
@@ -866,52 +523,8 @@ def _out_today(facts, key: str) -> set[str]:
     rows = list((getattr(facts, "missing", None) or {}).get(key) or [])
     return {str(getattr(one, "name", "") or "").strip()
             for one in rows if str(getattr(one, "name", "") or "").strip()}
+# 🔴 상성·시뮬 삭제(2026-10-17)로 **부르는 곳이 0** 이 된 부품 — 같이 걷는다.
 
-
-def usual_starts(rows: list[dict]) -> tuple[dict[str, int], int]:
-    """🔴 ③ — `{선수: 선발 경기 수}` 와 **선발 명단이 있는 경기 수**.
-
-    ⚠️ 선발 명단을 못 받은 경기는 **분모에서 뺀다** — 없는 자료를 0 으로 세면
-       모두의 비율이 내려간다(#3 · 실측: 밴쿠버 10경기 중 2경기가 빈 명단이었다).
-    """
-    got: dict[str, int] = {}
-    n = 0
-    for one in games_of(rows):
-        names = {str(x) for x in (one.get("starters") or []) if x}
-        if not names:
-            continue
-        n += 1
-        for nm in names:
-            got[nm] = got.get(nm, 0) + 1
-    return got, n
-
-
-#: 🔴 한 팀의 선발 수 — `lineupgate.XI_N` 하나가 든다(#1 사본 금지)
-def usual_xi(rows: list[dict]) -> set[str]:
-    """🔴🔴 ③ — **평소 XI**: 폼 창에서 **주로 선발로 뛴 선수**.
-
-    > "평소 XI(최근 폼 계산 기간)에 있었는데 오늘 빠진 선수"만 무기를 끈다.
-    > 그 기간 내내 빠져 있던 장기 결장(에보비세)은 폼에 이미 들어 있으니 끄지
-    > 않는다(이중 계산). — 사용자 지시 2026-10-11 ③
-
-    🔴 "주로"는 `USUAL_SHARE`(절반) 이다 — 그 수와 까닭을 위에 적어 뒀다.
-    """
-    got, n = usual_starts(rows)
-    if not n:
-        return set()
-    hit = {nm: k for nm, k in got.items() if k / n >= USUAL_SHARE}
-    # 🔴🔴 **열한 명을 넘지 않는다**(사용자 지시 2026-10-11 ⑤).
-    #  ⚠️ 실측 2026-10-11(엘체–셀타): 문턱만 보니 셀타의 평소 XI 가 **12명**이
-    #     됐다 — 한 경기에 열두 명이 선발로 뛰지는 않는다. 🔴 선발 빈도 상위
-    #     **11명**까지만 본다(전략 블록의 "상위 11명"과 같은 뜻이다 · #1 사본 금지:
-    #     그 쪽은 `s2d_strategy` 가 자기 목록으로 센다).
-    #  ⚠️ 11명보다 **적은 것은 그대로 둔다** — 문턱을 넘은 선수가 그만큼인 것이고,
-    #     없는 선수를 채워 넣는 것은 추측이다(#4).
-    from app.core.lineupgate import XI_N
-    if len(hit) > XI_N:
-        order = sorted(hit.items(), key=lambda kv: (-kv[1], str(kv[0])))
-        hit = dict(order[:XI_N])
-    return set(hit)
 
 
 def _as_form(rows: list[dict], name: str) -> list[dict]:

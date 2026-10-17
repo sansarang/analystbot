@@ -53,13 +53,43 @@ def test_4_낱말_대조로_이름없는_열쇠를_합친다() -> None:
 
 
 def test_5_평소_XI_는_열한명을_넘지_않는다() -> None:
-    from app.core.lineupgate import XI_N
-    from app.core.stages.s2e_matchup import usual_xi
-    # 🔴 `games_of` 가 받는 꼴로 준다(사본 금지 — 그 함수가 목록을 만든다)
-    rows = [{"home_name": "A", "away_name": "B", "mine_home": True,
-             "utc": f"2026-10-0{i + 1}T00:00:00Z", "goals": [], "stats": {},
-             "starters": [f"p{j}" for j in range(14)]} for i in range(5)]
-    assert len(usual_xi(rows)) == XI_N
+    """🔴🔴 **지운 경로를 계약하던 시험이다** — 사용자 지시 2026-10-17.
+
+    > 상성이 왜 들어가 있냐?? · **상성 삭제해라** · **시뮬도 삭제해라**
+
+    ⚠️ 이 시험이 지키던 것(test_5_평소_XI_는_열한명을_넘지_않는다)은 **상성 축 · λ(기대 득점) · 몬테카를로
+       시뮬** 경로다. 그 경로의 결과가 **전부 버려지고 있었다** —
+       `probmodel.run` 마지막 세 줄이 승무패를 `flat_prob`(1/3 균등 + 변수)로
+       덮고 `lam`·`over`·`scores` 를 비웠기 때문이다.
+    🔴 그래서 **지웠고**, 이 시험은 *"되살아나지 않는다"* 를 지키는 쪽으로
+       바꾼다(지우면 되살아나도 아무도 안 본다).
+    """
+    import ast as _ast
+    import pathlib as _pl
+    root = _pl.Path(__file__).resolve().parents[2]
+
+    def _code(rel: str) -> str:
+        """🔴 D46 — 독스트링·주석을 뺀 **코드만** 본다."""
+        t = _ast.parse((root / rel).read_text(encoding="utf-8"))
+        for n in _ast.walk(t):
+            if isinstance(n, (_ast.Module, _ast.FunctionDef, _ast.AsyncFunctionDef,
+                              _ast.ClassDef)) and _ast.get_docstring(n):
+                n.body = n.body[1:]
+        return _ast.unparse(t)
+
+    #  ① 상성 단계가 **안 돈다**
+    assert "_s2e.run(" not in _code("app/core/pipeline.py"), (
+        "🔴 상성 단계가 되살아났다")
+    from app.core.stages import s2e_matchup as _s2e
+    assert not hasattr(_s2e, "run"), "🔴 `s2e_matchup.run`(상성)이 되살아났다"
+    #  ② 확률 경로가 **시뮬을 안 부른다**
+    said = _code("app/core/probmodel.py")
+    assert "_sim.run(" not in said, "🔴 확률 경로가 몬테카를로를 다시 부른다"
+    assert "flat_prob(varset" in said, "🔴 승무패가 `flat_prob` 에서 안 나온다"
+    #  ③ λ 재료 함수들이 **없다**
+    from app.core import probmodel as _pm
+    for one in ("league_mean", "away_mul", "_share", "league_base"):
+        assert not hasattr(_pm, one), f"🔴 `probmodel.{one}`(λ 재료)가 되살아났다"
 
 
 def test_5_변수_경로도_비중_문을_지난다() -> None:

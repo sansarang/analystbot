@@ -49,47 +49,18 @@ def floor_of(*, kind: str, dr: float | None) -> tuple[list[float] | None, str]:
         return None, f"🔴 Elo 바닥 없음 — {why}"
     return ([float(got.home), float(got.draw), float(got.away)],
             f"Elo 바닥(순서형 로짓 · 등급 차 {float(dr):+.1f}) — {why}")
+# ══════════════════════════════════════════════════════════════════════
+# 🔴🔴 **상성·시뮬과 함께 지웠다** — 사용자 지시 2026-10-17
+# ══════════════════════════════════════════════════════════════════════
+#
+#  > 상성이 왜 들어가 있냐?? · **상성 삭제해라** · **시뮬도 삭제해라**
+#
+#  🔴 아래 함수들은 λ(기대 득점)를 세우던 재료다 — 리그 평균·홈/원정 배율·
+#     λ 기울기 이분법. 승무패가 `flat_prob`(1/3 균등 + 변수)로 바뀌고
+#     λ·오버·스코어가 비워지면서 **부르는 곳이 0** 이 됐다(#2).
+#  ⚠️ `app/core/sim.py`(몬테카를로) 모듈은 **안 지웠다** — `tools/` 의 백필·
+#     비교 측정 도구들이 그 모형을 읽는다(운영이 안 부를 뿐이다).
 
-
-def solve_move(want: list[float] | None, *, mean: float, mul_home: float,
-               mul_away: float, tries: int = 40
-               ) -> tuple[float | None, str]:
-    """🔴🔴 바닥 승무패를 **시뮬이 재현**하도록 λ 기울기(로그 오즈)를 푼다.
-
-    `(이동, 사유)` — 못 맞추면 `(None, 사유)`.
-
-    🔴 왜 — *"최종 확률 = 시뮬 결과"*(C2)와 *"Elo 가 바닥"*(C1 개정)을 **함께**
-       세우려면, 바닥을 **λ 로 번역**해야 한다. 그 뒤에 축0·축1 잔차를 **같은 λ 에**
-       얹으면 분포·오버·스코어가 전부 한 수를 쓴다.
-    🔴 이분법으로 푼다(단조다: 이동이 커지면 홈 승 확률이 커진다).
-    ⚠️ 상한(±0.9)에 닿아도 못 맞추면 **그 사실을 적는다**.
-    """
-    if not want:
-        return None, "🔴 바닥이 **없다** — λ 기울기를 풀 수 없다"
-    from app.core import sim as _sim
-    target = float(want[0])
-
-    def _home(move: float) -> float:
-        got = _sim.run(float(mean) * float(mul_home) * math.exp(move),
-                       float(mean) * float(mul_away) * math.exp(-move))
-        return float(got.home)
-
-    lo, hi = -0.9, 0.9
-    if _home(lo) > target:
-        return lo, (f"⚠️ 바닥 홈 {target:.1%} 가 **상한 밖**이다(이동 {lo:+.2f} "
-                    f"에서 {_home(lo):.1%}) — 상한을 쓴다")
-    if _home(hi) < target:
-        return hi, (f"⚠️ 바닥 홈 {target:.1%} 가 **상한 밖**이다(이동 {hi:+.2f} "
-                    f"에서 {_home(hi):.1%}) — 상한을 쓴다")
-    for _ in range(int(tries)):
-        mid = (lo + hi) / 2.0
-        if _home(mid) < target:
-            lo = mid
-        else:
-            hi = mid
-    got = (lo + hi) / 2.0
-    return got, (f"바닥 홈 {target:.1%} 를 맞추는 λ 기울기 {got:+.3f}"
-                 f"(시뮬 {_home(got):.1%})")
 
 
 # ══════════════════════════════════════════════════════════════════

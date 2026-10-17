@@ -410,12 +410,24 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
         st.note(f"⑤-b2 변수 배치 다시 — {varset.why()}")
         for said in varset.fails:
             st.note(f"⑤-b2 {said}")
-    # 🔴🔴 **상성 세 축**(사용자 지시 2026-10-10(셋째)) — 축1 폼 · 축3 골 내용
-    #    ⚠️ 축2(T1~T8)는 스타일 프로필 자료가 없어 아직 안 돈다(사유가 들어온다)
-    from app.core.stages import s2e_matchup as _s2e
-    # 🔴 F2 — 재료가 **변수·깃발·전략**을 받는다(전략은 바로 위에서 섰다)
-    edge = await _s2e.run(ref, facts, state=st, net=net,
-                          varset=varset, turnover=turn, strategy=plan)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **상성 단계를 지웠다** — 사용자 지시 2026-10-17
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 상성이 왜 들어가 있냐?? · **상성 삭제해라**
+    #
+    #  🔴 **까닭 — 결과가 버려지고 있었다.** `s2e_matchup` 이 축0~축3 을 재고
+    #     (`eloratings.net` 통신 포함) 그것이 `probmodel` 의 λ 시뮬로 갔는데,
+    #     같은 함수 **마지막 세 줄**이 승무패를 `flat_prob`(1/3 균등 + 변수)로
+    #     덮고 `lam`·`over`·`scores` 를 비웠다. 즉 **계산하고 버렸다.**
+    #     ⚠️ 울산 실행 로그가 그 낭비를 그대로 적었다:
+    #        `[s2e] Elo 를 못 찾은 팀 1곳 — ["Busan I'Park"]`
+    #  🔴 `edge` 는 상성 산출인 **동시에 여러 블록의 운반 그릇**이었다 —
+    #     그릇은 남기고(빈 사전) 상성 계산만 걷는다. 뒤 블록들이 그 칸을
+    #     채운다(`ens_w`·`turnover`·`report`·`sim`·`share`·`prob` …).
+    #  ⚠️ 못 채운 칸은 **이름으로** 남는다(#3 조용한 0 금지) — 카드가 ⬜ 로 적는다.
+    edge: dict = {"why": "🔴 **상성은 지웠다**(2026-10-17) — 세 축을 재지 않는다"}
+    st.note("⑥ 상성 — 🔴 **지웠다**(결과가 버려지는 계산이었다 · 2026-10-17)")
 
     # 🔴 **가설은 S2 뒤에 선다**(C3) — 그래서 여기서는 **빈 묶음**으로 열을 만든다.
     #    ⚠️ `_layers` 는 시나리오를 **읽지 않는다**(확률을 S3 가 낸다) — 빈 묶음이
@@ -606,13 +618,11 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
         layers["market_why"] = _cmp.market_reasons(
             base_p, adj_p, layers.get("market"), variables, ref,
             ours=layers["ours"])
-        # 🔴 3-4 — 기여는 **리그 평균 대비**다. 그래서 `잠정` 열은 **리그 평균**
-        #    확률이다(옛 `잠정`=전략 전 확률이 아니다 · §2: 옛 경로를 지웠다).
-        base_sim = _pm.league_base(ref, facts, varset)
-        if base_sim is not None:
-            layers["prob_before"] = _PT(home=base_sim["home"],
-                                        draw=base_sim["draw"],
-                                        away=base_sim["away"])
+        # 🔴🔴 **`잠정` 열을 지웠다** — 사용자 지시 2026-10-17 *"시뮬도 삭제"*.
+        #    ⚠️ 그 열은 **리그 평균 확률을 시뮬로** 만든 것이고, 기여 분해
+        #       (`share`)의 기준이었다. 상성·시뮬을 지워 기여가 비었으므로
+        #       그 열도 뜻이 없다. 🔴 카드는 ⬜ 로 적는다(#3).
+        st.note("⑦ `잠정` 열 — ⬜ **없다**(시뮬을 지웠다 · 2026-10-17)")
     else:
         edge["sim"] = {"why": prob.gap}
         edge["share"] = {}

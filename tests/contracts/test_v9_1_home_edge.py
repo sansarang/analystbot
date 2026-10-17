@@ -113,31 +113,44 @@ def test_v9_원본_득실이_뒤집히면_경고_줄이_붙는다():
     assert "away" in got.why
 
 
-def test_v9_꺼진_무기가_상수가_아니다():
-    """🔴🔴 **③ 축2 감사**(사용자 지시 2026-10-11) — 꺼진 무기는 **비중**으로 센다.
+def test_v9_꺼진_무기가_상수가_아니다() -> None:
+    """🔴🔴 **지운 경로를 계약하던 시험이다** — 사용자 지시 2026-10-17.
 
-    ⚠️ 실사고: `off_weapons` 가 **상수**(`forward`·`box_entry`·`direct`)를 돌려줘
-       LAFC·밴쿠버가 **둘 다 3/3**, 김천–안양도 3/3 이었다 — 양 팀이 늘 같으면
-       축2 의 차는 **언제나 0** 이다(실제로 그랬다).
-    🔴 고정물 — **결장 0명 팀은 꺼진 무기 0.**
+    > 상성이 왜 들어가 있냐?? · **상성 삭제해라** · **시뮬도 삭제해라**
+
+    ⚠️ 이 시험이 지키던 것(test_v9_꺼진_무기가_상수가_아니다)은 **상성 축 · λ(기대 득점) · 몬테카를로
+       시뮬** 경로다. 그 경로의 결과가 **전부 버려지고 있었다** —
+       `probmodel.run` 마지막 세 줄이 승무패를 `flat_prob`(1/3 균등 + 변수)로
+       덮고 `lam`·`over`·`scores` 를 비웠기 때문이다.
+    🔴 그래서 **지웠고**, 이 시험은 *"되살아나지 않는다"* 를 지키는 쪽으로
+       바꾼다(지우면 되살아나도 아무도 안 본다).
     """
-    from app.core import style as _style
+    import ast as _ast
+    import pathlib as _pl
+    root = _pl.Path(__file__).resolve().parents[2]
 
-    class _Read:
-        def __init__(self, state, table):
-            self.key_state, self.att_table = state, table
+    def _code(rel: str) -> str:
+        """🔴 D46 — 독스트링·주석을 뺀 **코드만** 본다."""
+        t = _ast.parse((root / rel).read_text(encoding="utf-8"))
+        for n in _ast.walk(t):
+            if isinstance(n, (_ast.Module, _ast.FunctionDef, _ast.AsyncFunctionDef,
+                              _ast.ClassDef)) and _ast.get_docstring(n):
+                n.body = n.body[1:]
+        return _ast.unparse(t)
 
-    table = {"A": 10.0, "B": 5.0, "C": 5.0}       # 팀 합 20
-    # 🔴 빠진 선수가 **없다** → 꺼진 무기 0
-    assert _style.off_weapons(_Read({"A": "선발"}, table), None) == []
-    # 🔴 비중 50% → 공격 축 셋
-    big = _style.off_weapons(_Read({"A": "명단 제외"}, table), None)
-    assert set(big) == {"forward", "box_entry", "direct"}, big
-    # 🔴 비중 25% → **하나만**(상수가 아니다)
-    mid = _style.off_weapons(_Read({"B": "벤치"}, table), None)
-    assert mid == ["forward"], mid
-    # 🔴 표가 비면 **끄지 않는다**(없는 약화를 지어내지 않는다)
-    assert _style.off_weapons(_Read({"A": "명단 제외"}, {}), None) == []
+    #  ① 상성 단계가 **안 돈다**
+    assert "_s2e.run(" not in _code("app/core/pipeline.py"), (
+        "🔴 상성 단계가 되살아났다")
+    from app.core.stages import s2e_matchup as _s2e
+    assert not hasattr(_s2e, "run"), "🔴 `s2e_matchup.run`(상성)이 되살아났다"
+    #  ② 확률 경로가 **시뮬을 안 부른다**
+    said = _code("app/core/probmodel.py")
+    assert "_sim.run(" not in said, "🔴 확률 경로가 몬테카를로를 다시 부른다"
+    assert "flat_prob(varset" in said, "🔴 승무패가 `flat_prob` 에서 안 나온다"
+    #  ③ λ 재료 함수들이 **없다**
+    from app.core import probmodel as _pm
+    for one in ("league_mean", "away_mul", "_share", "league_base"):
+        assert not hasattr(_pm, one), f"🔴 `probmodel.{one}`(λ 재료)가 되살아났다"
 
 
 # ⚠️ **걷은 시험** — `s2d_strategy.check`(LLM 전략 판정의 검열)가 §1 처분

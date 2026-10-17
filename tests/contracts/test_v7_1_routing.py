@@ -344,30 +344,44 @@ def test_v7_적합은_계수를_스스로_쓰지_않는다():
         assert want in src, f"🔴 보고에 `{want}` 가 없다"
 
 
-def test_v7_C9_관찰만은_람다에_안_들어간다():
-    """🔴 C9 — *"표본 미만 규칙은 **관찰만**, λ 에 안 들어간다"*.
+def test_v7_C9_관찰만은_람다에_안_들어간다() -> None:
+    """🔴🔴 **지운 경로를 계약하던 시험이다** — 사용자 지시 2026-10-17.
 
-    🔴 그 걸러내기는 `goals.sim_input` 하나가 한다(S3 가 그 함수를 쓴다).
+    > 상성이 왜 들어가 있냐?? · **상성 삭제해라** · **시뮬도 삭제해라**
+
+    ⚠️ 이 시험이 지키던 것(test_v7_C9_관찰만은_람다에_안_들어간다)은 **상성 축 · λ(기대 득점) · 몬테카를로
+       시뮬** 경로다. 그 경로의 결과가 **전부 버려지고 있었다** —
+       `probmodel.run` 마지막 세 줄이 승무패를 `flat_prob`(1/3 균등 + 변수)로
+       덮고 `lam`·`over`·`scores` 를 비웠기 때문이다.
+    🔴 그래서 **지웠고**, 이 시험은 *"되살아나지 않는다"* 를 지키는 쪽으로
+       바꾼다(지우면 되살아나도 아무도 안 본다).
     """
-    from app.core import goals as _g
-    thin = _g.Fired(rule="T9", side="home", effect={"lambda_own": 0.5},
-                    watch_only=True)
-    fat = _g.Fired(rule="T10", side="home", effect={"lambda_own": 0.1})
-    got = _g.sim_input({"fired": [thin, fat], "fired2": []},
-                       lam_home=1.0, lam_away=1.0)
-    # 🔴 `관찰만` 의 0.5 가 빠졌으니 홈 λ 는 1.1 쪽이다(1.6 이 아니다)
-    assert abs(float(got["lam_home"]) - 1.1) < 1e-6, got["lam_home"]
-    assert thin.moves() == {}, "🔴 `관찰만` 이 이동량을 내놓는다"
-    # 🔴🔴 **지시서 2026-10-11 F3 이 이 배선을 바꿨다** — ⑪ 은 규칙 λ 를 **안
-    #    더한다**(축 안에서 한 번만 · R4). 걸러내기는 그대로 `goals` 가 하고,
-    #    S3 는 **λ 를 안 주는** `sim_extras` 를 쓴다.
-    src = (ROOT / "app" / "core" / "probmodel.py").read_text(encoding="utf-8")
-    assert "_g.sim_extras(" in src, "🔴 S3 가 시간대·상태 배율을 안 쓴다"
-    assert "_g.sim_input(" not in src, (
-        "🔴 S3 가 규칙 λ 를 다시 더한다 — 이중 계산이다(F3/R4)")
-    # 🔴 `관찰만` 걸러내기는 **그 길에서도** 산다
-    got2 = _g.sim_extras({"fired": [thin, fat], "fired2": []})
-    assert "T9" not in str(got2.get("why") or ""), got2
+    import ast as _ast
+    import pathlib as _pl
+    root = _pl.Path(__file__).resolve().parents[2]
+
+    def _code(rel: str) -> str:
+        """🔴 D46 — 독스트링·주석을 뺀 **코드만** 본다."""
+        t = _ast.parse((root / rel).read_text(encoding="utf-8"))
+        for n in _ast.walk(t):
+            if isinstance(n, (_ast.Module, _ast.FunctionDef, _ast.AsyncFunctionDef,
+                              _ast.ClassDef)) and _ast.get_docstring(n):
+                n.body = n.body[1:]
+        return _ast.unparse(t)
+
+    #  ① 상성 단계가 **안 돈다**
+    assert "_s2e.run(" not in _code("app/core/pipeline.py"), (
+        "🔴 상성 단계가 되살아났다")
+    from app.core.stages import s2e_matchup as _s2e
+    assert not hasattr(_s2e, "run"), "🔴 `s2e_matchup.run`(상성)이 되살아났다"
+    #  ② 확률 경로가 **시뮬을 안 부른다**
+    said = _code("app/core/probmodel.py")
+    assert "_sim.run(" not in said, "🔴 확률 경로가 몬테카를로를 다시 부른다"
+    assert "flat_prob(varset" in said, "🔴 승무패가 `flat_prob` 에서 안 나온다"
+    #  ③ λ 재료 함수들이 **없다**
+    from app.core import probmodel as _pm
+    for one in ("league_mean", "away_mul", "_share", "league_base"):
+        assert not hasattr(_pm, one), f"🔴 `probmodel.{one}`(λ 재료)가 되살아났다"
 
 
 def test_v7_C10_임시값이면_카드에_보인다():
@@ -576,42 +590,44 @@ def test_v7_판정이_S3_의_우리_열로_다시_세진다():
     assert "compare_block(" in inspect.getsource(_pl._layers)
 
 
-def test_v7_홈_배율이_리그_평균과_같은_열쇠를_본다():
-    """🔴🔴 **실사고 2026-10-10**(제노아) — 같은 모형 안에서 **열쇠가 둘**이었다.
+def test_v7_홈_배율이_리그_평균과_같은_열쇠를_본다() -> None:
+    """🔴🔴 **지운 경로를 계약하던 시험이다** — 사용자 지시 2026-10-17.
 
-        [S3] 대회 유형 `league:SA` 실측 평균 2.5185(표본 810)
-             · 🔴 홈 이점 **실측 없음**(대회 ``) — 배율 1.0
+    > 상성이 왜 들어가 있냐?? · **상성 삭제해라** · **시뮬도 삭제해라**
 
-    🔴 `home_mul` 이 `ref` 없이 `_kind(None, …)` 를 불러 `_RefShim`(대회 이름이
-       **빈 글자**)을 썼다. 실측 `home_share 1.3185 ÷ 1.2592 = ×1.047` 이 있었는데
-       버려졌다. ⚠️ 돌연변이: `ref=ref` 를 떼면 다시 1.0 이 된다.
+    ⚠️ 이 시험이 지키던 것(test_v7_홈_배율이_리그_평균과_같은_열쇠를_본다)은 **상성 축 · λ(기대 득점) · 몬테카를로
+       시뮬** 경로다. 그 경로의 결과가 **전부 버려지고 있었다** —
+       `probmodel.run` 마지막 세 줄이 승무패를 `flat_prob`(1/3 균등 + 변수)로
+       덮고 `lam`·`over`·`scores` 를 비웠기 때문이다.
+    🔴 그래서 **지웠고**, 이 시험은 *"되살아나지 않는다"* 를 지키는 쪽으로
+       바꾼다(지우면 되살아나도 아무도 안 본다).
     """
-    import inspect
+    import ast as _ast
+    import pathlib as _pl
+    root = _pl.Path(__file__).resolve().parents[2]
 
-    from app import rules
+    def _code(rel: str) -> str:
+        """🔴 D46 — 독스트링·주석을 뺀 **코드만** 본다."""
+        t = _ast.parse((root / rel).read_text(encoding="utf-8"))
+        for n in _ast.walk(t):
+            if isinstance(n, (_ast.Module, _ast.FunctionDef, _ast.AsyncFunctionDef,
+                              _ast.ClassDef)) and _ast.get_docstring(n):
+                n.body = n.body[1:]
+        return _ast.unparse(t)
+
+    #  ① 상성 단계가 **안 돈다**
+    assert "_s2e.run(" not in _code("app/core/pipeline.py"), (
+        "🔴 상성 단계가 되살아났다")
+    from app.core.stages import s2e_matchup as _s2e
+    assert not hasattr(_s2e, "run"), "🔴 `s2e_matchup.run`(상성)이 되살아났다"
+    #  ② 확률 경로가 **시뮬을 안 부른다**
+    said = _code("app/core/probmodel.py")
+    assert "_sim.run(" not in said, "🔴 확률 경로가 몬테카를로를 다시 부른다"
+    assert "flat_prob(varset" in said, "🔴 승무패가 `flat_prob` 에서 안 나온다"
+    #  ③ λ 재료 함수들이 **없다**
     from app.core import probmodel as _pm
-
-    # 🔴 **그 표가 있다**(없는 것을 고친 척하지 않는다 — 실측)
-    box = dict(rules.goal_baseline("league:SA") or {})
-    assert box.get("home_share"), box
-    per = rules.goal_share("league:SA")
-    assert per and abs(float(box["home_share"]) / float(per) - 1.047) < 0.01
-
-    assert "ref=None" in inspect.signature(_pm.home_mul).__str__() or (
-        "ref" in inspect.signature(_pm.home_mul).parameters)
-    said = inspect.getsource(_pm)
-    # 🔴🔴 **뜻은 "ref 를 빼먹은 자리가 없다"** 다 — ⚠️ 글자 수를 세던 계약이라
-    #    E(2026-10-11: 팀별 홈 이점)로 인자가 붙자 빨개졌다. 🔴 그래서 **ref 가
-    #    없는 호출**을 센다(인자가 더 붙어도 견딘다).
-    import re as _re
-    bad_calls = [m for m in _re.findall(r"(?<![a-z_])home_mul\([^)]*\)", said)
-                 if not m.startswith("home_mul(facts, varset, ref=ref")
-                 and "games: list" not in m and "facts, varset, *, ref" not in m]
-    assert not bad_calls, bad_calls
-    assert said.count("home_mul(facts, varset, ref=ref") == 2, (
-        "🔴 `home_mul` 을 `ref` 없이 부르는 자리가 남았다 — 그 자리는 대회 이름이 "
-        "빈 글자가 되어 홈 이점을 **조용히 버린다**")
-    assert "_kind(ref, facts)" in inspect.getsource(_pm.home_mul)
+    for one in ("league_mean", "away_mul", "_share", "league_base"):
+        assert not hasattr(_pm, one), f"🔴 `probmodel.{one}`(λ 재료)가 되살아났다"
 
 
 # ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다

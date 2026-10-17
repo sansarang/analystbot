@@ -29,49 +29,13 @@ def is_cup(league: str) -> bool:
     """🔴 그 대회가 컵인가 — 이름 조각으로 본다(원본은 `CUP_WORDS`)."""
     said = str(league or "").lower()
     return any(w in said for w in CUP_WORDS)
+# ══════════════════════════════════════════════════════════════════════
+# 🔴🔴 **상성·시뮬과 함께 지웠다** — 사용자 지시 2026-10-17
+# ══════════════════════════════════════════════════════════════════════
+#
+#  > 상성이 왜 들어가 있냐?? · **상성 삭제해라** · **시뮬도 삭제해라**
+#
+#  🔴 아래 함수들은 **상성 축(축0~축3)이 쓰던 부품**이다 — 스타일 6축·무기 표·
+#     백분위·창 검사·공격 기여·중심화. 상성 단계를 지우자 **부르는 곳이 0**
+#     이 됐다(`tests/test_wiring.py` 가 고아로 잡았다 · #2).
 
-
-def keep(rows: list[dict], *, league: str, elo: dict | None = None
-         ) -> tuple[list[dict], str]:
-    """🔴🔴 ⓒ — 폼 창에서 **셀 경기만** 고른다. `(남긴 줄, 사유)`.
-
-    🔴 차례:
-      ① 그 경기의 리그와 **같은 대회**면 센다.
-      ② 컵이면 **상대가 같은 리그에 있나**(리그 Elo 표)로 가른다 — 있으면 센다.
-      ③ 없으면 **뺀다**(하위 리그 상대) — 그 경기 이름을 사유에 적는다.
-    ⚠️ 그 경기의 리그를 **모르면 아무것도 빼지 않는다**(#4 추측 금지).
-    """
-    said_lg = str(league or "").strip()
-    rows = [dict(x) for x in (rows or [])]
-    if not said_lg:
-        return rows, ("⚠️ 이 경기의 대회를 **모른다** — 폼 창에서 아무것도 "
-                      "빼지 않았다")
-    table = {str(k) for k in dict(elo or {})}
-    out: list[dict] = []
-    gone: list[str] = []
-    same_cup: list[str] = []
-    for one in rows:
-        got_lg = str(one.get("league") or "")
-        if got_lg == said_lg:
-            out.append(one)
-            continue
-        if not is_cup(got_lg):
-            # ⚠️ 다른 리그(2군·대륙 대회 등) — 그것도 뺀다(폼 창은 그 리그다)
-            gone.append(f"{one.get('opp') or '?'}[{got_lg or '대회 미상'}]")
-            continue
-        opp = str(one.get("opp") or "")
-        if opp and opp in table:
-            out.append(one)
-            same_cup.append(opp)
-            continue
-        gone.append(f"{opp or '?'}[{got_lg}]")
-    bits: list[str] = []
-    if gone:
-        bits.append(f"🔴 폼 창에서 **{len(gone)}경기를 뺐다**(대회 수준) — "
-                    + ", ".join(gone[:4]))
-    if same_cup:
-        bits.append(f"컵이지만 상대가 **같은 리그**라 셌다 — "
-                    + ", ".join(same_cup[:3]))
-    if not table and any(is_cup(str(x.get("league") or "")) for x in rows):
-        bits.append("⚠️ 리그 Elo 표가 없어 컵 상대가 같은 리그인지 **못 가렸다**")
-    return out, " · ".join(bits)

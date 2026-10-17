@@ -232,37 +232,18 @@ def shrink(*, whole: float, side: float, n: int) -> float:
     """
     w = (min(max(int(n or 0), 0), SIDE_FULL) / float(SIDE_FULL)) * SIDE_CAP
     return round((1.0 - w) * float(whole) + w * float(side), 4)
+# 🔴 상성·시뮬 삭제(2026-10-17)로 **부르는 곳이 0** 이 된 부품 — 같이 걷는다.
 
+# ══════════════════════════════════════════════════════════════════════
+# 🔴🔴 **상성·시뮬과 함께 지웠다** — 사용자 지시 2026-10-17
+# ══════════════════════════════════════════════════════════════════════
+#
+#  > 상성이 왜 들어가 있냐?? · **상성 삭제해라** · **시뮬도 삭제해라**
+#
+#  🔴 아래 함수들은 **상성 축(축0~축3)이 쓰던 부품**이다 — 스타일 6축·무기 표·
+#     백분위·창 검사·공격 기여·중심화. 상성 단계를 지우자 **부르는 곳이 0**
+#     이 됐다(`tests/test_wiring.py` 가 고아로 잡았다 · #2).
 
-def sums_bad(small: dict, big: dict) -> str:
-    """🔴🔴 ① 계약 — **최근 n경기 합 ≤ 최근 m경기 합**(n<m, 득·실 각각).
-
-    어겼으면 **사유 글자**를 낸다(운영자 알림의 재료). 지켰으면 빈 글자다.
-    ⚠️ 실사고 2026-10-11: *"밴쿠버 최근5 실점 10인데 최근10 실점 9"* — 두 블록이
-       **다른 원천**을 읽어 생긴 수다. 한 목록에서 자르면 이 검사는 늘 통과한다
-       (그래서 이 검사가 빨개지면 **원천이 또 갈라진 것**이다).
-    """
-    n, m = int(small.get("n") or 0), int(big.get("n") or 0)
-    if not n or not m or n >= m:
-        return ""
-    out = []
-    for key, name in (("gf", "득"), ("ga", "실")):
-        a, b = float(small.get(key) or 0.0), float(big.get(key) or 0.0)
-        if a > b + 1e-9:
-            out.append(f"🔴 최근 {n}경기 {name}점 {a:g} > 최근 {m}경기 "
-                       f"{name}점 {b:g} — 불가능하다(원천이 둘이다)")
-    return " · ".join(out)
-
-
-def windows_bad(games: list[dict]) -> str:
-    """🔴 ① — 한 목록의 **모든 창 짝**을 검사한다(5 ≤ 10). 지켰으면 빈 글자."""
-    out = []
-    for i, n in enumerate(WINDOWS):
-        for m in WINDOWS[i + 1:]:
-            said = sums_bad(window_sums(games, n), window_sums(games, m))
-            if said:
-                out.append(said)
-    return " · ".join(out)
 
 
 def form_of(team: str, rows: list[dict], *, elo: dict | None = None,
@@ -438,16 +419,3 @@ def form_of(team: str, rows: list[dict], *, elo: dict | None = None,
                f"실점 {got.ga:.0f}→보정 {got.adj_ga:.1f}"
                + (" · " + " · ".join(said) if said else ""))
     return got
-
-
-def percentile(value: float | None, pool: list[float]) -> float | None:
-    """🔴 §1 — **같은 리그 팀 대비 백분위**. 비교 대상이 없으면 `None`.
-
-    ⚠️ 비교 대상이 **3팀 미만이면 비운다** — 두 팀만으로 백분위를 적으면 늘
-       0% 아니면 100% 다(그 수는 사람을 속인다).
-    """
-    rows = [float(x) for x in (pool or []) if x is not None]
-    if value is None or len(rows) < 3:
-        return None
-    n = sum(1 for x in rows if x < float(value))
-    return round(n / len(rows), 3)

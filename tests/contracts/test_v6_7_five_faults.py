@@ -556,26 +556,44 @@ def _probset():
     return ref, facts, vs, box, _mu.report(ref, facts, box, vs)
 
 
-def test_v7_C1_S3_입력에_상성_밖_정보가_없다():
-    """🔴 C1 — *"S3 입력에 Elo·동기·일정(T2 제외)·감독 발언·맞대결·시장·LLM
-    문장이 **없다**"*.
+def test_v7_C1_S3_입력에_상성_밖_정보가_없다() -> None:
+    """🔴🔴 **지운 경로를 계약하던 시험이다** — 사용자 지시 2026-10-17.
 
-    ⚠️ 돌연변이: `probmodel.run` 이 `base_prob`·`market`·`commentary` 를 읽게
-       만들면 이 줄이 빨개진다.
+    > 상성이 왜 들어가 있냐?? · **상성 삭제해라** · **시뮬도 삭제해라**
+
+    ⚠️ 이 시험이 지키던 것(test_v7_C1_S3_입력에_상성_밖_정보가_없다)은 **상성 축 · λ(기대 득점) · 몬테카를로
+       시뮬** 경로다. 그 경로의 결과가 **전부 버려지고 있었다** —
+       `probmodel.run` 마지막 세 줄이 승무패를 `flat_prob`(1/3 균등 + 변수)로
+       덮고 `lam`·`over`·`scores` 를 비웠기 때문이다.
+    🔴 그래서 **지웠고**, 이 시험은 *"되살아나지 않는다"* 를 지키는 쪽으로
+       바꾼다(지우면 되살아나도 아무도 안 본다).
     """
-    import ast
-    src = (ROOT / "app" / "core" / "probmodel.py").read_text(encoding="utf-8")
-    tree = ast.parse(src)
-    fn = [n for n in ast.walk(tree)
-          if isinstance(n, ast.FunctionDef) and n.name == "run"]
-    assert fn, "🔴 `probmodel.run` 이 없다"
-    said = ast.unparse(fn[0])
-    for bad in ("base_prob", "adj_prob", "market", "elo", "commentary",
-                "coach", "h2h", "stakes", "outlook", "llm"):
-        assert bad not in said, f"🔴 S3 가 `{bad}` 를 읽는다(C1)"
-    # 🔴 `facts` 에서 읽는 것은 **리그 평균·대회 유형**뿐이다
-    whole = ast.unparse(tree)
-    assert "match_total_baseline" in whole and "goal_share" in whole
+    import ast as _ast
+    import pathlib as _pl
+    root = _pl.Path(__file__).resolve().parents[2]
+
+    def _code(rel: str) -> str:
+        """🔴 D46 — 독스트링·주석을 뺀 **코드만** 본다."""
+        t = _ast.parse((root / rel).read_text(encoding="utf-8"))
+        for n in _ast.walk(t):
+            if isinstance(n, (_ast.Module, _ast.FunctionDef, _ast.AsyncFunctionDef,
+                              _ast.ClassDef)) and _ast.get_docstring(n):
+                n.body = n.body[1:]
+        return _ast.unparse(t)
+
+    #  ① 상성 단계가 **안 돈다**
+    assert "_s2e.run(" not in _code("app/core/pipeline.py"), (
+        "🔴 상성 단계가 되살아났다")
+    from app.core.stages import s2e_matchup as _s2e
+    assert not hasattr(_s2e, "run"), "🔴 `s2e_matchup.run`(상성)이 되살아났다"
+    #  ② 확률 경로가 **시뮬을 안 부른다**
+    said = _code("app/core/probmodel.py")
+    assert "_sim.run(" not in said, "🔴 확률 경로가 몬테카를로를 다시 부른다"
+    assert "flat_prob(varset" in said, "🔴 승무패가 `flat_prob` 에서 안 나온다"
+    #  ③ λ 재료 함수들이 **없다**
+    from app.core import probmodel as _pm
+    for one in ("league_mean", "away_mul", "_share", "league_base"):
+        assert not hasattr(_pm, one), f"🔴 `probmodel.{one}`(λ 재료)가 되살아났다"
 
 
 def test_v7_C2_카드_확률이_S3_산출과_같다():
@@ -594,36 +612,44 @@ def test_v7_C2_카드_확률이_S3_산출과_같다():
         "🔴 카드 확률이 S3 에서 안 온다")
 
 
-def test_v7_C4_상성_우위와_확률_방향이_같다():
-    """🔴🔴 **C4 재정의**(사용자 결정 2026-10-12): *"상성 기여의 **λ 이동 방향** =
-    상성 우위 팀 쪽"*.
+def test_v7_C4_상성_우위와_확률_방향이_같다() -> None:
+    """🔴🔴 **지운 경로를 계약하던 시험이다** — 사용자 지시 2026-10-17.
 
-    ══════════════════════════════════════════════════════════════════
-    🔴 왜 바꿨나
-    ══════════════════════════════════════════════════════════════════
+    > 상성이 왜 들어가 있냐?? · **상성 삭제해라** · **시뮬도 삭제해라**
 
-    옛 C4 는 *"상성 우위 팀 = **최종 확률**이 더 높은 팀"* 이었다. 그런데 최종
-    확률에는 **홈 이점(λ 상수)** 이 함께 들어간다 — 홈 이점이 큰 경기에서는 축
-    우위가 작으면 **상수가 그것을 뒤집는다**(실측 2026-10-12 K리그1·친선).
-    🔴 그래서 **상성이 λ 를 미는 방향**만 센다. 최종 확률이 반대면 카드가
-       *"상성 X 우위 · 홈 이점이 뒤집음(배율)"* 을 적는다(`probmodel` 의 `why`).
+    ⚠️ 이 시험이 지키던 것(test_v7_C4_상성_우위와_확률_방향이_같다)은 **상성 축 · λ(기대 득점) · 몬테카를로
+       시뮬** 경로다. 그 경로의 결과가 **전부 버려지고 있었다** —
+       `probmodel.run` 마지막 세 줄이 승무패를 `flat_prob`(1/3 균등 + 변수)로
+       덮고 `lam`·`over`·`scores` 를 비웠기 때문이다.
+    🔴 그래서 **지웠고**, 이 시험은 *"되살아나지 않는다"* 를 지키는 쪽으로
+       바꾼다(지우면 되살아나도 아무도 안 본다).
     """
+    import ast as _ast
+    import pathlib as _pl
+    root = _pl.Path(__file__).resolve().parents[2]
+
+    def _code(rel: str) -> str:
+        """🔴 D46 — 독스트링·주석을 뺀 **코드만** 본다."""
+        t = _ast.parse((root / rel).read_text(encoding="utf-8"))
+        for n in _ast.walk(t):
+            if isinstance(n, (_ast.Module, _ast.FunctionDef, _ast.AsyncFunctionDef,
+                              _ast.ClassDef)) and _ast.get_docstring(n):
+                n.body = n.body[1:]
+        return _ast.unparse(t)
+
+    #  ① 상성 단계가 **안 돈다**
+    assert "_s2e.run(" not in _code("app/core/pipeline.py"), (
+        "🔴 상성 단계가 되살아났다")
+    from app.core.stages import s2e_matchup as _s2e
+    assert not hasattr(_s2e, "run"), "🔴 `s2e_matchup.run`(상성)이 되살아났다"
+    #  ② 확률 경로가 **시뮬을 안 부른다**
+    said = _code("app/core/probmodel.py")
+    assert "_sim.run(" not in said, "🔴 확률 경로가 몬테카를로를 다시 부른다"
+    assert "flat_prob(varset" in said, "🔴 승무패가 `flat_prob` 에서 안 나온다"
+    #  ③ λ 재료 함수들이 **없다**
     from app.core import probmodel as _pm
-    from app.core.state import RunState
-    ref, facts, vs, _box, mr = _probset()
-    got = _pm.run(ref, facts, mr, vs, state=RunState(match_key="x"))
-    edge = mr.edge_of()
-    if not edge or dict(mr.verdict).get("strength") == "없음":
-        return
-    # 🔴 **λ 이동 방향**이 그 쪽이어야 한다(상수는 빼고 본다)
-    move = dict(got.move or {})
-    assert move, got.why
-    want = "home" if float(move.get("home") or 0.0) >= 0 else "away"
-    assert edge == want, (edge, move, got.why)
-    # 🔴 최종 확률이 반대면 **그 사실이 사유에 적혀 있어야** 한다
-    said = "home" if got.home >= got.away else "away"
-    if said != edge:
-        assert "뒤집" in got.why, got.why
+    for one in ("league_mean", "away_mul", "_share", "league_base"):
+        assert not hasattr(_pm, one), f"🔴 `probmodel.{one}`(λ 재료)가 되살아났다"
 
 
 def test_v7_기여_합이_리그_평균_대비_변화와_같다():

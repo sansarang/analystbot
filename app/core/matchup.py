@@ -189,48 +189,24 @@ MISS_CAP = 1.0
 #: 🔴 "핵심"의 문턱 ① — 그 팀 공격 기여(득점+도움)의 이 몫 이상이면 핵심이다
 #   ⚠️ 수는 `style.OFF_SMALL`(무기 꺼짐 문턱) 하나를 쓴다 — 사본 금지.
 KEY_SHARE_SRC = "style.OFF_SMALL"
+# 🔴 상성·시뮬 삭제(2026-10-17)로 **부르는 곳이 0** 이 된 부품 — 같이 걷는다.
 
-
-def key_share() -> float:
-    """🔴 핵심 문턱 — `style.OFF_SMALL` 하나가 든다(사본 금지)."""
-    from app.core import style as _st
-    return float(_st.OFF_SMALL)
 
 
 def miss_move(share: float) -> float:
     """🔴 D — 빠진 주전 비중 → **축0 이동**(음수). 상한 `MISS_CAP`."""
     got = MISS_W * max(0.0, float(share or 0.0))
     return -round(min(got, MISS_CAP), 4)
+# ══════════════════════════════════════════════════════════════════════
+# 🔴🔴 **상성·시뮬과 함께 지웠다** — 사용자 지시 2026-10-17
+# ══════════════════════════════════════════════════════════════════════
+#
+#  > 상성이 왜 들어가 있냐?? · **상성 삭제해라** · **시뮬도 삭제해라**
+#
+#  🔴 아래 함수들은 **상성 축(축0~축3)이 쓰던 부품**이다 — 스타일 6축·무기 표·
+#     백분위·창 검사·공격 기여·중심화. 상성 단계를 지우자 **부르는 곳이 0**
+#     이 됐다(`tests/test_wiring.py` 가 고아로 잡았다 · #2).
 
-
-def key_miss(*, shares: dict, keys: set, table: int) -> tuple[float, str]:
-    """🔴🔴 D — **핵심 선수만** 센다. `(비중 합, 사유)`.
-
-    `shares` — `{id: 그 팀 공격 기여 비중}`(오늘 빠진 주전들)
-    `keys`   — 리그 페이지가 꼽은 **핵심 선수** id 들(`strategy.key_state`)
-    `table`  — 기여표에 수가 있는 선수 수(0 이면 **못 쟀다**)
-
-    🔴 핵심의 뜻 둘(하나면 된다): ① 비중 ≥ `key_share()` · ② `keys` 에 있다.
-    ⚠️ 기여표가 비면(0명) **0 이고 그 사실을 적는다** — 0 으로 보지 않는다(#3).
-    """
-    if not int(table or 0):
-        return 0.0, "🔴 공격 기여표가 비었다 — 빠진 주전의 무게를 **못 쟀다**"
-    want = key_share()
-    said: list[str] = []
-    got = 0.0
-    for ident, share in dict(shares or {}).items():
-        val = float(share or 0.0)
-        is_key = ident in set(keys or ())
-        if val >= want:
-            got += val
-            said.append(f"`{ident}` 비중 {val:.0%}(≥{want:.0%})")
-        elif is_key:
-            got += val
-            said.append(f"`{ident}` **핵심 선수**(비중 {val:.0%})")
-    if not said:
-        return 0.0, (f"빠진 주전이 핵심이 아니다(비중 <{want:.0%} · 리그 핵심 "
-                     f"목록에도 없다) — 축0 을 안 움직인다")
-    return round(got, 4), " · ".join(said)
 
 
 def axis0(ref, facts, varset, *, r: dict | None = None,

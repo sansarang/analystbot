@@ -53,28 +53,43 @@ def test_axis0_counts_the_missing_share() -> None:
 
 
 def test_axis0_needs_the_player_to_be_key() -> None:
-    """🔴🔴 D(사용자 지시 2026-10-11) — **핵심 선수인지 확인하고** 닿게 한다.
+    """🔴🔴 **지운 경로를 계약하던 시험이다** — 사용자 지시 2026-10-17.
 
-    > 결장선수가 핵심선수인지 확인하고 닿게 해라.
+    > 상성이 왜 들어가 있냐?? · **상성 삭제해라** · **시뮬도 삭제해라**
 
-    🔴 "핵심"의 뜻 둘(둘 중 하나면 핵심이다):
-       ① 공격 기여 비중이 문턱 이상(`KEY_SHARE`) — 그 팀 득점+도움의 몫
-       ② 리그 페이지가 꼽은 **핵심 선수**(`strategy.key_state`)
-    ⚠️ 비중을 못 쟀으면(기여표 0명) **닿지 않는다** — 0 으로 보지 않는다(#3).
+    ⚠️ 이 시험이 지키던 것(test_axis0_needs_the_player_to_be_key)은 **상성 축 · λ(기대 득점) · 몬테카를로
+       시뮬** 경로다. 그 경로의 결과가 **전부 버려지고 있었다** —
+       `probmodel.run` 마지막 세 줄이 승무패를 `flat_prob`(1/3 균등 + 변수)로
+       덮고 `lam`·`over`·`scores` 를 비웠기 때문이다.
+    🔴 그래서 **지웠고**, 이 시험은 *"되살아나지 않는다"* 를 지키는 쪽으로
+       바꾼다(지우면 되살아나도 아무도 안 본다).
     """
-    from app.core import matchup
-    #: ① 비중이 문턱 이상이면 핵심이다
-    got, why = matchup.key_miss(shares={"p:a": 0.25}, keys=set(), table=20)
-    assert got > 0 and "비중" in why, (got, why)
-    #: ② 비중이 작아도 **리그가 꼽은 핵심**이면 센다
-    got2, why2 = matchup.key_miss(shares={"p:b": 0.04}, keys={"p:b"}, table=20)
-    assert got2 > 0 and "핵심" in why2, (got2, why2)
-    #: 🔴 둘 다 아니면 **닿지 않는다**(로테이션을 결장으로 바꾸지 않는다)
-    got3, why3 = matchup.key_miss(shares={"p:c": 0.04}, keys=set(), table=20)
-    assert got3 == 0.0, (got3, why3)
-    #: ⚠️ 기여표가 비면 **못 쟀다**고 적고 0 이다
-    got4, why4 = matchup.key_miss(shares={"p:d": 0.4}, keys=set(), table=0)
-    assert got4 == 0.0 and "못 쟀다" in why4, (got4, why4)
+    import ast as _ast
+    import pathlib as _pl
+    root = _pl.Path(__file__).resolve().parents[2]
+
+    def _code(rel: str) -> str:
+        """🔴 D46 — 독스트링·주석을 뺀 **코드만** 본다."""
+        t = _ast.parse((root / rel).read_text(encoding="utf-8"))
+        for n in _ast.walk(t):
+            if isinstance(n, (_ast.Module, _ast.FunctionDef, _ast.AsyncFunctionDef,
+                              _ast.ClassDef)) and _ast.get_docstring(n):
+                n.body = n.body[1:]
+        return _ast.unparse(t)
+
+    #  ① 상성 단계가 **안 돈다**
+    assert "_s2e.run(" not in _code("app/core/pipeline.py"), (
+        "🔴 상성 단계가 되살아났다")
+    from app.core.stages import s2e_matchup as _s2e
+    assert not hasattr(_s2e, "run"), "🔴 `s2e_matchup.run`(상성)이 되살아났다"
+    #  ② 확률 경로가 **시뮬을 안 부른다**
+    said = _code("app/core/probmodel.py")
+    assert "_sim.run(" not in said, "🔴 확률 경로가 몬테카를로를 다시 부른다"
+    assert "flat_prob(varset" in said, "🔴 승무패가 `flat_prob` 에서 안 나온다"
+    #  ③ λ 재료 함수들이 **없다**
+    from app.core import probmodel as _pm
+    for one in ("league_mean", "away_mul", "_share", "league_base"):
+        assert not hasattr(_pm, one), f"🔴 `probmodel.{one}`(λ 재료)가 되살아났다"
 
 
 def test_axis0_why_says_the_share() -> None:

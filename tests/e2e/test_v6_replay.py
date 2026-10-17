@@ -177,11 +177,8 @@ def card(replaying) -> Card:
             edge["sim"] = prob.as_sim()
             edge["share"] = dict(prob.share)
             edge["share_refs"] = dict(prob.share_refs)
-            said_base = _pm.league_base(ref, facts, varset)
-            if said_base:
-                layers["prob_before"] = _PT(home=said_base["home"],
-                                            draw=said_base["draw"],
-                                            away=said_base["away"])
+            # 🔴 **`잠정` 열은 지웠다**(사용자 지시 2026-10-17 *"시뮬도 삭제"*)
+            #    — `probmodel.league_base` 가 리그 평균을 시뮬로 만들던 열이다.
         layers["matchup"] = edge
         said = s7_judge.run(ref, facts, variables, state=state, now=NOW,
                             board=BOARD, board_source="user_board",
