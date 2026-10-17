@@ -332,7 +332,9 @@ def test_gs15_standings_rows_not_just_dict() -> None:
     got = g.need(_F(), keys=["H", "A"], conflict_docs=1,
                  sides={"H": "home", "A": "away"})
     for side in ("H", "A"):
-        assert any("순위" in x for x in got.get(side, [])), (
+        # 🔴 **그 칸 이름 그대로** 본다 — 2026-10-17 에 `동기부여(순위 싸움…)`
+        #    같은 칸이 생겼다. `"순위" in x` 로 찾으면 그것에도 걸린다.
+        assert "팀 순위·승점" in got.get(side, []), (
             f"GS15 🔴🔴 순위표가 없는데 *찾았다*고 봤다 — {side}: {got.get(side)}")
         assert any("라운드" in x for x in got.get(side, [])), (
             f"GS15 🔴 라운드가 없는데 안 물었다 — {side}: {got.get(side)}")
@@ -344,7 +346,7 @@ def test_gs15_standings_rows_not_just_dict() -> None:
     got2 = g.need(_G(), keys=["H", "A"], conflict_docs=1,
                   sides={"H": "home", "A": "away"})
     for side in ("H", "A"):
-        assert not any("순위" in x for x in got2.get(side, [])), (
+        assert "팀 순위·승점" not in got2.get(side, []), (
             f"GS15 🔴 순위표가 있는데 또 물었다 — {side}: {got2.get(side)}")
         assert not any("라운드" in x for x in got2.get(side, [])), (
             f"GS15 🔴 라운드가 있는데 또 물었다 — {side}: {got2.get(side)}")

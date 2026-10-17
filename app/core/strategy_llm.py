@@ -303,10 +303,63 @@ def ask(ref: MatchRef, facts: Facts, plan: object, *, state: RunState,
                 + (f"[{num}]" if num else ""))
         return " · ".join(f"{k} {', '.join(v)}" for k, v in box.items())
 
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **벤치를 전략 전문가에게 준다** — 사용자 지시 2026-10-17
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > **벤치는 전략분석가들한테 제공한다** … 변수가 어떻게 적용됐는지는
+    #  > 전략가들이 분석한다 … 포메이션이 나오면 **선발·벤치를 어떻게 활용할지**
+    #
+    #  ⚠️ `XI.bench` 는 **이름 글자 목록**이다(번호·자리가 없다 · 실측
+    #     2026-10-17). 그래서 능력치는 못 붙이고 **이름만** 준다 — 그 사실을
+    #     글에 적어 모델이 자리를 지어내지 않게 한다(#3).
+    def _bench(side: str) -> str:
+        one = xi.get(str(getattr(ref, side, "") or ""))
+        got = [str(x).strip() for x in (getattr(one, "bench", None) or [])
+               if str(x).strip()]
+        if not got:
+            return "⬜ 벤치 명단 없음"
+        return f"{len(got)}명 — " + ", ".join(got[:12])
+
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **순위표도 전략 전문가에게 준다** — 사용자 지시 2026-10-17
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 그리고 **순위표도 전략분석가들한테 제공한다**
+    #
+    #  🔴 줄은 `facts.standings["group"]["rows"]` 다(`s2_facts` 가 싣고
+    #     `render` 도 그 자리를 본다 — 여기서 다시 만들지 않는다 · #1).
+    #  ⚠️ **두 팀 줄을 앞에 둔다** — 20팀 표를 통째로 주면 프롬프트가 길어지고
+    #     모델이 엉뚱한 팀을 말한다. 나머지는 앞에서 여덟 줄만 붙인다.
+    #  ⚠️ 순위표가 없으면 **그 사실을 적는다**(#3 조용한 0 금지).
+    def _table() -> str:
+        rows = list(dict(dict(getattr(facts, "standings", None) or {})
+                         .get("group") or {}).get("rows") or [])
+        if not rows:
+            return "⬜ 순위표 없음"
+        want = {str(getattr(ref, f"{x}_name", "") or "").lower()
+                for x in ("home", "away")}
+        said: list[str] = []
+        for i, r in enumerate(rows):
+            box = dict(r or {})
+            nm = str(box.get("name") or box.get("team") or "").strip()
+            if not nm:
+                continue
+            mark = " 🔴" if nm.lower() in want else ""
+            said.append(f"{box.get('idx', i + 1)}위 {nm} "
+                        f"승점 {box.get('pts', '?')}"
+                        f"({box.get('played', '?')}경기){mark}")
+        if not said:
+            return f"⬜ 순위표 줄을 못 읽었다({len(rows)}줄)"
+        mine = [x for x in said if "🔴" in x]
+        rest = [x for x in said if "🔴" not in x]
+        return " · ".join([*mine, *rest[:8]])
+
     said_xi = "\n".join(
         f"- {str(getattr(ref, f'{s}_name', '') or '')} "
         f"[{getattr(xi.get(str(getattr(ref, s, '') or '')), 'formation', '') or '⬜'}]"
-        f" — {_rows(s)}"
+        f" — {_rows(s)}\n"
+        f"    벤치: {_bench(s)}"
         for s in ("home", "away"))
     msgs = [
         llm.Message(role="system", content=(
@@ -314,7 +367,21 @@ def ask(ref: MatchRef, facts: Facts, plan: object, *, state: RunState,
             "만든 **사실 목록**이다. 네 일은 그 사실을 보고 **두 팀을 견주는 "
             "것**이다 — 어느 쪽 값이 큰지 **부등호로만** 말한다.\n"
             "🔴 **수를 쓰지 마라**(퍼센트·골 수·배율 금지). 크기는 코드가 넣는다.\n"
-            "🔴 **사실 목록에 없는 선수·사건을 지어내지 마라.** 모르면 `=` 다.")),
+            "🔴 **사실 목록에 없는 선수·사건을 지어내지 마라.** 모르면 `=` 다.\n"
+            # ══════════════════════════════════════════════════════
+            # 🔴🔴 **벤치 활용과 사실관계** — 사용자 지시 2026-10-17
+            # ══════════════════════════════════════════════════════
+            #
+            #  > 포메이션이 나오면 **선발 벤치를 어떻게 활용할지** 프롬프트를
+            #  > 줘라 · 지금의 전략분석가 프롬프트를 **사실관계·변수 등을 더
+            #  > 고려하여 예측**하라고 해야한다
+            "\n🔴🔴 **벤치까지 보고 말한다** — 포메이션이 나왔으니 두 감독이 "
+            "**선발을 어떻게 쓰고 벤치를 언제·어디에 넣을지**가 갈래다. "
+            "⚠️ 벤치는 **이름만** 온다(자리·등번호가 없다) — 자리를 지어내지 "
+            "말고 **이름이 있는 선수만** 말한다.\n"
+            "🔴🔴 **사실관계와 변수를 전부 보고** 갈래를 낸다 — 아래 묶음에는 "
+            "오늘 라인업·결장·최근 5경기·맞대결·일정·피로도·선수 능력치·기사 "
+            "사실이 다 들어 있다. 포메이션 모양 하나로만 말하지 마라.")),
         llm.Message(role="user", content=(
             f"경기: {getattr(ref, 'home_name', '')}(홈) vs "
             f"{getattr(ref, 'away_name', '')}(원정) · "
@@ -323,6 +390,8 @@ def ask(ref: MatchRef, facts: Facts, plan: object, *, state: RunState,
             + __import__("app.core.querywriter",
                          fromlist=["x"]).comp_hint(ref)
             + f"포메이션:\n{said_xi}\n"
+            # 🔴 **순위표**(사용자 지시 2026-10-17) — 동기·강등·승격이 여기서 읽힌다
+            + f"순위표(🔴 = 오늘 두 팀): {_table()}\n"
             f"오늘 라인업 사실:\n{said_facts}\n"
             # 🔴 **최근 5경기 기준**으로도 갈래를 찾는다(지시 2026-10-15)
             + (f"\n최근 5경기·맞대결 재료:\n{said_recent}\n" if said_recent

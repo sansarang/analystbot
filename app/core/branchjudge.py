@@ -1075,7 +1075,29 @@ async def run(branches: list[Branch], variables: list, ref, facts,
         said.append("1단 " + stage1(branches, ref, facts, plan))
     except Exception as exc:                                # noqa: BLE001
         said.append(f"1단 🔴 터졌다 — {exc!r}")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **2단을 끈다** — 사용자 지시 2026-10-17
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > llm 서치는 **llm 충돌에서 사용하지 않고** 감독 발언·동기부여·강등위험·
+    #  > 날씨 등 … 으로 하고 이 내용들은 **최종 llm 이 예측하는데 사용**하도록
+    #
+    #  🔴 2단(상대 모델이 검색해 `옳다/그르다` 를 내는 길)은 **세 경기·다섯
+    #     갈래에서 한 번도 `옳다` 를 못 냈다**(전부 보류 · 인계 §2). 벽은
+    #     검색이고, 그 검색은 이제 **간접 영향 요소**를 찾는 데 쓴다.
+    #  🔴 그래서 충돌은 **1단(능력치·수)으로만** 가린다 — 못 가리면 **보류**다.
+    #     ⚠️ 보류 사유에 **1단이 왜 못 가렸는지**가 그대로 남는다(#3).
+    #  ⚠️ `cross`·`judge_pv_of`·`doc_checkable` 은 **안 지웠다** — 사용자가
+    #     되돌리라고 하면 그 자리에 다시 꽂으면 된다(계약이 그것을 지킨다).
     left = [b for b in _order(branches) if not b.picked]
+    for one in left:
+        one.why = one.why or (
+            f"{HELD} · 🔴 **2단은 끈다**(사용자 지시 2026-10-17 — LLM 서치는 "
+            f"이제 감독 발언·동기부여·강등 위험·날씨를 찾는다) — {one.num_why}")
+    if left:
+        said.append("2단 ⬜ **끔**(LLM 서치는 간접 영향 요소로 돌린다) · "
+                    + " · ".join(f"`{b.kind}` 보류" for b in left))
+    left = []
     done = 0
     for one in left:
         if done >= int(cap):
