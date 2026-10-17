@@ -1871,10 +1871,18 @@ def vars_long(card: Card) -> str:
         # 🔴 **자른 자리를 말줄임으로 알린다** — ⚠️ 실측 2026-10-10: 90자 자리가
         #    문장 가운데를 잘라 *"…다른 대회 숫자를 빌리지 않는다 · 리그 홈 이점"*
         #    처럼 **괄호가 안 닫힌 채 완결된 문장처럼** 읽혔다(#3 조용한 잘림).
-        said_claim = str(one.claim or "")
+        # 🔴🔴 **꼬리표 사유는 자르지 않는다**(2026-10-17 · `crosscheck.tails_of`)
+        #    ⚠️ 실사고 2026-10-17(Necaxa vs Atlas): **갈래 판정** 사유가 글
+        #       끝에 붙는데 이 90자 컷이 통째로 먹었다 — 판정은 섰는데 카드에서
+        #       그 근거(잰 수·인용·주소)를 **한 줄도 읽을 수 없었다**.
+        #    🔴 머리만 자르고 꼬리는 **따로 줄로** 적는다.
+        from app.core import crosscheck as _cc2
+        said_claim, said_tails = _cc2.tails_of(one.claim)
         out.append(f"    {said_claim[:90]}"
                    + ("…(잘림)" if len(said_claim) > 90 else "")
                    + (f" · {one.why}" if one.why else ""))
+        for said_t in said_tails:
+            out.append(f"      └ {said_t[:400]}")
     for said in got.fails:
         out.append(f"- {said}")
     if got.unplaced:

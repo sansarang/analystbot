@@ -252,7 +252,17 @@ def test_cc10_안전장치_사유가_안_잘린다() -> None:
     # 🔴 러너도 사유를 **둘째 줄**로 온전히 찍는다(배선)
     said_run = (ROOT / "tools/run_collect.py").read_text(encoding="utf-8")
     assert "def say_var(" in said_run and "say_var(v, 100)" in said_run
-    assert "FLAG_MARK" in said_run
+    # 🔴🔴 꼬리표 글자와 쪼개는 함수는 **`crosscheck` 하나**다(2026-10-17) —
+    #    ⚠️ 종전엔 같은 글자(`🔴 **안전장치**`)를 **네 자리에 손으로** 적어 뒀고
+    #       (러너 `FLAG_MARK` · 묶음 두 곳 · 카드), **갈래 판정** 꼬리표가 늘자
+    #       같은 사본을 또 만들 자리가 됐다. 🔴 그래서 한 곳으로 모았다.
+    from app.core import crosscheck as _cc
+    assert _cc.FLAG_MARK == "🔴 **안전장치**"
+    assert "tails_of" in said_run, "🔴 러너가 꼬리표를 안 쪼갠다"
+    # 🔴 쪼개는 함수가 **꼬리를 안 자른다**
+    head, tails = _cc.tails_of(said)
+    assert tails and "두 경로가 어긋난다 — 득점 0.0 ↔ 1.6" in tails[0], tails
+    assert _cc.FLAG_MARK not in head, head
 
 
 def test_cc11_못_쟀다는_어긋남이_아니다() -> None:

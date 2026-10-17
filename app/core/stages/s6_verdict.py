@@ -42,6 +42,7 @@ import re
 
 from pydantic import BaseModel, Field
 
+from app.core import crosscheck as _cc
 from app.core.schema import MatchRef
 from app.core.state import RunState
 
@@ -190,15 +191,16 @@ def chain_of(ref: MatchRef, prob, mr, varset, *,
             places = [str(x) for x in (getattr(one, "places", None) or [])]
             if not (set(places) & AX):
                 continue
-            # 🔴🔴 **안전장치 사유는 자르지 않는다** — 사용자 지시 2026-10-16.
+            # 🔴🔴 **꼬리표 사유는 자르지 않는다** — 사용자 지시 2026-10-16.
             #    ⚠️ 실사고(Obolon Kyiv): 글을 120자에서 잘라 `🔴 **안전장치**:`
             #       뒤가 사라졌다 — 평이 **왜 그 변수가 맥락 전용인지** 못 봤다.
-            said_c = str(getattr(one, "claim", "") or "")
-            head, _sep, tail = said_c.partition("🔴 **안전장치**")
+            #    ⚠️ 실사고 2026-10-17(Necaxa): **갈래 판정 사유**가 같은 병에
+            #       걸렸다(판정은 섰는데 근거가 한 자리에서도 안 보였다).
+            #    🔴 쪼개는 곳은 `crosscheck.tails_of` 하나다(#1 사본 금지).
+            head, tails = _cc.tails_of(getattr(one, "claim", ""))
             rows.append(f"  변수 `{one.id}` [{one.type}] 자리 {places} — "
                         + head[:120]
-                        + (f" · 🔴 **안전장치** {tail.lstrip(': ')[:160]}"
-                           if tail else ""))
+                        + "".join(f" · {t[:200]}" for t in tails))
     else:
         rows.append("변수 — ⬜ 배치표가 비었다")
     # ══════════════════════════════════════════════════════════════════
@@ -237,11 +239,10 @@ def chain_of(ref: MatchRef, prob, mr, varset, *,
         rows.append(f"맥락 전용 변수 {len(said_ctx)}개 — **확률에는 안 닿는다**"
                     "(표본 부족·안전장치) · 평은 **읽어도 된다**:")
         for one in said_ctx[:6]:
-            said_c2 = str(getattr(one, "claim", "") or "")
-            head, _sep, tail = said_c2.partition("🔴 **안전장치**")
+            # 🔴 꼬리표(안전장치·갈래 판정)는 **자르지 않는다**(`tails_of` 하나)
+            head, tails = _cc.tails_of(getattr(one, "claim", ""))
             rows.append(f"  맥락 `{one.id}` [{one.type}] — " + head[:150]
-                        + (f" · 🔴 **안전장치** {tail.lstrip(': ')[:120]}"
-                           if tail else ""))
+                        + "".join(f" · {t[:200]}" for t in tails))
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **포메이션·전략 칸** — 사용자 지시 2026-10-15
     # ══════════════════════════════════════════════════════════════════
