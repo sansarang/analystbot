@@ -200,15 +200,44 @@ def recent_of(variables: list | None) -> list[str]:
     return out
 
 
+def _add_branch(box: list | None, kind: str, mode: str, rows: list) -> None:
+    """🔴🔴 **충돌·단독 갈래를 판정 거리로 담는다**(사용자 지시 2026-10-16).
+
+    > 충돌되는 것·한쪽만 나오는 것도 **버리는 게 아니라 어느 쪽이 맞는지
+    > 확인**해야 한다
+
+    ⚠️ 종전엔 두 모델의 주장이 **글자 한 줄로 뭉쳐져** 남았다 — 읽을 수는
+       있어도 **어느 주장을 누가 했는지 기계가 가릴 수 없었다**. 🔴 그래서
+       주장을 **쪼갠 꼴**(`Claim`)로 담는다 — 판정은 그 꼴을 쓴다.
+    """
+    if box is None:
+        return
+    from app.core import branchjudge as _bj
+    box.append(_bj.Branch(
+        kind=str(kind or ""), mode=str(mode or ""),
+        claims=[_bj.Claim(provider=str(pv),
+                          cmp=str(getattr(r, "cmp", "=") or "="),
+                          goals_cmp=str(getattr(r, "goals_cmp", "=") or "="),
+                          text=str(getattr(r, "text", "") or ""))
+                for pv, r in rows]))
+
+
 def ask(ref: MatchRef, facts: Facts, plan: object, *, state: RunState,
         recent: list[str] | None = None, news: list[str] | None = None,
         rest: list[str] | None = None,
         # 🔴 **둘 다 쓴다**(사용자 지시 2026-10-16) — 먼저 성공한 하나가
         #    아니라 **같은 묶음으로 둘 다 묻고 대본다**(아래 머리말).
-        providers: tuple = ("deepseek", "solar")) -> tuple[list[Variable], str]:
+        providers: tuple = ("deepseek", "solar"),
+        # 🔴🔴 **갈래를 여기 담는다**(사용자 지시 2026-10-16 · 판정 절차)
+        #    ⚠️ 목록을 주면 충돌·단독 갈래가 `branchjudge.Branch` 로 쌓인다 —
+        #       그것을 **다른 모델이 서치해서 판정**한다(`core/branchjudge`).
+        #    🔴 안 주면 종전과 똑같이 돈다(맥락 전용으로 남는다).
+        branches: list | None = None) -> tuple[list[Variable], str]:
     """🔴 전략 전문가에게 **변수 글**을 받는다. `(변수 목록, 사유)`.
 
     ⚠️ 실패해도 예외를 안 던진다 — 빈 목록 + 사유다(카드는 항상 나온다).
+    🔴 `branches` 를 주면 **충돌·단독 갈래**를 그 목록에 담는다 — 판정은
+       `core/branchjudge.run` 이 한다(여기서 판정하지 않는다 · 검색이 든다).
     """
     from app.core import llm
     ok, why = may_ask(ref, facts, plan)
@@ -237,8 +266,24 @@ def ask(ref: MatchRef, facts: Facts, plan: object, *, state: RunState,
     #     받는 `xi.players`(이름·포지션·등번호)다.
     def _rows(side: str) -> str:
         one = xi.get(str(getattr(ref, side, "") or ""))
-        got = list(getattr(one, "players", None) or [])
+        # ══════════════════════════════════════════════════════════
+        # 🔴🔴 **자리는 `lineup` 에 있다** — 실측 2026-10-17
+        # ══════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 실사고: 여기서 `xi.players` 를 읽었는데 그 칸은 **이름 글자
+        #     목록**(`list[str]`)이다(`core/adapt.py` 가 그렇게 싣는다).
+        #     그래서 `getattr(pl, "pos")` 가 **늘 빈 글자**였고 프롬프트에
+        #     `? 이름, 이름, …` 한 덩어리가 갔다 — SL13 이 넘기려던
+        #     **자리·측면이 하나도 안 갔다**(어제 §4 그 병: 남겼는데 못 읽는다).
+        #  🔴 자리·측면·등번호가 든 칸은 **`lineup`**(`list[Player]`)이다.
+        #  ⚠️ `lineup` 이 비면(이름만 받은 출처) 그 사실을 적고 이름만 낸다 —
+        #     `?` 로 때우지 않는다(#3).
+        got = list(getattr(one, "lineup", None) or [])
         if not got:
+            said_names = [str(x) for x in (getattr(one, "players", None) or [])]
+            if said_names:
+                return ("⬜ 자리 글자 없음(이름만 받았다) — "
+                        + ", ".join(said_names[:11]))
             return "⬜ XI 없음"
         box: dict[str, list[str]] = {}
         for pl in got:
@@ -391,6 +436,9 @@ def ask(ref: MatchRef, facts: Facts, plan: object, *, state: RunState,
             # 🔴 **합의가 아니다** — 다른 모델은 동의한 게 아니라 **안 본**
             #    것이다. 확률에 안 닿게 내린다(위 `ALONE` 머리말).
             pv, row = rows[0]
+            # 🔴 **담는 것이 먼저다** — 아래에서 글에 꼬리표를 박으므로, 뒤에
+            #    담으면 주장 글이 **꼬리표째** 들어간다(위 충돌 자리의 그 함정).
+            _add_branch(branches, kind, "단독", rows)
             row.text = f"{ALONE} [{pv}] {row.text}"
             keep.append(row)
             continue
@@ -419,12 +467,32 @@ def ask(ref: MatchRef, facts: Facts, plan: object, *, state: RunState,
             # 🔴 부등호는 **그대로 둔다** — `=` 로 바꾸면 `vars_of` 가 그 줄을
             #    **통째로 버려** 정보가 사라진다(실측 2026-10-16: 변수 0개).
             #    🔴 대신 글에 충돌 표시를 박고, 아래에서 **맥락 전용**으로 내린다.
+            # 🔴 **담는 것이 먼저다** — `row0.text` 를 바로 아래에서 덮으므로
+            #    뒤에 담으면 deepseek 주장 글이 **충돌 꼬리표**로 바뀐다
+            #    (실측 전에 막는다 · 바로 위 `said_tag` 주석의 그 병).
+            _add_branch(branches, kind, "충돌", rows)
             row0.text = f"{CONFLICT} — {said_tag}"
             keep.append(row0)
             said_note.append(kind)
     got = StrategyRead(rows=keep[:MAX_ROWS])
     out = vars_of(got, ref, why=why)
-    said_pv = "+".join(said_ok) + (f" · 🔴 충돌 {len(said_note)}갈래"
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **변수가 안 선 갈래는 판정하지 않는다** — 예산
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ `keep[:MAX_ROWS]` 가 줄을 자르고 `vars_of` 가 표에 없는 갈래·부등호를
+    #     버린다. 🔴 그렇게 **변수가 안 선 갈래**를 판정하면 검색·LLM 을 쓰고도
+    #     되먹일 자리가 없다(상한이 더 급한 갈래를 밀어낸다).
+    #  🔴 그래서 담은 갈래를 **선 변수에 맞춰 깎는다** — 깎은 수는 사유에 남는다.
+    said_cut = 0
+    if branches is not None:
+        said_t = {str(getattr(v, "target", "") or "") for v in out}
+        keep_b = [b for b in branches if b.target in said_t]
+        said_cut = len(branches) - len(keep_b)
+        branches[:] = keep_b
+    said_pv = ((f"🔴 변수 안 선 갈래 {said_cut}개는 판정 안 한다 · "
+                if said_cut else "")
+               + "+".join(said_ok)) + (f" · 🔴 충돌 {len(said_note)}갈래"
                                    f"({' · '.join(said_note[:2])})"
                                    if said_note else " · 충돌 없다")
     logger.info("[전략LLM] %s · 변수 %d개", said_pv, len(out))
@@ -502,6 +570,19 @@ def _weight() -> float:
     return float(_s5._sample_weight(5)[1])
 
 
+def dir_of_cmp(op: str, gop: str) -> tuple[str, str]:
+    """🔴🔴 **부등호 → 방향**(`favors`, `goals`). 이 표가 **하나**다.
+
+    🔴 왜 함수로 빼나 — **갈래 판정**(`core/branchjudge`)이 채택한 부등호를
+       같은 표로 방향으로 옮겨야 한다. 두 자리에 적으면 한쪽이 늦게 바뀐다
+       (#1 사본 금지).
+    🔴 `>` 면 홈이 큰 갈래다 → 홈 유리 · `goals_cmp` `<` 면 총골 down.
+    """
+    fav = {">": "home", "<": "away"}.get(str(op or "").strip(), "both")
+    goals = {">": "up", "<": "down"}.get(str(gop or "").strip(), "none")
+    return fav, goals
+
+
 def vars_of(got: StrategyRead, ref: MatchRef, *, why: str = "") -> list[Variable]:
     """🔴🔴 **부등호 → 변수**. 방향은 부등호가, **가중은 코드가** 넣는다.
 
@@ -519,8 +600,7 @@ def vars_of(got: StrategyRead, ref: MatchRef, *, why: str = "") -> list[Variable
         gop = str(row.goals_cmp or "=").strip()
         if not text or kind not in KINDS or op not in OPS or gop not in OPS:
             continue              # 🔴 표에 없는 갈래·부등호는 **버린다**
-        fav = {">": "home", "<": "away"}.get(op, "both")
-        goals = {">": "up", "<": "down"}.get(gop, "none")
+        fav, goals = dir_of_cmp(op, gop)
         if fav == "both" and goals == "none":
             continue              # ⚠️ `=`·`=` 는 변수가 아니다
         # 🔴🔴 **모델이 갈린 갈래는 확률에 안 닿는다**(사용자 지시 2026-10-16)
