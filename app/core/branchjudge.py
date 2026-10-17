@@ -69,12 +69,37 @@ MAX_Q = 3
 #: 🔴 접지 대조에 쓰는 **인용 앞글자 수** — 이보다 짧은 인용은 근거가 아니다
 QUOTE_MIN = 20
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **왜 `verdict` 라고 부르지 않나** — 계약 리뷰어 2026-10-17
+# ══════════════════════════════════════════════════════════════════
+#
+#  절대규칙 5 의 **글자 그대로**는 *"`direction`·`weight`·`strength`·
+#  `survival`·`verdict` 필드에 LLM 출력이 닿으면 계약 실패"* 다. 이 칸은
+#  마켓 등급이 아니라 `옳다/그르다/모르겠다` 세 글자이고 열거로 잠겨 있으니
+#  **뜻으로는** 위반이 아니다 — 그러나 **이름이 그 글자와 같다.**
+#  🔴 규칙 문장을 좁히는 것은 사용자 몫이므로, 여기서는 **이름을 비킨다**
+#     (`ruling` = 판정 글자). 그러면 갈림 자체가 없어진다.
 #: 🔴 판정 글자 — 표에 없는 글자는 **모르겠다**로 떨어진다(지어내기 금지)
-VERDICTS: tuple[str, ...] = ("옳다", "그르다", "모르겠다")
-OK, NO, DUNNO = VERDICTS
+RULINGS: tuple[str, ...] = ("옳다", "그르다", "모르겠다")
+OK, NO, DUNNO = RULINGS
 
-#: 🔴 공급자 둘 — ⑤-b2 가 묻는 그 둘이다(사본 금지로 기본값만 여기 둔다)
-PROVIDERS: tuple[str, ...] = ("deepseek", "solar")
+def _providers() -> tuple[str, ...]:
+    """🔴🔴 **⑤-b2 가 실제로 묻는 공급자 둘** — 그 기본값이 원본이다.
+
+    ⚠️ 계약 리뷰어 2026-10-17: 여기 `("deepseek", "solar")` 를 손으로 적어 뒀다 —
+       **사본**이다. ⑤-b2 쪽을 바꾸면 `judge_pv_of` 가 **묻지도 않은 모델**을
+       판정자로 골라, 그 모델이 낸 적 없는 주장을 "상대" 라고 부른다.
+    🔴 그래서 `strategy_llm.ask` 의 `providers` 기본값을 **읽는다**.
+    """
+    import inspect
+
+    from app.core import strategy_llm as _sl
+    said = inspect.signature(_sl.ask).parameters["providers"].default
+    return tuple(str(x) for x in (said or ()))
+
+
+#: 🔴 공급자 둘 — **⑤-b2 의 기본값을 읽는다**(사본 금지)
+PROVIDERS: tuple[str, ...] = _providers()
 
 #: ✅ 판정이 **선** 갈래 표시 — 카드·평이 이 글자를 읽는다
 #  ⚠️ 꼬리표(`MARK`)가 이미 *"갈래 판정"* 이라고 말한다 — 여기서 같은 말을
@@ -116,7 +141,8 @@ class Claim:
     goals_cmp: str
     text: str
     #: 🔴 2단 판정 결과(`옳다`·`그르다`·`모르겠다`) · 빈 글자면 **안 물었다**
-    verdict: str = ""
+    #  ⚠️ 이름이 `verdict` 가 아니다 — 위 `RULINGS` 머리말(절대규칙 5 의 글자).
+    ruling: str = ""
     quote: str = ""
     url: str = ""
     #: 🔴 인용이 **받은 본문에 있었나**(접지) — 거짓이면 근거로 안 쓴다
@@ -211,16 +237,29 @@ def _pick(h: float | None, a: float | None, *, gap: float,
 def _flank_n(facts, ref, side: str) -> tuple[int | None, str]:
     """🔴 그 팀 선발에서 **측면 선수 수**. 못 세면 `(None, 사유)`.
 
-    🔴 재료는 `XI.lineup` 의 `flank` 다(`L`·`R`). ⚠️ `XI.players` 는 **이름
-       글자 목록**이라 자리가 없다 — 그 칸을 읽으면 0 이 된다(실측 2026-10-17).
+    🔴 재료는 `XI.lineup` 의 `flank` 이고 **그 글자의 표는 `fotmob.WINGS`
+       하나**다(`왼`·`오른`). ⚠️ `XI.players` 는 이름 글자 목록이라 자리가 없다.
+
+    ⚠️🔴 **실사고 2026-10-17(계약 리뷰어가 잡았다)**: 여기서 `("L", "R")` 로
+       셌다 — 그 글자는 **어느 경로도 만들지 않는다**(`fotmob.flank_of` 가
+       `왼`·`중앙`·`오른` 을 낸다 → `adapt` 가 그대로 싣는다). 목록이 비지
+       않으니 *"못 쟀다"* 도 아니고 **`0명 ↔ 0명`** 으로 적혀 카드까지 갔다.
+       🔴 거짓 수였고, 대역이 `flank="L"` 을 써서 **초록으로 덮고 있었다**.
+    🔴 그래서 두 가지를 함께 고친다:
+       ① 글자를 **표에서 읽는다**(사본 금지) ·
+       ② **아무도 측면 글자를 안 가진 경우**는 `0` 이 아니라 **못 쟀다**다
+          (좌표가 없으면 `flank_of` 가 **빈 글자**를 낸다 · #3).
     """
+    from app.collect import fotmob as _fm
     one = _xi_of(facts, ref, side)
     rows = list(getattr(one, "lineup", None) or [])
     if not rows:
         return None, "⬜ 자리 글자가 없다(이름만 받았다)"
-    got = [r for r in rows
-           if str(getattr(r, "flank", "") or "").strip().upper() in ("L", "R")]
-    return len(got), ""
+    said = [str(getattr(r, "flank", "") or "").strip() for r in rows]
+    if not any(x for x in said):
+        # 🔴 **좌표가 안 왔다** — 0 으로 때우지 않는다(#3 조용한 0 금지)
+        return None, f"⬜ 측면 글자가 **아무 선수에게도 없다**({len(rows)}명)"
+    return len([x for x in said if x in _fm.WINGS]), ""
 
 
 def by_numbers(branch: Branch, ref, facts, plan=None) -> tuple[str, str]:
@@ -309,14 +348,30 @@ def stage1(branches: list[Branch], ref, facts, plan=None) -> str:
         #    같이 쓴다. ⚠️ 없으면 총골은 **방향 없음**이다(수는 총골을 안 잰다).
         hit = [c for c in one.claims if str(c.cmp or "") == op]
         one.picked_pv = hit[0].provider if len(hit) == 1 else ""
-        one.picked_goals = hit[0].goals_cmp if len(hit) == 1 else "="
+        # ══════════════════════════════════════════════════════════
+        # 🔴🔴 **총골 방향은 올리지 않는다** — 계약 리뷰어 2026-10-17
+        # ══════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 처음 판은 부등호가 맞은 모델의 `goals_cmp` 를 그대로 가져왔다 —
+        #     그러면 **모델만 말한 총골 방향**이 *"잰 수"* 를 근거로 확률 자리에
+        #     든다(변수 글에는 `중앙 수 홈 5 ↔ 원정 4` 만 남아 그 사실이 안
+        #     읽힌다). 🔴 1단이 잰 것은 **중앙 수·휴식일·실점 평균**이고
+        #     **총골을 잰 적이 없다.**
+        #  🔴 그래서 1단 채택은 **승패 방향(`cmp`)만** 올린다 — 총골은
+        #     `=`(방향 없음)이다. ⚠️ 이것이 좁은 쪽이다(지어내지 않는다).
+        #  🔴 넓힐지는 **사용자 결정**이다 —
+        #     `docs/fable/questions/2026-10-17_stage1_goals.md`.
+        one.picked_goals = "="
         for c in one.claims:
-            c.verdict = OK if str(c.cmp or "") == op else NO
+            c.ruling = OK if str(c.cmp or "") == op else NO
             c.why = f"1단(수) — {why}"
         one.why = (f"{JUDGED} · **1단 측정** — {why}"
                    + (f" · `{one.picked_pv}` 주장이 맞다" if one.picked_pv
                       else " · 🔴 **어느 모델도 이 쪽을 말하지 않았다**"
-                           "(수가 가리킨 쪽을 쓴다)"))
+                           "(수가 가리킨 쪽을 쓴다)")
+                   # 🔴 **총골은 안 올렸다**는 사실을 글에 남긴다(#3) — 그래야
+                   #    *"이 줄이 총골을 말하지 않는다"* 를 사람이 읽는다.
+                   + " · ⬜ **총골 방향은 안 올린다**(수가 총골을 안 쟀다)")
         said.append(f"`{one.kind}` ✅ 수로 가렸다(`{op}`)")
     return " · ".join(said) if said else "⬜ 갈래가 없다"
 
@@ -338,18 +393,38 @@ class JQueries(BaseModel):
 
     queries: list[str] = Field(default_factory=list)
     langs: list[str] = Field(default_factory=list)
+    # ══════════════════════════════════════════════════════════════
+    # 🔴🔴 **현지어 매체를 고른다** — 사용자 지시 2026-10-17
+    # ══════════════════════════════════════════════════════════════
+    #
+    #  🔴 통로는 **이미 있다** — `querywriter.hosts`(꼴 검사) →
+    #     `check_hosts`(robots 를 받아 **실재 확인**) → `site_queries`
+    #     (`site:` 질의로 기존 사슬에 넣는다). 여기서 새로 짓지 않는다.
+    #  ⚠️ 지어낸 주소는 **robots 확인에서 떨어진다**(#4) · 글자뿐이다.
+    sites: list[str] = Field(default_factory=list)
 
 
 class JudgeOut(BaseModel):
     """🔴 ③ 판정 모델이 내는 **둘째 글자** — 판정·인용·주소뿐이다.
 
-    🔴 `verdict` 는 표(`VERDICTS`)의 글자만이고, `quote` 는 **본문 한 문장**
+    🔴 `ruling` 은 표(`RULINGS`)의 글자만이고, `quote` 는 **본문 한 문장**
        그대로다. 코드가 본문과 대조해 없으면 **버린다**(접지).
     """
 
-    verdict: str = DUNNO
+    ruling: str = DUNNO
     quote: str = ""
     url: str = ""
+
+
+#: 🔴 ① **매체 수 상한** — robots 를 그만큼만 받는다(표는 `querywriter` 하나)
+def _site_cap() -> int:
+    from app.core import querywriter as _qw
+    return int(_qw.MAX_SITES)
+
+
+_SITE_CAP = _site_cap()
+#: 🔴 마지막 `_queries` 가 고른 **매체 후보**(글자뿐 · robots 확인 전이다)
+_SITES: list[str] = []
 
 
 #: 🔴 검색 언어 코드 — **표는 `s4b_gapsearch.LANGS` 하나**다(여기서 안 적는다)
@@ -359,6 +434,46 @@ def _langs_table() -> tuple[str, ...]:
 
 
 _LANGS = _langs_table()
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **문서로 가릴 수 있는 주장만 2단에 보낸다** — 사용자 지시 2026-10-17
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 실측 2026-10-17: 전술 비교 갈래(`수비 라인 홈 vs 원정`·`빌드업`·`역습
+#     성향`)를 2단에 보내면 **기사가 애초에 그 말을 안 한다** — 그 경기 미리보기·
+#     구단 공식 뉴스를 제대로 받아도 판정은 `모르겠다` 였다. 그 `모르겠다` 는
+#     정직하지만 **검색 + 본문 + LLM 을 쓰고 얻은 것이 없다**.
+#  🔴 그래서 **문서가 말할 수 있는 꼴**만 보낸다 — 기사가 글자로 적는 것은
+#     *결장·부상·복귀·선발 명단·순위·일정*이고, *"어느 팀 라인이 더 높나"* 가
+#     아니다. 나머지는 1단이 못 가렸으면 **바로 보류**다(사유를 적는다 · #3).
+
+#: 🔴 그 갈래 자체가 **문서가 말하는 꼴**이다
+DOC_KINDS: tuple[str, ...] = ("기사 사실", "일정·피로도")
+#: 🔴 갈래가 전술이어도 **주장 글이 사실을 가리키면** 보낸다(선수 이름·결장 등)
+DOC_WORDS: tuple[str, ...] = (
+    "결장", "부상", "복귀", "징계", "경고 누적", "출전 정지", "명단 제외",
+    "선발", "벤치", "교체 투입", "이적", "순위", "승점", "일정", "휴식",
+)
+
+
+def doc_checkable(branch: Branch) -> tuple[bool, str]:
+    """🔴🔴 **2단에 보낼 주장인가** — `(보내나, 사유)`.
+
+    🔴 기사는 *결장·선발·순위·일정*을 **글자로 적는다**. *"어느 쪽 수비 라인이
+       더 높나"* 는 **안 적는다** — 그 갈래를 보내면 검색·LLM 을 쓰고 늘
+       `모르겠다` 를 받는다(실측 2026-10-17 · 다섯 갈래 전부).
+    ⚠️ 보내지 않는 것은 **버리는 것이 아니다** — 맥락 전용으로 남고 사유가 적힌다.
+    """
+    kind = str(branch.kind or "")
+    if kind in DOC_KINDS:
+        return True, f"`{kind}` 는 문서가 말하는 꼴이다"
+    said = " ".join(str(c.text or "") for c in branch.claims)
+    hit = [w for w in DOC_WORDS if w in said]
+    if hit:
+        return True, f"주장이 사실을 가리킨다({' · '.join(hit[:3])})"
+    return False, (f"⬜ `{kind}` 는 **전술 비교**다 — 기사가 그 말을 글자로 "
+                   f"적지 않는다(검색·LLM 을 안 쓴다 · 실측 2026-10-17)")
 
 
 def judge_pv_of(claim_pv: str, *, providers: tuple = PROVIDERS) -> str:
@@ -457,6 +572,13 @@ def _queries(branch: Branch, ref, *, pv: str, state
             "(보기 `[\"ja\", \"en\"]`).\n"
             f"   ⚠️ 쓸 수 있는 코드: {', '.join(_LANGS)}\n"
             "🔴 1~6낱말 · 연산자(`site:`·따옴표·마이너스) 금지 · **연도 금지**.\n"
+            # 🔴🔴 ① **현지어 매체**(사용자 지시 2026-10-17) — 지정 없이 쏘면
+            #    그 나라 매체 대신 포털·학술 PDF 가 걸린다(실측: `Atlas Duk no
+            #    convocado` 6건이 researchgate·학회 PDF·huggingface였다).
+            f"🔴🔴 `sites` — 그 나라의 **축구 매체 도메인** {_SITE_CAP}개 이하"
+            "(보기 `mediotiempo.com`·`record.com.mx`·`soccer-king.jp`·"
+            "`gekisaka.jp`). **호스트만** 적는다(`https://`·경로 금지).\n"
+            "   ⚠️ 모르면 **비워라** — 지어낸 주소는 robots 확인에서 떨어진다.\n"
             "⚠️ 사실·숫자·판정을 **답으로 쓰지 마라** — 질의 글자만 낸다.")),
     ]
     got = llm.ask(provider=pv, purpose="query", messages=msgs, out=JQueries,
@@ -467,12 +589,19 @@ def _queries(branch: Branch, ref, *, pv: str, state
     langs = [str(x) for x in (got.langs or []) if str(x) in set(_LANGS)]
     kept, bad = querywriter.keep(rows, aliases=_aliases(ref))
     ok = [q for q in kept if _lq.query_ok(q)]
+    # 🔴 ① **매체 도메인은 꼴만 걸러 돌려준다** — robots 확인은 `cross` 가
+    #    한다(통신이라 async 다 · 확인 전에는 **쓰지 않는다** · #4)
+    sites, bad_s = querywriter.hosts([str(x) for x in (got.sites or [])])
+    _SITES.clear()
+    _SITES.extend(sites)
     return ok[:MAX_Q], (langs or ["en"]), (
         f"`{pv}` 질의 {len(rows)}개 → 쓸 것 {len(ok)}개"
         + (f" · 🔴 팀 표기 없어 버림 {len(bad)}" if bad else "")
         + (f" · 🔴 글자 규칙에서 버림 {len(kept) - len(ok)}"
            if len(kept) != len(ok) else "")
-        + f" · 언어 {langs or ['en']}")
+        + f" · 언어 {langs or ['en']}"
+        + (f" · 매체 후보 {sites}" if sites else "")
+        + (f" · 🔴 주소 꼴이 아니라 버림 {len(bad_s)}" if bad_s else ""))
 
 
 def _about(body: str, aliases: list[str]) -> bool:
@@ -495,7 +624,8 @@ def _about(body: str, aliases: list[str]) -> bool:
 
 async def _docs(queries: list[str], *, net, chain, state,
                 langs: list[str] | None = None,
-                aliases: list[str] | None = None
+                aliases: list[str] | None = None,
+                sites: list[str] | None = None
                 ) -> tuple[list[tuple[str, str]], str]:
     """🔴🔴 2단-②: 질의를 **기존 사슬**에 던져 **본문**을 받는다.
 
@@ -507,17 +637,43 @@ async def _docs(queries: list[str], *, net, chain, state,
           사슬이 **지정 없이 한 번 더** 던진다(§19-b-4 대체 · 우회가 아니다).
     🔴 **현지어 먼저** 던진다(`langs`) — 일본 경기 질의를 영어 창으로 던지던
        것을 고쳤다(실측 2026-10-17).
+    🔴 ① **현지어 매체를 `site:` 로 좁힌다**(`sites` · robots 확인을 지난 것만) —
+       그 통로는 `querywriter.site_queries` 하나다(새 fetch 경로 금지).
+    🔴 ② **묵은 문서를 거른다** — 판정 대상은 **오늘의 팀 사정**인데 처음 판은
+       `footballchannel.jp/2026/08/25/…`(두 달 전 기사)를 읽고 판정을 시도했다.
+       ⚠️ 판정하는 함수는 `datehint.too_old` **하나**다 — *"날짜 힌트가 없으면
+       **받는다**"* 는 그 규칙을 그대로 쓴다(모르는 것을 버리지 않는다).
     ⚠️ 껍데기(광고·로그인)는 `body_of` 가 가려 주고, 짧은 글은 `BODY_MIN` 이,
-       **엉뚱한 글**은 `_about`(팀 표기)이 버린다 — 버린 수를 사유에 적는다(#3).
+       **엉뚱한 글**은 `_about`(팀 표기)이, **묵은 글**은 날짜가 버린다 —
+       버린 수를 **사유별로** 적는다(#3).
     """
+    from app import datehint as _dh
     from app import rules
+    from app.core import querywriter as _qw
     from app.core.search import fetch as _ft
     eng = list(rules.news_engines())
     said_langs = [x for x in (langs or []) if x] or ["en"]
+    # 🔴 ① **확인된 매체로 좁힌 질의를 앞에 둔다** — 그 나라 매체가 먼저다
+    said_q = list(queries or [])
+    if sites:
+        said_q = [*_qw.site_queries(list(sites), said_q), *said_q]
     got: list[tuple[str, str]] = []
     said: list[str] = []
-    n_off = 0
-    for one in list(queries or [])[:MAX_Q]:
+    # ══════════════════════════════════════════════════════════════
+    # 🔴🔴 **버린 본문을 사유별로 센다**(#3 · 계약 리뷰어 2026-10-17)
+    # ══════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 처음 판은 `팀 표기 없음`(`n_off`)만 셌고, **받지 못한 것**과 **왔는데
+    #     짧은 것**은 `continue` 로 조용히 지나갔다 — 독스트링은 *"버린 수를
+    #     사유에 적는다"* 라고 적어 두고 **코드가 그 말을 안 지켰다**.
+    #  🔴 세 가지를 **갈라서** 적는다 — *"자료가 안 왔다"* 와 *"왔는데 못
+    #     뽑았다"* 는 다른 사실이다(CLAUDE.md #3).
+    n_off = 0            # 팀 표기가 없다(남의 글)
+    n_dead = 0           # 못 받았다(fetch 가 터졌다)
+    n_thin = 0           # 왔는데 **껍데기·짧다**
+    n_old = 0            # ② **묵었다**(날짜가 창 밖이라고 스스로 말한다)
+    said_dead: list[str] = []
+    for one in said_q[:MAX_Q]:
         hits: list = []
         for lang in said_langs[:2]:
             try:
@@ -535,11 +691,31 @@ async def _docs(queries: list[str], *, net, chain, state,
             url = str(getattr(h, "url", "") or "")
             if not url or any(url == u for u, _b in got):
                 continue
+            # 🔴 ② **묵은 글은 열지도 않는다** — 판정 대상은 오늘의 팀 사정이다
+            #    (판정 함수는 `datehint.too_old` 하나 · 힌트가 없으면 받는다)
+            said_old, said_why = _dh.too_old(url, getattr(h, "snippet", ""))
+            if said_old:
+                n_old += 1
+                said_dead.append(f"{url[:50]} — {said_why[:45]}")
+                continue
             try:
-                body, _when, _rungs = await _ft.body_of(net, url)
-            except Exception:                               # noqa: BLE001
+                body, _when, rungs = await _ft.body_of(net, url)
+            except Exception as exc:                        # noqa: BLE001
+                # 🔴 **못 받았다** — 이름으로 남긴다(#3)
+                n_dead += 1
+                said_dead.append(f"{url[:50]} {exc!r}"[:90])
                 continue
             if len(str(body or "")) < BODY_MIN:
+                # 🔴 **왔는데 못 뽑았다** — 사다리가 적은 까닭을 함께 남긴다
+                #    (`body_of` 가 칸마다 `{"rung","ok","why"}` 를 적는다 ·
+                #     종전엔 그 목록을 `_rungs` 로 받아 **버렸다**)
+                n_thin += 1
+                said_bad = [str(dict(r).get("why") or "")
+                            for r in list(rungs or [])
+                            if not dict(r).get("ok")]
+                said_dead.append(
+                    f"{url[:50]} {len(str(body or ''))}자"
+                    + (f" — {said_bad[-1][:50]}" if said_bad else ""))
                 continue
             # 🔴 **그 경기 글이 아니면 버린다**(위 `_about` 머리말)
             if not _about(str(body), list(aliases or [])):
@@ -550,8 +726,22 @@ async def _docs(queries: list[str], *, net, chain, state,
                 break
         if len(got) >= DOCS_CAP:
             break
+    # 🔴 **버린 것을 전부 이름으로** 적는다(#3) — 앞 둘은 *"자료가 안 왔다"*,
+    #    뒤 하나는 *"왔는데 남의 글이다"* 다. 섞으면 2단의 상류를 못 고친다.
+    if n_old:
+        said.append(f"🔴 **묵은 문서** {n_old}건(열지 않았다)")
+    if n_dead:
+        said.append(f"🔴 못 받은 문서 {n_dead}건")
+    if n_thin:
+        said.append(f"🔴 **껍데기·짧은 본문** {n_thin}건(<{BODY_MIN}자)")
     if n_off:
         said.append(f"🔴 팀 표기 없어 버린 본문 {n_off}건")
+    if said_dead:
+        said.append("버린 것 — " + " · ".join(said_dead[:3]))
+    # 🔴 **수첩에도 적는다** — 카드 사유는 잘리지만 수첩은 온전하다(#3).
+    #    ⚠️ `state` 를 받아 놓고 안 쓰던 것을 여기서 쓴다(계약 리뷰어 지적).
+    if state is not None:
+        state.note("⑤-b3 2단 문서 — " + " · ".join(said or ["없다"]))
     # 🔴🔴 **무엇을 읽었는지 적는다**(④ · #3) — ⚠️ 실측 2026-10-17: 사유에
     #    질의와 **건수만** 있어서, 판정이 `모르겠다` 로 끝났을 때 *"그래서 어떤
     #    글을 읽고 못 가린 건가"* 를 사람이 알 길이 없었다(조용한 0 의 사촌).
@@ -578,7 +768,7 @@ def _ground(quote: str, docs: list[tuple[str, str]]) -> tuple[bool, str]:
     return False, ""
 
 
-def _verdict(claim: Claim, branch: Branch, ref, *, pv: str,
+def _rule_one(claim: Claim, branch: Branch, ref, *, pv: str,
              docs: list[tuple[str, str]], state) -> str:
     """🔴🔴 2단-③: **판정 모델이 본문을 읽고** 옳다/그르다/모르겠다를 낸다.
 
@@ -602,7 +792,7 @@ def _verdict(claim: Claim, branch: Branch, ref, *, pv: str,
             f"   그 주장의 부등호: `{claim.cmp}`"
             "(`>` 홈이 크다 · `<` 원정이 크다)\n\n"
             f"문서 {len(docs)}건:\n{said_body}\n\n"
-            "🔴 `verdict` — 위 문서 본문을 근거로:\n"
+            "🔴 `ruling` — 위 문서 본문을 근거로:\n"
             "  · `옳다` — 본문이 그 주장을 **받친다**\n"
             "  · `그르다` — 본문이 그 주장과 **어긋난다**\n"
             "  · `모르겠다` — 본문에 그 말을 가릴 글자가 **없다**\n"
@@ -612,25 +802,25 @@ def _verdict(claim: Claim, branch: Branch, ref, *, pv: str,
             "지어내면 버려진다(코드가 대조한다).")),
     ]
     got = llm.ask(provider=pv, purpose="judge", messages=msgs, out=JudgeOut,
-                  state=state, enums={"verdict": list(VERDICTS)})
+                  state=state, enums={"ruling": list(RULINGS)})
     claim.judge_pv = pv
     if not isinstance(got, JudgeOut):
-        claim.verdict = DUNNO
+        claim.ruling = DUNNO
         claim.why = f"🔴 `{pv}` 판정 실패({getattr(got, 'reason', '?')})"
         return claim.why
-    said = str(got.verdict or "").strip()
-    claim.verdict = said if said in VERDICTS else DUNNO
+    said = str(got.ruling or "").strip()
+    claim.ruling = said if said in RULINGS else DUNNO
     claim.quote = str(got.quote or "").strip()
     ok, url = _ground(claim.quote, docs)
     claim.grounded = ok
     claim.url = url or str(got.url or "").strip()
-    if claim.verdict in (OK, NO) and not ok:
+    if claim.ruling in (OK, NO) and not ok:
         # 🔴 **지어낸 인용이다** — 본문에 그 글자가 없다(절대규칙 5 · 접지)
-        claim.why = (f"🔴 `{pv}` 가 `{claim.verdict}` 라 했지만 **인용이 본문에 "
+        claim.why = (f"🔴 `{pv}` 가 `{claim.ruling}` 라 했지만 **인용이 본문에 "
                      f"없다** — 버린다(`{claim.quote[:40]}`)")
-        claim.verdict = DUNNO
+        claim.ruling = DUNNO
         return claim.why
-    claim.why = (f"`{pv}` 판정 **{claim.verdict}**"
+    claim.why = (f"`{pv}` 판정 **{claim.ruling}**"
                  + (f" · 인용 「{claim.quote[:80]}」 · {claim.url[:60]}"
                     if ok else " · ⬜ 인용 없음"))
     return claim.why
@@ -647,6 +837,12 @@ async def cross(branch: Branch, ref, *, state, net, chain=None) -> str:
     if chain is None:
         from app import search as _search
         chain = _search.build_chain()
+    # 🔴🔴 ③ **문서가 말할 수 있는 주장만** 2단에 보낸다(사용자 지시 2026-10-17)
+    #    ⚠️ 전술 비교를 보내면 검색·본문·LLM 을 쓰고 늘 `모르겠다` 를 받는다.
+    ok_doc, why_doc = doc_checkable(branch)
+    if not ok_doc:
+        branch.why = f"{HELD} · {why_doc}"
+        return branch.why
     # 🔴 질의는 **첫 주장의 상대 모델**이 쓴다(한 갈래에 한 번 · 예산)
     pv_q = judge_pv_of(branch.claims[0].provider) if branch.claims else ""
     if not pv_q:
@@ -656,8 +852,21 @@ async def cross(branch: Branch, ref, *, state, net, chain=None) -> str:
     if not qs:
         branch.why = f"{HELD} · 🔴 질의 0개 — {said_q}"
         return branch.why
+    # 🔴🔴 ① **매체는 robots 를 받아 확인한 뒤에만 쓴다**(#4 · 지어낸 주소 금지)
+    #    🔴 확인하는 함수는 `querywriter.check_hosts` 하나다(사본 금지).
+    said_sites: list[str] = []
+    if _SITES:
+        from app.core import querywriter as _qw
+        try:
+            said_sites, said_hw = await _qw.check_hosts(net, list(_SITES),
+                                                        state=state)
+            said_q += (" · 매체 확인 " + " · ".join(said_hw[:3]))
+        except Exception as exc:                            # noqa: BLE001
+            # ⚠️ 확인이 안 되면 **안 쓴다**(없는 매체로 좁히면 0건이 된다)
+            said_q += f" · 🔴 매체 확인 실패({exc!r:.40}) — site: 안 쓴다"
     docs, said_d = await _docs(qs, net=net, chain=chain, state=state,
-                               langs=said_langs, aliases=_aliases(ref))
+                               langs=said_langs, aliases=_aliases(ref),
+                               sites=said_sites)
     if not docs:
         branch.why = f"{HELD} · 🔴 본문 0건 — {said_q} · {said_d}"
         return branch.why
@@ -665,13 +874,13 @@ async def cross(branch: Branch, ref, *, state, net, chain=None) -> str:
     for one in branch.claims:
         pv = judge_pv_of(one.provider)
         if not pv:
-            one.verdict = DUNNO
+            one.ruling = DUNNO
             one.why = "🔴 상대 모델이 없다(자기 검증 금지)"
             said_each.append(one.why)
             continue
-        said_each.append(_verdict(one, branch, ref, pv=pv, docs=docs,
+        said_each.append(_rule_one(one, branch, ref, pv=pv, docs=docs,
                                   state=state))
-    good = [c for c in branch.claims if c.verdict == OK and c.grounded]
+    good = [c for c in branch.claims if c.ruling == OK and c.grounded]
     head = f"{said_q} · {said_d} · " + " · ".join(said_each)
     if len(good) == 1:
         one = good[0]
@@ -812,7 +1021,13 @@ async def run(branches: list[Branch], variables: list, ref, facts,
         return list(variables or []), "⬜ 충돌·단독 갈래가 없다 — 판정할 것이 없다"
     said = [f"갈래 {len(branches)}개(" +
             " · ".join(f"{b.mode} `{b.kind}`" for b in branches) + ")"]
-    said.append("1단 " + stage1(branches, ref, facts, plan))
+    # ⚠️ 계약 리뷰어 2026-10-17: 2단만 `try` 로 감쌌는데 독스트링은 *"예외를 안
+    #    던진다"* 라고 약속했다 — 1단(`float()` 변환)이나 3단이 터지면 **카드가
+    #    통째로 안 나온다**. 🔴 세 단을 다 감싼다(카드는 **항상** 나온다 · §5).
+    try:
+        said.append("1단 " + stage1(branches, ref, facts, plan))
+    except Exception as exc:                                # noqa: BLE001
+        said.append(f"1단 🔴 터졌다 — {exc!r}")
     left = [b for b in _order(branches) if not b.picked]
     done = 0
     for one in left:
@@ -836,7 +1051,10 @@ async def run(branches: list[Branch], variables: list, ref, facts,
             one.why = f"{HELD} · 🔴 2단이 터졌다 — {exc!r}"
             said.append(f"2단 `{one.kind}` 🔴 {exc!r}")
         done += 1
-    got, said_apply = apply(branches, variables)
+    try:
+        got, said_apply = apply(branches, variables)
+    except Exception as exc:                                # noqa: BLE001
+        got, said_apply = list(variables or []), f"🔴 터졌다 — {exc!r}"
     said.append("3단 " + said_apply)
     why = " · ".join(said)
     logger.info("[갈래판정] %s", why[:400])

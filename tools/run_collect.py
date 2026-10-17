@@ -410,7 +410,7 @@ async def main(argv: list[str]) -> int:
             print(f"        주장 — {one.said()}")
             for c in one.claims:
                 print(f"        `{c.provider}` `{c.cmp}` 판정 "
-                      f"{c.verdict or '⬜ 안 물었다'}"
+                      f"{c.ruling or '⬜ 안 물었다'}"
                       + (f" · 판정자 {c.judge_pv}" if c.judge_pv else "")
                       + (f" · 인용 「{c.quote[:70]}」" if c.quote else ""))
         mark("⑤-b3 갈래 판정",

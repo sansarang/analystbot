@@ -472,12 +472,23 @@ def _float_of(got: object) -> float | None:
 FLANK_CUT = 0.3
 
 
+#: 🔴🔴 **`flank_of` 가 낼 수 있는 글자** — 읽는 쪽이 이 표를 쓴다(#1 사본 금지).
+#  ⚠️ 실사고 2026-10-17: `core/branchjudge` 가 측면 선수를 `("L", "R")` 로 세어
+#     **운영에서 영구히 0명**이었다(그 글자는 어느 경로도 만들지 않는다). 그런데
+#     목록이 비지 않으니 *"못 쟀다"* 도 아니라 **0 으로 적혔다** — 거짓 수다.
+#  🔴 그래서 글자를 **여기 하나**에 둔다(이 함수가 그 글자의 원본이다).
+FLANKS: tuple[str, ...] = ("왼", "중앙", "오른")
+#: 🔴 그중 **측면**인 것(가운데는 측면이 아니다)
+WINGS: tuple[str, ...] = ("왼", "오른")
+
+
 def flank_of(p: dict) -> str:
     """🔴 §1-1 — `왼`·`중앙`·`오른` 중 하나. ⚠️ 좌표가 없으면 **빈 글자**."""
     y = _float_of((dict(p or {}).get("horizontalLayout") or {}).get("y"))
     if y is None:
         return ""
-    return "왼" if y < FLANK_CUT else ("오른" if y > 1 - FLANK_CUT else "중앙")
+    left, mid, right = FLANKS
+    return left if y < FLANK_CUT else (right if y > 1 - FLANK_CUT else mid)
 
 
 def spot_of(p: dict) -> str:
