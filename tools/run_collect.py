@@ -46,32 +46,32 @@ LEDGER: dict = {}
 STEPS: tuple[str, ...] = (
     "① 경기", "② fotmob(XI·결장·감독)", "②-b 선수단 교체", "③ 딥서치",
     "④ 추출", "⑤ 검증", "⑤-b 포메이션·전략", "⑤-b2 전략 전문가(LLM)",
+    # 🔴 **충돌·단독 갈래 판정**(사용자 지시 2026-10-16) — 상대 모델이 서치해서 본다
+    "⑤-b3 갈래 판정",
     "⑤-c 리그·컵 분석",
     "3+5 통합", "⑥ LLM 표적 질의", "⑦ 표적 문서", "⑧ 표적 추출",
     "⑩ 변수 배치", "⑬⑭ 상성·축", "⑮⑯ 확률·시뮬", "⑯ 종합 평(solar)",
     "⑯ 종합 평(deepseek)")
 
 
-#: 🔴 변수 글에서 **안전장치 사유**가 시작되는 글자
-FLAG_MARK = "🔴 **안전장치**"
-
-
 def say_var(v, cut: int = 100) -> None:
-    """🔴🔴 변수 한 줄 — **안전장치 사유는 따로 찍는다**(사용자 지시 2026-10-16).
+    """🔴🔴 변수 한 줄 — **꼬리표 사유는 따로 찍는다**(사용자 지시 2026-10-16).
 
     ⚠️ 실사고 2026-10-16(Obolon Kyiv): 카드에 `… 🔴 **안전장치**: 🔴 ` 까지만
        찍히고 **사유가 잘렸다** — 글을 `claim[:100]` 으로 잘랐기 때문이다.
        🔴 *조용한 0* 은 아니었지만, **왜 맥락 전용인지 읽을 수 없었다**(#3 의 뜻은
        "이름으로 남긴다"이지 "글자를 남긴다"가 아니다).
-    🔴 그래서 사유를 **둘째 줄**로 온전히 적는다.
+    ⚠️ 실사고 2026-10-17(Necaxa vs Atlas): **갈래 판정** 사유도 같은 병이었다.
+    🔴 그래서 꼬리표를 **둘째 줄**로 온전히 적는다 — 쪼개는 곳은
+       `core/crosscheck.tails_of` 하나다(#1 사본 금지).
     """
-    said = str(getattr(v, "claim", "") or "")
-    head, _sep, tail = said.partition(FLAG_MARK)
+    from app.core import crosscheck as _cc
+    head, tails = _cc.tails_of(getattr(v, "claim", ""))
     print(f"- `{v.id}` [{v.type}] {head[:cut]}"
           + (f" · 원천 {v.n_sources}곳" if getattr(v, "n_sources", 0) else ""),
           flush=True)
-    if tail:
-        print(f"    └ 🔴 **안전장치** {tail.lstrip(': ')}"[:400], flush=True)
+    for said_t in tails:
+        print(f"    └ {said_t}"[:450], flush=True)
 
 
 def mark(step: str, state: str, said: str = "") -> None:
@@ -371,6 +371,8 @@ async def main(argv: list[str]) -> int:
     #     그래서 이 변수들은 지금 🟡 **표시·검증·가설**이다(축을 안 민다).
     from app.core import strategy_llm as _sl
     # 🔴 **최근 5경기 기준**으로도 갈래를 찾게 재료를 넘긴다(지시 2026-10-15)
+    # 🔴🔴 **충돌·단독 갈래 그릇**(지시 2026-10-16) — 아래 ⑤-b3 가 판정한다
+    said_branch: list = []
     var_sl, said_sl = _sl.ask(ref, facts, plan, state=st,
                               recent=_sl.recent_of(variables),
                               # 🔴 **기사 사실도 넘긴다**(지시 2026-10-15) —
@@ -378,13 +380,43 @@ async def main(argv: list[str]) -> int:
                               # 🔴 **피로도 재료**(지시 2026-10-16) — 휴식일·
                               #    직전 경기일·최근 경기 수(코드가 센 수다)
                               rest=_sl.rest_of(ref, facts),
-                              news=_sl.news_of(variables))
+                              news=_sl.news_of(variables),
+                              branches=said_branch)
     print("## ⑤-b2 전략 전문가(LLM)")
     print(f"- {said_sl}")
     for one in var_sl:
         print(f"    `{one.id}` {one.claim[:150]}")
     mark("⑤-b2 전략 전문가(LLM)",
          "✅ 돌았다" if var_sl else "🔴 빈손", said_sl[:110])
+    print(flush=True)
+
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **⑤-b3 갈래 판정** — 사용자 지시 2026-10-16
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 충돌되는 것·한쪽만 나오는 것도 **버리는 게 아니라 어느 쪽이 맞는지
+    #  > 확인**해야 한다 … 각 LLM 이 낸 내용을 **다른 LLM 이 서치해서 검증**
+    #
+    #  🔴 1단 코드가 가진 수 → 2단 교차 검증(상대 모델이 서치) → 3단 채택·보류
+    print("## ⑤-b3 갈래 판정(충돌·단독)")
+    if var_sl and said_branch:
+        from app.core import branchjudge as _bj
+        var_sl, said_bj = await _bj.run(said_branch, var_sl, ref, facts, plan,
+                                        state=st, net=net, chain=chain)
+        print(f"- {said_bj}")
+        for one in said_branch:
+            print(f"    [{one.mode}] `{one.kind}` — {one.why or '⬜ 사유 없음'}")
+            for c in one.claims:
+                print(f"        `{c.provider}` `{c.cmp}` 판정 "
+                      f"{c.verdict or '⬜ 안 물었다'}"
+                      + (f" · 판정자 {c.judge_pv}" if c.judge_pv else "")
+                      + (f" · 인용 「{c.quote[:70]}」" if c.quote else ""))
+        mark("⑤-b3 갈래 판정",
+             "✅ 돌았다" if any(b.picked for b in said_branch) else "🟡 보류",
+             said_bj[:110])
+    else:
+        print("- ⬜ 충돌·단독 갈래가 없다 — 판정할 것이 없다")
+        mark("⑤-b3 갈래 판정", "⬜ 갈래 없음", "충돌·단독 0개")
     print(flush=True)
 
     # 🔴 **여기서 멈춘다**(`--until=vars`) — 변수 수집까지만 보는 실행이다
@@ -394,11 +426,16 @@ async def main(argv: list[str]) -> int:
         # ⚠️ `var_lr`(⑤-c 리그·컵)은 **아직 안 돌았다** — 여기 넣으면 터진다
         said_all = list(variables) + list(var_sl)
         print(f"### 거둔 변수 **{len(said_all)}개**")
+        from app.core import crosscheck as _cc3
         for one in said_all:
+            # 🔴 꼬리표(안전장치·갈래 판정)는 **자르지 않는다**(2026-10-17)
+            said_h, said_tails = _cc3.tails_of(getattr(one, "claim", ""))
             print(f"- `{one.id}` [{one.type}] favors={one.favors} · "
                   f"goals={one.goals} · w={one.weight} · "
                   f"기준가능={getattr(one, 'usable_as_basis', '?')}\n"
-                  f"    {str(getattr(one, 'claim', '') or '')[:170]}")
+                  f"    {said_h[:170]}")
+            for said_t in said_tails:
+                print(f"    └ {said_t}"[:450])
         print(flush=True)
         return report_ledger() and 0 or 0
 

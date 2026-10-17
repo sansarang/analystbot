@@ -107,6 +107,21 @@ def front_line(formation: object) -> int | None:
     return int(parts[-1]) if len(parts) >= 2 else None
 
 
+def mid_line(formation: object) -> int | None:
+    """🔴🔴 포메이션 글자의 **중앙 수**(`4-1-4-1`→5 · `4-2-2-2`→4). 못 읽으면 `None`.
+
+    🔴 왜 이 수인가 — **갈래 판정 1단**(인계 2026-10-16 §2)이 *"중원 수싸움"* 을
+       **코드가 가진 수**로 가리는 자리다: 두 포메이션의 가운데 칸을 더한 수다.
+    ⚠️ `back_line`·`front_line` 과 **같은 글자**를 읽는다(사본 금지) — 가운데는
+       첫 칸과 마지막 칸을 뺀 나머지의 **합**이다.
+    ⚠️ 칸이 둘뿐이면(`4-4` 같은 꼴) 가운데가 **없다** → `None`(0 이 아니다 · #3).
+    """
+    parts = [int(x) for x in str(formation or "").split("-") if x.strip().isdigit()]
+    if len(parts) < 3:
+        return None
+    return sum(parts[1:-1])
+
+
 def slot_of(pos: object) -> str:
     """🔴 §2-1 — 포지션 글자 → **여덟 칸** 중 하나. 못 읽으면 빈 글자.
 

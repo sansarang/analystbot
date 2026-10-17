@@ -271,6 +271,9 @@ def test_v5_9_3_계약은_contracts_폴더에_있다():
                r"v5_\d|v5a_|v6_\d|v7_\d|v8_f\d|v9_\d|v10_\d|v11_\d"
                r"|v12_\d|v13_\d|v14_\d|v15_\d|v16_\d|v17_\d|v18_\d"
                r"|v19_\d|v20_\d|v21_\d|v22_\d|v23_\d|v24_\d|v25_\d|v26_\d|v27_\d|v28_\d|v29_\d"
+               # 🔴 v30 = **충돌·단독 갈래 판정**(사용자 지시 2026-10-16 ·
+               #    `test_v30_1_branchjudge.py` = 1단 수 · 2단 교차 · 3단 계약).
+               r"|v30_\d"
                r"|_m\d|solar",
                f, re.I)]
     assert not bad, f"🔴 조항 번호가 이름에 없는 계약 파일: {bad}"

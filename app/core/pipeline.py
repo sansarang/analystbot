@@ -336,6 +336,9 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #  ⚠️ 트리거가 없으면(핵심 결장·포메이션 변화·자리 변화 모두 아니면) 부르지
     #     않는다 — 사유를 수첩에 남긴다(#3).
     from app.core import strategy_llm as _sl
+    # 🔴🔴 **충돌·단독 갈래를 담는 그릇**(사용자 지시 2026-10-16) — 아래
+    #    ⑤-b3 가 그것을 **상대 모델이 서치해서** 판정한다.
+    said_branch: list = []
     var_sl, said_sl = _sl.ask(ref, facts, plan, state=st,
                               recent=_sl.recent_of(variables),
                               # 🔴 **피로도 재료**(사용자 지시 2026-10-16) —
@@ -343,8 +346,29 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
                               rest=_sl.rest_of(ref, facts),
                               # 🔴 **기사 사실도 넘긴다**(지시 2026-10-15) —
                               #    확률은 기사를 안 세고, 내용 판단은 여기서 한다
-                              news=_sl.news_of(variables))
+                              news=_sl.news_of(variables),
+                              branches=said_branch)
     st.note(f"⑤-b2 전략 전문가 — {said_sl}")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **⑤-b3 갈래 판정** — 사용자 지시 2026-10-16
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 충돌되는 것·한쪽만 나오는 것도 **버리는 게 아니라 어느 쪽이 맞는지
+    #  > 확인**해야 한다 … 각 LLM 이 낸 내용을 **다른 LLM 이 서치해서 검증**
+    #  > 하는 걸로 **옳다 그르다를 판단**한다
+    #
+    #  🔴 1단 **코드가 가진 수**(중원 수·측면 수·휴식일·실점 평균) →
+    #     2단 **교차 검증**(상대 모델이 질의를 쓰고 본문을 읽는다 · 인용 접지) →
+    #     3단 채택이면 `usable_as_basis` 를 올리고 **근거를 글에 남긴다**.
+    #  🔴 자리가 여기인 까닭 — 변수 배치(`place`)를 **다시 세우기 전**이어야
+    #     승격된 변수가 확률 자리에 들어간다.
+    #  ⚠️ 갈래 수 상한(`branchjudge.MAX_JUDGE`)·카드 상한 안에서만 돈다.
+    if var_sl and said_branch:
+        from app.core import branchjudge as _bj
+        # ⚠️ 사유를 수첩에 적는 곳은 `branchjudge.run` **하나**다(사본 금지) —
+        #    여기서 또 적으면 카드에 같은 줄이 두 번 찍힌다.
+        var_sl, _said_bj = await _bj.run(said_branch, var_sl, ref, facts,
+                                         plan, state=st, net=net, chain=chain)
     if var_sl:
         variables = [*variables, *var_sl]
         # 🔴 **묶음은 하나다** — 배치를 다시 세운다(둘로 갈리면 배치와 축이
