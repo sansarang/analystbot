@@ -32,6 +32,9 @@ from app.core.state import RunState
 logger = logging.getLogger(__name__)
 
 #: 🔴 LLM 이 고를 수 있는 **전술 읽기 갈래** — 표에 있는 글자만(지어내기 금지)
+#: 🔴 **두 모델이 갈린 줄** 표시(맥락 전용으로 내린다)
+CONFLICT = "🔴 모델 충돌"
+
 KINDS: tuple[str, ...] = (
     "압박 높이", "수비 라인", "빌드업", "측면 집중", "중원 수싸움",
     "역습 성향", "세트피스", "교체 운용",
@@ -196,6 +199,8 @@ def recent_of(variables: list | None) -> list[str]:
 def ask(ref: MatchRef, facts: Facts, plan: object, *, state: RunState,
         recent: list[str] | None = None, news: list[str] | None = None,
         rest: list[str] | None = None,
+        # 🔴 **둘 다 쓴다**(사용자 지시 2026-10-16) — 먼저 성공한 하나가
+        #    아니라 **같은 묶음으로 둘 다 묻고 대본다**(아래 머리말).
         providers: tuple = ("deepseek", "solar")) -> tuple[list[Variable], str]:
     """🔴 전략 전문가에게 **변수 글**을 받는다. `(변수 목록, 사유)`.
 
@@ -348,12 +353,64 @@ def ask(ref: MatchRef, facts: Facts, plan: object, *, state: RunState,
             "근거로 든다.\n"
             "⚠️ 근거가 없으면 그 줄을 **내지 마라**(`=` 만 가득한 줄은 쓸모없다).")),
     ]
-    got, said_pv = llm.ask_first(purpose="recall", messages=msgs,
-                                 out=StrategyRead, state=state,
-                                 providers=providers)
-    if not isinstance(got, StrategyRead):
-        return [], f"🔴 전략 전문가 실패({said_pv}) — 변수 0개"
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **둘 다 묻는다 — 한쪽에 치우치지 않는다**(사용자 지시 2026-10-16)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 전략분석을 deepseek 하나만 하는데 **solar 도 투입해라** · 하나에
+    #  > **치우치면 안 된다**
+    #
+    #  🔴 종전엔 `ask_first` 로 **먼저 성공한 하나**만 썼다(사실상 deepseek).
+    #  🔴 이제 **같은 묶음**으로 둘 다 묻고 **대본다** — ⑯ 평에서 두 모델을
+    #     견주는 그 규율과 같다.
+    #    · 같은 갈래에 **같은 부등호** → 합의다. 그대로 쓴다(`🤝 둘 다`).
+    #    · 같은 갈래에 **다른 부등호** → 🔴 **충돌**이다. 같은 재료로 반대
+    #      결론이면 믿을 수 없으므로 **맥락 전용으로 내린다**(확률에 안 닿는다).
+    #    · 한쪽만 낸 갈래 → 쓰되 **어느 모델인지** 적는다(표본 하나다).
+    said_rows: dict[str, list] = {}
+    said_ok: list[str] = []
+    for pv in providers:
+        one = llm.ask(provider=pv, purpose="recall", messages=msgs,
+                      out=StrategyRead, state=state)
+        if not isinstance(one, StrategyRead):
+            state.note(f"⑤-b2 `{pv}` 실패 — {getattr(one, 'reason', '?')}")
+            continue
+        said_ok.append(pv)
+        for row in list(one.rows or []):
+            said_rows.setdefault(str(getattr(row, "kind", "") or ""),
+                                 []).append((pv, row))
+    if not said_ok:
+        return [], f"🔴 전략 전문가 실패(둘 다) — 변수 0개"
+    keep, said_note = [], []
+    for kind, rows in said_rows.items():
+        if len(rows) == 1:
+            pv, row = rows[0]
+            row.text = f"[{pv} 혼자] {row.text}"
+            keep.append(row)
+            continue
+        cmps = {str(getattr(r, "cmp", "=")) for _pv, r in rows}
+        pv0, row0 = rows[0]
+        if len(cmps) == 1:
+            row0.text = ("[🤝 " + "·".join(p for p, _r in rows) + " 합의] "
+                         + row0.text)
+            keep.append(row0)
+        else:
+            # 🔴 **충돌** — 글은 남기되 부등호를 `=`(모름)으로 내린다
+            #    ⚠️ 꼬리표를 **먼저** 만든다 — 값을 바꾼 뒤 읽으면 제 값이
+            #       아니라 바뀐 `=` 가 찍힌다(실측 2026-10-16).
+            said_tag = " ↔ ".join(f"{p} {getattr(r, 'cmp', '=')}"
+                                  for p, r in rows)
+            # 🔴 부등호는 **그대로 둔다** — `=` 로 바꾸면 `vars_of` 가 그 줄을
+            #    **통째로 버려** 정보가 사라진다(실측 2026-10-16: 변수 0개).
+            #    🔴 대신 글에 충돌 표시를 박고, 아래에서 **맥락 전용**으로 내린다.
+            row0.text = f"{CONFLICT} [{said_tag}] {row0.text}"
+            keep.append(row0)
+            said_note.append(kind)
+    got = StrategyRead(rows=keep[:MAX_ROWS])
     out = vars_of(got, ref, why=why)
+    said_pv = "+".join(said_ok) + (f" · 🔴 충돌 {len(said_note)}갈래"
+                                   f"({' · '.join(said_note[:2])})"
+                                   if said_note else " · 충돌 없다")
     logger.info("[전략LLM] %s · 변수 %d개", said_pv, len(out))
     return out, f"{why} → {said_pv} · 변수 {len(out)}개"
 
@@ -450,6 +507,10 @@ def vars_of(got: StrategyRead, ref: MatchRef, *, why: str = "") -> list[Variable
         goals = {">": "up", "<": "down"}.get(gop, "none")
         if fav == "both" and goals == "none":
             continue              # ⚠️ `=`·`=` 는 변수가 아니다
+        # 🔴🔴 **모델이 갈린 갈래는 확률에 안 닿는다**(사용자 지시 2026-10-16)
+        #    ⚠️ 같은 재료로 반대 결론이면 믿을 수 없다. 그래도 **버리지 않고**
+        #       맥락 전용으로 남긴다 — 평이 *"두 모델이 갈렸다"* 를 읽어야 한다.
+        said_conf = CONFLICT in text
         side = fav if fav in ("home", "away") else "home"
         tail = f" [{kind} 홈{op}원정 · 총골{gop}기준]"
         # 🔴 승인된 표가 있으면 **그 표가 이긴다**(사람이 정한 값이 위다)
@@ -464,7 +525,8 @@ def vars_of(got: StrategyRead, ref: MatchRef, *, why: str = "") -> list[Variable
             target=f"strategy:{kind}", hardness="soft",
             # 🔴 가중은 **규칙 변수와 같은 자**다(여기서 새 수를 짓지 않는다)
             weight=_weight(),
+            # 🔴 충돌 줄은 **근거 불가**(맥락 전용) — 확률 자리에 못 간다
+            usable_as_basis=not said_conf,
             claim=f"🟢 전략 비교(LLM · {kind}) — {text}{tail}",
-            quote=text, doc_ids=[], from_rule="SLLM",
-            usable_as_basis=True))
+            quote=text, doc_ids=[], from_rule="SLLM"))
     return out

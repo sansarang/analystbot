@@ -380,3 +380,55 @@ def test_sl13_라인업_정밀_비교() -> None:
         assert w in src, w
     # ③ 재료 — 라인업을 **자리별 선수**로 넘긴다(포메이션 글자만이 아니다)
     assert '_rows(s)' in src and 'getattr(pl, "pos"' in src, src[:1500]
+
+
+def test_sl14_두_모델을_다_쓴다() -> None:
+    """🔴🔴 SL14 — 사용자 지시 2026-10-16:
+
+    > 전략분석을 deepseek 하나만 하는데 **solar 도 투입해라** · 하나에
+    > **치우치면 안 된다**
+
+    🔴 같은 묶음으로 **둘 다** 묻고 대본다(⑯ 평의 그 규율과 같다):
+       합의 → 그대로 · **충돌 → 맥락 전용**(확률에 안 닿는다) · 혼자 → 표시.
+    """
+    from unittest.mock import patch
+
+    from app.core import llm as _llm
+    from app.core.state import RunState
+
+    class _XI:
+        formation = "4-3-3"
+        players: list = []
+
+    class _F:
+        xi = {"team:000001": _XI(), "team:000002": _XI()}
+        recent: dict = {}
+        schedule: dict = {}
+
+    class _Plan:
+        facts = {"L1": {"kind": "formation", "text": "홈 4-4-2→4-3-3"}}
+
+    class _R:
+        home, away = "team:000001", "team:000002"
+        home_name, away_name, competition = "A", "B", "L"
+
+    def fake(**kw):
+        cmp_ = "<" if kw["provider"] == "deepseek" else ">"
+        return sl.StrategyRead(rows=[
+            sl.StrategyRow(kind="수비 라인", cmp=cmp_, goals_cmp="=",
+                           text="라인 높다"),
+            sl.StrategyRow(kind="중원 수싸움", cmp=">", goals_cmp="=",
+                           text="중원")])
+
+    with patch.object(_llm, "ask", side_effect=fake):
+        out, why = sl.ask(_R(), _F(), _Plan(), state=RunState())
+    assert "deepseek+solar" in why, why
+    assert "🔴 충돌 1갈래(수비 라인)" in why, why
+    box = {v.id: v for v in out}
+    conf = [v for v in out if "모델 충돌" in v.claim]
+    agree = [v for v in out if "합의" in v.claim]
+    assert conf and agree, [v.claim[:40] for v in out]
+    # 🔴 충돌 줄은 **버리지 않고** 맥락 전용으로 남긴다(평이 읽어야 한다)
+    assert conf[0].usable_as_basis is False, conf[0]
+    assert agree[0].usable_as_basis is True, agree[0]
+    assert box  # 변수 둘 다 섰다
