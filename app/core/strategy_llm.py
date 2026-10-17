@@ -29,6 +29,8 @@ from pydantic import BaseModel, Field
 from app.core.schema import Facts, MatchRef, Variable
 from app.core.state import RunState
 
+from app.core import ability as _ab
+
 logger = logging.getLogger(__name__)
 
 #: 🔴 LLM 이 고를 수 있는 **전술 읽기 갈래** — 표에 있는 글자만(지어내기 금지)
@@ -236,7 +238,12 @@ def ask(ref: MatchRef, facts: Facts, plan: object, *, state: RunState,
         #    ⚠️ 목록을 주면 충돌·단독 갈래가 `branchjudge.Branch` 로 쌓인다 —
         #       그것을 **다른 모델이 서치해서 판정**한다(`core/branchjudge`).
         #    🔴 안 주면 종전과 똑같이 돈다(맥락 전용으로 남는다).
-        branches: list | None = None) -> tuple[list[Variable], str]:
+        branches: list | None = None,
+        # 🔴🔴 **직전 5경기 블록**(사용자 지시 2026-10-17) — *"최근 직전 5경기
+        #    각 경기마다 득실점·포메이션·선발 라인 능력치를 llm 한테 제공한다 ·
+        #    당일 경기에 예측하도록 도움을 준다"*. ⚠️ 글자뿐이다(수는 `ability`
+        #    에서 멈춘다) · 만드는 곳은 `past_of` 하나다(#1 사본 금지).
+        past: dict | None = None) -> tuple[list[Variable], str]:
     """🔴 전략 전문가에게 **변수 글**을 받는다. `(변수 목록, 사유)`.
 
     ⚠️ 실패해도 예외를 안 던진다 — 빈 목록 + 사유다(카드는 항상 나온다).
@@ -390,6 +397,19 @@ def ask(ref: MatchRef, facts: Facts, plan: object, *, state: RunState,
             + __import__("app.core.querywriter",
                          fromlist=["x"]).comp_hint(ref)
             + f"포메이션:\n{said_xi}\n"
+            # ══════════════════════════════════════════════════════════
+            # 🔴🔴 **직전 5경기 — 경기마다** 사용자 지시 2026-10-17
+            # ══════════════════════════════════════════════════════════
+            #
+            #  ⚠️ 종전엔 `최근 5경기 재료` 가 **변수 글**(평균·연속)뿐이었다 —
+            #     *어떤 경기였는지*가 없었다. 🔴 이제 경기마다 **득실점·
+            #     포메이션·선발 능력치**를 한 줄씩 준다(통합하지 않는다).
+            + ("직전 5경기(경기마다 · 최신이 위):\n"
+               + "\n".join(f"{str(getattr(ref, f'{x}_name', '') or '')}\n"
+                           + "\n".join(list((past or {}).get(x) or
+                                             ["- ⬜ 없다"]))
+                           for x in ("home", "away")) + "\n"
+               if past else "직전 5경기: ⬜ **못 받았다**\n")
             # 🔴 **순위표**(사용자 지시 2026-10-17) — 동기·강등·승격이 여기서 읽힌다
             + f"순위표(🔴 = 오늘 두 팀): {_table()}\n"
             f"오늘 라인업 사실:\n{said_facts}\n"
@@ -471,7 +491,17 @@ def ask(ref: MatchRef, facts: Facts, plan: object, *, state: RunState,
               "**아는 선수만** 말한다. 모르면 `=` 다.\n"
               "   🔴 결장·피로도와 이어 읽는다 — 선발이 지치거나 빠진 자리를 "
               "**벤치가 메울 수 있나**가 그 갈래의 알맹이다.\n"
-            + "🔴 갈래는 **오늘 라인업 · 벤치 · 최근 5경기 · 기사 사실** 넷에서 "
+            # 🔴🔴 **직전 5경기를 근거로 쓴다** — 사용자 지시 2026-10-17
+            #    > 당일 경기에 **예측하도록 도움**을 준다
+            + "🔴🔴 **⑤ 직전 5경기를 읽는다** — 위 `직전 5경기` 는 경기마다 "
+              "**상대·홈원정·득실점·포메이션·선발 능력치**가 적혀 있다. "
+              "⚠️ 평균으로 뭉치지 말고 **경기별로** 본다:\n"
+              "   · 어느 포메이션일 때 이기고 어느 포메이션일 때 졌나\n"
+              "   · 오늘 포메이션이 **그중 어느 경기와 같은가**\n"
+              "   · 그때 뛰던 선발의 능력치가 오늘과 **어떻게 다른가**\n"
+              "   · 직전 경기 결과가 오늘 경기력에 어떻게 닿나\n"
+              "   🔴 그 읽기가 어느 갈래의 부등호로 이어지는지 말한다.\n"
+            + "🔴 갈래는 **오늘 라인업 · 벤치 · 직전 5경기 · 기사 사실** 넷에서 "
               "찾는다 — 재료에 없는 갈래는 내지 마라.\n"
             # ══════════════════════════════════════════════════════════
             # 🔴🔴 **득실점으로 판단해라** — 사용자 지시 2026-10-15
@@ -748,4 +778,81 @@ def vars_of(got: StrategyRead, ref: MatchRef, *, why: str = "") -> list[Variable
             usable_as_basis=not said_conf,
             claim=f"🟢 전략 비교(LLM · {kind}) — {text}{tail}",
             quote=text, doc_ids=[], from_rule="SLLM"))
+    return out
+
+
+# ══════════════════════════════════════════════════════════════════════
+# 🔴🔴 **직전 5경기를 경기마다 준다** — 사용자 지시 2026-10-17
+# ══════════════════════════════════════════════════════════════════════
+#
+#  > 최근 직전 5경기 **각 경기마다 득실점·포메이션·선발 라인 능력치**를 llm
+#  > 한테 제공한다 · **당일 경기에 예측하도록 도움**을 준다
+#
+#  🔴 재료는 **이미 다 받고 있다**(새 통신 0):
+#       `facts.recent[키]["sequence"]`  경기마다 날짜·상대·홈원정·득실·결과
+#       `facts.past_xi[키]`             경기마다 **포메이션·선발**(`XI`)
+#       `ability.squad_fetch` 산출      선발의 **능력치 백분위**(글자로 바꾼다)
+#  ⚠️ 수(백분위)는 `core/ability` 에서 멈춘다 — 모델에게는 **글자**만 간다
+#     (`강점/보통/약점`). 그 규율은 ⑤-b1 과 같다.
+#  ⚠️ 지난 경기 선발의 능력치는 **오늘 선발과 겹치는 선수만** 붙는다(그 밖은
+#     번호를 안 받았다) — 그 사실을 글에 적는다(#3 조용한 0 금지).
+
+
+def past_of(facts, ref, side: str, ability_box: dict | None = None) -> list[str]:
+    """🔴🔴 그 팀 **직전 5경기**를 한 줄씩. `["- 날짜 상대 결과 득실 · 포메이션 …"]`.
+
+    🔴 경기마다 **따로** 적는다 — 평균·연속으로 뭉치지 않는다(사용자 지시).
+    ⚠️ 수열은 **최신이 앞**이다(fotmob 날짜 정렬).
+    """
+    key = str(getattr(ref, side, "") or "")
+    box = dict((getattr(facts, "recent", None) or {}).get(key) or {})
+    rows = list(box.get("sequence") or [])
+    if not rows:
+        return [f"- ⬜ {side} 직전 경기 목록이 없다"]
+    #  🔴 포메이션·선발은 `past_xi` 가 든다 — 같은 순서라고 **가정하지 않는다**
+    #     (날짜로 맞춘다 · 못 맞추면 그 사실을 적는다).
+    said_xi = list((getattr(facts, "past_xi", None) or {}).get(key) or [])
+    by_date: dict[str, object] = {}
+    for one in said_xi:
+        when = str(getattr(one, "fetched_at", "") or "")[:10]
+        if when:
+            by_date.setdefault(when, one)
+    out: list[str] = []
+    cuts = _ab.cuts() if hasattr(_ab, "cuts") else (0.0, 0.0)
+    for i, raw in enumerate(rows[:5]):
+        r = dict(raw or {})
+        gf, ga = r.get("goals_for"), r.get("goals_against")
+        when = str(r.get("date") or "")[:10]
+        head = (f"- {i + 1}번째 전 {when} "
+                f"{'홈' if str(r.get('side')) == 'home' else '원정'} "
+                f"vs {r.get('opponent') or '?'} "
+                f"**{r.get('result') or '?'}** "
+                f"{gf if gf is not None else '?'}-"
+                f"{ga if ga is not None else '?'}")
+        one = by_date.get(when)
+        if one is None:
+            out.append(head + " · ⬜ 그 경기 포메이션·선발을 못 받았다")
+            continue
+        head += f" · 포메이션 {getattr(one, 'formation', '') or '⬜'}"
+        #  🔴 **능력치는 글자만** — 오늘 받은 묶음에 있는 선수만 붙는다
+        said_p: list[str] = []
+        for pl in list(getattr(one, "lineup", None) or []):
+            nm = str(getattr(pl, "name", "") or "")
+            got = dict((ability_box or {}).get(nm) or {})
+            if not got:
+                continue
+            items = [x for x in (got.get("items") or [])
+                     if isinstance(x.get("value"), (int, float))]
+            if not items:
+                continue
+            best = max(items, key=lambda x: float(x["value"]))
+            word = _ab.word_of(float(best["value"])) if cuts[0] else ""
+            if word:
+                said_p.append(f"{nm}({best.get('title') or best.get('key')} {word})")
+        if said_p:
+            # 🔴 **전원 준다**(사용자 지시 2026-10-17 *"능력치도"*) — 자르지 않는다
+            head += " · 선발 능력치 " + ", ".join(said_p)
+        else:
+            head += " · ⬜ 그 경기 선발의 능력치는 못 붙인다(오늘 선발과 안 겹친다)"
+        out.append(head)
     return out

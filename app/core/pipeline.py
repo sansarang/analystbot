@@ -399,6 +399,12 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
                               news=_sl.news_of(variables),
                               # 🔴 **능력치 재료**(지시 2026-10-17) — 글자뿐이다
                               ability=said_ability,
+                              # 🔴🔴 **직전 5경기 — 경기마다**(사용자 지시
+                              #    2026-10-17) — 득실점·포메이션·선발 능력치.
+                              #    ⚠️ 새 통신 0 — `facts.recent.sequence` ·
+                              #       `facts.past_xi` · ⑤-b1b 능력치를 엮는다.
+                              past={x: _sl.past_of(facts, ref, x, said_sq)
+                                    for x in ("home", "away")},
                               branches=said_branch)
     st.note(f"⑤-b2 전략 전문가 — {said_sl}")
     # ══════════════════════════════════════════════════════════════════
