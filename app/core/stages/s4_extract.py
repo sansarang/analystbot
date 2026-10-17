@@ -31,9 +31,6 @@ logger = logging.getLogger(__name__)
 #: 🔴 하위 과제 여덟 — 열거값이 원본이다(§3). ⚠️ 여기서 이름을 지어내지 않는다.
 SIDS: tuple[str, ...] = tuple(SubtaskId.__args__)      # type: ignore[attr-defined]
 
-#: 🔴 좁히기에 쓸 고유명사 **2개**(지시서 §5 s4). ⚠️ 늘리면 질의가 길어져 0건이다.
-NARROW_N = 2
-
 
 def group_kinds(sid: str) -> list[str]:
     """🔴 그 하위 과제가 **담당하는 유형군 이름**들 — `subtask_groups.yaml` 이 원본.
@@ -42,6 +39,22 @@ def group_kinds(sid: str) -> list[str]:
     """
     from app.research import subtasks as _st
     key = str(sid).split("-")[0]
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **LLM 서치 하위는 묶음 하나가 아니다** — 2026-10-17
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 딥서치를 지운 뒤 문서를 긷는 하위는 **`F-home`·`F-away` 둘**이고,
+    #     그 질의는 **빈 칸 전체**를 겨냥한다(결장·순위·피로·감독·불화 …).
+    #  ⚠️ 그런데 이 함수는 이름의 앞 글자(`F`)로 묶음을 찾아 **그 묶음 유형만**
+    #     돌려줬다 — 그래서 결장 기사가 와도 추출이 `복귀·명단` 만 물었고
+    #     **기사 변수가 0개**였다(실측: e2e 고정물 문서 9건 → 변수 0).
+    #  🔴 그래서 그 하위에는 **표가 든 유형 전부**를 준다. 목록을 손으로 적지
+    #     않는다 — `s4b_gapsearch.harvest_kinds()` 가 묶음 표에서 모은다(#1).
+    if key == "F":
+        from app.core.stages.s4b_gapsearch import harvest_kinds
+        got = list(harvest_kinds())
+        if got:
+            return got
     for row in _st.groups():
         if str(row.get("key")) == key:
             return [str(k) for k in (row.get("kinds") or [])]
@@ -273,13 +286,17 @@ async def run(ref: MatchRef, docs: list[Doc], *, state: RunState,
         if mine:
             asked += 1
         got = _ask(sid, mine, ref, state=state)
-        if not got and mine and chain is not None:
-            # 🔴 **0개이고 예산이 남으면 좁혀서 한 번 더**(§5 s4) — 그 이상은 없다
-            more = await _narrow(sid, ref, mine, state=state, chain=chain,
-                                 net=net, cache=cache)
-            if more:
-                got = _ask(sid, more, ref, state=state, second=True)
-                docs += more
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **좁히기 2차를 걷었다** — 사용자 지시 2026-10-17 *"딥서치 삭제"*
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ `_narrow` 는 1차 제목에서 낱말을 뽑아 **코드가 질의를 다시
+        #     만들어** 던지던 길이다(`s3_docs.regather` → `queries_for`).
+        #     🔴 그것이 딥서치다 — 질의를 만드는 곳은 이제 **LLM 뿐**이다.
+        #  🔴 그래서 후보 0개로 남는다 — 그 사실을 **수첩에 적는다**(#3).
+        if not got and mine:
+            state.note(f"s4/{sid} 후보 0개 — ⬜ **좁히기 2차는 없다**"
+                       "(딥서치를 지웠다 · 질의는 LLM 서치가 쓴다)")
         out += got
     state.set("candidates", len(out))
     # ══════════════════════════════════════════════════════════════════
@@ -363,21 +380,3 @@ def _ask(sid: str, mine: list[Doc], ref: MatchRef, *, state: RunState,
     got = list(said.variables)
     state.note(f"{tag} 문서 {len(mine)}건 → 후보 {len(got)}개")
     return got
-
-
-async def _narrow(sid: str, ref: MatchRef, mine: list[Doc], *,
-                  state: RunState, chain: Any, net: Any,
-                  cache: dict[str, Doc] | None) -> list[Doc]:
-    """🔴 ⑥ 좁히기 1회 — **1차 결과 제목에서 코드가** 고유명사를 뽑는다(§5 s4).
-
-    🔴 낱말을 **지어내지 않는다**(#4) — 받은 제목에 있는 것만 쓴다.
-    """
-    from app.core.stages import s3_docs
-    from app.research import subtasks as _st
-    words = _st.narrow_words([{"title": d.title} for d in mine])[:NARROW_N]
-    if not words:
-        state.note(f"s4/{sid} 좁힐 고유명사가 제목에 없다 — 2차를 돌리지 않았다")
-        return []
-    state.note(f"s4/{sid} 후보 0개 → 좁히기 낱말 {words}")
-    return await s3_docs.regather(ref, sid, words, state=state, chain=chain,
-                                  net=net, cache=cache, start=len(mine))

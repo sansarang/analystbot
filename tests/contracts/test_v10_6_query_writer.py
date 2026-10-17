@@ -107,15 +107,28 @@ def test_verify_before_use() -> None:
 # ══════════════════════════════════════════════════════════════════
 
 def test_wired_into_deep_search() -> None:
-    """🔴 배선 — 딥서치가 그 질의를 **기존 사슬로** 던진다."""
-    from app.core.stages import s3_docs
-    src = inspect.getsource(s3_docs)
-    assert "querywriter" in src, "딥서치가 안 부른다"
+    """🔴 배선 — **LLM 서치**가 그 질의를 기존 사슬로 던진다.
+
+    ⚠️ 종전엔 딥서치였다 — 지웠다(사용자 지시 2026-10-17).
+    """
+    from app.core.stages import s4b_gapsearch
+    src = inspect.getsource(s4b_gapsearch)
+    assert "querywriter" in src, "LLM 서치가 안 부른다"
+    assert "gap_docs" in src, "🔴 사슬에 안 던진다"
 
 
 def test_card_prints_what_was_thrown() -> None:
-    """🔴 #3 — **무엇을 던졌는지** 카드가 적는다."""
-    from app.core import querywriter as qw
-    assert "said_of" in dir(qw)
-    said = qw.said_of(queries=["a"], sites=["b.jp"], bad=["c"], why="x")
-    assert "질의" in said and "매체" in said and "버린" in said
+    """🔴 #3 — **무엇을 던졌는지** 카드가 적는다.
+
+    🔴 자리가 옮겨졌다 — `querywriter.said_of` 는 딥서치 질의 쓰기의 사유
+       한 줄이었고 **같이 지웠다**(2026-10-17). 지금은 `s4b_gapsearch.ask` 와
+       `harvest` 가 자기 사유를 적고, 그것이 수첩으로 간다.
+    """
+    import inspect
+
+    from app.core.stages import s4b_gapsearch as gs
+    src = inspect.getsource(gs.ask) + inspect.getsource(gs.harvest)
+    for one in ("질의", "버림", "state.note"):
+        assert one in src, f"🔴 `{one}` 을 안 적는다(#3)"
+    # 🔴 받은 문서 수도 적는다(0 도 적는다)
+    assert "문서 {len(got)}건" in src or "문서 **{len(got)}건**" in src, src[-400:]

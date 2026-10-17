@@ -12,11 +12,16 @@ from __future__ import annotations
 import inspect
 
 from app import llm as rules
-from app.core import querywriter
+from app.core.stages import s4b_gapsearch
 
 
 def _prompt() -> str:
-    return inspect.getsource(querywriter.ask)
+    """🔴🔴 **LLM 질의 프롬프트의 원본** — 2026-10-17 부터 `s4b_gapsearch.ask`.
+
+    ⚠️ 종전엔 `querywriter.ask`(딥서치의 질의 쓰기)였다. 딥서치를 지우면서
+       그 함수도 지웠다 — LLM 이 질의를 쓰는 곳은 **이제 하나**다.
+    """
+    return inspect.getsource(s4b_gapsearch.ask)
 
 
 def test_낱말_수는_규칙이_있는_곳에서_온다() -> None:
@@ -89,16 +94,34 @@ def test_종합_평도_득실점으로_말한다() -> None:
 # ══════════════════════════════════════════════════════════════════
 
 
-def test_딥서치가_예상_라인업_기사를_노린다() -> None:
+def test_질의가_예상_라인업_기사를_노린다() -> None:
     """⚠️ 실측 2026-10-15(Tampines vs Machida · T−2h): XI 0/2 라 축0 을 못 세고
-    전략 변수도 0 이어서 확률이 **균등 그대로** 남았다."""
-    import inspect
+    전략 변수도 0 이어서 확률이 **균등 그대로** 남았다.
 
-    from app.core import querywriter as qw
-    src = inspect.getsource(qw.ask)
+    🔴 종전엔 `querywriter.ask`(딥서치 질의)가 이 말을 했다. **딥서치를 지우면서
+       (사용자 지시 2026-10-17) 그 함수도 지웠다** — 그래서 질의를 쓰는 곳이
+       하나가 됐고, 이 규칙은 그 하나가 들고 있어야 한다(안 옮기면 조용히 잃는다).
+    """
+    src = _prompt()
     assert "예상 라인업 기사를 노린다" in src, src[-700:]
     for one in ("predicted lineup", "probable XI", "予想スタメン", "首发预测"):
         assert one in src, one
+
+
+def test_딥서치_질의_쓰기는_사라졌다() -> None:
+    """🔴🔴 **지운 길이 조용히 되살아나지 않는다** — 사용자 지시 2026-10-17.
+
+    > 딥서치 삭제!!!!
+
+    ⚠️ `querywriter.ask` 는 ②③ 딥서치의 질의 쓰기였다. 그것이 돌아오면 코드가
+       다시 질의 다발을 만들게 된다 — 질의를 쓰는 곳은 **LLM 하나**다.
+    """
+    from app.core import querywriter as qw
+    assert not hasattr(qw, "ask"), (
+        "🔴 `querywriter.ask`(딥서치 질의 쓰기)가 되살아났다")
+    # 🔴 남아야 하는 것 — 글자 검사·robots·`site:`(⑤-b3 2단과 LLM 서치가 쓴다)
+    for one in ("keep", "hosts", "check_hosts", "site_queries", "comp_hint"):
+        assert hasattr(qw, one), f"🔴 `querywriter.{one}` 이 같이 지워졌다"
 
 
 def test_표적_질의도_포메이션_칸에_그것을_쓴다() -> None:

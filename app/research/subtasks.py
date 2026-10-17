@@ -314,43 +314,17 @@ def local_lang_of(*, league: str, teams: tuple | list = ()) -> str:
         return got
     # 🔴 손 목록은 **퇴로**로만 남긴다(그 다섯은 오래 측정된 이름이다)
     return "ko" if any(w and w in str(league or "") for w in LOCAL_FIRST) else ""
+# ══════════════════════════════════════════════════════════════════════
+# 🔴🔴 **`narrow_words`·`narrow_query`·`local_name` 을 지웠다**
+#      사용자 지시 2026-10-17 *"딥서치 삭제"*
+# ══════════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 셋은 **코드가 질의를 만들던** 부품이다 — 1차 결과 제목에서 낱말을 뽑아
+#     질의를 다시 짜던 `s4_extract._narrow` → `s3_docs.regather` 의 재료였다.
+#     딥서치를 지우자 **부르는 곳이 0** 이 됐다(#2 안 이은 코드는 없는 코드보다
+#     나쁘다 · `tests/test_wiring.py` 가 고아를 잡았다).
+#  🔴 질의를 쓰는 곳은 이제 **`s4b_gapsearch.ask`(LLM) 하나**다.
 
-
-def narrow_words(hits: list) -> list[str]:
-    """🔴🔴 **좁히기 낱말** — 1차 결과의 제목·스니펫에서(§4-2).
-
-    > 2차(좁히기): 1차 결과의 제목·스니펫에서 본 **구체 낱말**(선수명·감독명·
-    > 현지어 표기·부상 부위)로 좁힌다.
-
-    🔴 **지어내지 않는다**(#4) — 받은 글에 있는 낱말만 돌려준다.
-    ⚠️ 대문자로 시작하는 낱말을 먼저 센다 — 사람 이름이 그 꼴이다. 흔한
-       낱말(`_STOP`)은 버린다: 좁히는 뜻이 없다.
-    """
-    import re as _re
-    tally: dict[str, int] = {}
-    for h in (hits or []):
-        box = h if isinstance(h, dict) else {}
-        said = " ".join(str(box.get(k) or "")
-                        for k in ("title", "snippet", "content"))
-        for w in _re.findall(r"[A-ZÀ-Þ][A-Za-zÀ-ÿ'\-]{2,}|[가-힣]{2,}", said):
-            if w.lower() in _STOP:
-                continue
-            tally[w] = tally.get(w, 0) + 1
-    # 🔴 **여러 결과에 나온 것이 먼저다** — 한 번만 나온 것은 잡음일 수 있다
-    return [w for w, _ in sorted(tally.items(), key=lambda kv: (-kv[1], kv[0]))]
-
-
-def narrow_query(seed: str, words: list) -> str:
-    """🔴 좁히기 질의 — 씨앗에 **구체 낱말 몇 개**를 더한다(§4-2).
-
-    🔴 `querygate.MAX_WORDS` 를 **넘지 않는다**(M61) — 상한을 코드에 박지
-       않고 그 이름에서 읽는다(#1).
-    """
-    from app import querygate
-    base = str(seed or "").split()
-    room = max(0, querygate.MAX_WORDS - len(base))
-    add = [str(w) for w in (words or [])][:min(NARROW_WORDS, room)]
-    return " ".join([*add, *base]) if add else " ".join(base)
 
 
 
@@ -401,43 +375,3 @@ def narrow_query(seed: str, words: list) -> str:
 def _sub_cfg() -> dict:
     from app import rules
     return dict((rules.llm_budget().get("per_subtask") or {}))
-
-
-
-
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 **옛 하위 과제 경로를 지웠다** — 사용자 지시 2026-10-06 ⑧
-# ══════════════════════════════════════════════════════════════════
-#
-# 지운 것: `run_subtask`(에이전트 루프 호출)·`_find`·`_seeds`·`paragraph_block`·
-# `extract_prompt`·`prompt_tail`·`_agent_inp`·`_where_of`.
-# 🔴 그 일을 v6 가 한다: 찾기 `s3_docs`, 문단·추출 `s4_extract`(루프 없음).
-# ⚠️ **남긴 것**은 v6 가 부르는 부품뿐이다: `groups`·`split`·`Subtask`·`Budget`·
-#    `comp_short`·`team_lang`·`first_lang`·`narrow_words`·`narrow_query`.
-
-
-def local_name(name: str, lang: str) -> str:
-    """🔴🔴 그 언어로 쓴 **팀 이름**. 없으면 받은 이름 그대로(§3-1 "현지어").
-
-    ⚠️ 실사고 2026-10-10: 한국어 질의를 **로마자 이름**으로 던졌다
-       (`Gangwon FC Bucheon FC 1995 결장`). 한국 매체는 `강원`·`부천`이라 쓴다 —
-       그래서 한국어 질의가 나갔는데도 **한국 기사를 못 집었다**.
-    🔴 이름은 **이름표**(`teamref`)가 든다(사본 금지) — 여기서 짓지 않는다.
-    🔴 **짧은 표기를 고른다** — 매체는 정식명보다 약칭을 쓴다(`강원 FC` 보다 `강원`).
-    """
-    said = str(name or "").strip()
-    one = str(lang or "").strip()
-    if not said or not one:
-        return said
-    try:
-        from app import teamref
-        key, _why = teamref.key_of(said)
-        ref = teamref.registry().teams.get(key) if key else None
-    except Exception:                                       # noqa: BLE001
-        return said
-    rows = [str(x) for x in ((getattr(ref, "names", None) or {}).get(one) or [])
-            if ":" not in str(x)]
-    # 🔴 짧은 것부터 — ⚠️ 너무 짧으면(한 글자) 엉뚱한 결과가 쏟아진다
-    rows = sorted((x for x in rows if len(x) >= 2), key=len)
-    return rows[0] if rows else said

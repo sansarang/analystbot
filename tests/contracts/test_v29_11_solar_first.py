@@ -39,4 +39,7 @@ def test_차례를_도는_곳은_하나다() -> None:
     assert hasattr(llm, "ask_first"), "🔴 `llm.ask_first` 가 없다"
     users = [str(f) for f in pathlib.Path("app").rglob("*.py")
              if "ask_first(" in f.read_text() and f.name != "llm.py"]
-    assert len(users) >= 3, f"🔴 배선이 덜 됐다 — {users}"
+    # 🔴 **채택자가 하나 줄었다** — `querywriter.ask`(딥서치 질의 쓰기)를
+    #    지웠다(사용자 지시 2026-10-17 *"딥서치 삭제"*). 규칙은 그대로다:
+    #    차례를 **베끼지 말고** `llm.ask_first` 를 쓴다.
+    assert len(users) >= 2, f"🔴 배선이 덜 됐다 — {users}"

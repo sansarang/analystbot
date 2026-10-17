@@ -73,20 +73,30 @@ def test_md4_대회_열쇠를_다시_만들지_않는다() -> None:
     assert media.key_of(None, None) == ""
 
 
-def test_md5_딥서치가_표를_먼저_쓰고_robots_를_확인한다() -> None:
-    """🔴🔴 ② 표 매체도 **robots 확인 뒤에만** 쓴다 · 그리고 모델 제안보다
-    **앞에** 둔다(상한에 걸리면 표가 먼저 산다)."""
-    said = (ROOT / "app/core/stages/s3_docs.py").read_text(encoding="utf-8")
+def test_md5_LLM_서치가_표를_먼저_쓰고_robots_를_확인한다() -> None:
+    """🔴🔴 ② 표 매체도 **robots 확인 뒤에만** 쓴다 · 좁힌 질의는 **앞에** 둔다.
+
+    🔴🔴 **자리가 옮겨졌다** — 사용자 지시 2026-10-17 *"딥서치 삭제"*.
+       종전엔 `s3_docs._llm_queries`(②③ 딥서치)가 표를 썼다. 그 길을 지웠고
+       이제 **LLM 서치**(`s4b_gapsearch._media_narrow`)가 쓴다.
+    ⚠️ **왜 옮겼나** — 딥서치에 달았을 때 그 매체로 간 질의가 **영어뿐**이어서
+       전부 0건이었다(`site:soccer-king.jp Mito Hollyhock starting XI` → 0).
+       LLM 서치 질의는 **현지어가 섞여** 온다 — 세레소에서 28건을 준 그 꼴이다.
+    """
+    said = (ROOT / "app/core/stages/s4b_gapsearch.py").read_text(encoding="utf-8")
     i = said.index("from app.core import media as _md")
     j = said.index("_qw.check_hosts(", i)
     k = said.index("_qw.site_queries(", i)
     assert i < j < k, "🔴 robots 확인 전에 `site:` 를 만든다(#4)"
-    # 🔴 표 매체가 **모델 제안보다 앞**이다
-    assert "want = [*said_tbl," in said, "🔴 표를 뒤에 둔다"
-    # 🔴 `site:` 질의가 **보통 질의보다 앞**이다(상한에서 먼저 산다)
-    assert "said = [*_qw.site_queries(ok, rows), *rows]" in said
-    # ⚠️ 표가 비면 그 사실을 **수첩에** 적는다(#3)
-    assert 'state.note(f"②③ 매체 표 — {why_tbl}")' in said
+    # 🔴 **현지어 질의를 앞에 둔다** — `site_queries` 가 앞 두 개만 짝지으므로
+    #    영어가 앞이면 그 매체에 현지어가 **한 번도 안 간다**(실측 2026-10-17)
+    assert 'local = [q for q, lg in pairs if str(lg) != "en"]' in said, (
+        "🔴 현지어를 먼저 두지 않는다 — 영어만 가서 0건이 난 그 병이다")
+    assert "rows = [*local," in said, "🔴 좁힐 질의에 현지어가 앞이 아니다"
+    # 🔴 좁힌 질의가 **보통 질의보다 앞**이다(상한에서 먼저 산다)
+    assert "pairs = [*said_more, *pairs]" in said
+    # ⚠️ 표가 비면 그 사실을 **사유로** 돌려준다(#3)
+    assert 'f"매체 표 — {why_tbl}"' in said
 
 
 def test_md6_배선이_facts_를_넘긴다() -> None:
@@ -101,15 +111,15 @@ def test_md6_배선이_facts_를_넘긴다() -> None:
        ``key_of`` 에 **그 이름**을 넘긴다. ⚠️ 상태값(통과)이 아니라 **인자**다.
     """
     import ast
-    from app.core.stages import s3_docs
+    from app.core.stages import s4b_gapsearch
 
-    src = pathlib.Path(s3_docs.__file__).read_text(encoding="utf-8")
+    src = pathlib.Path(s4b_gapsearch.__file__).read_text(encoding="utf-8")
     tree = ast.parse(src)
 
     fn = next((n for n in ast.walk(tree)
-               if isinstance(n, ast.AsyncFunctionDef) and n.name == "_llm_queries"),
+               if isinstance(n, ast.AsyncFunctionDef) and n.name == "_media_narrow"),
               None)
-    assert fn is not None, "🔴 `_llm_queries` 가 없다 — 배선이 사라졌다"
+    assert fn is not None, "🔴 `_media_narrow` 가 없다 — 배선이 사라졌다"
 
     #  ① 그 함수가 `facts` 를 **받는다**
     names = [a.arg for a in (*fn.args.posonlyargs, *fn.args.args, *fn.args.kwonlyargs)]
@@ -127,15 +137,15 @@ def test_md6_배선이_facts_를_넘긴다() -> None:
 
     #  ③ 부르는 쪽도 `facts` 를 **넘긴다**(시그니처만 고치면 TypeError 다)
     outer = next((n for n in ast.walk(tree)
-                  if isinstance(n, ast.AsyncFunctionDef) and n.name == "run"), None)
-    assert outer is not None, "🔴 `run` 이 없다"
+                  if isinstance(n, ast.AsyncFunctionDef) and n.name == "harvest"), None)
+    assert outer is not None, "🔴 `harvest` 가 없다"
     use = [n for n in ast.walk(outer)
            if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
-           and n.func.id == "_llm_queries"]
-    assert use, "🔴 `run` 이 `_llm_queries` 를 안 부른다 — 안 이은 코드다(#2)"
+           and n.func.id == "_media_narrow"]
+    assert use, "🔴 `harvest` 가 `_media_narrow` 를 안 부른다 — 안 이은 코드다(#2)"
     for one in use:
         got = [a for a in one.args if isinstance(a, ast.Name) and a.id == "facts"]
-        assert got, "🔴 `run` 이 `facts` 를 안 넘긴다"
+        assert got, "🔴 `harvest` 가 `facts` 를 안 넘긴다"
 
 
 def test_md7_운영_열쇠가_표의_열쇠와_같은_꼴이다() -> None:
@@ -198,11 +208,11 @@ def test_md9_좁힌_질의는_확인된_매체에서만_나온다() -> None:
        인자가 `check_hosts` 의 반환값인지 **꼴로** 본다.
     """
     import ast
-    from app.core.stages import s3_docs
+    from app.core.stages import s4b_gapsearch
 
-    tree = ast.parse(pathlib.Path(s3_docs.__file__).read_text(encoding="utf-8"))
+    tree = ast.parse(pathlib.Path(s4b_gapsearch.__file__).read_text(encoding="utf-8"))
     fn = next(n for n in ast.walk(tree)
-              if isinstance(n, ast.AsyncFunctionDef) and n.name == "_llm_queries")
+              if isinstance(n, ast.AsyncFunctionDef) and n.name == "_media_narrow")
 
     #  `ok, _ = await check_hosts(...)` 로 받은 **그 이름**을 쓴다
     got = [n for n in ast.walk(fn) if isinstance(n, ast.Call)
@@ -214,6 +224,9 @@ def test_md9_좁힌_질의는_확인된_매체에서만_나온다() -> None:
     assert calls, "🔴 `site_queries` 를 안 부른다 — 표가 질의에 닿지 않는다(#2)"
     for one in calls:
         first = one.args[0] if one.args else None
-        assert isinstance(first, ast.Name) and first.id == "ok", (
+        # 🔴 `list(ok)` 처럼 감싸도 **그 이름이 안에 있어야** 한다
+        names = {n.id for n in ast.walk(first) if isinstance(n, ast.Name)} \
+            if first is not None else set()
+        assert "ok" in names, (
             "🔴 `site_queries` 의 첫 인자가 `check_hosts` 가 돌려준 `ok` 가 아니다 "
             "— 확인 안 된 매체로 좁힐 수 있다")

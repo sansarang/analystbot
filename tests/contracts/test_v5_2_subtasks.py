@@ -196,18 +196,29 @@ def test_M63_gather_가_예외를_삼키게_설정됐다():
     import ast
     import inspect
 
-    # 🔴 **그 자리가 옮겨졌다** — 하위 여덟을 모으는 것은 이제 v6 `s3_docs.run` 이다
-    #    (`research.lead` 의 조율 함수들은 §8 5단계에서 지웠다 · 2026-10-06 ⑧).
-    from app.core.stages import s3_docs as lead
+    # 🔴🔴 **그 자리가 또 옮겨졌다** — 사용자 지시 2026-10-17 *"딥서치 삭제"*.
+    #    하위 여덟을 `gather` 로 모으던 `s3_docs.run` 이 사라졌고, 수확은
+    #    `s4b_gapsearch.harvest` 가 **쪽 둘**을 차례로 돈다. 🔴 그래서 보장의
+    #    꼴이 바뀌었다 — `gather(return_exceptions=True)` 대신 **쪽마다
+    #    `try/except`** 다. 지키는 것은 같다: 하나가 터져도 다른 쪽이 산다.
+    from app.core.stages import s4b_gapsearch as lead
     tree = ast.parse(inspect.getsource(lead))
-    hit = []
-    for n in ast.walk(tree):
-        if (isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
-                and n.func.attr == "gather"):
-            hit += [k.arg for k in n.keywords]
-    assert "return_exceptions" in hit, (
-        "🔴 `gather(return_exceptions=True)` 가 없다 — 하위 하나가 터지면 "
-        "나머지 일곱이 함께 죽는다(M63)")
+    fn = next((n for n in ast.walk(tree)
+               if isinstance(n, ast.AsyncFunctionDef) and n.name == "harvest"),
+              None)
+    assert fn is not None, "🔴 `harvest`(수확 입구)가 없다"
+    # 🔴 쪽을 도는 `for` 안에 **`try/except` 로 감싼 수확 호출**이 있어야 한다
+    got = False
+    for loop in [n for n in ast.walk(fn) if isinstance(n, ast.For)]:
+        for tr in [n for n in ast.walk(loop) if isinstance(n, ast.Try)]:
+            calls = [c for c in ast.walk(tr) if isinstance(c, ast.Call)
+                     and isinstance(c.func, ast.Attribute)
+                     and c.func.attr == "gap_docs"]
+            if calls and tr.handlers:
+                got = True
+    assert got, (
+        "🔴 쪽마다 `try/except` 로 감싼 `gap_docs` 호출이 없다 — 한 쪽이 "
+        "터지면 다른 쪽이 함께 죽는다(M63)")
 
 
 # ══════════════════════════════════════════════════════════════════

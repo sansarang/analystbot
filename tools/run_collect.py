@@ -20,7 +20,7 @@ PYTHONPATH=. uv run python tools/run_collect.py "Feyenoord Como"
 
 돌리는 것:
 ```
-s1_resolve → s2_facts(fotmob: XI·결장·감독) → s3_docs(딥서치)
+s1_resolve → s2_facts(fotmob: XI·결장·감독) → s4b_gapsearch(LLM 서치)
 → s4_extract(추출) → s5_verify(검증) → absence 3+5 통합
 → s4b_gapsearch(LLM 이 **질의**를 쓴다) → 그 질의를 사슬에 던진다 → 2차 추출
 ```
@@ -269,11 +269,13 @@ async def main(argv: list[str]) -> int:
                     for k, v in turn.items()))
     print(flush=True)
 
-    # ── ③ 딥서치
+    # ── ③ LLM 서치 수확 — 🔴 **딥서치는 지웠다**(사용자 지시 2026-10-17)
+    #    🔴 입구는 `s4b_gapsearch.harvest` **하나**다 — 운영도 그것을 부른다
+    #       (#1 사본 금지: 종전엔 이 배선이 러너에만 있었다).
     cache: dict = {}
-    docs = await s3_docs.run(ref, facts, state=st, chain=chain, net=net,
-                             cache=cache)
-    print(f"## ③ 딥서치 — 문서 **{len(docs)}건**", flush=True)
+    docs, _why_h = await s4b_gapsearch.harvest(
+        ref, facts, state=st, chain=chain, net=net, cache=cache, variables=None)
+    print(f"## ③ LLM 서치 — 문서 **{len(docs)}건**", flush=True)
     # 🔴🔴 **왜 그만큼인지 보인다** — 사용자 지시 2026-10-15: *"왜 이렇게
     #    빈손인지 확인해라"*. ⚠️ 종전엔 **수만** 찍어서 질의가 나빴는지,
     #    검색이 0건이었는지, 검문이 버렸는지 **구분할 수 없었다**(#3).
@@ -490,89 +492,22 @@ async def main(argv: list[str]) -> int:
          f"변수 {len(var_lr)}개 · {str(why_lr)[:80]}")
     print(flush=True)
 
-    # ── ⑥ LLM 이 **질의를 쓴다**(못 찾은 칸만)
-    n_conf = sum(1 for v in variables
-                 if str(getattr(v, "type", "")) == "coach_conflict")
-    # 🔴 이름으로 적는다(열쇠 `team:000455` 가 아니라)
-    said_names = {str(ref.home): str(ref.home_name or ref.home),
-                  str(ref.away): str(ref.away_name or ref.away)}
-    # 🔴🔴 **쪽을 넘긴다**(지시 2026-10-14) — 이동·일정·거리는 원정팀만,
-    #    홈 최근 5경기는 홈팀만 묻는다.
-    said_sides = {str(ref.home): "home", str(ref.away): "away"}
-    want = s4b_gapsearch.need(facts, keys=[str(ref.home), str(ref.away)],
-                              conflict_docs=n_conf, names=said_names,
-                              sides=said_sides)
-    # 🔴🔴 **변수가 얇은 묶음**도 겨냥한다(지시 2026-10-14: *"llm이 검색할 대상은
-    #    변수에 관련된 내용이다 … x search 가 약해서 하는거다"*)
-    thin = s4b_gapsearch.thin_kinds(variables)
-    print("## ⑥ LLM 표적 검색")
-    print(f"- 못 찾은 칸 — {want or '없다'}")
-    print(f"- 변수 0개인 묶음 — {list(thin) or '없다'}", flush=True)
-    qs, why_q = s4b_gapsearch.ask(ref, facts, state=st, want=want, thin=thin)
-    print(f"- {why_q}")
-    for one in qs:
-        print(f"    질의 `{one}`")
-    # ── ⑦ 그 질의를 **우리 사슬**에 던진다
+    # ── ⑥⑦ LLM 서치 **2차** — 🔴 변수를 본 뒤 빈 칸을 겨냥한다
     # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **⑦ 표적 질의 → 문서 → 추출 → 변수**(사용자 지시 2026-10-14)
+    # 🔴🔴 **손으로 짠 판을 걷었다** — #1 사본 금지(2026-10-17)
     # ══════════════════════════════════════════════════════════════════
     #
-    #  > 경기 정보를 **llm 서치**하고 llm 결과를 **변수에 넣어야 한다**
-    #
-    #  🔴 `s3_docs.gap_docs` 가 `run` 과 **같은 둘**(`_candidates`·`_fetch`)을
-    #     부른다 — 도메인 등급·신원·날짜·본문 받기가 1차와 같은 길이다.
-    #  🔴🔴 **그 질의의 언어를 먼저 쓴다**(실측 2026-10-14: 이탈리아어 질의 둘이
-    #     `nl` 로 던져졌다). ⚠️ 글자로는 nl·it 를 못 가린다(둘 다 ASCII) →
-    #     **팀 이름**으로 가린다: 그 질의가 어느 팀을 담았나.
-    said_langs = s4b_gapsearch.langs_of()
-    print(f"- 언어 순서 — {said_langs}")
-    pairs: list = []
-    for one in qs:
-        lg = said_langs[0]
-    mark("⑥ LLM 표적 질의", "✅ 돌았다" if qs else "🔴 빈손",
-         f"질의 {len(qs)}개 · {str(why_q)[:70]}")
-    for one in qs:
-        lg = said_langs[0]
-        if len(said_langs) > 1 and str(ref.away_name or "") in one:
-            lg = said_langs[1]
-        pairs.append((one, lg))
-        print(f"    `{one}` → 언어 `{lg}`")
-    # 🔴 하위 묶음 — 어느 유형으로 추출할지가 여기 들어 있다(그 유형이 변수 type)
-    #  🔴🔴 **쪽별로 쪼갠다** — 운영 하위가 `A-home`·`A-away` 로 갈리는 그 모양이다.
-    #     ⚠️ 예산은 하위마다 `search_cap=3` 이다(설정) — 질의 6개를 한 하위에
-    #        넣으면 **3개만 던져진다**(실측 2026-10-14). 쪽으로 쪼개면 각 3개다.
-    #  🔴 질의를 **그 팀 것으로** 가른다 — 팀 이름이 든 쪽에 붙인다.
-    from app.research.subtasks import Subtask, _budget
-    KINDS = ("absence", "returning", "team_stats", "stakes", "fatigue",
-             "travel_schedule", "coach_intent", "coach_conflict",
-             "lineup_rotation", "coach_change")
-    RERANK = ("standings points round fixtures travel tactics formation "
-              "manager record unrest")
-    got_docs: list = []
-    gap_vars: list = []
-    for side in ("home", "away"):
-        nm = str(getattr(ref, f"{side}_name", "") or "")
-        mine = [x for x in pairs if nm and nm.split()[0] in x[0]]
-        if not mine:
-            print(f"- {side} — ⬜ 그 팀을 담은 질의가 없다")
-            continue
-        sub = Subtask(
-            # 🔴🔴 **이름은 `F-home`·`F-away` 다** — `schema.SubtaskId` 가
-            #    열거로 잠겨 있다(*"여기 없으면 터진다 — 그 쪽이 맞다"*).
-            #    ⚠️ 실측 2026-10-14: `GAP-away` 로 넣었더니 `Doc` 이 거부했다.
-            #    🔴 열거를 늘리지 않는다 — 하위 **F**(새 사실 72시간)가 이 일에
-            #       맞는 묶음이고, 표적 검색도 "오늘 사실"을 긷는다.
-            name=f"F-{side}", group="F", label="표적(LLM 서치)",
-            kinds=KINDS, side=side, team=nm,
-            opp=str(getattr(ref, f"{'away' if side == 'home' else 'home'}_name",
-                            "") or ""),
-            team_key=str(getattr(ref, side, "")),
-            opp_key=str(getattr(ref, "away" if side == "home" else "home", "")),
-            seed="", rerank_query=RERANK, budget=_budget())
-        print(f"- {side} 질의 {len(mine)}개 → 던진다(상한 {sub.budget.search_cap})")
-        got_docs += await s3_docs.gap_docs(
-            ref, state=st, chain=chain, net=net, cache=cache,
-            queries=mine, sub=sub, tag=f"gap-{side}")
+    #  ⚠️ 이 자리에는 `need`→`ask`→`Subtask`→`gap_docs` 를 **손으로 엮은
+    #     80여 줄**이 있었고 운영(`pipeline`)에는 그 배선이 **없었다** — 러너
+    #     에서만 도는 길이었다(*"안 이은 코드는 없는 코드보다 나쁘다"* · #2).
+    #  🔴 이제 입구는 `s4b_gapsearch.harvest` 하나고 운영도 같은 것을 부른다.
+    print("## ⑥⑦ LLM 서치 2차(변수 본 뒤)")
+    got_docs, why_h2 = await s4b_gapsearch.harvest(
+        ref, facts, state=st, chain=chain, net=net, cache=cache,
+        variables=variables, tag="gap2")
+    print(f"- {why_h2}")
+    mark("⑥⑦ LLM 서치 2차", "✅ 돌았다" if got_docs else "🔴 빈손",
+         f"문서 {len(got_docs)}건 · {str(why_h2)[:70]}")
     print(f"- 표적 문서 **{len(got_docs)}건**")
     mark("⑦ 표적 문서", "✅ 돌았다" if got_docs else "🔴 빈손",
          f"문서 {len(got_docs)}건")

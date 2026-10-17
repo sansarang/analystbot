@@ -788,8 +788,14 @@ def test_v7_질의_0건도_수로_적는다():
     from app.core import render as _r
     from app.core.stages import s3_docs as _s3
 
-    said = inspect.getsource(_s3.run)
+    # 🔴 **자리가 옮겨졌다** — 딥서치 삭제(2026-10-17)로 `run` 이 사라졌고,
+    #    센 칸을 적는 일은 `tally_to` 가 한다(`s4b_gapsearch.harvest` 가 부른다).
+    #    ⚠️ 실측: 그 적기를 안 옮겼더니 카드가 *"질의 못 쟀다 · 문서 못 쟀다"* 였다.
+    said = inspect.getsource(_s3.tally_to)
     assert '("queries", "hits", "kept_date")' in said, "🔴 0 을 적지 않는다"
+    gs = inspect.getsource(
+        __import__("app.core.stages.s4b_gapsearch", fromlist=["x"]).harvest)
+    assert "tally_to" in gs, "🔴 수확이 센 칸을 안 적는다(#3)"
     # 🔴 카드는 그 네 칸을 그대로 보인다(깔때기 계약이 칸 이름을 정한다)
     assert "queries" in inspect.getsource(_r.new_facts_block)
 

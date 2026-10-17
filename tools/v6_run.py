@@ -59,7 +59,7 @@ async def main(argv: list[str]) -> int:
     from app.core.schema import Ambiguous, Question
     # ⚠️ 카드 경로는 `pipeline.analyze` 가 돈다 — s4~s7 을 여기서 **들여오지 않는다**
     #    (들여오면 또 손으로 이을 유혹이 생긴다 · CLAUDE.md #12)
-    from app.core.stages import s1_resolve, s2_facts, s3_docs
+    from app.core.stages import s1_resolve, s2_facts
     from app.core.state import RunState
     from app.db import get_pool
     from app.core import rank
@@ -104,8 +104,10 @@ async def main(argv: list[str]) -> int:
 
     cache: dict = {}
     chain = _search.build_chain()
-    docs = await s3_docs.run(ref, facts, state=state, chain=chain, net=net,
-                             cache=cache)
+    # 🔴 딥서치를 지웠다(2026-10-17) — 문서는 LLM 서치가 긷는다
+    from app.core.stages import s4b_gapsearch as _gs
+    docs, _why = await _gs.harvest(ref, facts, state=state, chain=chain,
+                                   net=net, cache=cache, variables=None)
     print(f"\n[s3] 문서 {len(docs)}건 · 장부 {state.book}")
     dated = sum(1 for d in docs if d.published_at is not None)
     print(f"     발행일 있는 것 {dated}/{len(docs)}"

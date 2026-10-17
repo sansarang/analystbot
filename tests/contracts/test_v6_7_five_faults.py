@@ -349,20 +349,30 @@ def test_v7_전역_질의가_실제로_나간다():
                    away="team:000320", home_name="Gimcheon Sangmu",
                    away_name="FC Anyang",
                    kickoff_utc=datetime.now(timezone.utc) + timedelta(hours=2))
-    subs = [x for x in _st.split(s3_docs._RefShim(ref)) if x.group == "F"]
-    assert subs, "🔴 하위 F 가 없다"
-    said = _dc.replace(subs[0], words=("squad_turnover",) + tuple(subs[0].words))
-    got = s3_docs.queries_for(said, ref)
-    ko = [q for q, lang in got if lang == "ko"]
-    assert any("전역" in q for q in ko), got
-    # 🔴 **한 팀 질의**다 — 상대 팀 이름이 그 줄에 없다
-    one = [q for q in ko if "전역" in q][0]
-    assert "안양" not in one, one
-    # 🔴 s3 가 **앞에** 넣는다(뒤에 붙이면 상한에 걸려 안 나간다)
-    src = (ROOT / "app" / "core" / "stages"
-           / "s3_docs.py").read_text(encoding="utf-8")
-    assert "box[str(sub.group)] + tuple(sub.words)" in src, (
-        "🔴 개념을 뒤에 붙이고 있다 — 질의가 안 나간다")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **코드가 그 질의를 더 만들지 않는다** — 딥서치 삭제(사용자 지시 2026-10-17)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 종전에는 `s3_docs.queries_for` 가 `전역`·`신병 합류` 를 한국어
+    #     질의로 **만들어** 던졌다. 그 함수를 지웠다.
+    #  🔴 낱말 표는 **살아 있다**(`rules.local_words`) — 그리고 파이프라인은
+    #     그 낱말을 **질의에 안 쓴다는 사실을 수첩에 적는다**(#3 조용한 0 금지).
+    #     질의는 LLM 이 쓰고, 그 프롬프트가 결장·징계·복귀를 덮는다.
+    from app import rules as _r
+    got = _r.local_words("squad_turnover", "ko")
+    assert "전역" in got, got
+    src = (ROOT / "app" / "core" / "pipeline.py").read_text(encoding="utf-8")
+    assert "③ 추가 낱말" in src and "질의에 안 쓴다" in src, (
+        "🔴 추가 낱말을 안 쓴다는 **사실을 안 적는다**(#3)")
+    # 🔴🔴 **상한에 먹히지 않는다** — 그 규칙은 살아 있다(자리만 옮겼다).
+    #    ⚠️ 종전엔 s3 가 개념 낱말을 질의 **앞에** 넣어 상한을 피했다.
+    #       딥서치를 지운 뒤 같은 병은 **LLM 질의**에서 난다 — 그래서
+    #       `harvest` 는 하위 상한을 **받은 질의 수**로 잡아 *"쓴 것은 다
+    #       던진다"* 를 지킨다(실측: 녹음 질의 20개 중 6개만 나갔다).
+    gs = (ROOT / "app" / "core" / "stages"
+          / "s4b_gapsearch.py").read_text(encoding="utf-8")
+    assert "search_cap=max(1, len(mine))" in gs, (
+        "🔴 LLM 이 쓴 질의가 하위 상한에 **조용히 버려진다**(#3)")
 
 
 def test_v7_전역_새사실이_깃발을_켠다():
@@ -389,9 +399,9 @@ def test_v6_교체_의심이면_새사실을_찾는다():
     assert "전역" in got and "이적" in got, got
     src = (ROOT / "app" / "core" / "pipeline.py").read_text(encoding="utf-8")
     assert '{"F": ("squad_turnover",)}' in src, "🔴 s3 에 개념을 안 넘긴다"
-    s3 = (ROOT / "app" / "core" / "stages"
-          / "s3_docs.py").read_text(encoding="utf-8")
-    assert "extra_words" in s3, "🔴 s3 가 개념을 안 받는다"
+    # 🔴 딥서치 삭제(사용자 지시 2026-10-17) — s3 는 낱말을 더 안 받는다(질의를 안 만든다).
+    #    ⚠️ 파이프라인이 그 낱말을 **수첩에** 남기는지로 바꿔 지킨다.
+    assert "③ 추가 낱말" in src, "🔴 파이프라인이 그 낱말을 안 적는다(#3)"
 
 
 

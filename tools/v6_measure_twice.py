@@ -6,7 +6,7 @@
 import asyncio, json, os, sys
 from app import cassette, net as _net_mod, search as _search
 from app.core.state import RunState
-from app.core.stages import s2_facts, s3_docs, s4_extract
+from app.core.stages import s2_facts, s4_extract, s4b_gapsearch
 from app.core import rank
 
 RUN = sys.argv[1] if len(sys.argv) > 1 else "kor_uzb_v7_1"
@@ -31,8 +31,10 @@ async def main() -> int:
     net = _net_mod.Net()
     facts = await s2_facts.run(ref, state=st, net=net)
     cache: dict = {}
-    docs = await s3_docs.run(ref, facts, state=st, chain=_search.build_chain(),
-                             net=net, cache=cache)
+    # 🔴 딥서치를 지웠다(2026-10-17) — 문서는 LLM 서치가 긷는다
+    docs, _why = await s4b_gapsearch.harvest(
+        ref, facts, state=st, chain=_search.build_chain(), net=net, cache=cache,
+        variables=None)
     print(f"[입력 고정] 문서 {len(docs)}건 · 재정렬 {rank.warm()}")
     # 🔴 **여기서 카세트를 끈다** — 추출만 라이브로 두 번 간다
     os.environ[cassette.MODE_ENV] = cassette.OFF

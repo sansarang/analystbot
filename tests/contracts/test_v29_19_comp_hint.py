@@ -42,7 +42,7 @@ def test_못_알아보면_빈_글자다() -> None:
 
 def test_네_자리가_그_글자를_쓴다() -> None:
     """🔴 배선 — 딥서치 질의 · LLM 표적 질의 · 전략 · 종합 평."""
-    from app.core import querywriter as qw
+    from app.core.stages import s4b_gapsearch as qw
     from app.core import strategy_llm as sl
     from app.core.stages import s4b_gapsearch as gs
     from app.core.stages import s6_verdict as vd

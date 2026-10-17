@@ -67,7 +67,7 @@ def test_sl4_cap_is_twenty_minutes_and_skips() -> None:
 
 
 def test_sl5_heavy_stages_watch_the_clock() -> None:
-    for rel in ("app/core/stages/s3_docs.py", "app/core/stages/s2_facts.py"):
+    for rel in ("app/core/stages/s4b_gapsearch.py", "app/core/stages/s2_facts.py"):
         said = _src(rel)
         assert "clock" in said and ".over()" in said, rel
     assert "st.clock" in _src("app/core/pipeline.py")

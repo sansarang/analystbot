@@ -24,43 +24,29 @@ ROOT = Path(__file__).resolve().parents[2]
 
 import ast
 import inspect
+def test_좁히기_2차가_사라졌다() -> None:
+    """🔴🔴 **딥서치 삭제**(사용자 지시 2026-10-17) — 종전 두 계약이 있던 자리다.
 
-
-# ══════════════════════════════════════════════════════════════════
-# M61 — 10단어 초과는 `query_too_long`
-# ══════════════════════════════════════════════════════════════════
-
-
-
-
-
-
-
-
-# ══════════════════════════════════════════════════════════════════
-# 넓게 → 좁게 · 언어 순서 · 질의 수
-# ══════════════════════════════════════════════════════════════════
-def test_r4_좁히기_낱말을_결과에서_뽑는다():
-    """🔴 2차는 **1차 결과의 제목·스니펫**에서 구체 낱말을 가져온다."""
+    `test_r4_좁히기_낱말을_결과에서_뽑는다`·`…2차_질의를_만든다` 는
+    `subtasks.narrow_words`·`narrow_query` 가 **코드로 2차 질의를 짜는** 것을
+    지켰다. 🔴 그 길(= `s4_extract._narrow` → `s3_docs.regather`)을 지웠으므로
+    **되살아나지 않는 것**을 지킨다. 질의는 `s4b_gapsearch.ask`(LLM) 하나가 쓴다.
+    """
     from app.research import subtasks
-    assert hasattr(subtasks, "narrow_words"), (
-        "🔴 `subtasks.narrow_words(결과들)` 이 없다 — 2차를 지어내게 된다")
-    hits = [{"title": "Ronaldo leaves Portugal camp",
-             "snippet": "Cristiano Ronaldo has left the national team camp"},
-            {"title": "Nothing useful", "snippet": "the the the"}]
-    got = subtasks.narrow_words(hits)
-    assert "Ronaldo" in got, got
-    # 🔴 흔한 낱말은 **안 뽑는다** — 좁히는 뜻이 없다
-    assert "the" not in [w.lower() for w in got], got
+    for one in ("narrow_words", "narrow_query", "local_name"):
+        assert not hasattr(subtasks, one), f"🔴 `subtasks.{one}` 가 되살아났다"
+    raw = (ROOT / "app/core/stages/s4_extract.py").read_text(encoding="utf-8")
+    # 🔴 **D46** — 독스트링·주석을 뺀 **코드만** 본다(지운 까닭을 글로 남기는
+    #    것과 그것을 **부르는** 것은 다르다).
+    tree = ast.parse(raw)
+    for n in ast.walk(tree):
+        if isinstance(n, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef,
+                          ast.ClassDef)) and ast.get_docstring(n):
+            n.body = n.body[1:]
+    assert "_narrow" not in ast.unparse(tree), "🔴 좁히기 2차가 되살아났다"
+    assert "좁히기 2차는 없다" in raw, "🔴 그 사실을 수첩에 안 적는다(#3)"
 
 
-def test_r4_좁히기_질의도_낱말_상한을_지킨다():
-    from app.research import subtasks
-    from app import querygate
-    got = subtasks.narrow_query("France Belgium injury news",
-                                ["Ronaldo", "Mbappe", "Hernandez", "Dembele"])
-    assert len(got.split()) <= querygate.MAX_WORDS, got
-    assert "Ronaldo" in got, got
 
 
 def test_r4_현지어_질의가_그_리그_언어로_나간다():
@@ -82,10 +68,18 @@ def test_r4_현지어_질의가_그_리그_언어로_나간다():
     assert subtasks.local_lang_of(league="KBO") == "ko"
     assert subtasks.local_lang_of(league="J. League",
                                   teams=("Kashiwa Reysol",)) == "ja"
-    # 🔴 **1차는 영어**다 — 현지어는 2차다(§4-4). 그 자리를 코드로 확인한다
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **§4-4 "1차는 영어"는 코드 질의의 규칙이었다** — 딥서치 삭제(사용자 지시 2026-10-17)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 그 규칙은 `s3_docs.queries_for`(코드가 만드는 질의 다발)에 있었고
+    #     그 함수를 지웠다. 🔴 질의를 쓰는 곳은 이제 **LLM 하나**이고, 언어는
+    #     `s4b_gapsearch.langs_of()` 가 정한다 — **현지어가 먼저**다(사용자
+    #     지시 2026-10-14 이후 그 순서다). 그래서 글자 검사를 **그쪽**으로 옮긴다.
     said = (ROOT / "app" / "core" / "stages"
-            / "s3_docs.py").read_text(encoding="utf-8")
-    assert 'one = "en"' in said, "🔴 1차 질의가 영어가 아니다(§4-4)"
+            / "s4b_gapsearch.py").read_text(encoding="utf-8")
+    assert "현지어를 먼저" in said, "🔴 질의 프롬프트가 현지어를 먼저 안 쓴다"
+    assert "두 팀의 나라 말로도" in said, "🔴 두 팀 나라 말을 안 요구한다"
 
 
 def test_r4_네_번째_검색은_없다():

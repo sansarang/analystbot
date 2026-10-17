@@ -88,8 +88,10 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     import asyncio
 
     from app.core.stages import (s1_resolve, s2_facts, s2b_base, s2c_market,
-                                 s3_docs, s4_extract, s5_verify,
+                                 s4_extract, s5_verify,
                                  s7_judge)
+    # 🔴 문서를 긷는 **유일한 입구**(딥서치를 지웠다 · 2026-10-17)
+    from app.core.stages import s4b_gapsearch as _gs
     st = state if state is not None else RunState()
     # 🔴🔴 **P0 상한**(수정 지시 2026-10-13 밤) — 카드 한 장 15분. 넘는 단계는
     #    ⬜ + 사유로 넘긴다(멈추지 않는다). ⚠️ 재생·시험은 안 건다(`clock` 이
@@ -179,9 +181,23 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
         st.set("docs", len(docs))
         st.set("candidates", len(cands))
     else:
-        docs = await s3_docs.run(ref, facts, state=st, chain=chain, net=net,
-                                 extra_words=more,
-                                 cache=cache)
+        # ══════════════════════════════════════════════════════════
+        # 🔴🔴 **딥서치를 지웠다 — 문서는 LLM 서치가 긷는다**
+        #      사용자 지시 2026-10-17: *"딥서치 삭제!!!!"*
+        # ══════════════════════════════════════════════════════════
+        #
+        #  🔴 **왜** — 실측 2026-10-17(우라와 두 실행): 코드 질의 24~30개가
+        #     결과 734건을 긁어 기사 변수 **2개**였고, `site:jleague.jp` 가 준
+        #     "15건"은 **2014~2022년 글·굿즈**였다(묵은 글 본문에 63초).
+        #  🔴 지운 것은 *"코드가 만드는 질의 다발"* 이고 **몸통은 남았다**
+        #     (`s3_docs._candidates`·`_fetch`) — LLM 서치가 그것을 탄다.
+        #  ⚠️ `extra_words`(전역 주기·선수단 교체 낱말)는 **코드 질의의 재료**
+        #     였다 — 질의를 LLM 이 쓰므로 그 낱말은 수첩에만 남는다(#3).
+        if more:
+            st.note(f"③ 추가 낱말 {list(more)[:6]} — ⬜ **질의에 안 쓴다**"
+                    "(딥서치를 지웠다 · 질의는 LLM 이 쓴다)")
+        docs, _why_gs = await _gs.harvest(ref, facts, state=st, chain=chain,
+                                          net=net, cache=cache, variables=None)
         cands = await s4_extract.run(ref, docs, state=st, chain=chain, net=net,
                                      cache=cache)
     # 🔴 s4 가 좁히기 2차로 문서를 더 받았을 수 있다 — **캐시가 전부를 든다**

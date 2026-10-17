@@ -30,6 +30,17 @@ from app.core.state import RunState
 
 logger = logging.getLogger(__name__)
 
+# ══════════════════════════════════════════════════════════════════════
+# 🔴🔴 **이 파일에는 `run` 이 없다** — 사용자 지시 2026-10-17 *"딥서치 삭제"*
+# ══════════════════════════════════════════════════════════════════════
+#
+#  🔴 여기 남은 것은 **몸통과 검문**이다 — 던지고(`_candidates`) 받고(`_fetch`)
+#     걸러낸다(`grade_ok`·`identity_ok`·`sport_ok`·`gate_ok`·`names_of`).
+#     질의를 **만들지 않는다** — 그것은 `s4b_gapsearch.ask`(LLM) 하나다.
+#  🔴 입구는 `gap_docs` 다(`s4b_gapsearch.harvest` 가 부른다).
+#  ⚠️ 그래서 단계 계약(`run` 이 하나다)에게 **입구를 글자로** 알린다.
+STAGES = ("gap_docs",)
+
 #: 🔴 발행일 창 — 킥오프 **7일 전**까지. ⚠️ 수는 `s5_verify.DATE_WINDOW_DAYS` 가
 #   원본이다(사본 금지) — 여기서 다시 정하지 않는다.
 def _window_days() -> int:
@@ -62,140 +73,6 @@ def _window_of(sub: Any) -> timedelta:
 def _sub_cfg() -> dict:
     from app.core.llm import cfg
     return dict((cfg().get("budget") or {}).get("per_subtask") or {})
-
-
-#: 🔴 경기당 **새 질의**를 이만큼만 쓴다(원천 표의 상한은 질의 생성기가 본다 —
-#   여기서는 하위 질문마다 같은 목록을 쓰므로 **앞 몇 개**만 자른다)
-TABLE_CAP = 8
-
-
-def _table_queries(ref: MatchRef, *, state: Any = None
-                   ) -> list[tuple[str, str]]:
-    """🔴🔴 §6-2 표 기반 질의 → `(질의, 언어)` 목록. 표가 없으면 **빈 목록**.
-
-    🔴 만드는 곳은 `search.query.build` 하나다(사본 금지) — 여기서는 **꼴만**
-       바꾼다. ⚠️ 상한을 넘기면 **원천 지정(S·A)이 앞**이므로 앞에서 자른다.
-    """
-    try:
-        from app.core import probmodel as _pm
-        from app.core.schema import Facts as _F
-        from app.core.search import query as _qy
-        kind = str(_pm._kind(ref, _F()) or "")
-        got, why = _qy.build(league=kind,
-                             home=str(getattr(ref, "home_name", "") or ""),
-                             away=str(getattr(ref, "away_name", "") or ""),
-                             players=[], coach="",
-                             kinds=("absence", "expected_xi"))
-        out = [(str(q["q"]), str(q["lang"])) for q in got[:TABLE_CAP]]
-        if state is not None:
-            state.note(f"s3 표 질의 — {why} → **{len(out)}개** 썼다"
-                       f"(상한 {TABLE_CAP})" if out
-                       else f"s3 표 질의 — ⬜ 없다({why[:60]})")
-        return out
-    except Exception as exc:                                # noqa: BLE001
-        if state is not None:
-            state.note(f"s3 표 질의 — 🔴 못 만들었다: {exc!r:.60}")
-        return []
-
-
-def queries_for(sub: Any, ref: MatchRef) -> list[tuple[str, str]]:
-    """🔴 ① **질의 2개를 코드가 만든다**(§5 s3-1). `(질의, 언어)`.
-
-    🔴 `{word}` 는 `search_words.yaml` 의 **개념 낱말**이다 — 유형 이름을 넣으면
-       기사에 없는 글자가 되고, 받은 문단이 엉뚱해진다(실측 2026-10-06).
-    ⚠️ 문지기 금지 문자(어깻점·따옴표·괄호)는 **값에서** 제거한다 — 문지기를
-       완화하지 않는다(§8 금지).
-    """
-    from app import queries, rules
-    from app.research import subtasks as _st
-    mine, other = ((ref.home_name, ref.away_name)
-                   if str(getattr(sub, "team_key", "")) == ref.home
-                   else (ref.away_name, ref.home_name))
-
-    def declared(lang: str) -> list[str]:
-        """🔴🔴 §3-1 — 그 하위가 **표에 적어 둔** 개념 낱말들(그 언어로).
-
-        ⚠️ 실측 2026-10-10(FC서울–제주): 같은 경기에서 `결장` 은 **3건**인데
-           `복귀` 는 **18건** · `선발 명단` 은 16건이었다 — 개념에 따라 수확이
-           다섯 배 갈린다. 🔴 그래서 F 는 쓸 개념을 **표에 적고** 그 순서로 돈다.
-        ⚠️ 이 칸이 비면 아래 `word()` 가 `kinds` 에서 유도한다(A~D 가 그렇다).
-        """
-        out: list[str] = []
-        for concept in (getattr(sub, "words", None) or ()):
-            got = rules.local_words(str(concept), lang)
-            if got and str(got[0]) not in out:
-                out.append(str(got[0]))
-        return out
-
-    def word(lang: str) -> str:
-        # 🔴🔴 **카탈로그 이름으로 묻는다** — 실측 2026-10-06: 유형군 이름
-        #    (`absence_def`)은 카탈로그에 없어서 개념 낱말이 **빈 글자**였고,
-        #    그래서 A 군의 영어 질의가 야구 유형(`pitcher_state` → `xi`)의 낱말을
-        #    집었다(축구 경기인데). 옮기면 `injury` 가 나온다.
-        for raw in (getattr(sub, "kinds", None) or ()):
-            kind = adapt.catalog_type(str(raw)) or str(raw)
-            concept = rules.word_concept(str(kind))
-            if not concept:
-                continue
-            got = rules.local_words(concept, lang)
-            if got:
-                return str(got[0])
-        return ""
-
-    # 🔴 **1차는 영어다**(§4-4: *"1차 영어 → 2차에서 팀 현지어"*).
-    #    ⚠️ 1차를 현지어로 바꿔 봤다가 **되돌렸다**(2026-10-10): 고정물의 질의가
-    #       달라져 녹음이 전부 빗나갔다(기사 변수 0개). 🔴 §4-4 의 *"한국 리그는
-    #       한국어 허용"* 은 **2차 현지어 질의**가 이미 지킨다.
-    one = "en"
-    # 🔴 표에 적힌 개념이 있으면 **1차(영어)도 그 개념**으로 묻는다(§3-1)
-    #    ⚠️ 없으면 `kinds` 에서 유도한다(A~D 가 그렇다 · 그 길은 그대로다)
-    said_one = (declared(one) or [word(one)])[0] if True else word(one)
-    out: list[tuple[str, str]] = [
-        (" ".join(x for x in (mine, other, said_one) if x), one)]
-    # 🔴 **현지어 질의의 언어**다(§4-4 의 1차 언어가 아니다 · §3-1 "현지어+영어").
-    #    ⚠️ 실사고 2026-10-10: `first_lang` 을 썼더니 `K-League 1` 이 손 목록에
-    #       없어 한국어 질의가 **안 나갔다**(새 사실 0건의 원인이었다).
-    lang = _st.team_lang(mine) or _st.local_lang_of(
-        league=ref.competition, teams=(mine, other))
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **표에 적힌 개념이 있으면 그것들로 돈다**(§3-1 · 하위 F)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  🔴 현지어로 **개념마다 한 줄** — 상한(하위당 검색 3회)까지.
-    #  ⚠️ 상한을 넘기지 않는다: 1차 영어 + 현지어 둘 = 3회.
-    said_cap = int(_sub_cfg().get("search") or 3)
-    if lang and declared(lang):
-        # 🔴🔴 **선수단 교체 개념은 한 팀 질의**다(사용자 결정 2026-10-10(3):
-        #    *"`{팀} 전역`·`{팀} 신병 합류`"*). ⚠️ 두 팀 이름을 같이 넣으면 구단
-        #    공지가 안 걸린다(그 글에는 상대 팀 이름이 없다).
-        solo = (str((getattr(sub, "words", None) or ("",))[0])
-                == "squad_turnover")
-        for i, one_word in enumerate(declared(lang)[:max(0,
-                                                         said_cap - len(out))]):
-            a, b = _st.local_name(mine, lang), _st.local_name(other, lang)
-            if solo and i == 0:
-                out.append((" ".join(x for x in (a, one_word) if x), lang))
-                continue
-            out.append((" ".join(x for x in (a, b, one_word) if x), lang))
-        return out[:said_cap]
-    if lang and lang != one and word(lang):
-        out.append((" ".join(x for x in (mine, other, word(lang)) if x), lang))
-        # ══════════════════════════════════════════════════════════════
-        # 🔴🔴 **현지 이름으로 한 번 더**(§3-1 "현지어") — 지우지 않고 **더한다**
-        # ══════════════════════════════════════════════════════════════
-        #
-        #  ⚠️ 실사고 2026-10-10 ①: 한국어 질의를 **로마자 이름**으로 던져
-        #     `Gangwon FC Bucheon FC 1995 결장` 이 됐다 — 한국 매체는 `강원`·
-        #     `부천`이라 쓴다. 그래서 한국어로 묻고도 한국 기사를 못 집었다.
-        #  ⚠️ 실사고 2026-10-10 ②: 그래서 위 질의의 **이름을 바꿔** 봤더니
-        #     고정물의 녹음이 빗나가 **변수 10→7 · 기사 변수 4→1** 로 깎였다.
-        #     🔴 녹음은 지난 경기라 다시 만들 수 없다 — 그래서 **바꾸지 않고
-        #        한 줄 더한다**(하위당 검색 상한 3 안이다 · §4-5).
-        a, b = _st.local_name(mine, lang), _st.local_name(other, lang)
-        said = " ".join(x for x in (a, b, word(lang)) if x)
-        if said and said != out[-1][0]:
-            out.append((said, lang))
-    return _fit(out, mine=mine, other=other)
 
 
 def _shorter(name: str) -> list[str]:
@@ -544,113 +421,6 @@ def gate_ok(said: str) -> tuple[bool, str]:
 _SEEN: dict[tuple, asyncio.Future] = {}
 
 
-async def run(ref: MatchRef, facts: Facts, *, state: RunState, chain: Any,
-              net: Any, cache: dict[str, Doc] | None = None,
-              extra_words: dict | None = None) -> list[Doc]:
-    """🔴 하위 과제 여덟 — **찾기는 동시에, 자리 잡기는 차례로**(§5 s3 · §7 재생).
-
-    ══════════════════════════════════════════════════════════════════
-    🔴🔴 **왜 두 단으로 갈랐나** — 실측 2026-10-06(재생이 안 맞았다)
-    ══════════════════════════════════════════════════════════════════
-
-    ⚠️ 하위 8개가 **받기까지** 동시에 돌면, 같은 URL 을 먼저 집는 하위가 **그때그때
-       다르다**(망이 느릴 때와 카세트에서 즉시 읽을 때가 다르다). 실측: 라이브에서
-       `C-홈` 이 1건, 재생에서 3건을 받아 **추출 요청이 달라졌고** LLM 카세트가 전부
-       빗나갔다(변수 14개 → 0개).
-    🔴 그래서 **찾기(검색·거르기·재정렬)는 동시에**, **자리 잡기와 받기는 하위
-       순서대로 차례로** 한다 — 그러면 같은 입력에 같은 배분이 나온다(재생이 재생이
-       되는 조건이다).
-    ⚠️ 느려지는 것은 받기뿐이다(검색이 느린 쪽이고, 그쪽은 그대로 동시다).
-    """
-    # 🔴 **실행마다 비운다** — 질의 캐시가 실행을 넘으면 어제 결과가 섞인다
-    _SEEN.clear()
-    from app.research import subtasks as _st
-    cache = cache if cache is not None else {}
-    subs = _st.split(_RefShim(ref))
-    # 🔴🔴 **의심될 때만 개념을 더한다**(사용자 지시 2026-10-10 지적 ③) —
-    #    `{"F": ("squad_turnover",)}` 꼴. ⚠️ 늘 넣으면 다른 경기의 질의가
-    #    묽어진다(실측 2026-10-10: 개념에 따라 수확이 다섯 배 갈린다).
-    if extra_words:
-        import dataclasses as _dc
-        box = {str(k): tuple(str(x) for x in v)
-               for k, v in dict(extra_words).items()}
-        # 🔴🔴 **맨 앞에** 넣는다 — ⚠️ 실사고 2026-10-10: 뒤에 붙였더니 질의
-        #    계획이 개념을 **둘까지만** 쓰므로(하위당 검색 3회 상한) 여섯째였던
-        #    `squad_turnover` 가 **한 번도 안 나갔다**(김천 새 사실 0건의 원인).
-        subs = [(_dc.replace(sub, words=box[str(sub.group)] + tuple(sub.words))
-                 if str(getattr(sub, "group", "")) in box else sub)
-                for sub in subs]
-        state.note(f"s3 개념 추가 — {box}(선수단 교체 의심)")
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 ②③ **LLM 이 질의를 쓰고 매체를 고른다**(사용자 지시 2026-10-11)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  ⚠️ 실측 2026-10-11(네 경기): 수확이 전부 0이었고 상류 원인이 *"그 경기
-    #     기사를 애초에 못 집어 온다"* 였다 — 질의가 **영어 한 꼴뿐**이어서다
-    #     (`리그 미상`이면 코드가 영어만 던진다). 일본어 매체에 소식이 있는데
-    #     `Shonan Bellmare injury news` 를 던졌다.
-    #  🔴 LLM 은 **글자만** 낸다(질의·도메인) — 사실·숫자·판정에 닿지 않는다.
-    #     던지는 통로는 **기존 사슬**이고, 매체는 `site:` 질의로 들어간다.
-    #  ⚠️ 실패하면 빈 목록이고 **코드 질의가 그대로 돈다**(퇴로가 있다).
-    said_extra = await _llm_queries(ref, facts, state=state, net=net)
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **표 기반 새 질의**(지시 2026-10-13 밤 넷째 3번 · §6-2)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  🔴 현지어 + 영어 · **팀 별칭 전부** · **원천 지정(`site:`)이 먼저** ·
-    #     낱말은 `config/search_terms/<언어>.yaml` · 원천은
-    #     `config/sources/<리그>.yaml`(robots 확인한 것만).
-    #  🔴 **왜** — 기준선(2026-10-13): 결장 재현율 **16.3%** 이고 버린 문서의
-    #     절반이 신원인데 **잘못 버림은 1%** 였다 → *"맞는 기사를 애초에 못
-    #     찾는다"* 가 병이다. 실측: 광주–울산이 **24질의 → 결과 489건**.
-    #  ⚠️ 표가 없는 리그는 **빈 목록**이다(QY1) — 그러면 옛 질의만 돈다.
-    said_table = _table_queries(ref, state=state)
-    # ── ① 찾기 — **동시에**(순서가 결과를 바꾸지 않는다)
-    found = await asyncio.gather(
-        *[_candidates(sub, ref, state=state, chain=chain,
-                      queries=[*said_table, *queries_for(sub, ref),
-                               *said_extra])
-          for sub in subs],
-        return_exceptions=True)
-    # ── ② 자리 잡고 받기 — 🔴 **하위 순서대로**(배분이 결정적이어야 한다)
-    claimed: set[str] = set(cache)
-    out: list[Doc] = []
-    for sub, row in zip(subs, found, strict=False):
-        name = str(getattr(sub, "name", "?"))
-        if isinstance(row, BaseException):
-            state.drop(f"s3/{name}", DropReason.NO_DOC, f"터졌다: {row!r}")
-            state.book[_sid(sub)] = "not_tried"
-            continue
-        # 🔴🔴 **P0 상한** — 넘겼으면 남은 하위는 **받지 않는다**(⬜ + 사유).
-        #    ⚠️ 오늘 실측: 한 카드가 25분을 썼고 그 카드는 킥오프 뒤에 나왔다.
-        said_clock = getattr(state, "clock", None)
-        if said_clock is not None and said_clock.over():
-            state.drop(f"s3/{name}", DropReason.NO_DOC,
-                       said_clock.skip(f"s3 본문 받기({name})"))
-            state.book[_sid(sub)] = "not_tried"
-            continue
-        got = await _fetch(sub, ref, row, state=state, net=net, cache=cache,
-                           claimed=claimed)
-        out += got
-        state.book[_sid(sub)] = "found" if got else "empty"
-    # 🔴 **센 칸을 적는다** — 실측 2026-10-06: `queries`·`hits`·`kept_date` 가
-    #    `null` 로 남아 깔때기가 *"안 쟀다"* 라고 말했다(#3 은 그것을 허용하지만,
-    #    **잴 수 있는데 안 잰 것**은 게으름이다). 수는 `_tally` 가 모은다.
-    # 🔴 **0 도 적는다** — ⚠️ 실사고 2026-10-11: `if n:` 이 0 을 빼먹어 카드에
-    #    `queries None` 으로 남았고, *"안 쟀다"* 와 *"재 보니 0"* 이 섞였다(#3).
-    # ⚠️ 칸 이름은 **깔때기 계약**이 정한다(`state.STAGES`) — 새 칸을 지어내지
-    #    않는다. 막힌 질의 수는 `state.note` 로 보고에 남는다(위 `gate_ok` 자리).
-    for stage in ("queries", "hits", "kept_date"):
-        state.set(stage, int(_TALLY.get(stage) or 0))
-    for stage, n in sorted(_TALLY.items()):
-        if n:
-            state.set(stage, n)
-    _TALLY.clear()
-    # 🔴 같은 URL 은 **한 번만** — 캐시가 그것을 보장한다(§5 s3-4)
-    state.set("docs", len(out))
-    return out
-
-
 async def gap_docs(ref: MatchRef, *, state: RunState, chain: Any, net: Any,
                    cache: dict | None, queries: list[tuple[str, str]],
                    sub: Any, tag: str = "gap") -> list[Doc]:
@@ -672,9 +442,11 @@ async def gap_docs(ref: MatchRef, *, state: RunState, chain: Any, net: Any,
         state.note(f"s3/{tag} — 표적 질의가 **지나간 문서 0건**"
                    "(신원·날짜·도메인에서 다 떨어졌다)")
         return []
+    # 🔴 **질의 1개당 받기 1건** — 옛 딥서치의 비율이다(위 `_fetch` 의 까닭)
     got = await _fetch(sub, ref, rows, state=state, net=net,
                        cache=dict(cache if cache is not None else {}),
-                       claimed=set(cache or {}), tag=tag)
+                       claimed=set(cache or {}), tag=tag,
+                       top=max(1, len(queries or [])))
     state.note(f"s3/{tag} — 표적 질의 {len(queries)}개 → 후보 {len(rows)} → "
                f"문서 **{len(got)}건**")
     return got
@@ -688,85 +460,28 @@ def _sid(sub: Any) -> str:
     return f"{group}-{side}"
 
 
-class _RefShim:
-    """🔴 `subtasks.split` 이 기대하는 꼴 — 변환은 `adapt` 밖에 두지 않는다.
-
-    ⚠️ 그 함수는 `app/research` 의 기존 부품이고 **내부를 건드리지 않는다**(§2).
-       🔴 그래서 **읽기 전용 그림자**를 여기 둔다 — dict 를 넘기지 않는다.
-    """
-
-    __slots__ = ("home", "away", "home_id", "away_id", "competition",
-                 "sport", "langs")
-
-    def __init__(self, ref: MatchRef) -> None:
-        self.home, self.away = ref.home_name, ref.away_name
-        self.home_id, self.away_id = ref.home, ref.away
-        self.competition, self.sport = ref.competition, ref.sport
-        self.langs = tuple(ref.langs)
-
-
-async def _llm_queries(ref: MatchRef, facts: Facts, *, state: RunState,
-                       net: Any) -> list[tuple[str, str]]:
-    """🔴🔴 ②③ — LLM 질의 + 확인된 매체의 `site:` 질의. `[(질의, 언어)]`.
-
-    🔴 언어 꼬리표는 **`und`**(모름)로 붙인다 — 현지어가 섞여 있어 한 언어로
-       말할 수 없다. ⚠️ 사슬은 그 꼬리표를 엔진 선택에만 쓴다.
-    ⚠️ 재생(카세트)에서는 **안 부른다** — 녹음이 그 질의를 모른다(실사고
-       2026-10-10 과 같은 병: 라이브에만 이득인 질의가 고정물을 깎는다).
-    """
-    if _replaying():
-        state.note("②③ 질의 쓰기 — ⬜ 재생이라 **안 돌렸다**(녹음이 모른다)")
-        return []
-    from app.core import discover as _d
-    from app.core import querywriter as _qw
-    aliases = [*_d.aliases_of(str(getattr(ref, "home_name", "") or "")),
-               *_d.aliases_of(str(getattr(ref, "away_name", "") or ""))]
-    langs = list(getattr(ref, "langs", None) or ["en"])
-    rows, sites, _why = _qw.ask(ref, state=state, aliases=aliases,
-                                langs=langs)
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **리그별 현지 매체 표를 먼저 쓴다** — 사용자 지시 2026-10-17
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  > 매체 표 구현하고 … **우선 일본 매체표만** 해봐라
-    #
-    #  ⚠️ 실측 2026-10-17(세 경기): 질의 68개·결과 **1,913건**으로 기사 변수
-    #     **2개**였고, 가장 큰 손실이 ④ **신원**이었다(가시마 **749건**).
-    #     🔴 검문이 센 것이 아니라 **엔진이 그 경기 글을 못 찾는다**.
-    #     그 와중에 `site:soccer-king.jp セレッソ大阪 日程` 은 **28건**을 줬다.
-    #  🔴 그래서 **표의 매체를 모델 제안보다 앞에** 둔다 — 질의 글자는 그대로고
-    #     `site:` 만 붙는다(새 엔진·새 fetch 경로 0).
-    #  ⚠️ 표에 없는 리그는 **빈 목록**이고 그러면 종전처럼 돈다(없는 매체로
-    #     좁혀 0건을 만들지 않는다 · #3 — 사유를 수첩에 적는다).
-    from app.core import media as _md
-    said_key = _md.key_of(ref, facts)
-    said_tbl, why_tbl = _md.hosts_of(said_key)
-    state.note(f"②③ 매체 표 — {why_tbl}")
-    # 🔴 표 매체도 **robots 를 받아 확인한 뒤에만** 쓴다(#4 · 모델 제안과 같은 길)
-    want = [*said_tbl, *[x for x in (sites or []) if x not in said_tbl]]
-    ok: list[str] = []
-    if want:
-        ok, _said = await _qw.check_hosts(net, want, state=state)
-    # 🔴 **표 매체로 좁힌 질의를 앞에 둔다** — 상한에 걸리면 그것이 먼저 산다
-    said = [*_qw.site_queries(ok, rows), *rows]
-    return [(q, "und") for q in said[:_qw.MAX_QUERIES]]
-
-
 async def _candidates(sub: Any, ref: MatchRef, *, state: RunState,
                       chain: Any,
-                      queries: list[tuple[str, str]] | None = None,
+                      queries: list[tuple[str, str]],
                       tag: str = "") -> list[tuple[Any, str]]:
     """🔴 ①~③ **찾기만** — 검색 → 도메인 등급 → 신원 → 날짜 힌트 → 재정렬.
 
-    ⚠️ 여기서는 **아무것도 받지 않는다**(fetch 0회) — 받기는 `_fetch` 가 차례로
-       한다(위 `run` 의 까닭). 🔴 `queries` 를 주면 그 질의로 돈다(좁히기 2차).
+    ⚠️ 여기서는 **아무것도 받지 않는다**(fetch 0회) — 받기는 `_fetch` 가 한다.
+    🔴🔴 **`queries` 는 이제 반드시 받는다** — 사용자 지시 2026-10-17
+       (*"딥서치 삭제"*). 종전에는 비우면 `queries_for`(코드 질의 다발)로
+       떨어졌고 그것이 딥서치였다. ⚠️ 질의를 만드는 곳은 **LLM 뿐**이다
+       (`s4b_gapsearch.ask`) — 기본값을 두면 지운 길이 조용히 되살아난다.
     """
     from app import datehint, domains
     from app.core import rank
     from app.research import lead
     name = (tag or str(getattr(sub, "name", "?")))
     hits: list[Any] = []
-    for q, lang in (queries if queries is not None else queries_for(sub, ref)):
+    if not queries:
+        state.note(f"s3/{name} — ⬜ **질의 0개**(LLM 서치가 안 냈다 · 딥서치는 "
+                   "지웠다)")
+        return []
+    for q, lang in queries:
         if not sub.budget.may_search():
             state.note(f"s3/{name} 검색 상한({sub.budget.search_cap})에 닿았다")
             break
@@ -923,7 +638,7 @@ def _concept_words(sub: Any, ref: MatchRef) -> list[str]:
 async def _fetch(sub: Any, ref: MatchRef, kept: list[tuple[Any, str]], *,
                  state: RunState, net: Any, cache: dict[str, Doc],
                  claimed: set[str] | None = None, tag: str = "",
-                 start: int = 0) -> list[Doc]:
+                 start: int = 0, top: int | None = None) -> list[Doc]:
     """🔴 ③ **자리 잡고 상위 N건 받기.** 실패는 **다음 후보로 대체한다**.
 
     ⚠️ 이 함수는 `run` 이 **하위 순서대로** 부른다 — 그래야 같은 URL 을 누가
@@ -934,7 +649,13 @@ async def _fetch(sub: Any, ref: MatchRef, kept: list[tuple[Any, str]], *,
     sid, name = _sid(sub), (tag or str(getattr(sub, "name", "?")))
     # 🔴 **자리를 잡은 URL** — 캐시와 따로 든다(캐시는 `Doc` 을, 이쪽은 **의도**를)
     claimed = claimed if claimed is not None else set(cache)
-    top = int(_sub_cfg().get("fetch_top") or 3)
+    # 🔴🔴 **상위 몇 건을 받나** — 기본은 설정이고, 부르는 쪽이 줄 수 있다.
+    #    ⚠️ 설정값(3)은 하위가 **여덟**일 때의 값이다(8 × 3 = 24건). 딥서치를
+    #       지워 하위가 **둘**이 되자 총량이 ¼ 이 됐고, e2e 고정물에서 문서가
+    #       **5 → 1건**으로 줄었다(그래서 기사 변수가 0이 됐다).
+    #    🔴 옛 구조는 **질의 1개당 받기 1건**이었다(질의 24 = 받기 24) —
+    #       그 비율을 그대로 쓴다(수를 새로 고르는 것이 아니다).
+    top = int(top if top is not None else (_sub_cfg().get("fetch_top") or 3))
     floor = ref.kickoff_utc - _window_of(sub)
     out: list[Doc] = []
     for h, tier in kept:
@@ -1056,36 +777,26 @@ def premature_result(body: str, ref: MatchRef) -> tuple[bool, str]:
     return True, f"킥오프 전인데 **이 경기** 최종 스코어를 적는다 — {said}"
 
 
-async def regather(ref: MatchRef, sid: str, words: list[str], *,
-                   state: RunState, chain: Any, net: Any,
-                   cache: dict[str, Doc] | None = None,
-                   start: int = 0) -> list[Doc]:
-    """🔴🔴 **좁힌 질의로 ①~③ 을 한 번 더**(§5 s4). ⚠️ 한 번뿐이다.
-
-    🔴 낱말은 **s4 가 1차 제목에서 뽑아** 넘긴다(지어내지 않는다 · #4).
-    ⚠️ 질의 상한(`querygate.MAX_WORDS`)은 `subtasks.narrow_query` 가 지킨다 —
-       여기서 다시 세지 않는다(#1 사본 금지).
-    """
-    from app.research import subtasks as _st
-    cache = cache if cache is not None else {}
-    for sub in _st.split(_RefShim(ref)):
-        if _sid(sub) != str(sid):
-            continue
-        if not sub.budget.may_search():
-            state.note(f"s3/{sid} 2차 — 검색 상한에 닿아 돌리지 않았다")
-            return []
-        qs = [(_st.narrow_query(q, words), lang)
-              for q, lang in queries_for(sub, ref)]
-        tag = f"{sub.name}(2차)"
-        kept = await _candidates(sub, ref, state=state, chain=chain,
-                                 queries=qs, tag=tag)
-        return await _fetch(sub, ref, kept, state=state, net=net, cache=cache,
-                            claimed=set(cache), tag=tag, start=start)
-    state.note(f"s3 2차 — `{sid}` 하위를 못 찾았다")
-    return []
-
-
 def _replaying() -> bool:
     """🔴 카세트 재생 중인가 — 재생에서는 질의를 합치지 않는다(위 까닭)."""
     from app import cassette
     return cassette.mode() == cassette.REPLAY
+
+
+def tally_to(state: RunState, docs: list) -> None:
+    """🔴🔴 **센 칸을 카드에 적는다** — 종전엔 `run` 이 하던 일이다.
+
+    🔴 딥서치를 지우면서(2026-10-17) `run` 이 사라졌고, 그와 함께 이 적기도
+       사라져 깔때기가 *"질의 못 쟀다 · 문서 못 쟀다"* 가 됐다(실측: e2e 고정물).
+    🔴 **0 도 적는다** — ⚠️ 실사고 2026-10-11: `if n:` 이 0 을 빼먹어
+       `queries None` 으로 남았고 *"안 쟀다"* 와 *"재 보니 0"* 이 섞였다(#3).
+    ⚠️ 칸 이름은 **깔때기 계약**이 정한다(`state.STAGES`) — 지어내지 않는다.
+    """
+    for stage in ("queries", "hits", "kept_date"):
+        state.set(stage, int(_TALLY.get(stage) or 0))
+    for stage, n in sorted(_TALLY.items()):
+        if n:
+            state.set(stage, n)
+    _TALLY.clear()
+    # 🔴 같은 URL 은 **한 번만** — 캐시가 그것을 보장한다(§5 s3-4)
+    state.set("docs", len(docs or []))

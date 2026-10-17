@@ -325,6 +325,7 @@ def ask(ref: MatchRef, facts, *, state: RunState, want: dict,
     🔴 받은 질의는 `app.llm.query_ok`(1~6낱말·연산자 금지·연도 금지)와
        `querywriter.keep`(팀 표기 포함)으로 **걸러서** 쓴다 — 사본 금지.
     """
+    from app import llm as _rules
     from app.core import llm, querywriter
     from app.core import discover as _d
     if not want and not dict(thin or {}):
@@ -399,8 +400,32 @@ def ask(ref: MatchRef, facts, *, state: RunState, want: dict,
             "`{팀} home record unbeaten`)\n"
             "   · **검색이 얇은 자리** → 그 유형을 찾을 검색어(예 `absence` →\n"
             "     `{팀} injury news`, `stakes` → `{팀} qualification race`)\n"
+            # ══════════════════════════════════════════════════════
+            # 🔴🔴 **딥서치 프롬프트의 규칙을 여기로 옮겼다** — 2026-10-17
+            # ══════════════════════════════════════════════════════
+            #
+            #  🔴 딥서치를 지우자 질의를 쓰는 곳이 **여기 하나**가 됐다.
+            #     그 프롬프트가 들고 있던 규칙은 **실측으로 번 것**이므로
+            #     같이 옮긴다(안 옮기면 조용히 잃는다 · 계약이 지킨다).
+            #  ⚠️ 낱말 수는 **규칙이 있는 곳에서** 읽는다(#1 사본 금지) —
+            #     손으로 `6` 을 적으면 규칙이 바뀔 때 어긋난다.
+            "🔴🔴 **검색기 규칙 — 어기면 그 질의는 버려진다**\n"
+            f"  · 낱말 **{_rules.WORDS_MIN}~{_rules.WORDS_MAX}개**"
+            " (공백으로 센다 · 넘으면 **통째로 버린다**)\n"
+            "  · **대회 정식명을 쓰지 마라** — `AFC Champions League Two` 처럼 "
+            "네 낱말을 먹는다. 꼭 필요하면 약칭 한 낱말만.\n"
+            "  · `site:` · 따옴표 · `-낱말` · **연도(2026)** 금지\n"
+            "🔴 아래 갈래를 **골고루** 덮는다(한 주제에 몰지 마라):\n"
+            "  ① 선발 명단·예상 라인업    ② 결장·부상·**징계**\n"
+            "  ③ **복귀**·명단 합류       ④ **로테이션**·체력 관리\n"
+            "  ⑤ 감독 발언·기자회견      ⑥ **감독 부임 후 성적**\n"
+            "  ⑦ **팀내 불화**·분위기     ⑧ 홈 전력·**원정 일정**·이동\n"
+            "⚠️ **배당·예측·스코어 사이트는** 노리지 마라 — 기사가 없다"
+            "(실측: 받은 문서 7건이 전부 그런 곳이었고 기사는 0건이었다).\n"
             "🔴 각 질의에 **위 팀 표기 중 하나를 반드시** 넣는다.\n"
-            "🔴🔴 **현지어를 먼저** 쓴다 — 그 팀 나라의 말이다(네가 안다). 그다음\n"
+            "🔴🔴 **현지어를 먼저** 쓴다 — **두 팀의 나라 말로도** 한두 개 쓴다"
+            "(그 나라 매체가 그 말로 적는다 · 한자·크메르 문자 그대로 써도 된다).\n"
+            "그다음\n"
             "   영어다. `langs` 에 **그 순서로** 언어 코드를 적는다(예 "
             "`[\"it\", \"nl\", \"en\"]`).\n"
             f"   ⚠️ 쓸 수 있는 코드: {', '.join(LANGS)}\n"
@@ -453,3 +478,281 @@ def ask(ref: MatchRef, facts, *, state: RunState, want: dict,
     _LAST_LANGS.clear()
     _LAST_LANGS.extend(langs_got or list(langs or ["en"]))
     return ok[:MAX_Q], why
+
+
+# ══════════════════════════════════════════════════════════════════════
+# 🔴🔴 **딥서치를 지웠다 — 문서는 이제 LLM 서치만 긷는다**
+#      사용자 지시 2026-10-17: *"딥서치 삭제!!!!"*
+# ══════════════════════════════════════════════════════════════════════
+#
+#  🔴 **왜 지웠나 — 실측 2026-10-17(우라와 두 실행 · 같은 경기·같은 날)**
+#     코드가 만든 질의 24~30개가 결과 **734건**을 긁어 기사 변수 **2개**였다.
+#     ⚠️ 그 중 `site:jleague.jp` 가 준 "15건"의 실체는 **2014~2022년 글과
+#        굿즈 페이지**였고, 묵은 글을 받아 본문까지 읽는 데 **63초**를 썼다
+#        (URL 에 날짜가 없어 `datehint.too_old` 가 못 잡는다).
+#     🔴 세 경기 누적으로는 질의 68개 · 결과 1,913건 → 기사 변수 **2개**였다.
+#
+#  🔴 **그래서 지운 것과 남긴 것을 가른다** — 딥서치와 LLM 서치는 **몸통을
+#     같이 쓴다**. 지운 것은 *"코드가 만드는 질의 다발"* 이고, *"던지고 받고
+#     검문하는 몸통"* 은 그대로다(`s3_docs._candidates`·`_fetch`).
+#     ⚠️ 몸통까지 지우면 LLM 서치도 던질 길이 없다 — 그래서 선을 거기 그었다.
+#
+#  🔴 이 함수가 **그 유일한 입구**다 — 운영(`pipeline`)과 러너(`run_collect`)가
+#     둘 다 이것을 부른다(사본 금지 · #1: 종전엔 러너에만 이 배선이 있었다).
+
+#: 🔴 표적 추출이 낼 수 있는 **변수 유형** — 하위 묶음에 주는 그 목록이다.
+#   ⚠️ 여기서 짓지 않는다고 적을 수 없다(열거가 `schema` 에 있고 묶음 설정은
+#      유형을 **묶음별로** 든다) — 표적은 묶음이 아니라 **빈 칸 전체**라서
+#      합집합이 필요하다. 🔴 그래서 `research.subtasks.groups()` 에서 **모아서**
+#      쓴다(손으로 적지 않는다).
+HARVEST_RERANK = ("standings points round fixtures travel tactics formation "
+                  "manager record unrest")
+
+
+def harvest_kinds() -> tuple[str, ...]:
+    """🔴 표적 하위가 추출할 **유형 전부** — 묶음 설정에서 모은다(#1 사본 금지)."""
+    try:
+        from app.research.subtasks import groups as _g
+        got: list[str] = []
+        for row in (_g() or []):
+            for one in (dict(row).get("kinds") or ()):
+                if str(one) and str(one) not in got:
+                    got.append(str(one))
+        if got:
+            return tuple(got)
+    except Exception as exc:                                # noqa: BLE001
+        logger.info("[표적] 묶음 유형을 못 읽었다 — %r", exc)
+    return ()
+
+
+async def harvest(ref: MatchRef, facts, *, state: RunState, chain, net,
+                  cache: dict | None = None, variables=None,
+                  tag: str = "gap") -> tuple[list, str]:
+    """🔴🔴 **LLM 서치 수확** — 질의를 쓰고 사슬에 던져 **문서**를 받는다.
+
+    돌려주는 것: `(문서 목록, 사유)`.
+
+    🔴 **글자만 LLM 이 낸다**(① 잠금) — 문서는 우리 사슬이 받고, 사실은
+       `s4_extract`·`s5_verify` 가 만든다.
+    🔴 쪽(`home`·`away`)으로 **쪼갠다** — 예산이 하위마다 `search_cap` 이라
+       한 하위에 질의를 몰면 앞 몇 개만 던져진다(실측 2026-10-14).
+    ⚠️ 문서 0건이면 **어느 검문에서 떨어졌는지**가 `gap_docs` 사유에 남는다(#3).
+    """
+    from app.core.stages import s3_docs as _sd
+
+    keys = [str(getattr(ref, "home", "") or ""), str(getattr(ref, "away", "") or "")]
+    n_conf = sum(1 for v in (variables or [])
+                 if str(getattr(v, "type", "")) == "coach_conflict")
+    names = {str(getattr(ref, s, "") or ""):
+             (str(getattr(ref, f"{s}_name", "") or "")
+              or str(getattr(ref, s, "") or "")) for s in ("home", "away")}
+    sides = {str(getattr(ref, s, "") or ""): s for s in ("home", "away")}
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **재생에서는 녹음된 질의를 쓴다** — 2026-10-17
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ LLM 질의는 재생에서 **못 쓴다** — 녹음이 그 질의를 모른다(이 저장소가
+    #     이미 아는 함정: `s3_docs._llm_queries` 도 재생이면 안 돌았다).
+    #  🔴 그런데 카세트는 **질의 글자를 담고 있다**(`cassette.index()` 의
+    #     `query` 칸) — 그래서 재생은 **그 녹음에 있는 질의**로 돈다.
+    #     ⚠️ 이것은 딥서치가 아니다 — 코드가 질의를 **만들지 않고**, 지난
+    #        실행이 실제로 던진 글자를 **되읽는** 것뿐이다.
+    #  🔴 그래서 고정물이 문서·추출·기사 변수까지 **계속 센다**(이 배선이 없으면
+    #     재생 카드가 문서 0건이 되어 불변식 2·9·17·29 가 빈 통과가 된다).
+    if _replaying():
+        rows_r, why_r = _recorded_queries(ref)
+        if not rows_r:
+            return [], f"재생 — 🔴 녹음에 **그 경기 질의가 없다**({why_r})"
+        got_r: list = []
+        said_r: list[str] = []
+        for side in ("home", "away"):
+            mine, sub = _side_queries(ref, rows_r, side)
+            if not mine:
+                said_r.append(f"{side} ⬜ 그 팀을 담은 질의가 없다")
+                continue
+            one = await _sd.gap_docs(ref, state=state, chain=chain, net=net,
+                                     cache=cache, queries=mine, sub=sub,
+                                     tag=f"{tag}-{side}")
+            got_r += one
+            state.book[f"F-{side}"] = "found" if one else "empty"
+            said_r.append(f"{side} 질의 {len(mine)}개 → 문서 {len(one)}건")
+        why = (f"재생 — {why_r} · " + " · ".join(said_r)
+               + f" · 🔎 **문서 {len(got_r)}건**")
+        state.note(f"s4b 수확(재생) — {why}")
+        _sd.tally_to(state, got_r)
+        return got_r, why
+
+    want = need(facts, keys=keys, conflict_docs=n_conf, names=names, sides=sides)
+    thin = thin_kinds(variables)
+    rows, why_q = ask(ref, facts, state=state, want=want, thin=thin)
+    if not rows:
+        return [], f"{why_q} · 🔴 **질의 0개** — 던질 것이 없다"
+
+    # 🔴 질의마다 **언어**를 준다 — 원정팀을 담은 질의는 그 나라 말이다
+    said_langs = langs_of() or ["en"]
+    pairs: list[tuple[str, str]] = []
+    for one in rows:
+        lang = said_langs[0]
+        if len(said_langs) > 1 and str(getattr(ref, "away_name", "") or "") in one:
+            lang = said_langs[1]
+        pairs.append((str(one), str(lang)))
+
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **매체 표로 좁힌다** — 사용자 지시 2026-10-17(매체 표)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 표를 딥서치에 달았을 때는 **영어 질의만** 그 매체로 갔고 전부 0건이었다
+    #     (`site:soccer-king.jp Mito Hollyhock starting XI` → 0). 까닭은
+    #     `querywriter.site_queries` 가 **앞 두 질의**만 짝지었고 그 둘이
+    #     영어였기 때문이다. ⚠️ 그래서 표는 **수확을 0 보탰다**.
+    #  🔴 LLM 서치 질의는 **현지어가 섞여 온다**(`langs_of`) — 그 조합은 아직
+    #     재 본 적이 없다. 세레소 실행에서 `site:soccer-king.jp セレッソ大阪 日程`
+    #     이 **28건**을 준 그 꼴이다. 그래서 표를 **여기로** 옮겨 단다.
+    #  ⚠️ 표에 없는 리그는 빈 목록이고 그러면 좁히지 않는다(#3 사유를 적는다).
+    said_more, why_md = await _media_narrow(ref, facts, pairs, state=state, net=net)
+    pairs = [*said_more, *pairs]
+
+    got: list = []
+    said: list[str] = []
+    for side in ("home", "away"):
+        # 🔴🔴 **P0 상한**(수정 지시 2026-10-13 밤) — 카드 한 장 15분.
+        #    ⚠️ 딥서치를 지우면서 이 단계가 **가장 무거운 통신**이 됐다 —
+        #       종전에 `s3_docs.run` 이 보던 그 시계를 여기서 본다.
+        said_clock = getattr(state, "clock", None)
+        if said_clock is not None and said_clock.over():
+            said.append(said_clock.skip(f"s4b 수확({side})"))
+            continue
+        mine, sub = _side_queries(ref, pairs, side)
+        if not mine:
+            said.append(f"{side} ⬜ 그 팀을 담은 질의가 없다")
+            continue
+        if sub is None:
+            return [], (f"{why_q} · 🔴 **하위 유형을 못 읽었다** — 추출할 유형이 "
+                        "없어 던지지 않는다(#3)")
+        # 🔴🔴 **M63** — 한 쪽이 터지면 **다른 쪽이 함께 죽지 않는다**.
+        #    ⚠️ 종전엔 `s3_docs.run` 의 `gather(return_exceptions=True)` 가
+        #       그 일을 했다(하위 여덟). 딥서치를 지워 고리가 **쪽 둘**이 됐으니
+        #       같은 보장을 여기서 한다.
+        try:
+            rows_got = await _sd.gap_docs(ref, state=state, chain=chain,
+                                          net=net, cache=cache, queries=mine,
+                                          sub=sub, tag=f"{tag}-{side}")
+        except Exception as exc:                            # noqa: BLE001
+            said.append(f"{side} 🔴 **터졌다**({exc!r:.60})")
+            state.book[f"F-{side}"] = "not_tried"
+            continue
+        got += rows_got
+        state.book[f"F-{side}"] = "found" if rows_got else "empty"
+        said.append(f"{side} 질의 {len(mine)}개(상한 {sub.budget.search_cap})"
+                    f" → 문서 {len(rows_got)}건")
+    why = (f"{why_q} · {why_md} · " + " · ".join(said)
+           + f" · 🔎 **문서 {len(got)}건**")
+    state.note(f"s4b 수확 — {why}")
+    # 🔴 **깔때기 수를 적는다** — 종전엔 `s3_docs.run` 이 했다(#3 조용한 0 금지)
+    _sd.tally_to(state, got)
+    return got, why
+
+
+async def _media_narrow(ref, facts, pairs: list, *, state: RunState, net
+                        ) -> tuple[list, str]:
+    """🔴 매체 표로 좁힌 `site:` 질의 — `(추가 질의, 사유)`. 표가 없으면 빈손.
+
+    🔴 호스트는 **robots 를 받아 확인한 뒤에만** 쓴다(`querywriter.check_hosts`
+       하나 · #4 지어낸 주소 금지). 좁히는 꼴은 `querywriter.site_queries` 다.
+    ⚠️ 붙이는 질의는 **현지어 우선**이다 — 영어만 붙어 0건이 났던 그 자리다.
+    """
+    try:
+        from app.core import media as _md
+        from app.core import querywriter as _qw
+        said_key = _md.key_of(ref, facts)
+        hosts, why_tbl = _md.hosts_of(said_key)
+        if not hosts:
+            return [], f"매체 표 — {why_tbl}"
+        ok, _said = await _qw.check_hosts(net, list(hosts), state=state)
+        if not ok:
+            return [], f"매체 표 — 🔴 robots 확인을 **아무도 못 지났다**({hosts})"
+        # 🔴 **현지어 질의를 앞에 둔다** — `site_queries` 가 앞에서 두 개를 쓴다
+        said_langs = langs_of() or ["en"]
+        local = [q for q, lg in pairs if str(lg) != "en"]
+        rows = [*local, *[q for q, lg in pairs if str(lg) == "en"]]
+        got = _qw.site_queries(list(ok), rows)
+        lang = next((x for x in said_langs if x != "en"), said_langs[0])
+        return ([(q, lang) for q in got],
+                f"매체 표 — {why_tbl} · robots 지난 {len(ok)}곳 → "
+                f"좁힌 질의 **{len(got)}개**(현지어 {len(local)}개 먼저)")
+    except Exception as exc:                                # noqa: BLE001
+        return [], f"매체 표 — 🔴 못 썼다({exc!r:.60})"
+
+
+def _replaying() -> bool:
+    """🔴 재생인가 — 판정하는 곳은 `s3_docs._replaying` 하나다(#1 사본 금지)."""
+    from app.core.stages.s3_docs import _replaying as _r
+    return bool(_r())
+
+
+def _recorded_queries(ref) -> tuple[list[tuple[str, str]], str]:
+    """🔴🔴 재생 — **녹음이 실제로 던진 질의**를 되읽는다. `([(질의, 언어)], 사유)`.
+
+    🔴 코드가 질의를 **만들지 않는다** — 카세트 `query` 칸의 글자를 그대로 쓴다
+       (그래서 딥서치가 되살아나지 않는다 · 계약이 잠근다).
+    ⚠️ 그 날 녹음에는 **다른 경기 질의도 섞여 있다** — 쪽 나누기(`_side_queries`)
+       가 팀 이름으로 가린다. 여기서는 걸러내지 않고 **전부** 넘긴다.
+    """
+    try:
+        from app import cassette
+        rows = [str(r.get("query") or "").strip() for r in (cassette.index() or [])
+                if str(r.get("kind") or "") == "search"]
+        got: list[str] = []
+        for one in rows:
+            if one and one not in got:
+                got.append(one)
+        if not got:
+            return [], "⬜ 녹음에 `search` 질의가 없다"
+        said_langs = langs_of() or ["en"]
+        lang = said_langs[0]
+        return ([(q, lang) for q in got],
+                f"녹음 질의 **{len(got)}개**(언어 `{lang}`)")
+    except Exception as exc:                                # noqa: BLE001
+        return [], f"🔴 녹음을 못 읽었다({exc!r:.60})"
+
+
+def _side_queries(ref, pairs: list, side: str):
+    """🔴 그 쪽(`home`·`away`) 질의와 **하위 묶음** — `(질의, Subtask|None)`.
+
+    🔴 예산이 하위마다 `search_cap` 이라 **쪽으로 쪼개야** 양쪽이 다 던진다
+       (실측 2026-10-14: 한 하위에 몰면 앞 몇 개만 나갔다).
+    ⚠️ 이름은 **`F-home`·`F-away`** 다 — `schema.SubtaskId` 가 열거로 잠겨 있다
+       (`GAP-away` 로 넣었더니 `Doc` 이 거부했다 · 10-14).
+    """
+    import dataclasses as _dc
+
+    from app.research.subtasks import Subtask, _budget
+    nm = str(getattr(ref, f"{side}_name", "") or "")
+    head = nm.split()[0] if nm else ""
+    mine = [x for x in (pairs or []) if head and head in str(x[0])]
+    if not mine:
+        return [], None
+    kinds = harvest_kinds()
+    if not kinds:
+        return mine, None
+    other = "away" if side == "home" else "home"
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **LLM 이 쓴 질의는 전부 던진다** — #3 조용한 0 금지(2026-10-17)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ `budget.per_subtask.search` 는 하위가 **여덟 개**였을 때의 값이다
+    #     (8 × 3 = 24 질의). 딥서치를 지우자 하위가 **둘**이 되어 던질 수 있는
+    #     질의가 6개로 줄었고, LLM 이 쓴 질의가 **조용히 버려졌다**
+    #     (실측: e2e 고정물에서 녹음 질의 20개 중 6개만 나갔다 → 문서 5→1).
+    #  🔴 그래서 이 하위의 상한은 **받은 질의 수**다 — 수를 코드에 박는 것이
+    #     아니라 *"쓴 것은 다 던진다"* 는 규칙이다. ⚠️ 질의 수의 상한은
+    #     위(`MAX_Q`)와 LLM 이 정한다 — 여기서 늘리는 것이 아니다.
+    said_b = _dc.replace(_budget(), search_cap=max(1, len(mine)),
+                         fetch_cap=max(1, len(mine)))
+    sub = Subtask(name=f"F-{side}", group="F", label="표적(LLM 서치)",
+                  kinds=kinds, side=side, team=nm,
+                  opp=str(getattr(ref, f"{other}_name", "") or ""),
+                  team_key=str(getattr(ref, side, "")),
+                  opp_key=str(getattr(ref, other, "")),
+                  seed="", rerank_query=HARVEST_RERANK, budget=said_b)
+    return mine, sub

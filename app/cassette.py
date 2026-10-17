@@ -309,8 +309,15 @@ def save(kind: str, url: str, query: str, payload: dict, *,
 
 
 def index(when: date | None = None) -> list[dict]:
-    """그 날 카세트 목록. 🔴 **무엇이 담겼는지 이름으로** 보여 준다(조용한 0 금지)."""
-    d = root() / str(when or day())
+    """그 실행의 카세트 목록. 🔴 **무엇이 담겼는지 이름으로** 보여 준다(#3).
+
+    🔴🔴 **`path` 와 같은 자리를 본다** — 실사고 2026-10-17: 이 함수는 **날짜
+       칸만** 봤고 `path` 는 `CASSETTE_RUN` 이 있으면 **`{경기}/{실행}/`** 에
+       쓴다. 그래서 고정물(실행 칸)에서 `index()` 가 **빈 목록**이었고, 녹음된
+       질의를 되읽는 재생 수확이 *"녹음에 질의가 없다"* 로 떨어졌다.
+    ⚠️ 자리를 **두 번 적지 않는다**(#1) — `path` 에게 물어 그 **부모**를 쓴다.
+    """
+    d = path("search", "", "", when=when).parent
     if not d.is_dir():
         return []
     out = []

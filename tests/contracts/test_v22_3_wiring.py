@@ -54,13 +54,36 @@ def test_l2_replay_does_not_use_the_notice() -> None:
     del tree
 
 
-def test_new_queries_are_wired_into_s3() -> None:
-    """🔴 새 질의(표 기반)가 ③ 문서 수집의 질의 목록에 **들어간다**."""
-    said = __import__("pathlib").Path("app/core/stages/s3_docs.py").read_text(
-        encoding="utf-8")
-    assert "search.query" in said or "_table_queries" in said
-    i = said.index("queries=[")
-    assert "said_table" in said[i:i + 200], said[i:i + 160]
+def test_코드가_만드는_질의_다발이_사라졌다() -> None:
+    """🔴🔴 **딥서치 삭제**(사용자 지시 2026-10-17) — 종전 이름은
+    `test_new_queries_are_wired_into_s3` 였고 *"표 기반 질의가 ③ 에 들어간다"* 를
+    지켰다. 그 배선이 **지금은 없어야 한다.**
+
+    ⚠️ 실측이 지운 까닭이다: 코드 질의 24~30개가 결과 734건을 긁어 기사 변수
+       **2개**였고 묵은 글 본문에 63초를 썼다.
+    🔴 원천 표(`config/sources/*.yaml`)는 **살아 있다** — 이제 질의가 아니라
+       **도메인 등급**(`search/sources.py`)과 **대체 경로**(`search/fetch.py`)로
+       쓴다. 그 둘을 같이 지우지 않았음을 함께 지킨다.
+    """
+    import ast
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[2]
+    raw = (root / "app/core/stages/s3_docs.py").read_text(encoding="utf-8")
+    # 🔴 **D46** — 독스트링·주석을 뺀 **코드만** 본다(지운 까닭을 글로 적어
+    #    두는 것과 그것을 **부르는** 것은 다르다).
+    tree = ast.parse(raw)
+    for n in ast.walk(tree):
+        if isinstance(n, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef,
+                          ast.ClassDef)) and ast.get_docstring(n):
+            n.body = n.body[1:]
+    said = ast.unparse(tree)
+    for one in ("_table_queries", "queries_for", "search.query"):
+        assert one not in said, f"🔴 `{one}`(코드 질의)가 되살아났다"
+    # 🔴 원천 표는 등급·대체 경로로 남는다
+    for f, mark in (("app/core/search/sources.py", "config/sources"),
+                    ("app/core/search/fetch.py", "config/sources")):
+        got = (root / f).read_text(encoding="utf-8")
+        assert mark in got, f"🔴 `{f}` 가 원천 표를 안 본다"
 
 
 def test_kind_of_passes_the_league_id() -> None:
