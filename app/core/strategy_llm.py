@@ -398,12 +398,22 @@ def ask(ref: MatchRef, facts: Facts, plan: object, *, state: RunState,
             # 🔴 **충돌** — 글은 남기되 부등호를 `=`(모름)으로 내린다
             #    ⚠️ 꼬리표를 **먼저** 만든다 — 값을 바꾼 뒤 읽으면 제 값이
             #       아니라 바뀐 `=` 가 찍힌다(실측 2026-10-16).
-            said_tag = " ↔ ".join(f"{p} {getattr(r, 'cmp', '=')}"
-                                  for p, r in rows)
+            # ══════════════════════════════════════════════════════
+            # 🔴🔴 **양쪽 글을 다 남긴다** — 사용자 지시 2026-10-16
+            # ══════════════════════════════════════════════════════
+            #
+            #  ⚠️ 실사고(Necaxa vs Atlas): 충돌 줄에 **deepseek 문장만** 남고
+            #     solar 는 부등호 한 글자(`<`)로만 남았다 — *"solar 는 왜
+            #     반대로 봤나"* 를 **읽을 수 없었다**(어제 안전장치 사유가
+            #     잘려 못 읽던 것과 같은 병이다).
+            #  🔴 그래서 **두 모델의 문장을 모두** 싣는다.
+            said_tag = " ↔ ".join(
+                f"{p} `{getattr(r, 'cmp', '=')}` {str(getattr(r, 'text', '') or '')[:90]}"
+                for p, r in rows)
             # 🔴 부등호는 **그대로 둔다** — `=` 로 바꾸면 `vars_of` 가 그 줄을
             #    **통째로 버려** 정보가 사라진다(실측 2026-10-16: 변수 0개).
             #    🔴 대신 글에 충돌 표시를 박고, 아래에서 **맥락 전용**으로 내린다.
-            row0.text = f"{CONFLICT} [{said_tag}] {row0.text}"
+            row0.text = f"{CONFLICT} — {said_tag}"
             keep.append(row0)
             said_note.append(kind)
     got = StrategyRead(rows=keep[:MAX_ROWS])

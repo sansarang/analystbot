@@ -430,5 +430,10 @@ def test_sl14_두_모델을_다_쓴다() -> None:
     assert conf and agree, [v.claim[:40] for v in out]
     # 🔴 충돌 줄은 **버리지 않고** 맥락 전용으로 남긴다(평이 읽어야 한다)
     assert conf[0].usable_as_basis is False, conf[0]
+    # 🔴🔴 **양쪽 글이 다 남는다**(사용자 지시 2026-10-16) — 부등호만 남기면
+    #    *"상대 모델은 왜 반대로 봤나"* 를 읽을 수 없다(실사고 Necaxa vs Atlas).
+    assert "deepseek `<`" in conf[0].claim and "solar `>`" in conf[0].claim, \
+        conf[0].claim
+    assert conf[0].claim.count("라인 높다") >= 2, conf[0].claim
     assert agree[0].usable_as_basis is True, agree[0]
     assert box  # 변수 둘 다 섰다
