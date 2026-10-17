@@ -319,3 +319,39 @@ def test_sl11_피로도_변수() -> None:
         if (ROOT := __import__("pathlib").Path(__file__).resolve().parents[2]) \
         else ""
     assert "rest=_sl.rest_of(ref, facts)" in said, "SL11 🔴 러너가 안 넘긴다"
+
+
+def test_sl12_전력_누수() -> None:
+    """🔴🔴 SL12 — 사용자 지시 2026-10-16:
+
+    > 원래 11에서 **결장 선수가 있으면 전력 누수**에 대한 전력분석이 제대로
+    > 이루어지고 있냐 → 수정해라
+
+    ⚠️ 실측 2026-10-16(Obolon vs Veres): 결장은 잡았지만 카드에는 *"핵심 선수
+       표 없음"* 뿐이라 **얼마나 센 선수가 빠졌는지**가 비어 있었다(ΔD 는
+       **자리 가치 변화**지 빠진 사람의 몫이 아니다).
+    🔴 재료는 이미 있었다 — `facts.player_value`(경기 페이지 선수 가치).
+    """
+    from app.core.strategy import leak_of
+
+    class _F:
+        player_value = {"A": 1000.0, "B": 500.0, "C": 300.0, "D": 200.0}
+
+    rate, why = leak_of(_F(), now=["A", "C", "D"], usual=["A", "B", "C", "D"])
+    assert rate == 0.25 and "가치 25%" in why and "B(25%)" in why, (rate, why)
+    # 🔴 그대로면 0 이고 그 사실을 적는다
+    got, said = leak_of(_F(), now=["A", "B", "C", "D"], usual=["A", "B", "C", "D"])
+    assert got == 0.0 and "그대로" in said
+    # 🔴 값 모르는 선수는 **이름으로** 남긴다(0 으로 때우지 않는다 · #3)
+    _r, w3 = leak_of(_F(), now=["A"], usual=["A", "B", "Z"])
+    assert "값 모르는 선수 1명(Z)" in w3, w3
+    # 🔴 재료가 없으면 None(못 쟀다)
+    class _F0:
+        player_value: dict = {}
+
+    assert leak_of(_F0(), now=["A"], usual=["A", "B"])[0] is None
+    # 🔴 사실로 실린다(배선) — `leak` 종류로
+    said_code = (ROOT2 / "app/core/strategy.py").read_text(encoding="utf-8") \
+        if (ROOT2 := __import__("pathlib").Path(__file__).resolve().parents[2]) \
+        else ""
+    assert 'add("leak"' in said_code and "got.leak, got.leak_why = leak_of(" in said_code

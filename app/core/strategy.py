@@ -63,6 +63,9 @@ class TeamRead:
     #: 🔴 §2-1 — 공격·수비 기여 변화율(%) · 못 재면 `None`
     da: float | None = None
     dd: float | None = None
+    #: 🔴 **전력 누수율**(빠진 선수 가치 ÷ 평소 XI 가치 · 위 `leak_of`)
+    leak: float | None = None
+    leak_why: str = ""
     #: 🔴🔴 **기록 없는 선수 수**(오늘 XI + 평소 XI) — 카드가 적는다
     #  ⚠️ 사용자 지적 2026-10-10: *"기록이 없는 선수는 0이 아니라 '모름'
     #     (포지션 평균으로 수축)이어야 한다"*.
@@ -239,6 +242,8 @@ def read(ref, facts, *, side: str, adv: dict | None = None) -> TeamRead:
     got.swaps = _swaps(now, usual, pos) if usual else {}
     got.changed = len([x for x in now if x not in usual]) if usual else None
     got.da, got.dd, got.no_stat = _contrib(now, usual, facts)
+    # 🔴 **전력 누수**(사용자 지시 2026-10-16) — 빠진 선수의 가치 몫
+    got.leak, got.leak_why = leak_of(facts, now=now, usual=usual)
     # 🔴🔴 **±60% 를 넘으면 그 지표를 쓰지 않는다**(사용자 지시 2026-10-10) —
     #    계산 오류 의심이다. ⚠️ 조용히 버리지 않는다: 사유를 칸에 적어 카드가 낸다.
     if got.da is not None and abs(float(got.da)) > CONTRIB_SANE:
@@ -359,6 +364,44 @@ def _contrib(now: list[str], usual: list[str], facts) -> tuple:
         if d_old > 0:
             dd = _bs.pct_change(d_now, d_old)
     return da, dd, gone
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **전력 누수** — 사용자 지시 2026-10-16
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 원래 11에서 **결장 선수가 있으면 전력 누수**에 대한 전력분석이 제대로
+#  > 이루어지고 있냐 → 수정해라
+#
+#  ⚠️ 실측 2026-10-16(Obolon vs Veres): 결장은 잡았고(`IR02-away`) 축0 에도
+#     닿았지만 카드에는 *"핵심 선수 표 없음"* 뿐이라 **얼마나 센 선수가
+#     빠졌는지**가 없었다. ΔD 는 **자리 가치 변화**지 *"빠진 사람의 몫"* 이 아니다.
+#  🔴 재료는 이미 있다 — `facts.player_value`(경기 페이지에서 받은 선수 가치).
+#     그래서 **빠진 선수 가치 합 ÷ 평소 XI 가치 합** 을 센다.
+#  ⚠️ 값 없는 선수는 **이름으로 남긴다**(0 으로 때우지 않는다 · #3).
+
+def leak_of(facts, *, now: list, usual: list) -> tuple[float | None, str]:
+    """🔴 **전력 누수율** — `(빠진 가치 비율, 사유)`. 못 재면 `(None, 사유)`."""
+    val = dict(getattr(facts, "player_value", None) or {})
+    if not val or not usual:
+        return None, "⬜ 선수 가치나 평소 XI 가 없다 — 누수를 못 센다"
+    said_now = {str(x) for x in (now or [])}
+    gone = [str(x) for x in usual if str(x) not in said_now]
+    if not gone:
+        return 0.0, "✅ 평소 XI 가 그대로다(빠진 선수 없음)"
+    base = sum(float(val[x]) for x in usual if x in val)
+    if base <= 0:
+        return None, "⬜ 평소 XI 가치 합을 못 읽었다"
+    got = [(x, float(val[x])) for x in gone if x in val]
+    miss = [x for x in gone if x not in val]
+    rate = round(sum(v for _n, v in got) / base, 4)
+    said = (f"빠진 선수 {len(gone)}명 · **가치 {rate:.0%}**"
+            + (" — " + " · ".join(f"{n}({v / base:.0%})"
+                                  for n, v in sorted(got, key=lambda x: -x[1])[:3])
+               if got else "")
+            + (f" · ⬜ 값 모르는 선수 {len(miss)}명({' · '.join(miss[:3])})"
+               if miss else ""))
+    return rate, said
 
 
 #: 🔴🔴 **ΔA·ΔD 상한** — 사용자 지시 2026-10-10: *"±60%를 넘으면 계산 오류 의심으로
@@ -593,6 +636,11 @@ def _facts_of(got: TeamRead, *, name: str, how: str) -> list:
         add("delta_def", f"{name} 수비 자리 가치 {got.dd:+.0f}%", float(got.dd))
     elif got.dd_bad:
         add("delta_def", f"{name} {got.dd_bad}")
+    # 🔴🔴 **전력 누수**(위 `leak_of` 머리말) — 빠진 선수의 **몫**을 적는다
+    if got.leak is not None:
+        add("leak", f"{name} 전력 누수 — {got.leak_why}", float(got.leak) * 100)
+    elif got.leak_why:
+        add("leak", f"{name} {got.leak_why}")
     for nm, said in sorted(got.key_state.items()):
         add("key_player", f"{name} 핵심 선수 {nm} — {said}")
     for one in got.bench_regulars:
