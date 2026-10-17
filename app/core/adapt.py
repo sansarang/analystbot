@@ -163,6 +163,10 @@ def xi_of(team_key: str, raw: object, *, source_url: str = "",
                              number=(int(r["number"])
                                      if isinstance(r.get("number"), int)
                                      else None),
+                             # 🔴 **선수 페이지 번호**(능력치 통로의 열쇠) —
+                             #    `players_of` 가 그 칸을 싣는다(2026-10-17)
+                             pid=(int(r["pid"])
+                                  if isinstance(r.get("pid"), int) else None),
                              spot=str(r.get("spot") or ""),
                              flank=str(r.get("flank") or ""),
                              age=(int(r["age"])

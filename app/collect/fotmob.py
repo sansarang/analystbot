@@ -423,6 +423,12 @@ def players_of(team: dict) -> list[dict]:
             number = None
         out.append({"name": name, "pos": pos, "number": number,
                     "value": _value_of(p),
+                    # 🔴🔴 **선수 페이지 번호**(실측 2026-10-17) — 선발 11/11 ·
+                    #    교체 10/10 · 결장 명단까지 `id` 가 **전부 있다**.
+                    #    🔴 이것이 `players/{번호}` 주소의 열쇠다(능력치 통로).
+                    #    ⚠️ 종전엔 이 칸을 **버렸다** — 그래서 선수 한 명을
+                    #       다시 찾을 길이 없었다(이름으로는 동명이인이 있다).
+                    "pid": _int_of(p.get("id")),
                     # 🔴🔴 **측면·세부 자리·나이·시즌 레이팅**(최종 평 §1-1)
                     "flank": flank_of(p), "spot": spot_of(p),
                     "age": _int_of(p.get("age")),
@@ -489,6 +495,59 @@ def flank_of(p: dict) -> str:
         return ""
     left, mid, right = FLANKS
     return left if y < FLANK_CUT else (right if y > 1 - FLANK_CUT else mid)
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **선수 페이지** — 사용자 지시 2026-10-17(*"능력치만 구현해라"*)
+# ══════════════════════════════════════════════════════════════════
+#
+#  실측 2026-10-17(`/players/935033` Duk · 리그 둘 선수 4명으로 재현):
+#    · robots — `User-agent: *` 에 `Allow: /` 이고 막힌 것은 `/api/*`·`/auth/*`·
+#      `/info`·`/health`·`/contact_us` 뿐이다. 선수 사이트맵도 공개다.
+#    · 응답 `200` · **880,162자** · **2.09초/건**(캐시 끔) → 🔴 **아무 때나 다
+#      받지 않는다**(22명이면 46초다). 부르는 쪽이 대상을 고른다.
+#    · 틀은 경기 페이지와 **같다** — `payload()` → `page.data`.
+#
+#  🔴 이 파일이 내는 것은 **출처가 준 수와 글자**뿐이다 — 등급·강약 판정은
+#     `core/ability` 가 문턱으로 한다(여기서 새 수를 짓지 않는다).
+
+def player_url(pid: object) -> str:
+    """🔴 선수 페이지 주소. ⚠️ 번호가 아니면 **빈 글자**(지어낸 주소 금지 · #4)."""
+    said = str(pid or "").strip()
+    return f"{BASE}/players/{said}" if said.isdigit() else ""
+
+
+def traits_of(j: dict) -> tuple[str, list[dict]]:
+    """🔴🔴 **자리별 백분위 능력치** — `(비교 묶음 제목, 지표 목록)`.
+
+    실측 꼴(`page.data.traits`):
+
+    ```
+    {"key": "stats_comparison_att_mid_wingers",
+     "title": "Stats compared to other attacking midfielders/wingers",
+     "items": [{"key": "aerials_won", "title": "Aerial duels", "value": 0.8}, …]}
+    ```
+
+    🔴🔴 **비교 묶음을 출처가 고른다** — 공격형 MF/윙과 **골키퍼가 다른 지표**를
+       받는다(실측: GK 는 `save_percentage`·`clean_sheet`·`keeper_high_claim`).
+       그래서 우리가 *"어떤 지표로 견줄까"* 를 정하지 않는다(#4 추측 금지).
+    ⚠️ `value` 는 **백분위**(0~1)다 — 경기당 수치가 아니다. 그 뜻을 바꾸지 않는다.
+    ⚠️ 지표 **이름은 출처 글자 그대로** 쓴다 — 한글 표를 손으로 들면 지표가 늘 때
+       한 발 늦는다(#1 사본 금지). 모델은 그 영어 글자를 읽는다.
+    🔴 칸이 없으면 **빈 꼴**이다(`("", [])`) — 0 으로 때우지 않는다(#3).
+    """
+    box = dict((_page(j).get("data") or {}).get("traits") or {})
+    out: list[dict] = []
+    for one in (box.get("items") or []):
+        if not isinstance(one, dict):
+            continue
+        val = _float_of(one.get("value"))
+        said = str(one.get("title") or one.get("key") or "").strip()
+        if val is None or not said:
+            continue
+        out.append({"key": str(one.get("key") or ""), "title": said,
+                    "value": val})
+    return str(box.get("title") or "").strip(), out
 
 
 def spot_of(p: dict) -> str:

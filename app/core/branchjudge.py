@@ -826,6 +826,19 @@ def _rule_one(claim: Claim, branch: Branch, ref, *, pv: str,
     return claim.why
 
 
+def _num_tail(branch: Branch) -> str:
+    """🔴🔴 **1단이 잰 수를 보류 글에도 싣는다**(실측 2026-10-17).
+
+    ⚠️ 실사고: `측면 집중` 이 **4명 ↔ 4명**으로 잰 뒤 *"차이가 2명 미만"* 이라
+       못 가렸는데, 2단 문지기가 갈래를 보류로 돌리면서 `branch.why` 를 덮어
+       **그 수가 변수 글에서 사라졌다**. 사람이 보면 *"측면을 아예 못 쟀다"*
+       로 읽힌다 — 어제 §4 의 그 병(남겼는데 못 읽는다)이다.
+    🔴 그래서 보류 사유 끝에 **잰 수를 붙인다**(없으면 안 붙인다).
+    """
+    said = str(branch.num_why or "").strip()
+    return f" · 1단이 잰 것 — {said}" if said else ""
+
+
 async def cross(branch: Branch, ref, *, state, net, chain=None) -> str:
     """🔴🔴 **2단 한 갈래** — 상대 모델이 서치해서 판정한다. 사유 한 줄.
 
@@ -841,16 +854,17 @@ async def cross(branch: Branch, ref, *, state, net, chain=None) -> str:
     #    ⚠️ 전술 비교를 보내면 검색·본문·LLM 을 쓰고 늘 `모르겠다` 를 받는다.
     ok_doc, why_doc = doc_checkable(branch)
     if not ok_doc:
-        branch.why = f"{HELD} · {why_doc}"
+        branch.why = f"{HELD} · {why_doc}{_num_tail(branch)}"
         return branch.why
     # 🔴 질의는 **첫 주장의 상대 모델**이 쓴다(한 갈래에 한 번 · 예산)
     pv_q = judge_pv_of(branch.claims[0].provider) if branch.claims else ""
     if not pv_q:
-        branch.why = f"{HELD} · 🔴 판정할 **상대 모델이 없다**(자기 검증 금지)"
+        branch.why = (f"{HELD} · 🔴 판정할 **상대 모델이 없다**(자기 검증 금지)"
+                      + _num_tail(branch))
         return branch.why
     qs, said_langs, said_q = _queries(branch, ref, pv=pv_q, state=state)
     if not qs:
-        branch.why = f"{HELD} · 🔴 질의 0개 — {said_q}"
+        branch.why = f"{HELD} · 🔴 질의 0개 — {said_q}{_num_tail(branch)}"
         return branch.why
     # 🔴🔴 ① **매체는 robots 를 받아 확인한 뒤에만 쓴다**(#4 · 지어낸 주소 금지)
     #    🔴 확인하는 함수는 `querywriter.check_hosts` 하나다(사본 금지).
@@ -868,7 +882,8 @@ async def cross(branch: Branch, ref, *, state, net, chain=None) -> str:
                                langs=said_langs, aliases=_aliases(ref),
                                sites=said_sites)
     if not docs:
-        branch.why = f"{HELD} · 🔴 본문 0건 — {said_q} · {said_d}"
+        branch.why = (f"{HELD} · 🔴 본문 0건 — {said_q} · {said_d}"
+                      + _num_tail(branch))
         return branch.why
     said_each: list[str] = []
     for one in branch.claims:
@@ -907,7 +922,7 @@ async def cross(branch: Branch, ref, *, state, net, chain=None) -> str:
     # 🔴 보류여도 **무엇을 읽었나**가 변수 글에 남아야 한다(④) — 그래야 다음
     #    사람이 *"질의가 나빴나 · 글이 그 말을 안 했나"* 를 가릴 수 있다.
     branch.why = (f"{HELD} · 문서로 못 가렸다 — " + " · ".join(said_each)
-                  + f" · 읽은 것 {said_d}")
+                  + f" · 읽은 것 {said_d}" + _num_tail(branch))
     return branch.why
 
 

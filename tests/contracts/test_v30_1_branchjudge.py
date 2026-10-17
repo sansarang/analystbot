@@ -532,6 +532,27 @@ def test_bj11i_단이_터져도_카드가_나온다() -> None:
         assert w in src, w
 
 
+def test_bj11j_보류_글에도_1단이_잰_수가_남는다() -> None:
+    """🔴🔴 실측 2026-10-17(Necaxa) — `측면 집중` 을 **4명 ↔ 4명**으로 재고
+    *"차이가 2명 미만"* 이라 못 가렸는데, 2단 문지기가 보류로 돌리면서
+    `branch.why` 를 덮어 **그 수가 변수 글에서 사라졌다**.
+
+    사람이 보면 *"측면을 아예 못 쟀다"* 로 읽힌다 — 어제 §4 의 그 병이다.
+    """
+    import asyncio
+    one = _branch("측면 집중")
+    one.num_why = "측면(왼·오른) 선발 홈 **4명** ↔ 원정 **4명** — 차이가 2명 미만이다"
+    said = asyncio.run(bj.cross(one, _R(), state=None, net=None,
+                                chain=object()))
+    # 🔴 문지기가 돌려보냈는데(전술 비교) **잰 수는 글에 남았다**
+    assert "전술 비교" in said and "4명" in said, said
+    assert "1단이 잰 것" in one.why, one.why
+    # 🔴 잰 것이 없으면 **안 붙인다**(빈 꼬리를 달지 않는다)
+    two = _branch("빌드업")
+    asyncio.run(bj.cross(two, _R(), state=None, net=None, chain=object()))
+    assert "1단이 잰 것" not in two.why, two.why
+
+
 def test_bj12_근거_없이_승격하면_막는다() -> None:
     """🔴🔴 ① **측정·근거 없는 승격 금지**(인계 §2 3단)."""
     # (가) 부등호가 없다

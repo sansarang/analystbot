@@ -336,6 +336,21 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #  ⚠️ 트리거가 없으면(핵심 결장·포메이션 변화·자리 변화 모두 아니면) 부르지
     #     않는다 — 사유를 수첩에 남긴다(#3).
     from app.core import strategy_llm as _sl
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **⑤-b1 선수 능력치** — 사용자 지시 2026-10-17
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 핵심선수 결장 · **후보선수로 대체했을때 가설제공(숫자가 아닌 능력치)**
+    #  > … 이거는 전략분석가한테 줘야 하는거다
+    #
+    #  🔴 대상은 **교체 짝 + 핵심 선수**뿐이다(선수 한 명이 2.09초 · 실측) ·
+    #     카드 상한(`st.clock`)이 바닥이면 그 자리에서 멈춘다.
+    #  🔴 수(백분위)는 `core/ability` 에서 멈추고 모델에게는 **글자**만 간다.
+    from app.core import ability as _ab3
+    said_tg, said_why_tg = _ab3.targets(ref, facts, plan)
+    said_box, said_why_ab = await _ab3.fetch(net, said_tg, clock=st.clock)
+    said_ability = _ab3.said_of(said_tg, said_box, ref=ref)
+    st.note(f"⑤-b1 선수 능력치 — {said_why_tg} · {said_why_ab}")
     # 🔴🔴 **충돌·단독 갈래를 담는 그릇**(사용자 지시 2026-10-16) — 아래
     #    ⑤-b3 가 그것을 **상대 모델이 서치해서** 판정한다.
     said_branch: list = []
@@ -347,6 +362,8 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
                               # 🔴 **기사 사실도 넘긴다**(지시 2026-10-15) —
                               #    확률은 기사를 안 세고, 내용 판단은 여기서 한다
                               news=_sl.news_of(variables),
+                              # 🔴 **능력치 재료**(지시 2026-10-17) — 글자뿐이다
+                              ability=said_ability,
                               branches=said_branch)
     st.note(f"⑤-b2 전략 전문가 — {said_sl}")
     # ══════════════════════════════════════════════════════════════════

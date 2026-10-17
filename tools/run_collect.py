@@ -45,7 +45,10 @@ LEDGER: dict = {}
 #: 🔴 16단계의 **이름표** — 하나라도 장부에 없으면 보고가 빨개진다
 STEPS: tuple[str, ...] = (
     "① 경기", "② fotmob(XI·결장·감독)", "②-b 선수단 교체", "③ 딥서치",
-    "④ 추출", "⑤ 검증", "⑤-b 포메이션·전략", "⑤-b2 전략 전문가(LLM)",
+    "④ 추출", "⑤ 검증", "⑤-b 포메이션·전략",
+    # 🔴 **선수 능력치**(사용자 지시 2026-10-17) — 교체 짝의 자리별 백분위
+    "⑤-b1 선수 능력치",
+    "⑤-b2 전략 전문가(LLM)",
     # 🔴 **충돌·단독 갈래 판정**(사용자 지시 2026-10-16) — 상대 모델이 서치해서 본다
     "⑤-b3 갈래 판정",
     "⑤-c 리그·컵 분석",
@@ -370,6 +373,21 @@ async def main(argv: list[str]) -> int:
     #  🔴 LLM 은 **글만** 낸다 — 방향(`favors`)·가중은 코드가 넣는다(절대규칙 5).
     #     그래서 이 변수들은 지금 🟡 **표시·검증·가설**이다(축을 안 민다).
     from app.core import strategy_llm as _sl
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **⑤-b1 선수 능력치**(사용자 지시 2026-10-17) — 교체 짝 + 핵심 선수의
+    #    **자리별 백분위**를 받아 `강점/보통/약점` 글자로 ⑤-b2 에 넘긴다.
+    # ══════════════════════════════════════════════════════════════════
+    from app.core import ability as _ab3
+    said_tg, said_why_tg = _ab3.targets(ref, facts, plan)
+    said_box, said_why_ab = await _ab3.fetch(net, said_tg, clock=st.clock)
+    said_ability = _ab3.said_of(said_tg, said_box, ref=ref)
+    print("## ⑤-b1 선수 능력치")
+    print(f"- {said_why_tg} · {said_why_ab}")
+    for one in said_ability:
+        print(f"  {one}")
+    mark("⑤-b1 선수 능력치",
+         "✅ 돌았다" if said_box else "🔴 빈손", said_why_ab[:110])
+    print(flush=True)
     # 🔴 **최근 5경기 기준**으로도 갈래를 찾게 재료를 넘긴다(지시 2026-10-15)
     # 🔴🔴 **충돌·단독 갈래 그릇**(지시 2026-10-16) — 아래 ⑤-b3 가 판정한다
     said_branch: list = []
@@ -381,6 +399,8 @@ async def main(argv: list[str]) -> int:
                               #    직전 경기일·최근 경기 수(코드가 센 수다)
                               rest=_sl.rest_of(ref, facts),
                               news=_sl.news_of(variables),
+                              # 🔴 **능력치 재료**(지시 2026-10-17)
+                              ability=said_ability,
                               branches=said_branch)
     print("## ⑤-b2 전략 전문가(LLM)")
     print(f"- {said_sl}")
