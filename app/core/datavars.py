@@ -465,7 +465,13 @@ def run(ref: MatchRef, facts: Facts, box: dict, *,
                                                      state=state)),
                    ("나 갈래", lambda: from_branches(ref, facts, box,
                                                     state=state)),
-                   ("다 사실", lambda: from_facts(ref, facts, state=state))):
+                   ("다 사실", lambda: from_facts(ref, facts, state=state)),
+                   # 🔴🔴 **5경기 실제 실력**(사용자 지시 2026-10-18) —
+                   #    상대 수준·가중 폼·상위권 전적
+                   ("실력", lambda: from_strength(ref, facts, state=state)),
+                   # 🔴🔴 **흐름(폼)**(사용자 지시 2026-10-18) — 추세·최신
+                   #    가중·홈원정 쪼갬·흔들림
+                   ("흐름", lambda: from_flow(ref, facts, state=state))):
         try:
             got = list(fn())
         except Exception as exc:                            # noqa: BLE001
@@ -476,3 +482,389 @@ def run(ref: MatchRef, facts: Facts, box: dict, *,
         said.append(f"{nm} {len(got)}개")
     return out, ("받은 자료 변수 — " + " · ".join(said)
                  + f" → 모두 **{len(out)}개**")
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **5경기로 실제 실력을 잰다** — 사용자 지시 2026-10-18
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 5경기를 통하여 **두팀의 실제 실력**을 가늠하기 위함이다 .. 이거는
+#  > **과거 데이타**고 이 데이타를 가지고 **오늘 경기를 예측**하는거다
+#
+#  🔴 종전 폼 변수(`S01`·`IR12`·`DV7`)는 **상대를 안 본다** — 꼴찌 상대 2골과
+#     1위 상대 2골이 같은 한 경기다. 그러면 *"실제 실력"* 이 아니라 **일정 운**
+#     이 섞인다.
+#  🔴 재료는 둘 다 **이미 있다**(새 통신 0):
+#       경기 줄  `facts.recent[팀]["sequence"]` — 날짜·상대 이름·득실·결과
+#       순위표   `facts.standings["group"]["rows"]` — 전 팀의 순위·승점·경기수
+#  ⚠️ 순위는 **오늘 표**다 — 그날 순위는 자료가 없다. 그 사실을 변수 글에
+#     글자로 적는다(#3 · 지어내지 않는다).
+
+
+def _table_rows(facts) -> list[dict]:
+    """🔴 순위표 줄 전부 — `[{rank,name,played,points,…}]`. 없으면 빈 목록."""
+    box = dict(dict(getattr(facts, "standings", None) or {}).get("group") or {})
+    return [dict(x) for x in (box.get("rows") or []) if isinstance(x, dict)]
+
+
+def _rank_of(name: str, rows: list[dict]) -> int | None:
+    """🔴 상대 이름 → **오늘 순위**. 이름 맞추기는 `core/teamname.pick` 하나다.
+
+    ⚠️ 표에 없으면 `None` 이다(지어내지 않는다 · 부르는 쪽이 센다).
+    """
+    from app.core import teamname as _tn
+    keys = [str(r.get("name") or "") for r in rows]
+    got, _why = _tn.pick(str(name or ""), keys)
+    if not got:
+        return None
+    for r in rows:
+        if str(r.get("name") or "") == got:
+            try:
+                return int(r.get("rank"))
+            except (TypeError, ValueError):
+                return None
+    return None
+
+
+def _games(facts, ref: MatchRef, side: str) -> list[dict]:
+    box = dict(dict(getattr(facts, "recent", None) or {})
+               .get(_key(ref, side)) or {})
+    return [dict(x) for x in (box.get("sequence") or []) if isinstance(x, dict)]
+
+
+def _pts(row: dict) -> int:
+    """🔴 그 경기에서 딴 승점 — 승 3 · 무 1 · 패 0(새 수가 아니다 · 축구 규칙)."""
+    said = str(row.get("result") or "")
+    return 3 if said == "W" else 1 if said == "D" else 0
+
+
+def _faced(facts, ref: MatchRef, side: str,
+           rows: list[dict]) -> tuple[list[dict], int, int]:
+    """🔴 그 팀 5경기에 **상대 순위를 붙인다**. `(줄, 찾은 수, 못 찾은 수)`."""
+    out, miss = [], 0
+    for one in _games(facts, ref, side):
+        rk = _rank_of(str(one.get("opponent") or ""), rows)
+        if rk is None:
+            miss += 1
+            continue
+        out.append({**one, "opp_rank": rk})
+    return out, len(out), miss
+
+
+def from_strength(ref: MatchRef, facts: Facts, *,
+                  state: RunState) -> list[Variable]:
+    """🔴🔴 **5경기 실제 실력** — 상대 수준·가중 폼·상위권 전적. `[Variable]`."""
+    cf = _box("strength")
+    rows = _table_rows(facts)
+    out: list[Variable] = []
+    if not rows:
+        state.note(f"실력 — {NONE_MARK} 순위표가 없다(상대 수준을 못 잰다)")
+        return out
+    n_tab = len(rows)
+    got: dict[str, list[dict]] = {}
+    for side in ("home", "away"):
+        said, n, miss = _faced(facts, ref, side, rows)
+        got[side] = said
+        state.note(f"실력 `{side}` — 5경기 중 상대 순위를 찾은 것 {n}개 · "
+                   f"못 찾은 것 {miss}개(순위표 {n_tab}팀 · **오늘 순위**다)")
+    out += _opp_level(ref, cf, got, state=state, n_tab=n_tab)
+    out += _weighted_form(ref, cf, got, state=state, n_tab=n_tab)
+    out += _vs_top(ref, cf, got, state=state, n_tab=n_tab)
+    return out
+
+
+def _opp_level(ref: MatchRef, cf: dict, got: dict, *, state: RunState,
+               n_tab: int) -> list[Variable]:
+    """🔴 **상대 평균 순위** — 누가 더 센 일정을 치렀나(작을수록 센 상대)."""
+    gap, low = _num(cf, "rank_gap"), _num(cf, "rank_min")
+    if gap is None or low is None:
+        state.note(f"실력 상대수준 — {NONE_MARK} 문턱 표가 없다(`{CONF}`)")
+        return []
+    avg: dict[str, float] = {}
+    for side in ("home", "away"):
+        rowz = got.get(side) or []
+        if len(rowz) < low:
+            state.note(f"실력 상대수준 `{side}` — 찾은 상대 {len(rowz)}개 < "
+                       f"{low:g}(안 센다)")
+            return []
+        avg[side] = sum(float(r["opp_rank"]) for r in rowz) / len(rowz)
+    h, a = avg["home"], avg["away"]
+    if abs(h - a) < gap:
+        state.note(f"실력 상대수준 — 상대 평균 순위 홈 {h:.1f}위 ↔ 원정 "
+                   f"{a:.1f}위 · 차 {abs(h - a):.1f} < {gap:g}(안 센다)")
+        return []
+    # 🔴 **순위가 작을수록 센 상대**다 — 센 일정을 치른 쪽이 유리하다
+    side = "home" if h < a else "away"
+    state.note(f"실력 상대수준 **발동** — {side} · 홈 {h:.1f} ↔ 원정 {a:.1f}")
+    return [_var("ST1", "squad_ability", ref, side,
+                 f"{_name(ref, _key(ref, side))} 는 **더 센 일정**을 치렀다 — "
+                 f"5경기 상대 평균 순위 홈 **{h:.1f}위** ↔ 원정 **{a:.1f}위**"
+                 f"(순위표 {n_tab}팀 · 차 {abs(h - a):.1f} · 문턱 {gap:g}) · "
+                 "⚠️ **오늘 순위** 기준이다(그날 순위는 자료가 없다)")]
+
+
+def _weighted_form(ref: MatchRef, cf: dict, got: dict, *, state: RunState,
+                   n_tab: int) -> list[Variable]:
+    """🔴 **가중 폼** — 득실 차를 **상대 순위로 가중**한다.
+
+    🔴 가중은 `1 + (표 중앙 − 상대 순위) / 표 크기` 다 — 상위권 상대 결과에
+       무게가 더 가고 하위권 상대 결과는 깎인다. ⚠️ 새 수를 짓지 않았다:
+       **표 크기와 순위**만 쓴다(계수를 손으로 넣지 않는다).
+    """
+    want = _num(cf, "weighted_gap")
+    low = _num(cf, "rank_min")
+    if want is None or low is None:
+        state.note(f"실력 가중폼 — {NONE_MARK} 문턱 표가 없다(`{CONF}`)")
+        return []
+    mid = (n_tab + 1) / 2.0
+    val: dict[str, float] = {}
+    for side in ("home", "away"):
+        rowz = got.get(side) or []
+        if len(rowz) < low:
+            state.note(f"실력 가중폼 `{side}` — 찾은 상대 {len(rowz)}개 < "
+                       f"{low:g}(안 센다)")
+            return []
+        tot = 0.0
+        for r in rowz:
+            try:
+                gf = float(r.get("goals_for") or 0)
+                ga = float(r.get("goals_against") or 0)
+            except (TypeError, ValueError):
+                continue
+            w = 1.0 + (mid - float(r["opp_rank"])) / float(n_tab)
+            tot += (gf - ga) * w
+        val[side] = tot / len(rowz)
+    h, a = val["home"], val["away"]
+    if abs(h - a) < want:
+        state.note(f"실력 가중폼 — 가중 득실 홈 {h:+.2f} ↔ 원정 {a:+.2f} · "
+                   f"차 {abs(h - a):.2f} < {want:g}(안 센다)")
+        return []
+    side = "home" if h > a else "away"
+    state.note(f"실력 가중폼 **발동** — {side} · 홈 {h:+.2f} ↔ 원정 {a:+.2f}")
+    return [_var("ST2", "recent_pattern", ref, side,
+                 f"{_name(ref, _key(ref, side))} 의 **가중 득실**이 높다 — "
+                 f"상대 순위로 가중한 경기당 득실 홈 **{h:+.2f}** ↔ 원정 "
+                 f"**{a:+.2f}**(문턱 차 {want:g} · 가중은 표 {n_tab}팀의 "
+                 f"중앙 {mid:.1f}위 기준) · ⚠️ **오늘 순위** 기준이다",
+                 goals=("up" if side == "home" else "down"))]
+
+
+def _vs_top(ref: MatchRef, cf: dict, got: dict, *, state: RunState,
+            n_tab: int) -> list[Variable]:
+    """🔴 **상위권 상대 전적** — 센 팀을 상대로 무엇을 했나(경기당 승점)."""
+    share = _num(cf, "top_share")
+    want = _num(cf, "top_pts_gap")
+    low = _num(cf, "top_min")
+    if share is None or want is None or low is None:
+        state.note(f"실력 상위권 — {NONE_MARK} 문턱 표가 없다(`{CONF}`)")
+        return []
+    cut = max(1, int(round(n_tab * share)))
+    val: dict[str, tuple[float, int]] = {}
+    for side in ("home", "away"):
+        rowz = [r for r in (got.get(side) or []) if int(r["opp_rank"]) <= cut]
+        if len(rowz) < low:
+            state.note(f"실력 상위권 `{side}` — 상위 {cut}위 안 상대가 "
+                       f"{len(rowz)}경기 < {low:g}(안 센다)")
+            return []
+        val[side] = (sum(_pts(r) for r in rowz) / len(rowz), len(rowz))
+    (h, nh), (a, na) = val["home"], val["away"]
+    if abs(h - a) < want:
+        state.note(f"실력 상위권 — 상위권 상대 경기당 승점 홈 {h:.2f}({nh}경기) "
+                   f"↔ 원정 {a:.2f}({na}경기) · 차 {abs(h - a):.2f} < "
+                   f"{want:g}(안 센다)")
+        return []
+    side = "home" if h > a else "away"
+    state.note(f"실력 상위권 **발동** — {side} · 홈 {h:.2f} ↔ 원정 {a:.2f}")
+    return [_var("ST3", "squad_ability", ref, side,
+                 f"{_name(ref, _key(ref, side))} 는 **상위권 상대에 강하다** — "
+                 f"상위 {cut}위 안 상대 경기당 승점 홈 **{h:.2f}**({nh}경기) ↔ "
+                 f"원정 **{a:.2f}**({na}경기) · 문턱 차 {want:g}(상위 "
+                 f"{share:g} = {n_tab}팀 중 {cut}위까지) · ⚠️ **오늘 순위** 기준")]
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **5경기의 흐름(폼)** — 사용자 지시 2026-10-18
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 5경기에서 더 확인해야 할거는 **흐름**이다 .. **폼**이라는 말이다 ..
+#  > **상세하게** .. 그냥 5경기 실득점만 확인하는게 아니다
+#
+#  🔴 `S01` 은 **평균 하나**다 — 순서를 버린다(`0-4` 뒤 3승과 3승 뒤 `0-4` 가
+#     같은 수가 된다). 그래서 여기서는 **순서로** 본다:
+#       F1 추세(앞 토막 ↔ 최신 토막) · F2 최신 가중 · F3 홈·원정 쪼갠 폼 ·
+#       F4 흔들림(경기별 득실 차의 폭)
+#  ⚠️ **연승은 표현하지 않는다**(사용자 지시 2026-10-17) — 승을 묶어 세지 않고
+#     **경기마다** 본다.
+#  🔴 재료는 `facts.recent[팀]["sequence"]` 하나다(최신이 앞 · 새 통신 0).
+
+
+def _gd(row: dict) -> float | None:
+    """🔴 그 경기 **득실 차**(득점 − 실점). 못 읽으면 `None`."""
+    try:
+        return float(row.get("goals_for") or 0) - float(row.get("goals_against")
+                                                        or 0)
+    except (TypeError, ValueError):
+        return None
+
+
+def _seq(facts, ref: MatchRef, side: str) -> list[dict]:
+    """🔴 그 팀 경기 줄 — **최신이 앞**이다(`s2_facts` 가 그렇게 싣는다)."""
+    return _games(facts, ref, side)
+
+
+def from_flow(ref: MatchRef, facts: Facts, *,
+              state: RunState) -> list[Variable]:
+    """🔴🔴 **흐름(폼)** — F1 추세 · F2 최신 가중 · F3 홈원정 · F4 흔들림."""
+    cf = _box("flow")
+    out: list[Variable] = []
+    box = {s: _seq(facts, ref, s) for s in ("home", "away")}
+    if not box["home"] or not box["away"]:
+        state.note(f"흐름 — {NONE_MARK} 경기 줄이 없다"
+                   f"(홈 {len(box['home'])} · 원정 {len(box['away'])})")
+        return out
+    out += _trend(ref, cf, box, state=state)
+    out += _decay_form(ref, cf, box, state=state)
+    out += _side_form(ref, cf, box, state=state)
+    out += _swing(ref, cf, box, state=state)
+    return out
+
+
+def _trend(ref: MatchRef, cf: dict, box: dict, *,
+           state: RunState) -> list[Variable]:
+    """🔴 **F1 추세** — 최신 토막이 앞 토막보다 좋아졌나(경기당 득실)."""
+    n_late, want = _num(cf, "late_games"), _num(cf, "trend_gap")
+    if n_late is None or want is None:
+        state.note(f"흐름 F1 — {NONE_MARK} 문턱 표가 없다(`{CONF}`)")
+        return []
+    got: dict[str, float] = {}
+    said_t: dict[str, str] = {}
+    for side in ("home", "away"):
+        rows = box[side]
+        late = [v for v in (_gd(r) for r in rows[:int(n_late)]) if v is not None]
+        early = [v for v in (_gd(r) for r in rows[int(n_late):])
+                 if v is not None]
+        if not late or not early:
+            state.note(f"흐름 F1 `{side}` — 토막이 비었다(최신 {len(late)} · "
+                       f"앞 {len(early)}) · 안 센다")
+            return []
+        a, b = sum(late) / len(late), sum(early) / len(early)
+        got[side] = a - b
+        said_t[side] = (f"최신 {len(late)}경기 {a:+.2f} ↔ 앞 {len(early)}경기 "
+                        f"{b:+.2f}")
+    h, a = got["home"], got["away"]
+    if abs(h - a) < want:
+        state.note(f"흐름 F1 — 추세 홈 {h:+.2f} ↔ 원정 {a:+.2f} · 차 "
+                   f"{abs(h - a):.2f} < {want:g}(안 센다)")
+        return []
+    side = "home" if h > a else "away"
+    state.note(f"흐름 F1 **발동** — {side} · 홈 {h:+.2f} ↔ 원정 {a:+.2f}")
+    return [_var("FL1", "recent_pattern", ref, side,
+                 f"{_name(ref, _key(ref, side))} 의 **흐름이 오른다** — 경기당 "
+                 f"득실 추세 홈 **{h:+.2f}** ↔ 원정 **{a:+.2f}**"
+                 f"(홈 {said_t['home']} · 원정 {said_t['away']} · 문턱 차 "
+                 f"{want:g}) · ⚠️ 평균이 아니라 **순서**로 본 수다",
+                 goals=("up" if side == "home" else "down"))]
+
+
+def _decay_form(ref: MatchRef, cf: dict, box: dict, *,
+                state: RunState) -> list[Variable]:
+    """🔴 **F2 최신 가중** — 최신 경기에 무게를 더 준 득실(뒤로 갈수록 깎는다)."""
+    dec, want = _num(cf, "decay"), _num(cf, "decay_gap")
+    if dec is None or want is None:
+        state.note(f"흐름 F2 — {NONE_MARK} 문턱 표가 없다(`{CONF}`)")
+        return []
+    got: dict[str, float] = {}
+    for side in ("home", "away"):
+        num = den = 0.0
+        for i, row in enumerate(box[side]):
+            val = _gd(row)
+            if val is None:
+                continue
+            w = dec ** i
+            num += val * w
+            den += w
+        if den <= 0:
+            state.note(f"흐름 F2 `{side}` — {NONE_MARK} 득실을 못 읽었다")
+            return []
+        got[side] = num / den
+    h, a = got["home"], got["away"]
+    if abs(h - a) < want:
+        state.note(f"흐름 F2 — 가중 득실 홈 {h:+.2f} ↔ 원정 {a:+.2f} · 차 "
+                   f"{abs(h - a):.2f} < {want:g}(안 센다)")
+        return []
+    side = "home" if h > a else "away"
+    state.note(f"흐름 F2 **발동** — {side} · 홈 {h:+.2f} ↔ 원정 {a:+.2f}")
+    return [_var("FL2", "recent_pattern", ref, side,
+                 f"{_name(ref, _key(ref, side))} 의 **최신 쪽 폼이 낫다** — "
+                 f"최신에 무게를 둔 경기당 득실 홈 **{h:+.2f}** ↔ 원정 "
+                 f"**{a:+.2f}**(뒤로 갈수록 ×{dec:g} · 문턱 차 {want:g})",
+                 goals=("up" if side == "home" else "down"))]
+
+
+def _side_form(ref: MatchRef, cf: dict, box: dict, *,
+               state: RunState) -> list[Variable]:
+    """🔴 **F3 홈·원정 쪼갠 폼** — 오늘 홈팀은 과거 **홈** 경기, 원정팀은 **원정**.
+
+    🔴 까닭 — 오늘 홈팀에게 과거 원정 경기 성적은 다른 조건의 기록이다.
+    ⚠️ 경기 줄의 `side` 칸을 쓴다(그 칸이 없으면 안 돈다 · #3).
+    """
+    low, want = _num(cf, "side_min"), _num(cf, "side_gap")
+    if low is None or want is None:
+        state.note(f"흐름 F3 — {NONE_MARK} 문턱 표가 없다(`{CONF}`)")
+        return []
+    got: dict[str, tuple[float, int]] = {}
+    for side in ("home", "away"):
+        rows = [r for r in box[side] if str(r.get("side") or "") == side]
+        vals = [v for v in (_gd(r) for r in rows) if v is not None]
+        if len(vals) < low:
+            state.note(f"흐름 F3 `{side}` — 같은 쪽 경기가 {len(vals)}개 < "
+                       f"{low:g}(안 센다)")
+            return []
+        got[side] = (sum(vals) / len(vals), len(vals))
+    (h, nh), (a, na) = got["home"], got["away"]
+    if abs(h - a) < want:
+        state.note(f"흐름 F3 — 쪼갠 폼 홈 {h:+.2f}({nh}경기) ↔ 원정 "
+                   f"{a:+.2f}({na}경기) · 차 {abs(h - a):.2f} < {want:g}"
+                   "(안 센다)")
+        return []
+    side = "home" if h > a else "away"
+    state.note(f"흐름 F3 **발동** — {side} · 홈 {h:+.2f} ↔ 원정 {a:+.2f}")
+    return [_var("FL3", "recent_pattern", ref, side,
+                 f"{_name(ref, _key(ref, side))} 는 **같은 자리(홈/원정)에서** "
+                 f"더 낫다 — 홈팀의 과거 홈 {nh}경기 **{h:+.2f}** ↔ 원정팀의 "
+                 f"과거 원정 {na}경기 **{a:+.2f}**(경기당 득실 · 문턱 차 "
+                 f"{want:g})",
+                 goals=("up" if side == "home" else "down"))]
+
+
+def _swing(ref: MatchRef, cf: dict, box: dict, *,
+           state: RunState) -> list[Variable]:
+    """🔴 **F4 흔들림** — 경기별 득실 차의 **폭**(최대 − 최소).
+
+    🔴 뜻 — 폭이 큰 팀은 같은 평균이어도 **읽기 어렵다**(오늘도 어느 쪽으로든
+       크게 갈 수 있다). ⚠️ 방향은 **폭이 작은 쪽**이다(덜 흔들린다).
+    """
+    want = _num(cf, "swing_gap")
+    if want is None:
+        state.note(f"흐름 F4 — {NONE_MARK} 문턱 표가 없다(`{CONF}`)")
+        return []
+    got: dict[str, tuple[float, list[float]]] = {}
+    for side in ("home", "away"):
+        vals = [v for v in (_gd(r) for r in box[side]) if v is not None]
+        if len(vals) < 2:
+            state.note(f"흐름 F4 `{side}` — 경기 {len(vals)}개로는 폭을 못 잰다")
+            return []
+        got[side] = (max(vals) - min(vals), vals)
+    h, a = got["home"][0], got["away"][0]
+    if abs(h - a) < want:
+        state.note(f"흐름 F4 — 흔들림 폭 홈 {h:g} ↔ 원정 {a:g} · 차 "
+                   f"{abs(h - a):g} < {want:g}(안 센다)")
+        return []
+    side = "home" if h < a else "away"
+    other = "away" if side == "home" else "home"
+    state.note(f"흐름 F4 **발동** — {side}(덜 흔들린다) · 홈 {h:g} ↔ 원정 {a:g}")
+    return [_var("FL4", "recent_pattern", ref, side,
+                 f"{_name(ref, _key(ref, side))} 는 **덜 흔들린다** — 경기별 "
+                 f"득실 차의 폭 홈 **{h:g}** ↔ 원정 **{a:g}**(문턱 차 {want:g}"
+                 f" · 큰 쪽 {_name(ref, _key(ref, other))} 은 오늘도 어느 "
+                 "쪽으로든 크게 갈 수 있다)")]

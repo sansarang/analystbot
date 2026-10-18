@@ -349,3 +349,149 @@ def test_dv10_유형마다_설명이_있다(kind: str) -> None:
     from app import classify
     said = dict(getattr(classify, "NOT_CLASSIFIED", None) or {})
     assert kind in said, f"🔴 `{kind}` 설명이 없다"
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **5경기 실제 실력 · 흐름(폼)** — 사용자 지시 2026-10-18
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 5경기를 통하여 **두팀의 실제 실력**을 가늠하기 위함이다
+#  > 5경기에서 더 확인해야 할거는 **흐름**이다 .. **상세하게**
+def _tab(n: int = 15) -> dict:
+    """🔴 순위표 대역 — `rank` 1..n · 이름 `T1`..`Tn`(운영이 주는 꼴)."""
+    return {"group": {"group": "Western",
+                      "rows": [{"rank": i, "name": f"T{i}", "played": 29,
+                                "points": 60 - i, "zone": ""}
+                               for i in range(1, n + 1)]}}
+
+
+def _game(date: str, side: str, opp: str, gf: int, ga: int) -> dict:
+    return {"date": date, "side": side, "opponent": opp,
+            "goals_for": gf, "goals_against": ga,
+            "result": "W" if gf > ga else "L" if gf < ga else "D",
+            "score": f"{gf}-{ga}"}
+
+
+def test_st1_상대_수준을_센다() -> None:
+    """🔴 홈은 **상위권**(1~4위)과, 원정은 **하위권**(12~15위)과 붙었다."""
+    facts = _F(standings=_tab(), recent={
+        "team:000001": {"sequence": [_game("10-15", "home", f"T{i}", 1, 1)
+                                     for i in (1, 2, 3, 4)]},
+        "team:000002": {"sequence": [_game("10-15", "away", f"T{i}", 1, 1)
+                                     for i in (12, 13, 14, 15)]}})
+    st = _state()
+    got = dv.from_strength(_R(), facts, state=st)
+    one = next((x for x in got if x.id == "ST1"), None)
+    assert one is not None, [x.id for x in got]
+    # 🔴 **센 일정을 치른 쪽**(순위가 작다)이 유리하다
+    assert one.favors == "home", one.claim
+    assert "더 센 일정" in one.claim and "오늘 순위" in one.claim, one.claim
+
+
+def test_st3_상위권_상대_전적을_센다() -> None:
+    """🔴 홈은 상위권 상대로 2승, 원정은 상위권 상대로 2패."""
+    facts = _F(standings=_tab(), recent={
+        "team:000001": {"sequence": [_game("10-15", "home", "T1", 2, 0),
+                                     _game("10-11", "home", "T2", 1, 0),
+                                     _game("10-01", "home", "T14", 0, 3)]},
+        "team:000002": {"sequence": [_game("10-15", "away", "T1", 0, 2),
+                                     _game("10-11", "away", "T2", 0, 1),
+                                     _game("10-01", "away", "T14", 3, 0)]}})
+    got = dv.from_strength(_R(), facts, state=_state())
+    one = next((x for x in got if x.id == "ST3"), None)
+    assert one is not None, [x.id for x in got]
+    assert one.favors == "home" and "상위권 상대에 강하다" in one.claim, one
+
+
+def test_st_순위표가_없으면_안_선다() -> None:
+    st = _state()
+    got = dv.from_strength(_R(), _F(recent={"team:000001": {"sequence": []}}),
+                           state=st)
+    assert got == [], got
+    assert any("순위표가 없다" in x for x in st.notes), st.notes
+
+
+def test_fl1_추세는_순서로_본다() -> None:
+    """🔴🔴 평균이 **같은데** 순서가 다른 두 팀 — 추세가 갈라야 한다.
+
+    홈: 앞 `-2,-2` → 최신 `+2,+2`(오른다) · 원정: 앞 `+2,+2` → 최신 `-2,-2`.
+    ⚠️ 두 팀 **평균 득실은 0 으로 같다** — `S01` 은 이 둘을 못 가린다.
+    """
+    facts = _F(recent={
+        "team:000001": {"sequence": [_game("10-15", "home", "T1", 3, 1),
+                                     _game("10-11", "home", "T2", 3, 1),
+                                     _game("10-05", "home", "T3", 1, 3),
+                                     _game("10-01", "home", "T4", 1, 3)]},
+        "team:000002": {"sequence": [_game("10-15", "away", "T1", 1, 3),
+                                     _game("10-11", "away", "T2", 1, 3),
+                                     _game("10-05", "away", "T3", 3, 1),
+                                     _game("10-01", "away", "T4", 3, 1)]}})
+    got = dv.from_flow(_R(), facts, state=_state())
+    one = next((x for x in got if x.id == "FL1"), None)
+    assert one is not None, [x.id for x in got]
+    assert one.favors == "home" and one.goals == "up", one
+    assert "흐름이 오른다" in one.claim and "순서" in one.claim, one.claim
+
+
+def test_fl2_최신에_무게를_준다() -> None:
+    facts = _F(recent={
+        "team:000001": {"sequence": [_game("10-15", "home", "T1", 4, 0),
+                                     _game("10-11", "home", "T2", 0, 1),
+                                     _game("10-05", "home", "T3", 0, 1)]},
+        "team:000002": {"sequence": [_game("10-15", "away", "T1", 0, 4),
+                                     _game("10-11", "away", "T2", 1, 0),
+                                     _game("10-05", "away", "T3", 1, 0)]}})
+    got = dv.from_flow(_R(), facts, state=_state())
+    one = next((x for x in got if x.id == "FL2"), None)
+    assert one is not None and one.favors == "home", [x.id for x in got]
+    assert "최신 쪽 폼" in one.claim, one.claim
+
+
+def test_fl3_홈원정을_쪼갠다() -> None:
+    """🔴 오늘 홈팀은 **과거 홈 경기**, 원정팀은 **과거 원정 경기**로 본다."""
+    facts = _F(recent={
+        "team:000001": {"sequence": [_game("10-15", "home", "T1", 3, 0),
+                                     _game("10-11", "home", "T2", 2, 0),
+                                     # ⚠️ 원정 경기는 홈팀 쪽에서 **안 센다**
+                                     _game("10-05", "away", "T3", 0, 5)]},
+        "team:000002": {"sequence": [_game("10-15", "away", "T1", 0, 2),
+                                     _game("10-11", "away", "T2", 0, 1),
+                                     _game("10-05", "home", "T3", 5, 0)]}})
+    got = dv.from_flow(_R(), facts, state=_state())
+    one = next((x for x in got if x.id == "FL3"), None)
+    assert one is not None and one.favors == "home", [x.id for x in got]
+    assert "같은 자리" in one.claim, one.claim
+
+
+def test_fl4_흔들림은_폭이_작은_쪽이다() -> None:
+    facts = _F(recent={
+        "team:000001": {"sequence": [_game("10-15", "home", "T1", 1, 0),
+                                     _game("10-11", "home", "T2", 1, 1),
+                                     _game("10-05", "home", "T3", 0, 1)]},
+        "team:000002": {"sequence": [_game("10-15", "away", "T1", 5, 0),
+                                     _game("10-11", "away", "T2", 0, 5),
+                                     _game("10-05", "away", "T3", 1, 1)]}})
+    got = dv.from_flow(_R(), facts, state=_state())
+    one = next((x for x in got if x.id == "FL4"), None)
+    assert one is not None, [x.id for x in got]
+    # 🔴 **덜 흔들리는 쪽**이 유리하다
+    assert one.favors == "home" and "덜 흔들린다" in one.claim, one
+
+
+def test_fl_흐름도_확률에_닿는다() -> None:
+    """🔴 `flat_prob` 에 넣어 **움직이는지** 본다(글자 검사로 끝내지 않는다)."""
+    from app.core import probmodel as pm
+    from app.core.routing import place
+    rows = [dv._var("FL1", "recent_pattern", _R(), "home", "대역", goals="up"),
+            dv._var("ST3", "squad_ability", _R(), "home", "대역")]
+    got, why = pm.flat_prob(place(rows), ref=_R())
+    assert got["home"] > got["away"], (got, why)
+    assert "FL1" in why and "ST3" in why, why
+
+
+def test_dv_run_이_다섯_집안을_돈다() -> None:
+    """🔴 `run` 이 가·나·다·실력·흐름을 **다** 돈다(하나라도 빠지면 빨개진다)."""
+    st = _state()
+    _got, why = dv.run(_R(), _F(), {}, state=st)
+    for said in ("가 능력치", "나 갈래", "다 사실", "실력", "흐름"):
+        assert said in why, (said, why)
