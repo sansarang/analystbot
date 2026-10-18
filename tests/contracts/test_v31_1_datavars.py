@@ -527,3 +527,81 @@ def test_goals_부호는_주어_기준이다() -> None:
     # 🔴 코드에 그 꼴이 다시 생기면 빨개진다
     src = (ROOT / "app/core/datavars.py").read_text(encoding="utf-8")
     assert 'if side == "home" else "down"' not in src, "🔴 그 버그가 돌아왔다"
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **전력차 · 갈래 대표 · 결장자 능력치** — 사용자 지시 2026-10-18
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 전부 고쳐라 (M29 전력차 · M28 갈래 세기 · M16 결장자 · M23 문턱)
+def test_tb1_전력차가_변수가_된다() -> None:
+    """🔴🔴 **M29** — 1위(52점) 대 14위(31점)가 확률에 안 들어갔다.
+
+    ⚠️ 실측 2026-10-18(오스틴 vs 밴쿠버): 밴쿠버 1위 52점 ↔ 오스틴 14위 31점
+       인데 확률이 **39.4 ↔ 30.6** 이었다 — 격차를 세는 변수가 없었다.
+    """
+    rows = [{"rank": 1, "name": "원정팀", "played": 29, "points": 52,
+             "goals_for": 61, "goals_against": 30},
+            {"rank": 14, "name": "홈팀", "played": 29, "points": 31,
+             "goals_for": 37, "goals_against": 54}]
+    facts = _F(standings={"group": {"group": "Western", "rows": rows}},
+               recent={"team:000001": {"sequence": []},
+                       "team:000002": {"sequence": []}})
+    got = dv.from_strength(_R(), facts, state=_state())
+    one = next((x for x in got if x.id == "TB1"), None)
+    assert one is not None, [x.id for x in got]
+    assert one.type == "strength_gap" and one.favors == "away", one
+    assert "경기당 승점" in one.claim and "52점" in one.claim, one.claim
+    two = next((x for x in got if x.id == "TB2"), None)
+    assert two is not None and two.favors == "away", [x.id for x in got]
+    # 🔴 **과거 층**이다 — 시즌 누적 성적이다
+    from app.core import probmodel as pm
+    assert pm._is_past("strength_gap"), "🔴 전력차가 오늘 층으로 센다"
+
+
+def test_tb_전력차가_확률을_민다() -> None:
+    from app.core import probmodel as pm
+    from app.core.routing import place
+    one = dv._var("TB1", "strength_gap", _R(), "away", "대역")
+    got, why = pm.flat_prob(place([one]), ref=_R())
+    assert got["away"] > got["home"], (got, why)
+    assert "TB1" in why and "과거" in why, why
+
+
+def test_m28_갈래는_묶음이_대표다() -> None:
+    """🔴🔴 **M28** — 갈래 4:0 인데 `BR-1` 한 표만 세어 **세기가 사라졌다**.
+
+    🔴 묶음(`BR0`)은 가린 갈래 수 차가 문턱을 넘을 때만 선다 — 그 변수 자체가
+       *"압도"* 를 뜻한다. 그래서 **묶음이 있으면 묶음이 대표**다.
+    ⚠️ 묶음이 없으면(팽팽) 종전처럼 먼저 나온 갈래 하나다.
+    """
+    rows = [dv._var(i, "branch_numbers", _R(), "away", "갈래")
+            for i in ("BR-1", "BR-2", "BR-3", "BR-4", "BR0")]
+    got = dv._one_per_family(rows, state=_state())
+    hit = [x.id for x in got if x.usable_as_basis]
+    assert hit == ["BR0"], hit
+    # 🔴 내린 것은 **사라지지 않는다**(맥락 전용으로 ⑯ 이 읽는다)
+    assert len([x for x in got if not x.usable_as_basis]) == 4, got
+    # ⚠️ 묶음이 없으면 먼저 나온 갈래
+    two = dv._one_per_family(
+        [dv._var(i, "branch_numbers", _R(), "away", "갈래")
+         for i in ("BR-1", "BR-2")], state=_state())
+    assert [x.id for x in two if x.usable_as_basis] == ["BR-1"], two
+
+
+def test_m16_결장자도_능력치를_받는다() -> None:
+    """🔴🔴 **M16 보강** — A2 가 영구히 ⬜ 였다(결장자 페이지를 안 열었다)."""
+    import inspect
+
+    from app.core import ability as ab
+    src = inspect.getsource(ab.squad_fetch)
+    assert "결장자" in src, "🔴 결장자를 안 받는다"
+    assert "pid_book(facts, ref)" in src, "🔴 과거 선발에서 번호를 안 가져온다"
+    assert 'getattr(facts, "missing"' in src, "🔴 결장 명단을 안 본다"
+
+
+def test_m23_문턱이_둘이다() -> None:
+    """🔴 **M23** — MLS 는 동·서로 갈려 상대 절반이 순위표에 없다(2개만 찾았다)."""
+    import yaml
+    box = yaml.safe_load((ROOT / dv.CONF).read_text(encoding="utf-8"))
+    assert int(box["strength"]["rank_min"]) == 2, box["strength"]

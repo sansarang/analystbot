@@ -379,6 +379,30 @@ async def squad_fetch(net, facts, ref, *, clock=None
         said.append(why)
         if one:
             rows.append({"players": [(x["name"], x["pid"]) for x in one]})
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **결장자도 받는다** — 사용자 지시 2026-10-18(*"전부 고쳐라"*)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실측(오스틴 vs 밴쿠버): `datavars` 의 A2(결장 품질 손실)가 두 팀 다
+    #     *"⬜ 빠진 N명의 백분위를 못 받았다(선수 페이지를 안 열었다)"* 였다 —
+    #     🔴 이 함수가 **오늘 선발만** 받아 결장자가 `box` 에 아예 없었다.
+    #  🔴 번호는 `pid_book`(오늘 XI · 평소 XI · 직전 XI)이 든다 — 빠진 선수의
+    #     번호는 **과거 선발**에서 온다. ⚠️ 번호가 없으면 **안 받는다**(#3).
+    said_gone: list[tuple] = []
+    book = pid_book(facts, ref)
+    for side in ("home", "away"):
+        key = str(getattr(ref, side, "") or "")
+        for m in list(dict(getattr(facts, "missing", None) or {}).get(key)
+                      or []):
+            nm = str(getattr(m, "name", "") or "").strip()
+            pid = book.get(nm)
+            if nm and isinstance(pid, int):
+                said_gone.append((nm, pid))
+    if said_gone:
+        rows.append({"players": said_gone})
+        said.append(f"결장자 {len(said_gone)}명도 받는다(A2 재료)")
+    else:
+        said.append(f"{NONE_MARK} 결장자 번호가 없다 — A2 는 안 돈다")
     if not rows:
         return {}, " · ".join(said)
     box, why_f = await fetch(net, rows, clock=clock)

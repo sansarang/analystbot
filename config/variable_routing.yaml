@@ -349,6 +349,8 @@ lambda_rules:
     - squad_rotation
     - h2h_pattern
     - state_rate
+    # 🔴 순위표가 말하는 전력차도 **과거**다(시즌 누적 성적이다)
+    - strength_gap
     why: 🔴 과거 = 바탕(5경기 경기력) · 오늘 = 조정(라인업·피로도 …)
   cap_mul: 1.25
 types_v2:

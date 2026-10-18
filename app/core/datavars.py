@@ -467,10 +467,27 @@ def _goal_spread(ref: MatchRef, facts: Facts, cf: dict, *,
 #  🔴 집안·세기는 **여기 표**가 든다 — 변수 id 접두로 가린다(사본 금지:
 #     id 를 만드는 곳이 이 파일 하나다).
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **갈래는 묶음이 대표다** — 사용자 지시 2026-10-18(*"전부 고쳐라"*)
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 실측(오스틴 vs 밴쿠버): 갈래 **넷이 전부 원정**(`중원·빌드업·압박·교체`
+#     4:0)이었는데 집안 하나 규칙이 **먼저 나온 `BR-1`** 을 남겨 *"4:0 으로
+#     압도"* 라는 **세기가 사라졌다**.
+#  🔴 묶음(`BR0`)은 **가린 갈래 수의 차**가 문턱을 넘을 때만 선다(`count_lead`)
+#     — 즉 그 변수 자체가 *"압도"* 를 뜻한다. 그래서 **묶음이 있으면 묶음이
+#     대표**가 되고 갈래별은 전부 맥락으로 내려간다.
+#  ⚠️ 묶음이 없으면(2:1 처럼 팽팽하면) 종전처럼 **먼저 나온 갈래 하나**가
+#     대표다 — 그 경우는 압도가 아니므로 한 표가 맞다.
+
+#: 🔴 집안마다 **대표로 고를 id**(없으면 먼저 나온 것) — 사본 금지: 여기 하나다
+PREFER: dict[str, str] = {"갈래": "BR0"}
+
 #: 🔴 집안 — `{집안 이름: (id 접두들)}`. ⚠️ 묶음 변수(`BR0`)는 **갈래 집안**이다
 FAMILY: dict[str, tuple[str, ...]] = {
     "갈래": ("BR-", "BR0"),
     "능력치": ("AB1", "AB3"),
+    "전력차": ("TB1", "TB2"),
     "실력": ("ST1", "ST2", "ST3"),
     "흐름": ("FL1", "FL2", "FL4"),
 }
@@ -497,10 +514,31 @@ def _one_per_family(rows: list[Variable], *,
     if not bool(_load().get("one_per_family")):
         state.note("집안 하나 — ⬜ 끔(`one_per_family` 가 거짓이다)")
         return rows
+    # 🔴 **대표를 먼저 고른다**(위 `PREFER`) — 갈래는 묶음이 압도를 뜻한다
+    said_ids = {str(getattr(x, "id", "")) for x in rows}
+    want: dict[str, str] = {}
+    for fam, rid in PREFER.items():
+        if rid in said_ids:
+            want[fam] = rid
+            state.note(f"집안 하나 — 집안 `{fam}` 의 대표는 `{rid}` 다"
+                       "(묶음이 **압도**를 뜻한다)")
     seen: set[str] = set()
     out: list[Variable] = []
     for one in rows:
         fam = _family_of(getattr(one, "id", ""))
+        rid = str(getattr(one, "id", ""))
+        # 🔴 그 집안에 **대표가 정해져 있으면** 그것만 남긴다
+        if fam and fam in want:
+            if rid == want[fam]:
+                out.append(one)
+                continue
+            out.append(one.model_copy(update={
+                "usable_as_basis": False,
+                "claim": f"{one.claim} · ⚠️ **맥락 전용으로 내렸다** — 집안 "
+                         f"`{fam}` 의 대표는 `{want[fam]}`(묶음)다"}))
+            state.note(f"집안 하나 — `{rid}` 를 맥락 전용으로 내렸다"
+                       f"(집안 `{fam}` · 대표 `{want[fam]}`)")
+            continue
         if not fam or fam not in seen:
             if fam:
                 seen.add(fam)
@@ -634,9 +672,103 @@ def from_strength(ref: MatchRef, facts: Facts, *,
         got[side] = said
         state.note(f"실력 `{side}` — 5경기 중 상대 순위를 찾은 것 {n}개 · "
                    f"못 찾은 것 {miss}개(순위표 {n_tab}팀 · **오늘 순위**다)")
+    out += _table_gap(ref, cf, rows, state=state)
     out += _opp_level(ref, cf, got, state=state, n_tab=n_tab)
     out += _weighted_form(ref, cf, got, state=state, n_tab=n_tab)
     out += _vs_top(ref, cf, got, state=state, n_tab=n_tab)
+    return out
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **순위표가 말하는 전력차** — 사용자 지시 2026-10-18
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 실측(오스틴 vs 밴쿠버): 밴쿠버 **1위 52점** ↔ 오스틴 **14위 31점** 인데
+#     확률이 39.4 ↔ 30.6 이었다 — 그 **격차 자체를 세는 변수가 없었다**.
+#  🔴 재료는 이미 있다 — 순위표 줄의 `points`·`played`·`wins/draws/losses`.
+#     ⚠️ 경기 수가 다를 수 있어 **경기당**으로 고른다(승점/경기 · 득실/경기).
+#  🔴 유형은 `strength_gap` 이다 — **선언·배치·λ 표에 다 있는데 쓰는 곳이
+#     없었다**(CLAUDE.md #2 의 그 꼴).
+
+
+def _row_for(ref: MatchRef, rows: list[dict], side: str) -> dict:
+    """🔴 그 팀의 순위표 줄 — 이름 맞추기는 `core/teamname.pick` 하나다."""
+    from app.core import teamname as _tn
+    nm = str(getattr(ref, f"{side}_name", "") or _key(ref, side))
+    keys = [str(r.get("name") or "") for r in rows]
+    got, _why = _tn.pick(nm, keys)
+    for r in rows:
+        if got and str(r.get("name") or "") == got:
+            return dict(r)
+    return {}
+
+
+def _ppg(row: dict) -> tuple[float | None, float | None, int]:
+    """🔴 `(경기당 승점, 경기당 득실차, 경기 수)`. 못 읽으면 `None`."""
+    try:
+        n = int(row.get("played"))
+    except (TypeError, ValueError):
+        return None, None, 0
+    if n <= 0:
+        return None, None, 0
+    try:
+        pts = float(row.get("points"))
+    except (TypeError, ValueError):
+        return None, None, n
+    gd = None
+    for a_key, b_key in (("goals_for", "goals_against"), ("gf", "ga"),
+                         ("scored", "conceded")):
+        try:
+            gd = (float(row[a_key]) - float(row[b_key])) / n
+            break
+        except (KeyError, TypeError, ValueError):
+            continue
+    return pts / n, gd, n
+
+
+def _table_gap(ref: MatchRef, cf: dict, rows: list[dict], *,
+               state: RunState) -> list[Variable]:
+    """🔴🔴 **전력차** — 순위표의 경기당 승점·득실차. `[Variable]`."""
+    want_p, want_g = _num(cf, "ppg_gap"), _num(cf, "gd_gap")
+    if want_p is None or want_g is None:
+        state.note(f"실력 전력차 — {NONE_MARK} 문턱 표가 없다(`{CONF}`)")
+        return []
+    box: dict[str, tuple] = {}
+    for side in ("home", "away"):
+        row = _row_for(ref, rows, side)
+        if not row:
+            state.note(f"실력 전력차 `{side}` — {NONE_MARK} 순위표에 그 팀 줄이 "
+                       "없다(이름을 못 맞췄다)")
+            return []
+        box[side] = (*_ppg(row), row.get("rank"), row.get("points"))
+    (ph, gh, nh, rh, tph), (pa, ga_, na, ra, tpa) = box["home"], box["away"]
+    if ph is None or pa is None:
+        state.note(f"실력 전력차 — {NONE_MARK} 승점·경기 수를 못 읽었다")
+        return []
+    out: list[Variable] = []
+    if abs(ph - pa) >= want_p:
+        side = "home" if ph > pa else "away"
+        out.append(_var("TB1", "strength_gap", ref, side,
+                        f"{_name(ref, _key(ref, side))} 가 **순위표에서 앞선다** "
+                        f"— 경기당 승점 홈 **{ph:.2f}**({rh}위 · {tph}점/"
+                        f"{nh}경기) ↔ 원정 **{pa:.2f}**({ra}위 · {tpa}점/"
+                        f"{na}경기) · 차 {abs(ph - pa):.2f}(문턱 {want_p:g})"))
+        state.note(f"실력 전력차 **발동** — {side} · 경기당 승점 {ph:.2f} ↔ {pa:.2f}")
+    else:
+        state.note(f"실력 전력차 — 경기당 승점 홈 {ph:.2f} ↔ 원정 {pa:.2f} · 차 "
+                   f"{abs(ph - pa):.2f} < {want_p:g}(안 센다)")
+    if gh is not None and ga_ is not None and abs(gh - ga_) >= want_g:
+        side = "home" if gh > ga_ else "away"
+        out.append(_var("TB2", "strength_gap", ref, side,
+                        f"{_name(ref, _key(ref, side))} 가 **득실에서 앞선다** — "
+                        f"경기당 득실차 홈 **{gh:+.2f}** ↔ 원정 **{ga_:+.2f}**"
+                        f"(차 {abs(gh - ga_):.2f} · 문턱 {want_g:g})"))
+        state.note(f"실력 득실차 **발동** — {side} · {gh:+.2f} ↔ {ga_:+.2f}")
+    elif gh is None or ga_ is None:
+        state.note(f"실력 득실차 — {NONE_MARK} 순위표에 득실 칸이 없다")
+    else:
+        state.note(f"실력 득실차 — 홈 {gh:+.2f} ↔ 원정 {ga_:+.2f} · 차 "
+                   f"{abs(gh - ga_):.2f} < {want_g:g}(안 센다)")
     return out
 
 
