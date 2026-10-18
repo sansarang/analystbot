@@ -1594,6 +1594,8 @@ def _ir_soccer(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
         out += _ir_fatigue(rid, kind, row, ref, facts, state=state)
     elif rid == "IR13":                     # 🔴 원정 이동 거리(지시 2026-10-14)
         out += _ir_travel_away(rid, kind, row, ref, facts, state=state)
+    elif rid == "IR15":                     # 🔴 구장·날씨(지시 2026-10-18 ②)
+        out += _ir_weather(rid, kind, row, ref, facts, state=state)
     elif rid == "IR12":                     # 연승·연패
         # ══════════════════════════════════════════════════════════════
         # 🔴🔴 **부호를 사실대로 가른다** — 사용자 지적 2026-10-15
@@ -2292,6 +2294,75 @@ def _ir_travel_away(rid: str, kind: str, row: dict, ref: MatchRef,
              f"(문턱 {TRAVEL_KM:,}km · {why})")
     state.note(f"s5 {rid} `{key}` **발동** — {why}")
     return [_ir_var(_rid_for(rid, key, ref), kind, row, key, claim, ref)]
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **IR15 구장·날씨** — 사용자 지시 2026-10-18(② 배선)
+# ══════════════════════════════════════════════════════════════════
+#
+# > `venue_weather` … **우리에게 다 자료가 있지 않니??**
+#
+# 🔴 재료는 `facts.venue["weather"]` 다 — `fotmob.weather_of` 가 경기 페이지의
+#    그 칸을 읽고 `s2_facts._venue` 가 담는다(새 통신 0 · 사본 금지).
+# 🔴 문턱은 **규칙 표**가 든다(`config/interpret_rules.yaml` 의 `thresholds`) —
+#    손값을 코드에 박지 않는다(CLAUDE.md #1 · §13-7).
+# ⚠️ **승패를 밀지 않는다** — 유형표가 `favors: both` · `goals: none` 이다.
+#    그래서 확률에 안 닿고 **⑯ 이 읽는 재료**다(우천→언더 판단은 평이 한다).
+
+
+def _ir_weather(rid: str, kind: str, row: dict, ref: MatchRef,
+                facts: Facts, *, state: RunState) -> list[Variable]:
+    """🔴🔴 **날씨가 문턱을 넘으면** 변수 하나. `[Variable]`.
+
+    ⚠️ 날씨 칸이 없으면 **안 돈다** — 사유를 이름으로 남긴다(#3).
+    ⚠️ 문턱을 못 넘으면 안 돈다 — 그 수도 사유에 적는다(조용한 0 금지).
+    """
+    said_v = dict(getattr(facts, "venue", None) or {})
+    box = dict(said_v.get("weather") or {})
+    if not box:
+        state.note(f"s5 {rid} — ⬜ 날씨 칸이 없다(경기 페이지가 안 줬다) · 안 돈다")
+        return []
+    th = dict(row.get("thresholds") or {})
+    if not th:
+        state.note(f"s5 {rid} — ⬜ 문턱 표가 없다(`interpret_rules`) · 안 돈다")
+        return []
+
+    def _num(val) -> float | None:
+        try:
+            return float(str(val).split()[0].replace("%", ""))
+        except (TypeError, ValueError, IndexError):
+            return None
+
+    hits: list[str] = []
+    said_num: list[str] = []
+    pr, wd, tp = (_num(box.get("precipitation")), _num(box.get("windSpeed")),
+                  _num(box.get("temperature")))
+    if pr is not None:
+        said_num.append(f"강수 {pr:g}%")
+        if pr >= float(th.get("precipitation_pct") or 101):
+            hits.append(f"강수 {pr:g}%(문턱 {th.get('precipitation_pct')}%)")
+    if wd is not None:
+        said_num.append(f"바람 {wd:g}km/h")
+        if wd >= float(th.get("wind_kmh") or 10_000):
+            hits.append(f"바람 {wd:g}km/h(문턱 {th.get('wind_kmh')})")
+    if tp is not None:
+        said_num.append(f"기온 {tp:g}℃")
+        if tp >= float(th.get("temp_hot_c") or 10_000):
+            hits.append(f"더위 {tp:g}℃(문턱 {th.get('temp_hot_c')})")
+        elif tp <= float(th.get("temp_cold_c") or -10_000):
+            hits.append(f"추위 {tp:g}℃(문턱 {th.get('temp_cold_c')})")
+    said_desc = str(box.get("description") or "").strip()
+    if not hits:
+        state.note(f"s5 {rid} — 문턱 아래다({' · '.join(said_num) or '수 없음'}"
+                   + (f" · {said_desc}" if said_desc else "") + ") · 안 돈다")
+        return []
+    claim = (f"{said_v.get('name') or '구장'} 날씨 — " + " · ".join(hits)
+             + (f" · {said_desc}" if said_desc else "")
+             + f" (잰 값 {' · '.join(said_num)})")
+    state.note(f"s5 {rid} **발동** — {' · '.join(hits)}")
+    # 🔴 주어는 **홈**이다(구장은 홈 쪽이다) · `favors` 는 표가 `both` 로 든다
+    return [_ir_var(rid, kind, row, str(getattr(ref, "home", "") or ""),
+                    claim, ref)]
 
 
 #: 🔴 두 번째 조건의 창(일)과 경기 수 — 지시서 원문 *"최근 8일 안에 이번이 3번째"*

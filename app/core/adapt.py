@@ -248,6 +248,9 @@ def facts_of(raw: dict, *, xi: dict[str, XI] | None = None,
         coach=dict(coach or {}),
         last_xi=dict(box.get("last_xi") or {}),
         schedule=dict(box.get("schedule") or {}),
+        # 🔴 **구장·날씨**(지시 2026-10-18 ②) — 이 줄을 빼면 IR15 가 영구히
+        #    ⬜ 가 된다(자료는 오는데 변수가 안 서던 그 자리다)
+        venue=dict(box.get("venue") or {}),
         player_pos=dict(player_pos or {}),
         player_value={str(k): float(v) for k, v in (player_value or {}).items()
                       if v and float(v) > 0},

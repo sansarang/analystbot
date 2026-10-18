@@ -111,24 +111,6 @@ def test_vd3_bundle_is_code_only() -> None:
             "*\"코드 만으로\"* 가 깨지고, 지어냄 판정의 기준 자체가 오염된다")
 
 
-def test_vd4_probability_first() -> None:
-    """VD4 — 묶음 **첫 줄이 확률**이다(지시: *"확률 먼저"*)."""
-    import sys
-    sys.path.insert(0, str(ROOT))
-    from app.core.stages import s6_verdict as vd
-
-    class _R:
-        home = away = "t"
-        home_name = "A"
-        away_name = "B"
-        competition = "c"
-    box = vd.chain_of(_R(), _P(), None, None)
-    assert box, "VD4 🔴 묶음이 비었다"
-    assert box[0].startswith("확률"), (
-        f"VD4 🔴 첫 줄이 확률이 아니다 — {box[0][:60]!r}")
-    assert "53.1%" in box[0], f"VD4 🔴 확률 수가 안 들어갔다 — {box[0]}"
-
-
 def test_vd5_catches_invented_number() -> None:
     """VD5 🔴🔴 — 묶음에 **없는 수**를 잡는다."""
     import sys
@@ -177,12 +159,11 @@ def test_vd7_clean_passes() -> None:
     # 🔴 **문장 아홉**이다(`MIN_SENT` 9) — 가설 다섯 + 가름·예측·조심·감시.
     #    ⚠️ 종전 대역은 세 문장이었고, 그것은 이제 운영이 안 만드는 모양이다
     #    (사용자 지시 2026-10-17: 가설 최소 다섯 · 규율 #5 대역은 운영 모양).
-    got = Verdict(sentences=[*(f"가설 {i} — 길. 조건: 무엇." for i in range(1, 6)),
-                             *(f"검증 {i} — 가설 {i} 은 선다." for i in range(1, 6)),
-                             "가설 다섯이 섰으므로 홈을 고른다.",
-                             "조심할 것은 세트피스다.",
-                             "재료는 확률과 λ 가 들어왔다."],
-                  refs=["변수"] * 13,
+    # 🔴 **문장 3~6**(사용자 지시 2026-10-18 — 가설 전부 삭제) · 묶음은 변수만
+    got = Verdict(sentences=["홈이 폼에서 앞선다.",
+                             "원정은 결장이 있다.",
+                             "그래서 홈을 고른다."],
+                  refs=["변수"] * 3,
                   # 🔴 예측 둘도 **있어야** 멀쩡한 평이다(지시 2026-10-15) —
                   #    `score` 는 묶음의 `스코어 상위` 에 있는 것만 쓴다.
                   pick="home", score="2-1")
@@ -242,118 +223,15 @@ def test_vd8_예측_점수는_묶음에_없어도_된다() -> None:
     sys.path.insert(0, str(ROOT))
     from app.core.stages.s6_verdict import Verdict, judge
     box = ["확률 — 홈 35.5% · 무 32.2% · 원정 32.2%"]
-    got = Verdict(sentences=[*(f"가설 {i} — 길. 조건: 무엇." for i in range(1, 6)),
-                             *(f"검증 {i} — 가설 {i} 은 선다." for i in range(1, 6)),
-                             "그래서 2-1 을 본다.",
-                             "조심할 것은 결장이다.",
-                             "재료는 확률만 들어왔다."],
-                  refs=["확률"] * 13, pick="home", score="2-1")
+    got = Verdict(sentences=["홈이 폼에서 앞선다.",
+                             "변수가 홈 쪽으로 밀었다.",
+                             "그래서 2-1 을 본다."],
+                  refs=["변수"] * 3, pick="home", score="2-1")
     verdict, bad = judge(got, box)
     assert verdict == "안 지어냈다", f"🔴 예측 점수에 거짓 위반이 났다 — {bad}"
     # 🔴 빈 칸은 위반이다
     _v2, bad2 = judge(got.model_copy(update={"score": ""}), box)
     assert any("점수 예측이 없다" in x for x in bad2), bad2
-
-
-def test_vd9_묶음에_기사와_출처가_든다() -> None:
-    """🔴🔴 사용자 지시 2026-10-15 — *"딥서치, llm 서치 자료들을 파악해서 ⑯
-    평이 **그 자료를 쓰게**"*.
-
-    ⚠️ 그때까지 묶음에는 확률·축·확률에 닿는 변수뿐이었다 — 기사 변수는 확률에서
-       안 세니(개수 금지) **묶음에도 없었고**, 검열이 *"묶음에 없는 글자"* 로
-       잡아 모델은 기사 내용을 **쓰고 싶어도 못 썼다**.
-    """
-    import sys
-    sys.path.insert(0, str(ROOT))
-    from app.core.stages.s6_verdict import chain_of
-
-    class _V:
-        def __init__(self, vid: str, doc: bool) -> None:
-            self.id, self.type, self.claim = vid, "team_stats", f"{vid} 글"
-            self.favors, self.goals, self.places = "home", "none", ["axis1"]
-            self.from_doc = doc
-
-    class _Set:
-        rows = [_V("R1", True), _V("S01-home", False)]
-
-        def of(self, place: str) -> list:
-            return [x for x in self.rows if place in x.places]
-
-    class _Doc:
-        doc_id, title = "A-D1", "노리치 결장 소식"
-        url, published_at = "https://news.example.com/a", "2026-10-15T09:00"
-
-    class _Prob:
-        home, draw, away = 0.35, 0.32, 0.33
-        lam, over, scores = {}, {}, {}
-
-    box = chain_of(None, _Prob(), None, _Set(), docs=[_Doc()])
-    said = "\n".join(box)
-    assert "기사에서 나온 사실" in said and "R1" in said, said
-    assert "확률에는 안 셌다" in said, "🔴 그 칸이 확률에 닿는다고 읽힌다"
-    assert "문서 출처" in said and "news.example.com" in said, said
-
-
-def test_vd10_기사_유무를_평문에_안_쓴다() -> None:
-    """🔴🔴 **바뀐 규칙** — 사용자 지시 2026-10-15:
-
-    > 평을 낼 때 **기사에서 나온 사실이 없다는 표기하지 않아도 된다** …
-    > 기사에서 나온 내용은 **평문으로 안 써도 된다**
-
-    🔴 묶음 칸은 그대로 **⬜ 로 남긴다**(#3 · 코드가 아는 상태다). 바뀐 것은
-       **프롬프트**다 — 그 칸이 비면 *"기사에서 나온 것이 없다"* 를 **쓰지
-       말라**고 말해야 한다(종전엔 **쓰라고** 말했다).
-    """
-    import sys
-    sys.path.insert(0, str(ROOT))
-    from app.core.stages.s6_verdict import ask, chain_of
-
-    class _Set:
-        rows: list = []
-
-        def of(self, place: str) -> list:
-            return []
-
-    class _Prob:
-        home, draw, away = 0.33, 0.33, 0.34
-        lam, over, scores = {}, {}, {}
-
-    said = "\n".join(chain_of(None, _Prob(), None, _Set(), docs=None))
-    assert "기사에서 나온 사실 — ⬜ **없다**" in said, said
-    assert "문서 출처 — ⬜ **없다**" in said, said
-    # 🔴 프롬프트가 **쓰지 말라**고 말한다(강제 조항은 걷혔다)
-    import inspect
-    src = inspect.getsource(ask)
-    assert "기사에서 나온 사실을 반드시 한 번은 쓴다" not in src
-    # ⚠️ 그 글은 **여러 줄로 쪼개져** 있다 — 이어 붙인 글자로 세면 안 된다
-    assert "그 사실을 적지 마라" in src, src[-500:]
-    assert "자료 살림" in src and "경기 분석" in src, src[-500:]
-
-
-def test_vd11_문서_id_가_찍힌다() -> None:
-    """⚠️ 실측 2026-10-15: `doc_id` 로 읽어 **`?` 로 찍혔다** — `Doc` 의 칸은
-    **`id`** 다(만드는 함수 인자 이름이 `doc_id` 라 헷갈린다)."""
-    import sys
-    sys.path.insert(0, str(ROOT))
-    from app.core.stages.s6_verdict import chain_of
-
-    class _Doc:
-        id, title = "A-D3", "예상 라인업"
-        url, published_at = "https://x.example/a", "2026-10-15T09:00"
-
-    class _Set:
-        rows: list = []
-
-        def of(self, place: str) -> list:
-            return []
-
-    class _Prob:
-        home, draw, away = 0.4, 0.3, 0.3
-        lam, over, scores = {}, {}, {}
-
-    said = "\n".join(chain_of(None, _Prob(), None, _Set(), docs=[_Doc()]))
-    assert "문서 `A-D3`" in said, said
-    assert "문서 `?`" not in said, said
 
 
 def test_vd12_예측과_점수가_어긋나면_위반이다() -> None:
@@ -369,10 +247,8 @@ def test_vd12_예측과_점수가_어긋나면_위반이다() -> None:
     box = ["확률 — 홈 31.1% · 무 31.1% · 원정 37.8%"]
     # 🔴 **문장 아홉**이다(`MIN_SENT` 9 · 가설 다섯이 앞에 선다) — 종전 세
     #    문장 대역은 이제 운영이 안 만드는 모양이다(규율 #5)
-    rows = (*(f"가설 {i} — 길. 조건: 무엇." for i in range(1, 6)),
-            *(f"검증 {i} — 가설 {i} 은 선다." for i in range(1, 6)),
-            "그래서 한쪽을 고른다.",
-            "조심할 것은 결장이다.", "재료는 확률만 들어왔다.")
+    rows = ("홈이 폼에서 앞선다.", "원정은 결장이 있다.",
+            "그래서 한쪽을 고른다.")
 
     def _v(pick: str, score: str) -> tuple:
         return judge(Verdict(sentences=list(rows),
@@ -397,135 +273,9 @@ def test_vd13_프롬프트가_점수_순서를_못_박는다() -> None:
     sys.path.insert(0, str(ROOT))
     from app.core.stages.s6_verdict import ask
     src = inspect.getsource(ask)
-    assert "홈-원정 순서" in src and "pick` 과 어긋나면 안 된다" in src
-
-
-def test_vd19_예측은_변수로_한다() -> None:
-    """🔴🔴 VD19 — 사용자 지시 2026-10-15:
-
-    > llm 평은 **확률에 근거하여 예측하지 말고 변수를 기반으로** 예측하라 …
-    > 확률은 변수를 기반하지만 … **포메이션 전략 등을 동반하여** 예측글을 쓰라
-
-    ⚠️ 실측 2026-10-15: 확률이 33.3 균등인 경기에서 두 평이 *"균등하니까 무"* ·
-       *"균등하지만 홈"* 처럼 **그 수를 출발점**으로 삼았다. 🔴 확률은 변수에서
-       나온 **결과**라 예측 근거로 쓰면 같은 재료를 두 번 세는 것이다.
-    """
-    import inspect
-    import sys
-    sys.path.insert(0, str(ROOT))
-    from app.core.stages.s6_verdict import ask
-
-    src = inspect.getsource(ask)
-    # 🔴🔴 **못 박혔다** — 사용자 지시 2026-10-17: *"프론프트에 못박아라 ..
-    #    확률과 별개다 … 확률은 별개다"*. 종전 글자(*"예측은 변수로 한다"*)는
-    #    *"적어도 되지만 근거로 쓰지 마라"* 라 반쯤 열려 있었고, 실측에서
-    #    deepseek 이 **확률표를 앵커**라고 답했다.
-    assert "확률은 절대 쓰지 마라" in src, "VD19 🔴 그 규칙이 프롬프트에 없다"
-    assert "한 글자도 적지 " in src, "VD19 🔴 *절대* 가 프롬프트에 없다"
-    assert "앵커로 **절대** 삼지 않는다" in src, src[-900:]
-    assert "확률 수를 " in src and "따라가지 마라" in src, src[-700:]
-    assert "포메이션과 전략을 반드시 동반" in src, "VD19 🔴 전략 동반 규칙이 없다"
-    # 🔴🔴 **보는 것은 세 가지뿐** — 사용자 지시 2026-10-17:
-    #    *"변수, 지난경기 데이타, 기사만 보고 예측하라고 해라"*
-    assert "네가 보는 것은 세 가지뿐이다" in src, "VD19 🔴 세 가지 규칙이 없다"
-    for one in ("**변수**", "**지난 경기 데이터**", "**기사**"):
-        assert one in src, f"VD19 🔴 재료 {one} 가 프롬프트에 없다"
-    # 🔴🔴 **예측불허 가설** — 사용자 지시 2026-10-17:
-    #    *"예측불허가설를 세워서 예측하라고 프론프트 못박아라"*
-    # ⚠️ 글자가 **줄에 걸쳐** 끊긴다(프롬프트는 여러 토막을 이어 붙인다) —
-    #    그래서 토막 그대로 본다(사본 금지 · 글자를 손으로 이어 적지 않는다)
-    # 🔴🔴 **가설이 먼저 · 다섯 이상** — 사용자 지시 2026-10-17
-    assert "가설을 먼저 세우고 그 다음 예측한다" in src, "VD19 🔴 순서가 안 박혔다"
-    assert "가설은 다섯 개 이상" in src, "VD19 🔴 다섯 개가 안 박혔다"
-    assert "다섯 미만" in src, "VD19 🔴 다섯 미만을 버린다는 못이 없다"
-    # 🔴 가설은 **따로 한 문장**이다 — 예측과 섞이면 못이 풀린다
-    assert "가설만 쓰는 자리" in src, "VD19 🔴 가설이 따로 한 문장이 아니다"
-    # 🔴 다섯이 **서로 다른 자리**에서 나와야 한다(같은 말 바꿔 쓰기 금지)
-    assert "서로 다른 자리" in src, "VD19 🔴 가설이 겹쳐도 통과한다"
-    # ══════════════════════════════════════════════════════════════
-    # 🔴🔴 **글머리 · 가설마다 검증 · 꼴** — 사용자 지시 2026-10-17
-    # ══════════════════════════════════════════════════════════════
-    #
-    #  > 소라는 왜 또 **가설를 안세우고** 지랄이냐 … **프론프트에 박으라고**
-    #  > **가설 최소 5개로 준데이타가지고 검증을 하라고**
-    #  > **베네치아 하듯이 하라고야**
-    #
-    #  ⚠️ 실측(살케): 문장 11개를 내고 ①~⑦ 이 전부 **분석**이었다 —
-    #     개수만 맞으면 통과하던 자리다.
-    assert "첫 다섯 문장은 글머리가 정해져 있다" in src, "VD19 🔴 글머리가 없다"
-    assert "`가설 1 — `" in src, "VD19 🔴 가설 글머리 글자가 없다"
-    assert "분석·요약·변수 설명을 쓰면 버려진다" in src, "VD19 🔴 분석으로 빠져나간다"
-    assert "`조건:`" in src, "VD19 🔴 성립 조건 글자가 없다"
-    # 🔴 가설 하나에 **검증 하나**
-    assert "가설 하나에 검증 한 문장" in src, "VD19 🔴 가설마다 검증이 아니다"
-    assert "`검증 1 — `" in src, "VD19 🔴 검증 글머리 글자가 없다"
-    assert "다섯 가설 전부" in src, "VD19 🔴 일부만 검증해도 통과한다"
-    assert "무슨 데이터로" in src, "VD19 🔴 준 데이터로 검증하라는 말이 없다"
-    # 🔴 받아들여진 **꼴**을 보기로 준다
-    assert "꼴은 이것이다" in src, "VD19 🔴 꼴 보기가 없다"
-    # ══════════════════════════════════════════════════════════════
-    # 🔴🔴 **경기력 패턴 · 줄 다음 칸** — 사용자 지시 2026-10-17
-    # ══════════════════════════════════════════════════════════════
-    #
-    #  > 최근 경기력을 봤을때 **나폴리는 연속승이 없다**는것도 가설에 붙여야
-    #  > 한다 .. **바로 전경기는 졌다** .. **패턴분석**도 해야 한다
-    #  > **lwdwl 이런식으로 갔단말이다** .. 그러면 **이후에 어떤 결과가
-    #  > 나올지를 예측하는 것**과 같잖아
-    assert "경기력 패턴을 읽어 가설에 붙인다" in src, "VD19 🔴 패턴 분석이 없다"
-    assert "연속 승이 있나" in src, "VD19 🔴 연속 승을 안 묻는다"
-    assert "바로 전 경기 결과" in src, "VD19 🔴 직전 경기를 안 묻는다"
-    # 🔴 줄은 **세는 것이 아니라 순서**다 — 다음 칸을 예측하게 해야 한다
-    assert "그 줄은 순서다 — 다음 칸을 예측해라" in src, "VD19 🔴 줄을 센다"
-    assert "L W D W L" in src, "VD19 🔴 줄 보기가 없다"
-    # 🔴 가설 다섯 중 **하나 이상**은 그 패턴에서 나와야 한다
-    assert "하나 이상은 이 패턴에서" in src, "VD19 🔴 패턴 가설이 안 걸렸다"
-    # 🔴🔴 **줄은 되돌아온다** — 사용자 지시 2026-10-17:
-    #    *"진팀은 계속지지 않는다 .. 이기는 팀은 영원히 이길수 없다"*
-    #    ⚠️ 줄을 그대로 이어 붙이는 예측은 가설이 아니다(예측불허의 뼈)
-    assert "줄은 되돌아온다" in src, "VD19 🔴 되돌아옴이 안 박혔다"
-    assert "그대로 이어 붙이지 마라" in src, "VD19 🔴 줄 연장을 막지 않는다"
-    assert "가설 하나로 반드시 세워라" in src, "VD19 🔴 그 가설이 선택이 된다"
-    # 🔴 **옛 규칙은 걷혔다** — 확률이 왜 그렇게 나왔나를 쓰라고 시키지 않는다
-    assert "그 수가 **왜 그렇게 " not in src
-    # 🔴 **반쯤 여는 글자가 남아 있으면 빨개진다** — *"적어도 되지만"* 이 그것이다
-    assert "적어도 되지만" not in src, "VD19 🔴 확률을 적어도 된다고 아직 말한다"
-
-
-def test_vd20_묶음에_포메이션_전략_칸이_있다() -> None:
-    """🔴 VD20 — 프롬프트가 읽을 **재료**가 묶음에 있어야 한다(없으면 빈 말이다)."""
-    import sys
-    sys.path.insert(0, str(ROOT))
-    from app.core.stages import s6_verdict as vd
-
-    class _R:
-        home = away = "t"
-        home_name, away_name, competition = "A", "B", "c"
-
-    class _Line:
-        side, strategy, why = "home", "고압박", "최근 5경기 전진 수비"
-
-    class _Plan:
-        shape, audit, lines = "평소 그대로 vs 바뀜", "🟡 예상 XI 판정", [_Line()]
-
-    class _Row:
-        id, type = "SL1", "lineup_intent"
-        claim = "홈 수비 라인 > 원정 수비 라인 · 총골 down"
-
-    box = "\n".join(vd.chain_of(_R(), _P(), None, None,
-                                plan=_Plan(), strat=[_Row()]))
-    assert "포메이션·전략 — 양상 평소 그대로 vs 바뀜" in box, box
-    assert "home 전략 `고압박`" in box, box
-    assert "전략 `SL1`" in box and "수비 라인 >" in box, box
-    # 🔴 비면 ⬜ 로 남긴다(#3) — 다만 평은 그 없음을 글로 쓰지 않는다
-    box0 = "\n".join(vd.chain_of(_R(), _P(), None, None))
-    assert "포메이션·전략 — ⬜ **없다**" in box0, box0
-
-
-def test_vd21_러너가_그_칸을_넘긴다() -> None:
-    """🔴 VD21 배선 — 안 넘기면 묶음에 ⬜ 만 남는다(없는 코드와 같다)."""
-    said = (ROOT / "tools/run_collect.py").read_text(encoding="utf-8")
-    assert "plan=plan, strat=var_sl" in said, (
-        "VD21 🔴 러너가 ⑤-b 판정·⑤-b2 전략 변수를 ⑯ 묶음에 안 넘긴다")
+    # 🔴 글자가 바뀌었다(지시 2026-10-18 — 프롬프트를 변수만으로 줄였다)
+    assert "홈-원정 순서" in src, src[-700:]
+    assert "`pick` 과 어긋나면 버려진다" in src, src[-700:]
 
 
 def test_vd22_점수는_홈_원정_순서다() -> None:
@@ -547,9 +297,12 @@ def test_vd22_점수는_홈_원정_순서다() -> None:
     assert "홈-원정" in said and "1-2" in said, said
     assert "앞이 홈 득점" in said, said
     assert "away" in str(Verdict.model_fields["pick"].description or "")
-    # ② 프롬프트에 **보기**가 있다
+    # ② 프롬프트가 **순서를 못 박는다** — ⚠️ 종전엔 *"원정이 이기고 홈이 한
+    #    골"* 보기까지 넣었다. 지시 2026-10-18 로 프롬프트를 **변수만**으로
+    #    줄였고(가설·검증·보기 전부 걷었다) 못만 남겼다.
     src = inspect.getsource(ask)
-    assert "원정이 이기고 홈이 한 골" in src, src[-900:]
+    assert "홈-원정 순서" in src, src[-900:]
+    assert "버려진다" in src, src[-900:]
 
     # ③ 문장에 **거꾸로** 적으면 잡는다
     box = ["확률 — 홈 31.1% · 무 31.1% · 원정 37.8%"]
@@ -562,46 +315,6 @@ def test_vd22_점수는_홈_원정_순서다() -> None:
     _v2, bad2 = judge(Verdict(sentences=[alt] * 3, refs=["확률"] * 3,
                               pick="away", score="1-2"), box)
     assert not [x for x in bad2 if "(마)" in x], bad2
-
-
-def test_vd23_llm_감시() -> None:
-    """🔴🔴 VD23 — 사용자 지시 2026-10-16:
-
-    > llm 이 **변수가 잘 들어왔는지 · 딥서치가 잘됐는지 · 파이프라인이 제대로
-    > 돌았는지** 평문에 적게 하고 프롬프트 주입해라 — **llm 감시를 추가한다**
-
-    🔴 수는 **코드가 센 것**을 묶음(`🔎 파이프라인` 줄)으로 준다 — 모델이 다시
-       세면 그 수가 또 거짓이 된다.
-    """
-    import inspect
-    import sys
-    sys.path.insert(0, str(ROOT))
-    from app.core.routing import VarRow, VariableSet
-    from app.core.stages import s6_verdict as vd
-
-    rows = [VarRow(id="S01-home", type="recent_pattern", places=["axis1"],
-                   claim="최근 5경기"),
-            VarRow(id="R1", type="event_match", places=["hypo"], claim="기사",
-                   from_doc=True)]
-    box = vd.chain_of(None, _P(), None, VariableSet(rows=rows))
-    one = next((x for x in box if "🔎 파이프라인" in x), "")
-    assert one, "VD23 🔴 묶음에 감시 줄이 없다"
-    for w in ("변수 2개", "확률에 닿는 것", "기사 변수 1개", "딥서치 문서",
-              "전략 변수", "포메이션"):
-        assert w in one, (w, one)
-    # 🔴 프롬프트가 그 줄을 읽고 **마지막 문장**으로 적으라고 말한다
-    src = inspect.getsource(vd.ask)
-    assert "마지막 문장은 감시다" in src, src[-900:]
-    assert "네가 세지 마라" in src
-    # 🔴 감시 한 문장이 더 붙으니 상한이 6 이다
-    # 🔴🔴 **가설이 먼저 · 다섯 이상**(사용자 지시 2026-10-17: *"가설을 먼저
-    #    세우고 경기를 예측하는 방식으로 가야한다 .. 최소 5개이상"*) —
-    #    가설 5+ · 가름 1~2 · 예측 1 · 조심 1 · 감시 1 → 최소 9 · 상한 13
-    # 🔴🔴 **가설 5 + 검증 5 + 예측 + 조심 + 감시 = 13**(사용자 지시
-    #    2026-10-17: *"가설 최소 5개로 준데이타가지고 검증을 하라고"*) —
-    #    가설을 여덟까지 쓸 수 있게 상한 19(8+8+3)
-    assert (vd.MIN_SENT, vd.MAX_SENT) == (13, 19), (vd.MIN_SENT, vd.MAX_SENT)
-    assert vd.MIN_SENT >= 13, "VD24 🔴 가설·검증 다섯 쌍이 들어갈 자리가 없다"
 
 
 def test_vd24_맥락_전용도_묶음에_싣는다() -> None:
@@ -627,13 +340,14 @@ def test_vd24_맥락_전용도_묶음에_싣는다() -> None:
                    from_doc=True)]
     box = vd.chain_of(None, _P(), None, VariableSet(rows=rows))
     said = "\n".join(box)
-    assert "맥락 전용 변수 1개" in said, said
-    assert "맥락 `S01-away`" in said and "2.75" in said, said
-    # 🔴 기사 변수는 **그 칸으로 가지 않는다**(기사 칸이 따로 있다)
-    assert "맥락 `R1`" not in said
-    # 🔴 감시 줄의 수가 맞다(확률에 닿는 것 1 · 맥락 1)
-    one = next(x for x in box if "🔎 파이프라인" in x)
-    assert "확률에 닿는 것 1개 · 맥락 전용 1개" in one, one
-    # 🔴 프롬프트가 **읽되 얇다고 적으라**고 말한다
+    # 🔴 **둘이다**(지시 2026-10-18) — 기사 칸을 걷었으므로 기사 변수(`R1`)도
+    #    맥락 묶음에 든다. ⚠️ 종전엔 기사 칸이 따로 있어 하나였다.
+    assert "맥락 전용 변수 2개" in said, said
+    assert "`S01-away`" in said and "2.75" in said, said
+    assert "`R1`" in said, said
+    # 🔴 프롬프트는 **변수 목록만 보라**고 말한다(지시 2026-10-18) —
+    #    ⚠️ 종전엔 *"`맥락 전용 변수` 칸도 **읽고** 분석에 쓴다"* 라는 줄이
+    #    따로 있었다. 묶음이 **변수뿐**이므로 그 줄이 필요 없어졌다.
     src = inspect.getsource(vd.ask)
-    assert "맥락 전용 변수` 칸도 **읽고" in src, src[-900:]
+    assert "변수 목록만" in src, src[-900:]
+    assert "변수 밖의 것" in src, src[-900:]

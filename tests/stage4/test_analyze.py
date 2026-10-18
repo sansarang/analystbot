@@ -134,8 +134,26 @@ def test_미배선_목록은_선언_창_셋뿐이다():
     assert m, "🔴 `NOT_WIRED` 선언을 못 찾았다(배선 계약이 사라졌나)"
     names = _re.findall(r'"([^"]+)"', m.group(1))
     #: 🔴 2026-10-06 실측 — ⚠️ 줄이면 내려 적는다(늘리려면 까닭을 먼저 적는다)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **다섯이 늘었다 — 까닭을 먼저 적는다** (사용자 지시 2026-10-18)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > llm 은 **서치용**으로 사용한다 .. **llm 전략분석만 지워라** ..
+    #  > **자료는 놔둬라** · **능력치 갈래모듈, 직전5경기 등은 변수에
+    #  > 사용될거다**
+    #
+    #  🔴 ⑤-b2(LLM 전략분석)를 지우자 그것이 부르던 **재료 함수 넷**과 **갈래
+    #     판정**이 부르는 곳을 잃었다. 🔴 사용자가 *"지우지 마라 · 변수에
+    #     사용될거다"* 라고 못 박았으므로 **지울 수 없다** — 그래서 적는다.
+    #  ⚠️ 다음 순서는 **코드가 그 재료로 변수를 만드는 것**이고, 이으면 이
+    #     다섯을 `NOT_WIRED` 에서 빼고 여기서도 지운다(목록이 거짓이 되지 않게).
     ALLOW = {"app.rules.added_types", "app.rules.unimplemented_types",
-             "app.window.set_clock"}
+             "app.window.set_clock",
+             "app.core.strategy_llm.recent_of",
+             "app.core.strategy_llm.news_of",
+             "app.core.strategy_llm.rest_of",
+             "app.core.strategy_llm.past_of",
+             "app.core.branchjudge.run"}
     assert set(names) <= ALLOW, (
         f"🔴 미배선 목록이 **자랐다**: {sorted(set(names) - ALLOW)} — 적는 대신 "
         f"**잇거나 지워라**(지시 2026-10-02)")

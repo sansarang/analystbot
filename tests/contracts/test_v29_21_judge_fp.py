@@ -151,9 +151,16 @@ def test_vd26_퍼센트는_수로_본다() -> None:
     assert "42" in _num_only("홈 승률이 42%p 올라간다.")
 
 
-def test_vd27_없는_폼을_쓰지_말라는_규칙() -> None:
-    """VD27 🔴 프롬프트가 **폼이 없으면 그 수를 쓰지 말라**고 말한다."""
+def test_vd27_묶음에_없는_수는_버려진다() -> None:
+    """🔴🔴 **묶음에 없는 수 금지**는 남는다 — 사용자 지시 2026-10-18.
+
+    ⚠️ 종전 어림은 *"`최근 경기 득점·실점 평균이 없으면 그 수를 쓰지 마라`"*
+       였다(Sydney FC 실사고 — 폼이 0건인데 네 수를 지어냈다). 🔴 프롬프트를
+       **변수만**으로 줄이면서 그 줄이 걷혔고, 남은 못은 **대조**다.
+    """
     import inspect
+
     from app.core.stages.s6_verdict import ask
     src = inspect.getsource(ask)
-    assert "최근 경기 득점·실점 평균이 없으면 그 수를 쓰지 " in src, src[-800:]
+    assert "묶음에 없는 수를 쓰면 **버려진다**" in src, src[-500:]
+    assert "만들지 " in src, src[-500:]

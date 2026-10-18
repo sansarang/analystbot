@@ -2298,6 +2298,23 @@ def _props(j: dict) -> dict:
     """🔴 `props.pageProps` — 표 페이지는 `content` 가 아니라 여기에 싣는다."""
     return ((j.get("props") or {}).get("pageProps") or {}) if isinstance(j, dict) else {}
 
+def weather_of(j: dict) -> dict:
+    """🔴🔴 그 경기의 **날씨** — 사용자 지시 2026-10-18(② 배선).
+
+    > `venue_weather` … **우리에게 다 자료가 있지 않니?**
+
+    🔴 자리는 `parse_info` 가 쓰던 **그 칸**이다(`content.weather`) — 새 통로를
+       만들지 않는다. ⚠️ 없으면 **빈 표**다(지어내지 않는다).
+    ⚠️ 실측 2026-10-18: `parse_info` 는 이 칸을 **연구 경로 Fact** 로만 담았고
+       구조 사실(`Facts`)에는 안 왔다 — 그래서 `venue_weather` 변수가 **0건**
+       이었다(자료는 있는데 배선이 없던 자리 · 규율 #2).
+    """
+    w = (_page(j).get("content") or {}).get("weather") or {}
+    got = {k: w.get(k) for k in ("temperature", "windSpeed", "precipitation",
+                                 "description") if w.get(k) is not None}
+    return dict(got)
+
+
 def venue_of(j: dict) -> dict:
     """🔴 그 경기의 **구장 좌표**(IR11 이동 계산의 재료 · 7차 §6).
 

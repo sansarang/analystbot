@@ -374,7 +374,6 @@ async def main(argv: list[str]) -> int:
     #  🔴 트리거가 있을 때만 부른다 · 공급자는 **deepseek 우선**(죽으면 solar).
     #  🔴 LLM 은 **글만** 낸다 — 방향(`favors`)·가중은 코드가 넣는다(절대규칙 5).
     #     그래서 이 변수들은 지금 🟡 **표시·검증·가설**이다(축을 안 민다).
-    from app.core import strategy_llm as _sl
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **⑤-b1 선수 능력치**(사용자 지시 2026-10-17) — 교체 짝 + 핵심 선수의
     #    **자리별 백분위**를 받아 `강점/보통/약점` 글자로 ⑤-b2 에 넘긴다.
@@ -390,57 +389,22 @@ async def main(argv: list[str]) -> int:
     mark("⑤-b1 선수 능력치",
          "✅ 돌았다" if said_box else "🔴 빈손", said_why_ab[:110])
     print(flush=True)
-    # 🔴 **최근 5경기 기준**으로도 갈래를 찾게 재료를 넘긴다(지시 2026-10-15)
-    # 🔴🔴 **충돌·단독 갈래 그릇**(지시 2026-10-16) — 아래 ⑤-b3 가 판정한다
-    said_branch: list = []
-    var_sl, said_sl = _sl.ask(ref, facts, plan, state=st,
-                              recent=_sl.recent_of(variables),
-                              # 🔴 **기사 사실도 넘긴다**(지시 2026-10-15) —
-                              #    확률은 기사를 안 세고, 내용 판단은 여기서 한다
-                              # 🔴 **피로도 재료**(지시 2026-10-16) — 휴식일·
-                              #    직전 경기일·최근 경기 수(코드가 센 수다)
-                              rest=_sl.rest_of(ref, facts),
-                              news=_sl.news_of(variables),
-                              # 🔴 **능력치 재료**(지시 2026-10-17)
-                              ability=said_ability,
-                              branches=said_branch)
-    print("## ⑤-b2 전략 전문가(LLM)")
-    print(f"- {said_sl}")
-    for one in var_sl:
-        print(f"    `{one.id}` {one.claim[:150]}")
-    mark("⑤-b2 전략 전문가(LLM)",
-         "✅ 돌았다" if var_sl else "🔴 빈손", said_sl[:110])
+    # 🔴🔴 **⑤-b2 LLM 전략분석을 지웠다** — 사용자 지시 2026-10-18
+    #    > llm 은 **서치용**으로 사용한다 .. **llm 전략분석만 지워라** ..
+    #    > **자료는 놔둬라**
+    #    🔴 자료(⑤-b1 능력치 · 전략 판정 `plan` · 직전 5경기)는 위에서 그대로
+    #       모았다. 지운 것은 **LLM 호출과 `SL*` 변수**다.
+    #    ⚠️ ⑤-b3 갈래 판정은 모듈을 남겼다(지시 *"갈래 지우지 마라"*) — 판정할
+    #       **주장이 없어** 안 돈다.
+    var_sl: list = []
+    print("## ⑤-b2 LLM 전략분석")
+    print("- 🔴 **지웠다**(사용자 지시 2026-10-18) — 자료는 모으고 변수는 "
+          "안 만든다")
+    mark("⑤-b2 LLM 전략분석", "🔴 지웠다", "사용자 지시 2026-10-18")
     print(flush=True)
-
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **⑤-b3 갈래 판정** — 사용자 지시 2026-10-16
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  > 충돌되는 것·한쪽만 나오는 것도 **버리는 게 아니라 어느 쪽이 맞는지
-    #  > 확인**해야 한다 … 각 LLM 이 낸 내용을 **다른 LLM 이 서치해서 검증**
-    #
-    #  🔴 1단 코드가 가진 수 → 2단 교차 검증(상대 모델이 서치) → 3단 채택·보류
     print("## ⑤-b3 갈래 판정(충돌·단독)")
-    if var_sl and said_branch:
-        from app.core import branchjudge as _bj
-        var_sl, said_bj = await _bj.run(said_branch, var_sl, ref, facts, plan,
-                                        state=st, net=net, chain=chain)
-        print(f"- {said_bj}")
-        for one in said_branch:
-            print(f"    [{one.mode}] `{one.kind}` — {one.why or '⬜ 사유 없음'}")
-            # 🔴 양쪽 주장 한 줄은 `Branch.said()` 하나가 만든다(사본 금지)
-            print(f"        주장 — {one.said()}")
-            for c in one.claims:
-                print(f"        `{c.provider}` `{c.cmp}` 판정 "
-                      f"{c.ruling or '⬜ 안 물었다'}"
-                      + (f" · 판정자 {c.judge_pv}" if c.judge_pv else "")
-                      + (f" · 인용 「{c.quote[:70]}」" if c.quote else ""))
-        mark("⑤-b3 갈래 판정",
-             "✅ 돌았다" if any(b.picked for b in said_branch) else "🟡 보류",
-             said_bj[:110])
-    else:
-        print("- ⬜ 충돌·단독 갈래가 없다 — 판정할 것이 없다")
-        mark("⑤-b3 갈래 판정", "⬜ 갈래 없음", "충돌·단독 0개")
+    print("- ⬜ 판정할 주장이 없다 — ⑤-b2 를 지웠다(모듈은 남아 있다)")
+    mark("⑤-b3 갈래 판정", "⬜ 주장 없음", "⑤-b2 삭제(2026-10-18)")
     print(flush=True)
 
     # 🔴 **여기서 멈춘다**(`--until=vars`) — 변수 수집까지만 보는 실행이다

@@ -466,6 +466,10 @@ class Facts(Frozen):
     #   "away": ContextRow}`. ⚠️ 비면 **없는 것**이고 λ 항은 0 이다(§9 전진 선택이
     #   채택할 때까지 λ 에 **안 들어간다** · 계약 S1).
     context: dict = Field(default_factory=dict)
+    #: 🔴🔴 **구장 + 날씨**(사용자 지시 2026-10-18 · ② 배선) —
+    #   `{"name","lat","lon","weather":{temperature,windSpeed,precipitation,
+    #     description}}`. ⚠️ 비면 **없는 것**이다(IR15 가 안 돈다 · #3).
+    venue: dict = Field(default_factory=dict)
 
 
 class Doc(Frozen):

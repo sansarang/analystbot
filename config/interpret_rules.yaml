@@ -304,6 +304,38 @@ ir_table:
     made_by: "app/core/stages/s4c_leagueread.py:variable"
     source: "사용자 지시 2026-10-14 · 🔴 크기는 적합 아님(이동·피로와 같은 −5%)"
 
+  # ══════════════════════════════════════════════════════════════════
+  # 🔴🔴 IR15 **구장·날씨** — 사용자 지시 2026-10-18(② 배선)
+  # ══════════════════════════════════════════════════════════════════
+  #
+  # > `venue_weather` … **우리에게 다 자료가 있지 않니??**
+  #
+  # ⚠️ 실측 2026-10-18(오늘 다섯 경기): `venue_weather` 변수가 **0건**이었다.
+  #    자료는 왔다 — `parse_info` 가 `content.weather` 를 읽고 구장·좌표도
+  #    들어왔다. 🔴 **구조 사실(`Facts`)로 오지 않아** 규칙이 없었다(규율 #2
+  #    *"안 이어진 코드는 없는 코드보다 나쁘다"*).
+  # 🔴 **승패를 밀지 않는다** — 유형표가 `favors: both` · `goals: none` 이라
+  #    적었다. 그래서 확률에 **안 닿는다**(배치표도 `V4`·`hypo` 다).
+  #    ⚠️ 즉 이 변수는 **⑯ 이 읽는 재료**다(우천→언더 같은 판단은 평이 한다).
+  # 🔴 문턱은 **이 표가 든다**(손값을 코드에 박지 않는다 · CLAUDE.md #1).
+  - id: IR15
+    type: venue_weather
+    sports: [soccer]
+    when: 경기 페이지 날씨 칸이 문턱을 넘을 때(강수·강풍·더위·추위)
+    needs: [venue.weather]
+    claim: "{venue} 날씨 — {why}"
+    favors: both
+    goals: none
+    thresholds:
+      #: 🔴 강수 확률(%) — fotmob `precipitation`
+      precipitation_pct: 50
+      #: 🔴 바람(km/h) — fotmob `windSpeed`
+      wind_kmh: 30
+      #: 🔴 더위·추위(℃) — fotmob `temperature`
+      temp_hot_c: 30
+      temp_cold_c: 0
+    source: "사용자 지시 2026-10-18 — ② 자료는 있는데 변수가 안 서던 자리"
+
   - id: IR12
     #: 🔴 쪼갰다(2026-10-15) — **흐름 집안**이다(연승·연패는 최근 기록이다).
     #   ⚠️ 종전 `team_stats` 는 순위·무승·분위기가 섞인 쓰레기통이었다.

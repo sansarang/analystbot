@@ -713,45 +713,33 @@ def test_bj15_갈래_상한이_있다() -> None:
 # ══════════════════════════════════════════════════════════════════
 
 
-def test_bj16_갈래가_쪼개진_꼴로_담긴다() -> None:
-    """🔴 두 모델 주장이 **글자 한 줄로 뭉치면** 기계가 가릴 수 없다."""
+def test_bj16_llm_전략분석은_묻지_않는다() -> None:
+    """🔴🔴 **LLM 전략분석을 지웠다** — 사용자 지시 2026-10-18.
+
+    > llm 은 **서치용**으로 사용한다 .. **llm 전략분석만 지워라** ..
+    > **자료는 놔둬라**
+
+    ⚠️ 종전 어림은 *"두 모델 주장이 `Branch.claims` 로 **쪼개져** 담긴다"* 였다
+       (글자 한 줄로 뭉치면 기계가 가릴 수 없다). 🔴 그 주장을 만드는 LLM 호출
+       자체가 사라졌으므로, 이제 센다: **묻지 않는다**.
+    🔴 그릇(`Branch`·`Claim`)과 쪼개는 규율은 **그대로 있다** — 이 파일의 다른
+       계약들이 그 꼴을 직접 돌려서 센다(다음 순서는 **코드가 만든 갈래**다).
+    """
     from unittest.mock import patch
 
     from app.core import llm as _llm
     from app.core.state import RunState
 
-    def fake(**kw):
-        cmp_ = "<" if kw["provider"] == "deepseek" else ">"
-        return sl.StrategyRead(rows=[
-            sl.StrategyRow(kind="수비 라인", cmp=cmp_, goals_cmp="=",
-                           text=f"{kw['provider']} 의 말"),
-            sl.StrategyRow(kind="세트피스", cmp=">", goals_cmp="=",
-                           text="혼자 본 것")
-            if kw["provider"] == "deepseek" else
-            sl.StrategyRow(kind="중원 수싸움", cmp=">", goals_cmp="=",
-                           text="중원")])
-
     facts = _F(xi={"team:000001": _XI("4-3-3"), "team:000002": _XI("4-3-3")})
     box: list = []
-    with patch.object(_llm, "ask", side_effect=fake):
+    with patch.object(_llm, "ask") as spy:
         out, why = sl.ask(_R(), facts, _Plan({"L1": {"kind": "formation",
                                                      "text": "x"}}),
                           state=RunState(), branches=box)
-    kinds = {b.kind: b for b in box}
-    assert "수비 라인" in kinds and kinds["수비 라인"].mode == "충돌", kinds
-    one = kinds["수비 라인"]
-    # 🔴 **주장이 쪼개져 있다** — 누가 무엇을 말했는지 기계가 안다
-    assert {c.provider for c in one.claims} == {"deepseek", "solar"}
-    assert {c.cmp for c in one.claims} == {"<", ">"}
-    # ⚠️ 담는 것이 **글을 고치기 전**이어야 한다 — 뒤에 담으면 주장 글이
-    #    충돌 꼬리표로 바뀐다
-    assert all(sl.CONFLICT not in c.text for c in one.claims), one.claims
-    assert any("deepseek 의 말" == c.text for c in one.claims), one.claims
-    # 🔴 **단독**도 담는다(버리지 않는다 — 확인할 거리다)
-    alone = [b for b in box if b.mode == "단독"]
-    assert alone and all(len(b.claims) == 1 for b in alone), alone
-    assert all(sl.ALONE not in c.text for b in alone for c in b.claims)
-    assert out and why
+    assert spy.call_count == 0, "🔴 LLM 전략분석을 아직 묻는다"
+    assert out == [], f"🔴 `SL*` 변수를 아직 만든다 — {out}"
+    assert box == [], f"🔴 갈래를 아직 담는다 — {box}"
+    assert "지웠다" in why, why
 
 
 def test_bj16b_판정_사유가_어느_자리에서도_안_잘린다() -> None:
@@ -823,21 +811,29 @@ def test_bj16b_판정_사유가_어느_자리에서도_안_잘린다() -> None:
     assert src
 
 
-def test_bj17_운영_파이프라인에_배선됐다() -> None:
-    said = (ROOT / "app/core/pipeline.py").read_text(encoding="utf-8")
-    assert "branchjudge" in said, "🔴 운영이 안 부른다"
-    assert "branches=said_branch" in said, "🔴 갈래를 안 담는다"
-    assert "_bj.run(said_branch, var_sl" in said, "🔴 판정을 안 돌린다"
-    # 🔴 **배치를 다시 세우기 전**이어야 승격된 변수가 확률 자리에 들어간다
-    i = said.index("_bj.run(said_branch")
-    j = said.index("varset = _routing.place(variables)", i)
-    assert i < j, "🔴 배치 뒤에서 판정하면 승격이 확률에 안 닿는다"
+def test_bj17_운영과_러너가_지운_사실을_적는다() -> None:
+    """🔴🔴 **⑤-b2 를 지워 갈래가 안 돈다** — 사용자 지시 2026-10-18.
 
+    > llm 은 **서치용**으로 사용한다 .. **llm 전략분석만 지워라** ..
+    > **자료는 놔둬라** · 갈래 모듈은 **지우지 마라**
 
-def test_bj18_러너에_배선됐다() -> None:
-    said = (ROOT / "tools/run_collect.py").read_text(encoding="utf-8")
-    assert "⑤-b3 갈래 판정" in said, "🔴 장부에 칸이 없다"
-    assert "branches=said_branch" in said and "_bj.run(" in said
+    ⚠️ 종전 어림은 *"운영이 `_bj.run(said_branch, var_sl` 을 부른다"* 였다 —
+       판정할 **주장**(⑤-b2 가 낸 `SL*`)이 있었기 때문이다. 🔴 지금은 주장이
+       없어 **판정할 것이 없다**. 그래서 어림을 바꾼다: 운영·러너가 그 사실을
+       **글자로 적어야** 한다(#3 조용한 0 금지 — 조용히 사라지면 안 된다).
+    ⚠️ 모듈은 **남아 있다**(사용자 지시) — 다음 순서는 **코드가 만든 갈래**를
+       이 판정에 넘기는 것이고, `tests/test_wiring.py` 의 `NOT_WIRED` 가
+       `app.core.branchjudge.run` 을 그 뜻으로 들고 있다.
+    """
+    for rel in ("app/core/pipeline.py", "tools/run_collect.py"):
+        said = (ROOT / rel).read_text(encoding="utf-8")
+        assert "⑤-b2" in said, f"🔴 {rel} 에 그 자리가 없다"
+        assert "지웠다" in said, f"🔴 {rel} 가 지운 사실을 안 적는다"
+        assert "_sl.ask(" not in said, f"🔴 {rel} 가 아직 LLM 전략분석을 부른다"
+        assert "_bj.run(" not in said, f"🔴 {rel} 가 주장 없이 판정을 돌린다"
+    # 🔴 모듈과 공개 함수는 **그대로 있다**(지우지 않았다)
+    assert callable(getattr(bj, "run", None)), "🔴 갈래 판정이 사라졌다"
+    assert callable(getattr(bj, "by_numbers", None)), "🔴 1단이 사라졌다"
 
 
 def test_bj18b_러너가_읽는_칸이_실제로_있다() -> None:

@@ -370,12 +370,21 @@ def test_ab14_전략분석가가_그_재료를_받는다() -> None:
 
 
 def test_ab15_운영과_러너에_배선됐다() -> None:
+    """🔴🔴 **자료는 계속 모은다** — 사용자 지시 2026-10-18.
+
+    > llm 은 **서치용**으로 사용한다 .. **llm 전략분석만 지워라** ..
+    > **자료는 놔둬라** · **능력치 갈래모듈, 직전5경기 등은 변수에 사용될거다**
+
+    ⚠️ 종전 어림은 *"`_ab3.fetch(` 가 `_sl.ask(` **앞**에 있어야 한다"* 였다 —
+       그 재료가 **⑤-b2 프롬프트**에 들어가야 했기 때문이다. 🔴 ⑤-b2 를
+       지웠으니 그 순서는 뜻이 없다. 대신 **능력치를 계속 받는지**를 센다
+       (받기를 멈추면 그 자료로 변수를 만들 수 없다).
+    """
     for rel in ("app/core/pipeline.py", "tools/run_collect.py"):
         said = (ROOT / rel).read_text(encoding="utf-8")
         assert "ability as _ab3" in said, f"🔴 {rel} 가 안 부른다"
-        assert "ability=said_ability" in said, f"🔴 {rel} 가 안 넘긴다"
-        # 🔴 **⑤-b2 앞**이어야 그 재료가 프롬프트에 든다
-        assert said.index("_ab3.fetch(") < said.index("_sl.ask("), rel
+        assert "_ab3.fetch(" in said, f"🔴 {rel} 가 능력치를 안 받는다"
+        assert "_ab3.said_of(" in said, f"🔴 {rel} 가 글자를 안 만든다"
     said_run = (ROOT / "tools/run_collect.py").read_text(encoding="utf-8")
     assert "⑤-b1 선수 능력치" in said_run, "🔴 장부에 칸이 없다"
 

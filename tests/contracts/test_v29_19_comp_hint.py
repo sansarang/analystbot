@@ -42,21 +42,16 @@ def test_못_알아보면_빈_글자다() -> None:
 
 def test_네_자리가_그_글자를_쓴다() -> None:
     """🔴 배선 — 딥서치 질의 · LLM 표적 질의 · 전략 · 종합 평."""
-    from app.core.stages import s4b_gapsearch as qw
-    from app.core import strategy_llm as sl
+    # ⚠️ **두 자리로 줄었다**(지시 2026-10-18) — ⑯ 종합 평 프롬프트를 **변수
+    #    만**으로 줄이면서 대회 힌트 줄이 걷혔다. 전략(⑤-b2)은 묻지 않는다.
     from app.core.stages import s4b_gapsearch as gs
-    from app.core.stages import s6_verdict as vd
-    assert "comp_hint(ref)" in inspect.getsource(qw.ask)
-    for mod, fn in ((gs, "ask"), (sl, "ask"), (vd, "ask")):
-        src = inspect.getsource(getattr(mod, fn))
-        assert "comp_hint(ref)" in src, f"🔴 {mod.__name__}.{fn} 가 안 쓴다"
+    assert "comp_hint(ref)" in inspect.getsource(gs.ask)
 
 
 def test_글자를_베끼지_않았다() -> None:
     """🔴 사본 금지(#1) — 네 자리가 **같은 함수**를 부른다(글을 옮겨 적지 않는다)."""
     import pathlib
-    for f in ("app/core/stages/s4b_gapsearch.py", "app/core/strategy_llm.py",
-              "app/core/stages/s6_verdict.py"):
+    for f in ("app/core/stages/s4b_gapsearch.py",):
         said = pathlib.Path(f).read_text(encoding="utf-8")
         assert "대륙 대회다" not in said, f"🔴 {f} 가 글자를 베꼈다"
 

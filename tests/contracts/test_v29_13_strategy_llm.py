@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import inspect
+import pathlib
 
 from app.core import strategy_llm as sl
 from app.core.schema import MatchRef
@@ -25,6 +26,27 @@ class _Facts:
 class _Plan:
     def __init__(self, box: dict) -> None:
         self.facts = box
+
+
+def test_sl_llm_전략분석을_지웠다() -> None:
+    """🔴🔴 **LLM 전략분석을 지웠다** — 사용자 지시 2026-10-18.
+
+    > llm 은 **서치용**으로 사용한다 .. **llm 전략분석만 지워라** ..
+    > **자료는 놔둬라** · **능력치 갈래모듈, 직전5경기 등은 변수에 사용될거다**
+
+    ⚠️ 종전 이 파일은 **배선 여섯**을 셌다 — 운영·러너가 `_sl.ask(` 를 부르고
+       재료를 넘기는지, 두 모델을 다 쓰는지. 🔴 그 호출이 사라졌으므로 어림을
+       **뒤집는다**: 아무도 부르지 않아야 하고 `ask` 는 묻지 않아야 한다.
+    🔴 **재료 함수는 남는다** — 다음 순서가 *"코드가 그 재료로 변수를 만드는
+       것"*이고 `tests/test_wiring.py` 의 `NOT_WIRED` 가 그 뜻으로 들고 있다.
+    """
+    root = pathlib.Path(__file__).resolve().parents[2]
+    for rel in ("app/core/pipeline.py", "tools/run_collect.py"):
+        said = (root / rel).read_text(encoding="utf-8")
+        assert "_sl.ask(" not in said, f"🔴 {rel} 가 아직 부른다"
+        assert "⑤-b2" in said and "지웠다" in said, f"🔴 {rel} 가 안 적었다"
+    for fn in ("recent_of", "news_of", "rest_of", "past_of", "vars_of"):
+        assert callable(getattr(sl, fn, None)), f"🔴 재료 `{fn}` 가 사라졌다"
 
 
 def test_핵심_선수가_빠지면_묻는다() -> None:
@@ -135,18 +157,6 @@ def test_deepseek_가_먼저다() -> None:
     assert sig.parameters["providers"].default == ("deepseek", "solar")
 
 
-def test_러너에_배선됐다() -> None:
-    said = __import__("pathlib").Path("tools/run_collect.py").read_text()
-    assert "strategy_llm" in said, "🔴 안 불린다"
-    assert "⑤-b2 전략 전문가(LLM)" in said, "🔴 장부에 칸이 없다"
-    assert "+ list(var_sl)" in said, "🔴 varset 묶음에 안 들어간다"
-
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 **방향 표** — 딥서치로 채우고 **사용자가 승인**해야 쓴다
-# ══════════════════════════════════════════════════════════════════
-
-
 def test_승인된_줄만_방향을_준다(monkeypatch) -> None:  # noqa: ANN001
     monkeypatch.setattr(sl, "_DIRS", {
         "수비 라인": {"goals": "down", "favors": "subject", "approved": True,
@@ -199,31 +209,6 @@ def test_프롬프트가_최근_5경기를_요구한다() -> None:
     src = inspect.getsource(sl.ask)
     assert "최근 5경기" in src and "said_recent" in src
     assert "재료에 없는 갈래는 내지 마라" in src, "🔴 지어내기를 안 막는다"
-
-
-def test_러너가_최근_재료를_넘긴다() -> None:
-    said = __import__("pathlib").Path("tools/run_collect.py").read_text()
-    assert "recent=_sl.recent_of(variables)" in said, "🔴 안 넘긴다"
-
-
-def test_운영_파이프라인에_배선됐다() -> None:
-    """🔴🔴 사용자 지시 2026-10-15 — *"전략 변수까지 **운영 파이프라인에
-    배선해라**"*. 러너만 부르면 봇 카드에는 그 변수가 **없다**."""
-    said = __import__("pathlib").Path("app/core/pipeline.py").read_text()
-    assert "strategy_llm" in said, "🔴 운영이 안 부른다"
-    assert "_sl.ask(ref, facts, plan" in said, "🔴 전략 판정 뒤에서 안 부른다"
-    assert "recent=_sl.recent_of(variables)" in said, "🔴 최근 5경기를 안 넘긴다"
-
-
-def test_운영이_배치를_다시_세운다() -> None:
-    """🔴 묶음이 둘로 갈리면 배치와 축이 어긋난다(실사고 2026-10-15)."""
-    said = __import__("pathlib").Path("app/core/pipeline.py").read_text()
-    i = said.index("_sl.ask(ref, facts, plan")
-    # 🔴 **끝 표지가 바뀌었다** — 상성 단계를 지웠다(2026-10-17). 그 자리에
-    #    있던 `s2e_matchup as _s2e` 대신 **상성을 지웠다는 그 줄**을 쓴다.
-    j = said.index("상성 단계를 지웠다")
-    assert "varset = _routing.place(variables)" in said[i:j], \
-        "🔴 전략 변수를 더하고 **배치를 다시 세우지 않는다**"
 
 
 def test_상성_앞에서_부른다() -> None:
@@ -315,47 +300,6 @@ def test_sl10_포메이션_맞붙기_프롬프트() -> None:
     assert "중원 숫자" in src and "변화가 " in src, src[-600:]
 
 
-def test_sl11_피로도_변수() -> None:
-    """🔴🔴 SL11 — 사용자 지시 2026-10-16:
-
-    > 그 일정이 나오면 LLM 전략분석가가 그 팀의 **피로도**를 변수에 넣게 한다
-
-    🔴 수는 **코드가 센다**(`rest_of`) — 모델은 **부등호만** 낸다(절대규칙 5).
-    """
-    class _R:
-        home, away = "h", "a"
-        home_name, away_name = "A팀", "B팀"
-
-    class _F:
-        recent = {"h": {"rest_days": 3, "last_match_utc": "2026-10-11T18:00",
-                        "sequence": [{}] * 5},
-                  "a": {"rest_days": 7, "last_match_utc": "2026-10-07T18:00",
-                        "sequence": [{}] * 5}}
-        schedule = {"h": {"games_14d": 4}, "a": {"games_14d": 2}}
-
-    rows = sl.rest_of(_R(), _F())
-    assert len(rows) == 2, rows
-    assert "휴식 3일" in rows[0] and "14일 4경기" in rows[0], rows[0]
-    assert "휴식 7일" in rows[1], rows[1]
-
-    # 🔴 못 잰 칸은 **이름으로** 남긴다(#3 조용한 0 금지)
-    class _F0:
-        recent: dict = {}
-        schedule: dict = {}
-
-    assert all("⬜ 휴식일 못 쟀다" in x for x in sl.rest_of(_R(), _F0()))
-    # 🔴 갈래 목록과 프롬프트에 들어 있다
-    assert "일정·피로도" in sl.KINDS
-    src = inspect.getsource(sl.ask)
-    assert "일정·피로도 재료" in src and "휴식일이 **짧은 " in src, src[-700:]
-    assert "rest" in inspect.signature(sl.ask).parameters
-    # 🔴 러너가 그 재료를 넘긴다(배선)
-    said = (ROOT / "tools/run_collect.py").read_text(encoding="utf-8") \
-        if (ROOT := __import__("pathlib").Path(__file__).resolve().parents[2]) \
-        else ""
-    assert "rest=_sl.rest_of(ref, facts)" in said, "SL11 🔴 러너가 안 넘긴다"
-
-
 def test_sl12_전력_누수() -> None:
     """🔴🔴 SL12 — 사용자 지시 2026-10-16:
 
@@ -417,66 +361,3 @@ def test_sl13_라인업_정밀_비교() -> None:
     assert '_rows(s)' in src and 'getattr(pl, "pos"' in src, src[:1500]
 
 
-def test_sl14_두_모델을_다_쓴다() -> None:
-    """🔴🔴 SL14 — 사용자 지시 2026-10-16:
-
-    > 전략분석을 deepseek 하나만 하는데 **solar 도 투입해라** · 하나에
-    > **치우치면 안 된다**
-
-    🔴 같은 묶음으로 **둘 다** 묻고 대본다(⑯ 평의 그 규율과 같다):
-       합의 → 그대로 · **충돌 → 맥락 전용**(확률에 안 닿는다) · 혼자 → 표시.
-    """
-    from unittest.mock import patch
-
-    from app.core import llm as _llm
-    from app.core.state import RunState
-
-    class _XI:
-        formation = "4-3-3"
-        players: list = []
-
-    class _F:
-        xi = {"team:000001": _XI(), "team:000002": _XI()}
-        recent: dict = {}
-        schedule: dict = {}
-
-    class _Plan:
-        facts = {"L1": {"kind": "formation", "text": "홈 4-4-2→4-3-3"}}
-
-    class _R:
-        home, away = "team:000001", "team:000002"
-        home_name, away_name, competition = "A", "B", "L"
-
-    def fake(**kw):
-        cmp_ = "<" if kw["provider"] == "deepseek" else ">"
-        return sl.StrategyRead(rows=[
-            sl.StrategyRow(kind="수비 라인", cmp=cmp_, goals_cmp="=",
-                           text="라인 높다"),
-            sl.StrategyRow(kind="중원 수싸움", cmp=">", goals_cmp="=",
-                           text="중원")])
-
-    with patch.object(_llm, "ask", side_effect=fake):
-        out, why = sl.ask(_R(), _F(), _Plan(), state=RunState())
-    assert "deepseek+solar" in why, why
-    assert "🔴 충돌 1갈래(수비 라인)" in why, why
-    box = {v.id: v for v in out}
-    conf = [v for v in out if "모델 충돌" in v.claim]
-    agree = [v for v in out if "합의" in v.claim]
-    assert conf and agree, [v.claim[:40] for v in out]
-    # 🔴 충돌 줄은 **버리지 않고** 맥락 전용으로 남긴다(평이 읽어야 한다)
-    assert conf[0].usable_as_basis is False, conf[0]
-    # 🔴🔴 **양쪽 글이 다 남는다**(사용자 지시 2026-10-16) — 부등호만 남기면
-    #    *"상대 모델은 왜 반대로 봤나"* 를 읽을 수 없다(실사고 Necaxa vs Atlas).
-    assert "deepseek `<`" in conf[0].claim and "solar `>`" in conf[0].claim, \
-        conf[0].claim
-    assert conf[0].claim.count("라인 높다") >= 2, conf[0].claim
-    # 🔴🔴 **합의만 확률에 닿는다**(사용자 지시 2026-10-16 · 길 A) —
-    #    한 모델만 낸 갈래도 **맥락 전용**이다(버리지는 않는다 · 확인 거리다).
-    assert sl.ALONE and sl.CONFLICT
-    alone = sl.StrategyRead(rows=[sl.StrategyRow(
-        kind="기사 사실", cmp="<", goals_cmp="<",
-        text=f"{sl.ALONE} [deepseek] 8경기 중 7경기 1.5골 이하")])
-    got = sl.vars_of(alone, _R())
-    assert got and got[0].usable_as_basis is False, got
-    assert agree[0].usable_as_basis is True, agree[0]
-    assert box  # 변수 둘 다 섰다

@@ -338,30 +338,21 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
         return _gate_card(ref, facts, variables, said_gate, state=st,
                           docs=docs, before=before)
     # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **⑤-b2 전략 전문가(LLM)** — 사용자 지시 2026-10-15(운영 배선)
+    # 🔴🔴 **⑤-b2 LLM 전략분석을 지웠다** — 사용자 지시 2026-10-18
     # ══════════════════════════════════════════════════════════════════
     #
-    #  > 라인업 확장 포메이션 결장 선수가 **주요선수가 뜨면** 전략 전문가
-    #  > deepseek 에게 변수 생성하는 프롬프트를 주입해라
-    #  > … **전략 변수까지 운영 파이프라인에 배선해라**
+    #  > llm 은 **서치용**으로 사용한다 .. **llm 전략분석만 지워라** ..
+    #  > **자료는 놔둬라** · llm 평은 **변수가지고만 승무패를 예측한다**
     #
-    #  🔴 자리가 여기인 까닭 — 전략 판정(`plan`)이 **방금 섰고**, 상성(S2)이
-    #     **아직 안 돌았다**. 그래서 변수를 더해 **배치를 다시 세운다**.
-    #  🔴 모델은 **부등호만** 낸다(`홈>원정` · `총골<기준`) — 방향은 그 부등호가,
-    #     가중은 코드가 넣는다(절대규칙 5).
-    #  ⚠️ 트리거가 없으면(핵심 결장·포메이션 변화·자리 변화 모두 아니면) 부르지
-    #     않는다 — 사유를 수첩에 남긴다(#3).
-    from app.core import strategy_llm as _sl
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **⑤-b1 선수 능력치** — 사용자 지시 2026-10-17
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  > 핵심선수 결장 · **후보선수로 대체했을때 가설제공(숫자가 아닌 능력치)**
-    #  > … 이거는 전략분석가한테 줘야 하는거다
-    #
-    #  🔴 대상은 **교체 짝 + 핵심 선수**뿐이다(선수 한 명이 2.09초 · 실측) ·
-    #     카드 상한(`st.clock`)이 바닥이면 그 자리에서 멈춘다.
-    #  🔴 수(백분위)는 `core/ability` 에서 멈추고 모델에게는 **글자**만 간다.
+    #  🔴 지운 것은 **LLM 호출 하나**다 — `core/strategy_llm`(⑤-b2)과 그것이
+    #     만들던 `SL*` 변수. 🔴 **자료는 그대로 둔다**: ⑤-b1 선수 능력치 ·
+    #     ⑤-b1b 선발 전원 능력치(`core/ability`) · 전략 판정(`s2d_strategy`
+    #     의 `plan`) · 직전 5경기(`facts.recent`·`facts.past_xi`).
+    #  ⚠️ 그래서 **`SL*` 변수가 없어진다** — 확률(`flat_prob`)이 세던 표가
+    #     줄어든다(살케에서 `SL2`·`SL3`·`SL4` 가 셋을 밀었다). 확률은 이제
+    #     **코드가 만든 변수**로만 간다. 그 사실을 여기 적는다(#3).
+    #  ⚠️ ⑤-b3 갈래 판정(`core/branchjudge`)은 **모듈을 남긴다**(사용자 지시
+    #     *"갈래 지우지 마라"*) — 다만 판정할 **주장이 없어** 안 돈다.
     from app.core import ability as _ab3
     from app.core import branchjudge as _bj
     said_tg, said_why_tg = _ab3.targets(ref, facts, plan)
@@ -386,54 +377,8 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     said_sq, said_why_sq = await _ab3.squad_fetch(net, facts, ref, clock=st.clock)
     _bj.set_squad(said_sq)
     st.note(f"⑤-b1b 선발 능력치 — {said_why_sq}")
-    # 🔴🔴 **충돌·단독 갈래를 담는 그릇**(사용자 지시 2026-10-16) — 아래
-    #    ⑤-b3 가 그것을 **상대 모델이 서치해서** 판정한다.
-    said_branch: list = []
-    var_sl, said_sl = _sl.ask(ref, facts, plan, state=st,
-                              recent=_sl.recent_of(variables),
-                              # 🔴 **피로도 재료**(사용자 지시 2026-10-16) —
-                              #    휴식일·직전 경기일·최근 경기 수(코드가 센 수)
-                              rest=_sl.rest_of(ref, facts),
-                              # 🔴 **기사 사실도 넘긴다**(지시 2026-10-15) —
-                              #    확률은 기사를 안 세고, 내용 판단은 여기서 한다
-                              news=_sl.news_of(variables),
-                              # 🔴 **능력치 재료**(지시 2026-10-17) — 글자뿐이다
-                              ability=said_ability,
-                              # 🔴🔴 **직전 5경기 — 경기마다**(사용자 지시
-                              #    2026-10-17) — 득실점·포메이션·선발 능력치.
-                              #    ⚠️ 새 통신 0 — `facts.recent.sequence` ·
-                              #       `facts.past_xi` · ⑤-b1b 능력치를 엮는다.
-                              past={x: _sl.past_of(facts, ref, x, said_sq)
-                                    for x in ("home", "away")},
-                              branches=said_branch)
-    st.note(f"⑤-b2 전략 전문가 — {said_sl}")
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **⑤-b3 갈래 판정** — 사용자 지시 2026-10-16
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  > 충돌되는 것·한쪽만 나오는 것도 **버리는 게 아니라 어느 쪽이 맞는지
-    #  > 확인**해야 한다 … 각 LLM 이 낸 내용을 **다른 LLM 이 서치해서 검증**
-    #  > 하는 걸로 **옳다 그르다를 판단**한다
-    #
-    #  🔴 1단 **코드가 가진 수**(중원 수·측면 수·휴식일·실점 평균) →
-    #     2단 **교차 검증**(상대 모델이 질의를 쓰고 본문을 읽는다 · 인용 접지) →
-    #     3단 채택이면 `usable_as_basis` 를 올리고 **근거를 글에 남긴다**.
-    #  🔴 자리가 여기인 까닭 — 변수 배치(`place`)를 **다시 세우기 전**이어야
-    #     승격된 변수가 확률 자리에 들어간다.
-    #  ⚠️ 갈래 수 상한(`branchjudge.MAX_JUDGE`)·카드 상한 안에서만 돈다.
-    if var_sl and said_branch:
-        # ⚠️ 사유를 수첩에 적는 곳은 `branchjudge.run` **하나**다(사본 금지) —
-        #    여기서 또 적으면 카드에 같은 줄이 두 번 찍힌다.
-        var_sl, _said_bj = await _bj.run(said_branch, var_sl, ref, facts,
-                                         plan, state=st, net=net, chain=chain)
-    if var_sl:
-        variables = [*variables, *var_sl]
-        # 🔴 **묶음은 하나다** — 배치를 다시 세운다(둘로 갈리면 배치와 축이
-        #    어긋난다 · 실사고 2026-10-15 그 자리다)
-        varset = _routing.place(variables)
-        st.note(f"⑤-b2 변수 배치 다시 — {varset.why()}")
-        for said in varset.fails:
-            st.note(f"⑤-b2 {said}")
+    st.note("⑤-b2 LLM 전략분석 — 🔴 **지웠다**(사용자 지시 2026-10-18) · "
+            "능력치·전략 판정·직전 5경기 자료는 그대로 모은다")
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **상성 단계를 지웠다** — 사용자 지시 2026-10-17
     # ══════════════════════════════════════════════════════════════════
@@ -869,8 +814,9 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #  🔴 확률·등급은 **안 건드린다** — 이 블록은 `verdict_say` 칸만 채운다.
     try:
         from app.core.stages import s6_verdict as _vd
-        said_box = _vd.chain_of(ref, prob, mr, varset, docs=docs,
-                                plan=plan, strat=var_sl)
+        # 🔴 `strat` 은 안 넘긴다 — ⑤-b2 를 지웠다(지시 2026-10-18) ·
+        #    묶음은 **변수만** 싣는다(`chain_of` 머리말)
+        said_box = _vd.chain_of(ref, prob, mr, varset, docs=docs, plan=plan)
         said_vd: list[str] = []
         said_got: dict = {}
         for pv in ("solar", "deepseek"):

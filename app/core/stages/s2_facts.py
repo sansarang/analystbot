@@ -161,8 +161,14 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
             row.setdefault("lat", here.get("lat"))
             row.setdefault("lon", here.get("lon"))
             row.setdefault("venue", here.get("name"))
+        # 🔴 구장·날씨를 **한 칸으로** 싣는다(IR15 재료 · 지시 2026-10-18)
+        box["venue"] = dict(here)
+        said_w = dict(here.get("weather") or {})
         state.note(f"s2 §6 이 경기 구장 — {here.get('name')} "
-                   f"({here.get('lat')},{here.get('lon')})")
+                   f"({here.get('lat')},{here.get('lon')})"
+                   + (" · 날씨 " + " · ".join(f"{k} {v}" for k, v in
+                                              said_w.items())
+                      if said_w else " · 날씨 ⬜ 페이지에 없다"))
     said = await _group(ref, state=state, net=net, pages=raw_pages)
     if said:
         # 🔴 `Facts.standings` 안의 **`group` 칸**이다 — 기존 칸(홈 이점·쪼갠 표)을
@@ -1402,7 +1408,12 @@ async def _group(ref: MatchRef, *, state: RunState, net: Any,
 
 
 def _venue(pages: list[str]) -> dict:
-    """🔴 경기 페이지들에서 **구장 좌표**를 한 번 읽는다(IR11 · 7차 §6)."""
+    """🔴 경기 페이지들에서 **구장 좌표 + 날씨**를 한 번 읽는다(IR11 · IR15).
+
+    🔴🔴 **날씨를 같이 담는다** — 사용자 지시 2026-10-18(② 배선 · *"우리에게
+       다 자료가 있지 않니?"*). ⚠️ 읽는 함수는 `fotmob.weather_of` 하나다
+       (사본 금지) · 없으면 `weather` 칸이 **없다**(#3 조용한 0 금지).
+    """
     from app.collect import fotmob as fm
     for text in pages:
         j = fm.payload(text)
@@ -1410,5 +1421,6 @@ def _venue(pages: list[str]) -> dict:
             continue
         got = fm.venue_of(j)
         if got:
-            return got
+            w = fm.weather_of(j)
+            return {**got, **({"weather": w} if w else {})}
     return {}
