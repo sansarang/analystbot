@@ -109,3 +109,53 @@ def test_일정_퇴로는_LLM_을_안_쓴다() -> None:
 def test_일정_창은_한_곳에_있다() -> None:
     from app.core.stages import s1_resolve
     assert s1_resolve.SCHED_BACK_H > 0 and s1_resolve.SCHED_AHEAD_H > 0
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **한글로 물어도 통과한다 — 영어로 바꿔 견준다**(사용자 지시 2026-10-18)
+# ══════════════════════════════════════════════════════════════════
+#
+#  > fc서울,강원fc 라인업 … **영어로 질문하는걸로 고쳐라**
+#
+#  ⚠️ 실측 2026-10-18: 한글 질문이 **맞는 경기를 두 번 거부했다** —
+#     `물음 전북 현대 모터스 ↔ 확정 Jeonbuk Hyundai Motors FC vs Jeju SK` ·
+#     `물음 파지아노 오카야마 ↔ 확정 Fagiano Okayama FC vs Vissel Kobe`.
+#     두 이름 다 `config/teams_54.yaml`·이름표가 **알고 있었다**(열쇠까지 났다).
+
+K1 = Ref(home_name="Jeonbuk Hyundai Motors FC", away_name="Jeju SK",
+         home="team:000314", away="team:000313")
+
+
+def test_한글로_물어도_같은_팀이면_통과한다(monkeypatch) -> None:
+    """🔴 ② 영어 풀이 — 이름표가 아는 이름은 **LLM 없이** 풀린다.
+
+    🔴 돌연변이: ② 를 지우면 한글 질문이 다시 거부된다.
+    ⚠️ `findwriter.ask` 를 막아 두고 돈다 — 이름표만으로 돼야 한다(LLM 0).
+    """
+    from app.core import findwriter
+
+    def _never(*a, **k):                        # noqa: ANN002, ANN003
+        raise AssertionError("🔴 이름표가 아는 이름인데 LLM 을 불렀다")
+    monkeypatch.setattr(findwriter, "ask", _never)
+    ok, why = asked_match(Q("전북 현대 모터스"), K1)
+    assert ok, why
+    assert "영어로 바꿔 맞췄다" in why and "Jeonbuk" in why, why
+    # 🔴 상대만 한글로 물어도 된다(어느 쪽이든 하나 맞으면 통과)
+    assert asked_match(Q("", "제주 SK"), K1)[0]
+    # 🔴🔴 **느슨해지지 않는다** — 다른 팀을 한글로 물으면 **거부**한다
+    bad, why2 = asked_match(Q("울산 HD"), K1)
+    assert not bad, why2
+    assert "영어 풀이도 안 맞았다" in why2, why2
+
+
+def test_라틴_이름은_영어_풀이를_안_돈다(monkeypatch) -> None:
+    """🔴 ② 는 ① 이 떨어졌을 때 **라틴이 아닌 이름에만** 돈다(비용·통로 하나).
+
+    ⚠️ 돌연변이: 라틴 검사를 지우면 남의 경기마다 이름 풀이가 돌아 LLM 을 태운다.
+    """
+    from app.core.stages import s1_resolve as s1
+
+    def _never(said):                           # noqa: ANN001
+        raise AssertionError(f"🔴 라틴 이름에 영어 풀이를 돌렸다 — {said}")
+    monkeypatch.setattr(s1, "_en_of", _never)
+    assert not asked_match(Q("Suwon FC", "Pohang Steelers"), K1)[0]

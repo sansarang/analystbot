@@ -198,12 +198,65 @@ async def _spell_hints(q: Question, *, state: RunState) -> dict:
 #     통과하고 남의 팀은 거부한다(그 함수의 계약이 센다).
 
 
+#: 🔴 **라틴 아닌 글자가 섞였나** — 한글·일본말·한자가 한 자라도 있으면 참.
+#  ⚠️ *"라틴이 있나"* 로 물었다가 `제주 SK`·`FC서울`·`강원FC` 를 **이미 라틴**
+#     으로 보고 건너뛰었다(실측 2026-10-18 · 섞인 이름이 흔하다).
+_NON_LATIN = __import__("re").compile(r"[^\x00-\x7F]")
+
+
+def _en_of(said: str) -> tuple[list[str], str]:
+    """🔴🔴 **한글로 물은 이름을 영어로 바꾼다**(사용자 지시 2026-10-18).
+
+    > fc서울,강원fc 라인업 … **영어로 질문하는걸로 고쳐라**
+
+    ⚠️ 실측 2026-10-18: 한글로 물으면 입구가 **맞는 경기를 거부했다** —
+       `물음 전북 현대 모터스 ↔ 확정 Jeonbuk Hyundai Motors FC vs Jeju SK`
+       (파지아노 오카야마도 같았다). 글자 대 글자로만 견뤘기 때문이다.
+    🔴 차례: ① 이름표(`teamref`)가 아는 이름이면 **그 영어 이름** ②
+       모르면 `findwriter.ask`(이름만 내는 LLM · solar)가 댄 **영어 후보**.
+    ⚠️ 재생(카세트)에서는 ② 를 **안 부른다**(녹음이 그 질문을 모른다).
+    🔴 느슨해지지 않는다 — 돌려주는 것은 **후보 글자**이고, 같은 팀인지는
+       부르는 쪽이 `verify.same_team` 으로 판정한다.
+    """
+    from app import teamref
+    out: list[str] = []
+    key, why = teamref.key_of(said, sport="soccer")
+    if key:
+        for lang in ("en", ""):
+            label = str(teamref.label_of(key, lang) or "").strip() if lang \
+                else ""
+            if label and label not in out:
+                out.append(label)
+        if out:
+            return out, f"이름표 `{key}` → {' · '.join(out)}"
+    from app import cassette as _cas
+    if _cas.mode() == _cas.REPLAY:
+        return out, f"⬜ 재생이라 이름 풀이를 안 돌렸다({why})"
+    from app.core import discover as _d
+    from app.core import findwriter as _fw
+    from app.core.state import RunState as _RS
+    plan = _fw.ask(said, state=_RS(), aliases=_d.aliases_of(said))
+    if plan is None:
+        return out, f"🔴 이름 풀이 실패({why})"
+    teams, _bad = _fw.keep_teams(list(plan.teams))
+    slugs, _bad2 = _fw.keep_slugs(list(plan.slugs))
+    out += [x for x in teams if x not in out]
+    out += [str(x).replace("-", " ") for x in slugs]
+    return out, (f"이름 풀이 → {' · '.join(out[:4])}" if out
+                 else f"🔴 이름 풀이가 0개({why})")
+
+
 def asked_match(asked: object, ref: object) -> tuple[bool, str]:
     """🔴 물어본 이름이 그 경기의 **어느 쪽에라도** 있나. `(맞나, 사유)`.
 
     `asked` 는 `Question` 이거나 **이름 목록**이다(퇴로는 이름만 들고 있다).
     🔴 묻는 이름이 **하나도 없으면** 검문하지 않는다 — 그때는 고를 근거가
        질문에 없다(슬레이트·보드가 고른 것이다).
+
+    🔴🔴 **두 단이다**(2026-10-18):
+      ① 글자 대 글자(`verify.same_team`) — 종전 그대로
+      ② 라틴 글자가 없는 이름은 **영어로 바꿔** 한 번 더 견준다(`_en_of`)
+    ⚠️ ② 는 ① 이 떨어졌을 때만 돈다 — 통과하던 것을 바꾸지 않는다.
     """
     from app import verify
     raw = (list(asked) if isinstance(asked, (list, tuple))
@@ -217,8 +270,20 @@ def asked_match(asked: object, ref: object) -> tuple[bool, str]:
     for one in said:
         if any(verify.same_team(one, side) for side in sides):
             return True, ""
+    # 🔴🔴 ② **영어로 바꿔 다시 견준다** — 한글 질문이 거부되던 자리다
+    tried: list[str] = []
+    for one in said:
+        if not _NON_LATIN.search(one):
+            continue                 # 🔴 라틴뿐이다 — ① 이 본 글자다
+        got, why = _en_of(one)
+        tried.append(f"`{one}` {why}")
+        for name in got:
+            if any(verify.same_team(name, side) for side in sides):
+                return True, f"영어로 바꿔 맞췄다 — `{one}` → `{name}`"
     return False, (f"🔴 **물어본 팀이 그 경기에 없다** — 물음 "
-                   f"{' · '.join(said)} ↔ 확정 {' vs '.join(sides[:2])}")
+                   f"{' · '.join(said)} ↔ 확정 {' vs '.join(sides[:2])}"
+                   + (f" · 영어 풀이도 안 맞았다({' / '.join(tried)})"
+                      if tried else ""))
 
 
 async def _respell(pool: Any, q: Question, *, state: RunState,
