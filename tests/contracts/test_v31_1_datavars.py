@@ -447,20 +447,30 @@ def test_fl2_최신에_무게를_준다() -> None:
     assert "최신 쪽 폼" in one.claim, one.claim
 
 
-def test_fl3_홈원정을_쪼갠다() -> None:
-    """🔴 오늘 홈팀은 **과거 홈 경기**, 원정팀은 **과거 원정 경기**로 본다."""
+def test_fl3_홈원정을_쪼개지_않는다() -> None:
+    """🔴🔴 **과거는 홈원정 구분하지 마라** — 사용자 지시 2026-10-18.
+
+    ⚠️ 종전 `FL3` 은 오늘 홈팀을 **과거 홈 경기**로만 봤다. 🔴 그 쪼갬을
+       지웠다 — 쪼개면 표본이 다섯에서 둘·셋으로 줄어 평균이 몇 경기에
+       휘둘린다.
+    🔴 그래서 센다: **`FL3` 변수가 나오지 않는다** · 그 손값도 표에 없다.
+    """
+    import yaml
     facts = _F(recent={
         "team:000001": {"sequence": [_game("10-15", "home", "T1", 3, 0),
                                      _game("10-11", "home", "T2", 2, 0),
-                                     # ⚠️ 원정 경기는 홈팀 쪽에서 **안 센다**
                                      _game("10-05", "away", "T3", 0, 5)]},
         "team:000002": {"sequence": [_game("10-15", "away", "T1", 0, 2),
                                      _game("10-11", "away", "T2", 0, 1),
                                      _game("10-05", "home", "T3", 5, 0)]}})
     got = dv.from_flow(_R(), facts, state=_state())
-    one = next((x for x in got if x.id == "FL3"), None)
-    assert one is not None and one.favors == "home", [x.id for x in got]
-    assert "같은 자리" in one.claim, one.claim
+    assert not [x for x in got if x.id == "FL3"], [x.id for x in got]
+    box = yaml.safe_load((ROOT / dv.CONF).read_text(encoding="utf-8"))
+    flow = dict(box.get("flow") or {})
+    for gone in ("side_min", "side_gap"):
+        assert gone not in flow, f"🔴 손값 `{gone}` 가 아직 표에 있다"
+    src = (ROOT / "app/core/datavars.py").read_text(encoding="utf-8")
+    assert "def _side_form(" not in src, "🔴 그 함수가 아직 있다"
 
 
 def test_fl4_흔들림은_폭이_작은_쪽이다() -> None:

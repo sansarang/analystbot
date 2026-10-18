@@ -691,8 +691,9 @@ def _vs_top(ref: MatchRef, cf: dict, got: dict, *, state: RunState,
 #
 #  🔴 `S01` 은 **평균 하나**다 — 순서를 버린다(`0-4` 뒤 3승과 3승 뒤 `0-4` 가
 #     같은 수가 된다). 그래서 여기서는 **순서로** 본다:
-#       F1 추세(앞 토막 ↔ 최신 토막) · F2 최신 가중 · F3 홈·원정 쪼갠 폼 ·
-#       F4 흔들림(경기별 득실 차의 폭)
+#       F1 추세(앞 토막 ↔ 최신 토막) · F2 최신 가중 · F4 흔들림
+#  ⚠️ **F3(홈·원정 쪼갬)은 지웠다** — 사용자 지시 2026-10-18
+#     (*"과거는 홈원정 구분하지 마라"*).
 #  ⚠️ **연승은 표현하지 않는다**(사용자 지시 2026-10-17) — 승을 묶어 세지 않고
 #     **경기마다** 본다.
 #  🔴 재료는 `facts.recent[팀]["sequence"]` 하나다(최신이 앞 · 새 통신 0).
@@ -714,7 +715,11 @@ def _seq(facts, ref: MatchRef, side: str) -> list[dict]:
 
 def from_flow(ref: MatchRef, facts: Facts, *,
               state: RunState) -> list[Variable]:
-    """🔴🔴 **흐름(폼)** — F1 추세 · F2 최신 가중 · F3 홈원정 · F4 흔들림."""
+    """🔴🔴 **흐름(폼)** — F1 추세 · F2 최신 가중 · F4 흔들림.
+
+    ⚠️ **F3(홈·원정 쪼갬)은 지웠다**(사용자 지시 2026-10-18 — *"과거는
+       홈원정 구분하지 마라"*).
+    """
     cf = _box("flow")
     out: list[Variable] = []
     box = {s: _seq(facts, ref, s) for s in ("home", "away")}
@@ -724,7 +729,6 @@ def from_flow(ref: MatchRef, facts: Facts, *,
         return out
     out += _trend(ref, cf, box, state=state)
     out += _decay_form(ref, cf, box, state=state)
-    out += _side_form(ref, cf, box, state=state)
     out += _swing(ref, cf, box, state=state)
     return out
 
@@ -801,40 +805,17 @@ def _decay_form(ref: MatchRef, cf: dict, box: dict, *,
                  goals=("up" if side == "home" else "down"))]
 
 
-def _side_form(ref: MatchRef, cf: dict, box: dict, *,
-               state: RunState) -> list[Variable]:
-    """🔴 **F3 홈·원정 쪼갠 폼** — 오늘 홈팀은 과거 **홈** 경기, 원정팀은 **원정**.
-
-    🔴 까닭 — 오늘 홈팀에게 과거 원정 경기 성적은 다른 조건의 기록이다.
-    ⚠️ 경기 줄의 `side` 칸을 쓴다(그 칸이 없으면 안 돈다 · #3).
-    """
-    low, want = _num(cf, "side_min"), _num(cf, "side_gap")
-    if low is None or want is None:
-        state.note(f"흐름 F3 — {NONE_MARK} 문턱 표가 없다(`{CONF}`)")
-        return []
-    got: dict[str, tuple[float, int]] = {}
-    for side in ("home", "away"):
-        rows = [r for r in box[side] if str(r.get("side") or "") == side]
-        vals = [v for v in (_gd(r) for r in rows) if v is not None]
-        if len(vals) < low:
-            state.note(f"흐름 F3 `{side}` — 같은 쪽 경기가 {len(vals)}개 < "
-                       f"{low:g}(안 센다)")
-            return []
-        got[side] = (sum(vals) / len(vals), len(vals))
-    (h, nh), (a, na) = got["home"], got["away"]
-    if abs(h - a) < want:
-        state.note(f"흐름 F3 — 쪼갠 폼 홈 {h:+.2f}({nh}경기) ↔ 원정 "
-                   f"{a:+.2f}({na}경기) · 차 {abs(h - a):.2f} < {want:g}"
-                   "(안 센다)")
-        return []
-    side = "home" if h > a else "away"
-    state.note(f"흐름 F3 **발동** — {side} · 홈 {h:+.2f} ↔ 원정 {a:+.2f}")
-    return [_var("FL3", "recent_pattern", ref, side,
-                 f"{_name(ref, _key(ref, side))} 는 **같은 자리(홈/원정)에서** "
-                 f"더 낫다 — 홈팀의 과거 홈 {nh}경기 **{h:+.2f}** ↔ 원정팀의 "
-                 f"과거 원정 {na}경기 **{a:+.2f}**(경기당 득실 · 문턱 차 "
-                 f"{want:g})",
-                 goals=("up" if side == "home" else "down"))]
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **F3 홈·원정 쪼갠 폼은 지웠다** — 사용자 지시 2026-10-18
+# ══════════════════════════════════════════════════════════════════
+#
+#  > **과거는 홈원정 구분하지 마라**
+#
+#  ⚠️ 종전 `FL3` 은 *"오늘 홈팀은 과거 홈 경기, 원정팀은 과거 원정 경기"* 로
+#     쪼개 봤다. 🔴 그 쪼갬을 **안 한다** — 과거 5경기는 **자리를 가리지 않고**
+#     본다(그래야 표본이 다섯 그대로 남는다 · 쪼개면 둘·셋으로 줄어 평균이
+#     몇 경기에 휘둘렸다).
+#  🔴 경기 줄의 `side` 칸은 그대로 있다(지우지 않았다) — 다른 변수가 쓸 수 있다.
 
 
 def _swing(ref: MatchRef, cf: dict, box: dict, *,
