@@ -383,8 +383,31 @@ def _names(team: dict) -> list[str]:
 _POS_BY_ID = {0: "GK", 1: "DF", 2: "MF", 3: "FW"}
 
 
+#: 🔴🔴 **격자 자리 번호에서 골키퍼**(실측 2026-10-18 · 사용자 지시)
+#
+#  ⚠️ 실사고 2026-10-18(포항–안양): 확정 XI 가 들어왔는데 **1단 검문이
+#     `home` GK 0명**으로 멈춰 **확률이 통째로 안 났다**. 까닭은 포항 골키퍼
+#     홍성민의 `usualPlayingPositionId` 가 **1**(DF)로 와 있었기 때문이다
+#     (글자 칸 `role`·`positionStringShort` 는 **둘 다 `None`** 이다).
+#  🔴 실측 — 오늘 다섯 경기 **열 팀 전부** `positionId` 가 `11` 인 선발이
+#     **정확히 한 명**이고 그가 골키퍼였다(송범근·김동준·타니·오바타 …).
+#     포항 11 · 안양 11 · 서울 11 · 김천 11 · 강원 11 · 인천 11 · 마치다 11 ·
+#     후쿠오카 11 · 전북 11 · 제주 11 — 한 팀에 11 이 둘인 경우 0건.
+#  ⚠️ **11 만** 쓴다 — 32·34·36·62·72·103 … 의 뜻은 **아직 안 쟀다**(그
+#     숫자들로 DF/MF/FW 를 가르지 않는다 · 지어내지 않는다).
+GK_POSITION_ID = 11
+
+
 def _pos_of(p: dict) -> str:
-    """🔴 그 선수의 포지션 묶음(`GK`·`DF`·`MF`·`FW`). ⚠️ 모르면 빈칸."""
+    """🔴 그 선수의 포지션 묶음(`GK`·`DF`·`MF`·`FW`). ⚠️ 모르면 빈칸.
+
+    🔴 차례: ① **격자 자리 `positionId == 11` 이면 GK**(위 머리말 · 오늘 자리다)
+       ② `usualPlayingPositionId`(평소 자리) ③ 글자 칸 ④ 가로 위치.
+    ⚠️ ① 이 ② 보다 앞이다 — ② 는 *"평소"* 라서 오늘 골문을 지키는 선수에게
+       `DF` 가 와 있을 수 있다(포항 실측).
+    """
+    if p.get("positionId") == GK_POSITION_ID:
+        return "GK"
     got = p.get("usualPlayingPositionId")
     if isinstance(got, int) and got in _POS_BY_ID:
         return _POS_BY_ID[got]
