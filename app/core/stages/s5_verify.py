@@ -1605,10 +1605,6 @@ def _ir_soccer(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
                        f"(단판·1차전 아님)")
     elif rid == "IR11":                     # 일정 피로 — 7차 §6 로 문턱이 바뀌었다
         out += _ir_fatigue(rid, kind, row, ref, facts, state=state)
-    elif rid == "IR13":                     # 🔴 원정 이동 거리(지시 2026-10-14)
-        out += _ir_travel_away(rid, kind, row, ref, facts, state=state)
-    elif rid == "IR15":                     # 🔴 구장·날씨(지시 2026-10-18 ②)
-        out += _ir_weather(rid, kind, row, ref, facts, state=state)
     elif rid == "IR12":                     # 연승·연패
         # ══════════════════════════════════════════════════════════════
         # 🔴🔴 **부호를 사실대로 가른다** — 사용자 지적 2026-10-15
@@ -2138,16 +2134,14 @@ FATIGUE_KM = 3000
 #
 # > 3000 **니 생각이고** 1000km도 가도 힘들다...**과부하 맞다**
 #
-# 🔴 내가 IR13 을 지을 때 `FATIGUE_KM`(3,000km)을 **재사용했다** — 새 수를
-#    지어내지 않으려고 그랬지만, 그 수는 **피로 규칙의 것**이다(지시서
-#    2026-10-06 7차 §6: *"직전 경기 후 4일 이내 + (시차 3시간 이상 또는 이동
-#    3,000km 이상)"*). 즉 *"4일 안에 또 뛰는데 멀리까지 갔다"* 의 문턱이다.
-# ⚠️ **이동 부담 자체**의 문턱은 그것과 다르다 — 사용자가 1,000km 로 정했다.
-#    ⚠️ 실측 2026-10-15: 로테르담 ↔ 코모는 **753km** 다(내가 "약 1,100km"
-#       라고 적은 것은 짐작이었다 · 규율 #4). 그래서 **그 경기는 안 걸린다** —
-#       문턱이 1,000km 라는 뜻이고 753km 를 걸리게 하라는 말은 아니다.
-# 🔴 `FATIGUE_KM` 은 **그대로 둔다**(IR11 은 지시서가 못 박은 수다).
-TRAVEL_KM = 1000
+# 🔴🔴 **`TRAVEL_KM` 도 지웠다**(사용자 지시 2026-10-18 — *"이동 삭제"*)
+#    ⚠️ `FATIGUE_KM`(3,000km)은 **남는다** — `IR11`(피로도)이 쓴다.
+
+#: 🔴 두 번째 조건의 창(일)과 경기 수 — 지시서 원문 *"최근 8일 안에 이번이 3번째"*
+#  ⚠️ **되살렸다**(2026-10-18) — 이동·날씨 함수를 걷을 때 이 두 줄이 함께
+#     날아갔다. `IR11`(피로도)은 **남는다**(사용자 지시: *"피로도만 해라"*).
+FATIGUE_WINDOW_DAYS = 8
+FATIGUE_WINDOW_GAMES = 3
 
 
 def _ir_fatigue(rid: str, kind: str, row: dict, ref: MatchRef, facts: Facts, *,
@@ -2249,138 +2243,28 @@ def _travel(said: dict, ref: MatchRef, key: str) -> tuple[float | None,
 
 
 # ══════════════════════════════════════════════════════════════════
-# 🔴🔴 **IR13 원정 이동 거리** — 사용자 지시 2026-10-14
+# 🔴🔴 **IR13(이동)·IR15(날씨)를 지웠다** — 사용자 지시 2026-10-18
+# ══════════════════════════════════════════════════════════════════
+#
+#  > **피로도만 해라 .. 날씨 삭제 .. 이동 삭제**
+#
+#  🔴 지운 것 — `_ir_travel_away`(원정 이동) · `_ir_weather`(구장·날씨)와
+#     그 두 분기. ⚠️ **피로도(`IR11`)는 남는다** — 그리고 오늘 λ 보정표에
+#     넣어 **처음으로 확률에 닿는다**.
+#  ⚠️ 날씨 **자료**는 그대로 받는다(`Facts.venue["weather"]` · `weather_of`) —
+#     규칙만 없앴다.
+# ══════════════════════════════════════════════════════════════════
+# (옛 머리말) **IR13 원정 이동 거리** — 사용자 지시 2026-10-14
 # ══════════════════════════════════════════════════════════════════
 #
 # > 이동이 멀면 원정이 불리하다... **상식이다... 내 지시다**
 #
-# 🔴🔴 **백필 측정과 충돌한다 — 그 사실을 여기에도 적는다.**
-#    의심 변수 `C3 이동 거리`(1,470경기 · 2026-10-14):
-#      *"4분위로 바꾸니 체급별로 **부호가 뒤집힌다**(중 −11.7%p · 강 +14.6%p)"*
-#    ⚠️ 즉 *"멀면 원정이 불리"* 는 백필에서 **서지 않았다**. 🔴 직접 지시가
-#       문서를 덮는다(CLAUDE.md 첫 줄) — 켜고, 충돌을 **코드에 남긴다**.
-#
-# 🔴 거리는 `_travel` **하나**가 센다(사본 금지) — IR11 이 쓰는 그 함수다.
-# 🔴🔴 문턱은 **`TRAVEL_KM`(1,000km)** 이다 — 사용자 지시 2026-10-15
-#    (*"3000 니 생각이고 1000km도 가도 힘들다...과부하 맞다"*).
-#    ⚠️ 종전엔 `FATIGUE_KM`(3,000km)을 재사용했다 — 그것은 **피로 규칙의 수**
-#       이고 이동 부담의 문턱이 아니다. 그 혼동을 사용자가 잡았다.
-# ⚠️ IR11 과 겹치지 않는다: IR11 은 *"4일 이내 + 이동"* 이고 이것은 **거리만**
-#    본다. 같은 경기에서 둘 다 걸릴 수 있고 그것이 맞다(피로와 이동은 다른 일이다).
-
-
-def _ir_travel_away(rid: str, kind: str, row: dict, ref: MatchRef,
-                    facts: Facts, *, state: RunState) -> list[Variable]:
-    """🔴🔴 **원정 팀의 이동 거리** — 문턱 이상이면 원정 불리. `[Variable]`.
-
-    🔴 **원정 팀만** 본다 — 홈 팀에게 *"이동"* 은 뜻이 없다(지시 2026-10-14:
-       *"이동거리 … 홈까지의 거리는 **원정팀에 대한 부담**"*).
-    ⚠️ 중립 경기에서는 **안 돈다** — 그 경기에는 홈이 없다.
-    ⚠️ 좌표가 없으면 **안 돈다** — 사유를 이름으로 남긴다(#3 조용한 0 금지).
-    """
-    from app.core import competition as _cp5
-    key = str(getattr(ref, "away", "") or "")
-    if not key:
-        state.note(f"s5 {rid} — 원정 팀 열쇠가 없다 · 안 돈다")
-        return []
-    # 🔴 중립 경기 판정은 `competition.neutral_of` 하나다(사본 금지)
-    got_key = _cp5.key_of(competition=str(getattr(ref, "competition", "") or ""),
-                          league_id=getattr(facts, "league_id", "") or None)[0]
-    if got_key:
-        is_neutral, why_n = _cp5.neutral_of(got_key, stage="")
-        if is_neutral:
-            state.note(f"s5 {rid} — **중립 경기**라 안 돈다({why_n})")
-            return []
-    said = dict(dict(facts.schedule or {}).get(key) or {})
-    if not said:
-        state.note(f"s5 {rid} `{key}` — 일정 칸이 비었다 · 안 돈다")
-        return []
-    _tz, km, why = _travel(said, ref, key)
-    if km is None:
-        state.note(f"s5 {rid} `{key}` — 거리를 못 셌다({why}) · 안 돈다")
-        return []
-    if km < TRAVEL_KM:
-        state.note(f"s5 {rid} `{key}` — 이동 {km:,.0f}km"
-                   f"(문턱 {TRAVEL_KM:,}km) · 안 돈다")
-        return []
-    claim = (f"{_name(ref, key)} 원정 이동 {km:,.0f}km — 원정 부담"
-             f"(문턱 {TRAVEL_KM:,}km · {why})")
-    state.note(f"s5 {rid} `{key}` **발동** — {why}")
-    return [_ir_var(_rid_for(rid, key, ref), kind, row, key, claim, ref)]
-
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 **IR15 구장·날씨** — 사용자 지시 2026-10-18(② 배선)
-# ══════════════════════════════════════════════════════════════════
-#
-# > `venue_weather` … **우리에게 다 자료가 있지 않니??**
-#
-# 🔴 재료는 `facts.venue["weather"]` 다 — `fotmob.weather_of` 가 경기 페이지의
-#    그 칸을 읽고 `s2_facts._venue` 가 담는다(새 통신 0 · 사본 금지).
-# 🔴 문턱은 **규칙 표**가 든다(`config/interpret_rules.yaml` 의 `thresholds`) —
-#    손값을 코드에 박지 않는다(CLAUDE.md #1 · §13-7).
-# ⚠️ **승패를 밀지 않는다** — 유형표가 `favors: both` · `goals: none` 이다.
-#    그래서 확률에 안 닿고 **⑯ 이 읽는 재료**다(우천→언더 판단은 평이 한다).
-
-
-def _ir_weather(rid: str, kind: str, row: dict, ref: MatchRef,
-                facts: Facts, *, state: RunState) -> list[Variable]:
-    """🔴🔴 **날씨가 문턱을 넘으면** 변수 하나. `[Variable]`.
-
-    ⚠️ 날씨 칸이 없으면 **안 돈다** — 사유를 이름으로 남긴다(#3).
-    ⚠️ 문턱을 못 넘으면 안 돈다 — 그 수도 사유에 적는다(조용한 0 금지).
-    """
-    said_v = dict(getattr(facts, "venue", None) or {})
-    box = dict(said_v.get("weather") or {})
-    if not box:
-        state.note(f"s5 {rid} — ⬜ 날씨 칸이 없다(경기 페이지가 안 줬다) · 안 돈다")
-        return []
-    th = dict(row.get("thresholds") or {})
-    if not th:
-        state.note(f"s5 {rid} — ⬜ 문턱 표가 없다(`interpret_rules`) · 안 돈다")
-        return []
-
-    def _num(val) -> float | None:
-        try:
-            return float(str(val).split()[0].replace("%", ""))
-        except (TypeError, ValueError, IndexError):
-            return None
-
-    hits: list[str] = []
-    said_num: list[str] = []
-    pr, wd, tp = (_num(box.get("precipitation")), _num(box.get("windSpeed")),
-                  _num(box.get("temperature")))
-    if pr is not None:
-        said_num.append(f"강수 {pr:g}%")
-        if pr >= float(th.get("precipitation_pct") or 101):
-            hits.append(f"강수 {pr:g}%(문턱 {th.get('precipitation_pct')}%)")
-    if wd is not None:
-        said_num.append(f"바람 {wd:g}km/h")
-        if wd >= float(th.get("wind_kmh") or 10_000):
-            hits.append(f"바람 {wd:g}km/h(문턱 {th.get('wind_kmh')})")
-    if tp is not None:
-        said_num.append(f"기온 {tp:g}℃")
-        if tp >= float(th.get("temp_hot_c") or 10_000):
-            hits.append(f"더위 {tp:g}℃(문턱 {th.get('temp_hot_c')})")
-        elif tp <= float(th.get("temp_cold_c") or -10_000):
-            hits.append(f"추위 {tp:g}℃(문턱 {th.get('temp_cold_c')})")
-    said_desc = str(box.get("description") or "").strip()
-    if not hits:
-        state.note(f"s5 {rid} — 문턱 아래다({' · '.join(said_num) or '수 없음'}"
-                   + (f" · {said_desc}" if said_desc else "") + ") · 안 돈다")
-        return []
-    claim = (f"{said_v.get('name') or '구장'} 날씨 — " + " · ".join(hits)
-             + (f" · {said_desc}" if said_desc else "")
-             + f" (잰 값 {' · '.join(said_num)})")
-    state.note(f"s5 {rid} **발동** — {' · '.join(hits)}")
-    # 🔴 주어는 **홈**이다(구장은 홈 쪽이다) · `favors` 는 표가 `both` 로 든다
-    return [_ir_var(rid, kind, row, str(getattr(ref, "home", "") or ""),
-                    claim, ref)]
-
-
-#: 🔴 두 번째 조건의 창(일)과 경기 수 — 지시서 원문 *"최근 8일 안에 이번이 3번째"*
-FATIGUE_WINDOW_DAYS = 8
-FATIGUE_WINDOW_GAMES = 3
+# 🔴🔴 **옛 IR13(이동) 머리말은 걷었다** — 사용자 지시 2026-10-18
+#    (*"이동 삭제"*). ⚠️ 그 규칙은 백필에서 **서지 않았다**는 기록이
+#    남아 있었다(의심 변수 `C3` · 1,470경기: 체급별로 부호가 뒤집혔다)
+#    — 그 기록은 `docs/fable/archive/doubt_v2/` 에 그대로 있다.
+# 🔴 남는 것은 `IR11`(피로도)이고, 거리는 그 규칙이 `_travel` 로
+#    **보조 조건**(4일 이내 + 이동)으로만 쓴다.
 
 
 def _three_in_window(ref: MatchRef, facts: Facts) -> dict[str, str]:

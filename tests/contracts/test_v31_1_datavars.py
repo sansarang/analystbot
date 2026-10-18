@@ -505,3 +505,25 @@ def test_dv_run_이_다섯_집안을_돈다() -> None:
     _got, why = dv.run(_R(), _F(), {}, state=st)
     for said in ("가 능력치", "나 갈래", "다 사실", "실력", "흐름"):
         assert said in why, (said, why)
+
+
+def test_goals_부호는_주어_기준이다() -> None:
+    """🔴🔴 **실사고 2026-10-18** — `side=="away"` 일 때 반대쪽을 밀었다.
+
+    `flat_prob` 은 `goals` 를 **주어 팀 기준**으로 읽는다
+    (`want = side if goals=="up" else 반대편`). 🔴 `_var` 의 주어는 **유리한
+    팀**이므로 `goals` 는 **늘 `up`** 이어야 한다.
+    ⚠️ 종전엔 `("up" if side=="home" else "down")` 를 넘겨, 원정이 유리한
+       흐름 변수가 **홈을 밀었다**(캔자스 5차 로그: `[FL1] home ×1.05(goals
+       down)` — 글은 홈 흐름이 오른다였는데 부호가 어긋났다).
+    """
+    from app.core import probmodel as pm
+    from app.core.routing import place
+    for side, other in (("home", "away"), ("away", "home")):
+        one = dv._var("FL1", "recent_pattern", _R(), side, "대역", goals="up")
+        assert one.goals == "up", one
+        got, why = pm.flat_prob(place([one]), ref=_R())
+        assert got[side] > got[other], (side, got, why)
+    # 🔴 코드에 그 꼴이 다시 생기면 빨개진다
+    src = (ROOT / "app/core/datavars.py").read_text(encoding="utf-8")
+    assert 'if side == "home" else "down"' not in src, "🔴 그 버그가 돌아왔다"

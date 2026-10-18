@@ -646,7 +646,11 @@ def _weighted_form(ref: MatchRef, cf: dict, got: dict, *, state: RunState,
                  f"상대 순위로 가중한 경기당 득실 홈 **{h:+.2f}** ↔ 원정 "
                  f"**{a:+.2f}**(문턱 차 {want:g} · 가중은 표 {n_tab}팀의 "
                  f"중앙 {mid:.1f}위 기준) · ⚠️ **오늘 순위** 기준이다",
-                 goals=("up" if side == "home" else "down"))]
+                 # 🔴 **주어가 유리한 팀**이다 — `goals` 는 **그 주어 기준**으로
+                 #    읽힌다(`flat_prob`: `want = side if goals=="up"`).
+                 #    ⚠️ 실사고 2026-10-18: `side=="away"` 일 때
+                 #       `down` 을 넘겨 **반대쪽을 밀었다**.
+                 goals="up")]
 
 
 def _vs_top(ref: MatchRef, cf: dict, got: dict, *, state: RunState,
@@ -767,7 +771,11 @@ def _trend(ref: MatchRef, cf: dict, box: dict, *,
                  f"득실 추세 홈 **{h:+.2f}** ↔ 원정 **{a:+.2f}**"
                  f"(홈 {said_t['home']} · 원정 {said_t['away']} · 문턱 차 "
                  f"{want:g}) · ⚠️ 평균이 아니라 **순서**로 본 수다",
-                 goals=("up" if side == "home" else "down"))]
+                 # 🔴 **주어가 유리한 팀**이다 — `goals` 는 **그 주어 기준**으로
+                 #    읽힌다(`flat_prob`: `want = side if goals=="up"`).
+                 #    ⚠️ 실사고 2026-10-18: `side=="away"` 일 때
+                 #       `down` 을 넘겨 **반대쪽을 밀었다**.
+                 goals="up")]
 
 
 def _decay_form(ref: MatchRef, cf: dict, box: dict, *,
@@ -802,7 +810,11 @@ def _decay_form(ref: MatchRef, cf: dict, box: dict, *,
                  f"{_name(ref, _key(ref, side))} 의 **최신 쪽 폼이 낫다** — "
                  f"최신에 무게를 둔 경기당 득실 홈 **{h:+.2f}** ↔ 원정 "
                  f"**{a:+.2f}**(뒤로 갈수록 ×{dec:g} · 문턱 차 {want:g})",
-                 goals=("up" if side == "home" else "down"))]
+                 # 🔴 **주어가 유리한 팀**이다 — `goals` 는 **그 주어 기준**으로
+                 #    읽힌다(`flat_prob`: `want = side if goals=="up"`).
+                 #    ⚠️ 실사고 2026-10-18: `side=="away"` 일 때
+                 #       `down` 을 넘겨 **반대쪽을 밀었다**.
+                 goals="up")]
 
 
 # ══════════════════════════════════════════════════════════════════
