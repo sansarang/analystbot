@@ -983,11 +983,69 @@ def _min_games(row: dict, default: int = 0) -> int:
         return int(default)
 
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **S01 도 집안 하나 — 부등호로 센다**(사용자 지시 2026-10-18)
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 은 꼬리표가 양 팀에 동시에 걸리면 서로 지웁니다..어떤종류인지 보여주라
+#  > → **S01 부터 고쳐라 집안마다 부등호 하나**
+#
+#  ⚠️ 실측 2026-10-18(여섯 경기) — 양 팀에 같이 걸려 **서로 지운** 꼬리표:
+#       `S01` **4경기**(오카야마 빼고 전부) · `IR02` 2 · `IR12` 2 ·
+#       `TURN` 1 · `AB2` 1. 모양은 늘 같았다:
+#         [S01-home] away ×1.05  "홈이 기준보다 득점 적다"
+#         [S01-away] home ×1.05  "원정도 적다"   → 순 쏠림 0
+#       서울–김천은 변수 **17개**가 서고도 쏠림이 **1단계**였다(34.2%).
+#  🔴 그래서 이 집안은 **두 팀을 견준다**(사다리 · 먼저 갈리는 자가 정한다):
+#       ① 보정 득점 평균 — **큰** 쪽이 낫다
+#       ② 실점 평균 — **적은** 쪽이 낫다
+#     나은 쪽 변수 하나가 `favors` 로 확률을 밀고, 못한 쪽은 **맥락 전용**이다.
+#     차가 문턱 미만이면 **"같다"** — 둘 다 맥락으로 내린다(확률 0).
+#  🔴 **수를 짓지 않는다**(#4) — 잰 값끼리 크고 작음만 본다(합산·가중 금지).
+#  ⚠️ 기준 대비 방향(`goals` 칸 · 총골 이야기)은 **그대로 둔다** — 그것은 다른
+#     자(기준)이고, 승패는 이제 이 부등호(상대와의 비교)가 민다.
+#: 🔴 두 팀 보정 득점 평균이 이보다 가까우면 **같다**(단위는 골 · `GOAL_GAP` 과
+#   같은 자다 — 그 수를 그대로 쓴다 · 새 손값을 만들지 않는다)
+FORM_LADDER = (("scored", "more", "보정 득점 평균"),
+               ("conceded", "less", "실점 평균"))
+
+
+def _form_more(home: dict, away: dict, gap: float) -> tuple[str, str]:
+    """🔴🔴 **어느 쪽 폼이 나은가**. `("home"|"away"|"", 사유)`.
+
+    🔴 `FORM_LADDER` 를 위에서부터 — 차가 `gap` 이상 나는 **첫 자**가 정한다.
+    ⚠️ 한쪽이라도 못 잰 자는 **건너뛰고 사유에 적는다**(#3).
+    """
+    skipped: list[str] = []
+    for key, want, label in FORM_LADDER:
+        a, b = home.get(key), away.get(key)
+        if a is None or b is None:
+            skipped.append(f"{label} ⬜(한쪽을 못 쟀다)")
+            continue
+        a, b = float(a), float(b)
+        if abs(a - b) < gap:
+            skipped.append(f"{label} {a:g} ↔ {b:g}(차 {abs(a - b):.2f} < {gap:g})")
+            continue
+        said = f"{label} 홈 {a:g} {'>' if a > b else '<'} 원정 {b:g}"
+        if skipped:
+            said += f"(앞선 자 — {' · '.join(skipped)})"
+        if want == "more":
+            return ("home" if a > b else "away"), said
+        return ("home" if a < b else "away"), said
+    return "", (" · ".join(skipped) or "잰 자가 하나도 없다")
+
+
 def _ir_recent(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
                state: RunState) -> list[Variable]:
-    """IR01 — 최근 폼. 🔴 **양 팀 다** 만든다(한쪽만 만들면 방향이 한 종류다)."""
+    """IR01 — 최근 폼. 🔴 **양 팀 다** 만들지만 확률에 닿는 것은 **하나**다.
+
+    🔴 위 머리말(2026-10-18) — 두 팀을 견준 **부등호** 하나가 승패를 밀고,
+       못한 쪽과 *"같다"* 인 경우는 **맥락 전용**이다.
+    """
     low = _min_games(row, 3)
     out: list[Variable] = []
+    #: 🔴 사다리가 읽을 **잰 값**(팀 쪽별) — 변수를 만드는 그 자리에서 담는다
+    meas: dict[str, dict] = {}
     for key in (ref.home, ref.away):
         box = facts.recent.get(key)
         box = dict(box) if isinstance(box, dict) else {}
@@ -1044,7 +1102,48 @@ def _ir_recent(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
         if said_flags:
             state.note(f"s5 🔴 {rid} `{key}` **안전장치가 걸렸다** → 맥락 전용"
                        f"(확률에 안 닿는다) — {' · '.join(said_flags[:2])}")
-    return out
+        meas["home" if key == ref.home else "away"] = {
+            "scored": trim, "conceded": _ga_avg(box),
+            "usable": bool(n >= low and not said_flags)}
+    return _form_one(out, meas, ref, rid, state=state)
+
+
+def _form_one(out: list[Variable], meas: dict, ref: MatchRef, rid: str, *,
+              state: RunState) -> list[Variable]:
+    """🔴🔴 **집안 하나로 줄인다**(위 머리말 · 2026-10-18). 돌려주는 줄 수는 같다.
+
+    🔴 두 팀이 다 쓸 수 있을 때만 견준다 — 나은 쪽 하나가 `favors` 로 밀고,
+       못한 쪽은 **맥락 전용**(`usable_as_basis=False`)이다.
+    ⚠️ 한쪽만 있거나 한쪽이 못 쓸 것이면 **종전 그대로** 둔다(견줄 상대가 없다).
+    """
+    if len(out) < 2 or not all(dict(meas.get(s) or {}).get("usable")
+                               for s in ("home", "away")):
+        state.note(f"s5 {rid} — 견줄 두 쪽이 안 돼 **종전대로** 둔다"
+                   f"(쓸 수 있는 쪽 "
+                   f"{[s for s in ('home', 'away') if dict(meas.get(s) or {}).get('usable')]})")
+        return out
+    side, why = _form_more(meas["home"], meas["away"], GOAL_GAP)
+    got: list[Variable] = []
+    for one in out:
+        mine = "home" if one.subject == ref.home else "away"
+        if not side:
+            # 🔴 **같다** — 어느 쪽도 못 가렸다 → 둘 다 맥락(확률 0)
+            got.append(one.model_copy(update={
+                "usable_as_basis": False,
+                "claim": f"{one.claim} · 🔴 **폼 같다**({why}) — 확률에 안 넣는다"}))
+            continue
+        if mine == side:
+            got.append(one.model_copy(update={
+                "favors": side,
+                "claim": f"{one.claim} · 🔴 **폼 {why}** → 이 쪽이 낫다"}))
+        else:
+            got.append(one.model_copy(update={
+                "usable_as_basis": False,
+                "claim": f"{one.claim} · 🔴 **집안 하나** — 폼은 상대 쪽이 "
+                         f"대표다({why})"}))
+    state.note(f"s5 {rid} — 폼 부등호 "
+               + (f"**{side} 가 낫다**({why})" if side else f"**같다**({why})"))
+    return got
 
 
 #: 🔴 **기준에서 얼마나 떨어져야 방향을 매기나**(§3 원문: 0.2). ⚠️ 코드의 수는 이 한 곳
@@ -1062,16 +1161,26 @@ def _form_goal_dirs(box: dict, trim, kind: str) -> tuple[str, str, str]:
     if share is None:
         return "none", "none", ""
     got = _side_of_avg(trim, share)
-    # 🔴 실점은 **수열에서** 센다 — `goals_against` 가 경기마다 들어 있다
-    seq = [g for g in (box.get("sequence") or []) if isinstance(g, dict)]
-    vals = [float(g["goals_against"]) for g in seq
-            if str(g.get("goals_against")).isdigit()]
-    ga_avg = round(sum(vals) / len(vals), 3) if vals else None
+    ga_avg = _ga_avg(box)
     ga = _side_of_avg(ga_avg, share)
     why = (f"기준 팀당 {share}골(대회 {kind}) 대비 득점 "
            f"{_KO_DIR[got]}" + (f" · 실점 평균 {ga_avg}({_KO_DIR[ga]})"
                                 if ga_avg is not None else ""))
     return got, ga, why
+
+
+def _ga_avg(box: dict):
+    """🔴 그 팀 최근 경기 **실점 평균**. 못 쟀으면 `None`.
+
+    🔴 실점은 **수열에서** 센다 — `goals_against` 가 경기마다 들어 있다.
+    🔴 재는 곳은 여기 하나다(사본 금지) — 방향(`_form_goal_dirs`)과 **부등호
+       사다리**(`_form_more`)가 같은 이 수를 읽는다.
+    """
+    seq = [g for g in (dict(box or {}).get("sequence") or [])
+           if isinstance(g, dict)]
+    vals = [float(g["goals_against"]) for g in seq
+            if str(g.get("goals_against")).isdigit()]
+    return round(sum(vals) / len(vals), 3) if vals else None
 
 
 _KO_DIR = {"up": "많다", "down": "적다", "none": "보통"}
