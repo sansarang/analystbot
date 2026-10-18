@@ -2074,14 +2074,85 @@ FATIGUE_WINDOW_DAYS = 8
 FATIGUE_WINDOW_GAMES = 3
 
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **피로도 비교 사다리** — 사용자 결정 2026-10-18(M25)
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 피로도가 **상쇄**하면 **부등호 표시** .. **같다고 해라** ..
+#  > **피로도가 더 큰쪽이 더 안좋은거다**
+#
+#  ⚠️ 실측 2026-10-18(캔자스·댈러스·오스틴): MLS 는 일정이 빽빽해 `IR11` 이
+#     **두 팀 다** 걸렸고, 변수 둘이 서로 반대쪽을 밀어 **확률에서 지워졌다**
+#     (`flat_prob` 의 순 쏠림이 0 이 된다). 두 팀이 똑같이 피로한 것이 아닌데도
+#     그랬다 — 피로의 **크기**를 비교한 적이 없기 때문이다.
+#  🔴 그래서 둘 다 걸리면 **사다리로 부등호를 세운다**(먼저 갈리는 자가 정한다):
+#       ① 8일 안 경기 수 — **많은** 쪽이 더 피로
+#       ② 직전 경기 후 쉰 날 — **적은** 쪽이 더 피로
+#       ③ 이동 거리(km) — **먼** 쪽이 더 피로
+#     전부 같거나 못 잰 자면 **"같다"** → 확률에 안 넣는다(맥락 전용).
+#  🔴 **수를 짓지 않는다**(#4) — 잰 값끼리 크고 작음만 본다(합산 점수 금지).
+#: 🔴 사다리 — `(열쇠, 어느 쪽이 더 피로한가, 카드에 적을 이름, 단위)`
+FATIGUE_LADDER = (
+    ("games", "more", "8일 안 경기 수", "번째"),
+    ("days", "less", "쉰 날", "일"),
+    ("km", "more", "이동", "km"),
+)
+
+
+def _fatigue_said(one: dict) -> str:
+    """🔴 그 팀의 피로 재료 한 줄 — **못 잰 자는 ⬜ 로 적는다**(#3)."""
+    out: list[str] = []
+    for key, _side, label, unit in FATIGUE_LADDER:
+        got = one.get(key)
+        if got is None:
+            out.append(f"{label} ⬜")
+        elif key == "km":
+            out.append(f"{label} {float(got):,.0f}{unit}")
+        else:
+            out.append(f"{label} {got:g}{unit}")
+    return " · ".join(out)
+
+
+def _fatigue_more(home: dict, away: dict) -> tuple[str, str]:
+    """🔴🔴 M25 — 둘 중 **어느 쪽이 더 피로한가**. `("home"|"away"|"", 사유)`.
+
+    🔴 사다리(`FATIGUE_LADDER`)를 위에서부터 내려가며 **먼저 갈리는 자**로 정한다.
+    ⚠️ 한쪽이라도 못 잰 자는 **건너뛰고 그 사실을 사유에 적는다**(#3).
+       끝까지 못 가리면 빈 글자 — 부르는 쪽이 *"같다"* 로 적는다.
+    """
+    skipped: list[str] = []
+    for key, want, label, unit in FATIGUE_LADDER:
+        a, b = home.get(key), away.get(key)
+        if a is None or b is None:
+            skipped.append(f"{label} ⬜(한쪽을 못 쟀다)")
+            continue
+        a, b = float(a), float(b)
+        if a == b:
+            skipped.append(f"{label} 같다")
+            continue
+        said = (f"{label} 홈 {a:,.0f}{unit} {'>' if a > b else '<'} "
+                f"원정 {b:,.0f}{unit}")
+        if skipped:
+            said += f"(앞선 자 — {' · '.join(skipped)})"
+        if want == "more":
+            return ("home" if a > b else "away"), said
+        return ("home" if a < b else "away"), said
+    return "", (" · ".join(skipped) or "잰 자가 하나도 없다")
+
+
 def _ir_fatigue(rid: str, kind: str, row: dict, ref: MatchRef, facts: Facts, *,
                 state: RunState) -> list[Variable]:
-    """🔴 §6 — 직전 경기 후 4일 이내 **그리고** (시차 3시간+ 또는 이동 3,000km+).
+    """🔴 §6 — 직전 경기 후 4일 이내 **그리고** (시차 3시간+ 또는 이동 3,000km+),
+    **또는** 8일 안에 이번이 3번째.
 
-    🔴 재료: `facts.schedule[팀]["last_match"]`(날짜)와 `last_venue`·`last_country`.
+    🔴 재료: `facts.schedule[팀]["last_match"]`(날짜)와 `last_venue`·`last_country`,
+       그리고 `facts.recent[팀]["sequence"]`(8일 창).
     ⚠️ 하나라도 없으면 **안 돈다** — 사유를 이름으로 남긴다(#3 조용한 0 금지).
+
+    🔴🔴 **두 팀 다 걸리면 변수는 하나다**(M25 · 위 머리말) — 사다리로 더 피로한
+       쪽을 가려 **그 팀을 subject** 로 세운다(표의 `favors: opponent` 가 덜
+       피로한 쪽으로 민다). 같으면 **맥락 전용**으로 두어 확률을 안 움직인다.
     """
-    out: list[Variable] = []
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **조건은 OR 이다**(사용자 지시 2026-10-07 ①) — 내가 지운 것을 되살린다
     # ══════════════════════════════════════════════════════════════════
@@ -2092,43 +2163,86 @@ def _ir_fatigue(rid: str, kind: str, row: dict, ref: MatchRef, facts: Facts, *,
     # ⚠️ 7차 §6 에서 문턱을 고칠 때 내가 **두 번째 조건을 지웠다**(종전 조항은
     #    *"8일에 3경기"* 였다). 🔴 실측 2026-10-07 미국: 09-26·09-30·10-04 로
     #    8일 안에 두 경기를 치르고 이번이 **세 번째**인데 IR11 이 안 돌았다.
-    for key, said in _three_in_window(ref, facts).items():
-        out.append(_ir_var(_rid_for(rid, key, ref), kind, row, key,
-                           f"{_name(ref, key)} 일정 과부하 — {said}", ref))
-        state.note(f"s5 {rid} `{key}` **발동**(8일 3경기) — {said}")
-    done = {v.subject for v in out}
+    window = _three_in_window(ref, facts)
+    #: 🔴 창 안 경기 수 — 발동 여부와 **무관하게** 잰다(사다리가 쓴다)
+    counted = {k: len(v) + 1 for k, v in _window_days(ref, facts).items()}
     box = dict(facts.schedule or {})
-    if not box:
-        if not out:
-            state.note(f"s5 {rid} — 일정 칸(`schedule`)이 비었다 · 안 돈다")
-        return out
-    for key, raw in box.items():
-        if key in done:
-            continue            # 🔴 이미 8일 3경기로 걸렸다 — 두 번 세지 않는다
-        said = dict(raw) if isinstance(raw, dict) else {}
+    if not box and not window:
+        state.note(f"s5 {rid} — 일정 칸(`schedule`)이 비었다 · 안 돈다")
+        return []
+    got: dict[str, dict] = {}
+    for key in (ref.home, ref.away):
+        said = dict(box.get(key) or {}) if isinstance(box.get(key), dict) else {}
         days = _days_since(said.get("last_match"), ref.kickoff_utc)
-        if days is None:
-            state.note(f"s5 {rid} `{key}` — 직전 경기 날짜가 없다")
+        tz, km, why = _travel(said, ref, key) if said else (None, None,
+                                                            "일정 칸이 없다")
+        # 🔴 **쉰 날 퇴로** — 일정 칸이 없으면 **폼 표의 창**에서 잰다(M25).
+        #    ⚠️ 실측 2026-10-18: 두 팀이 `8일 3경기` 로 걸릴 때는 발동에
+        #       `schedule` 이 필요 없어서 그 칸이 비는 일이 있고, 그러면 사다리
+        #       ② 가 영구히 ⬜ 가 되어 **늘 "같다"** 가 된다.
+        #    🔴 지어낸 값이 아니다 — 같은 사실(직전 경기 날짜)을 폼 표가 든다.
+        #       ⚠️ 그래서 **발동 판정에는 쓰지 않는다**(문턱은 일정 칸 기준이다).
+        in_window = list(_window_days(ref, facts).get(key) or [])
+        if days is None and in_window:
+            days = min(in_window)
+        one = {"games": counted.get(key), "days": days, "km": km, "tz": tz,
+               "fired": False, "claim": ""}
+        got[key] = one
+        if key in window:
+            one["fired"] = True
+            one["claim"] = f"{_name(ref, key)} 일정 과부하 — {window[key]}"
+            state.note(f"s5 {rid} `{key}` **발동**(8일 3경기) — {window[key]}")
             continue
-        if days > FATIGUE_DAYS:
-            state.note(f"s5 {rid} `{key}` — 직전 경기 {days}일 전"
+        fire_days = _days_since(said.get("last_match"), ref.kickoff_utc)
+        if fire_days is None:
+            state.note(f"s5 {rid} `{key}` — 직전 경기 날짜가 없다"
+                       + (f"(사다리는 폼 표의 {days}일을 쓴다)"
+                          if days is not None else ""))
+            continue
+        if fire_days > FATIGUE_DAYS:
+            state.note(f"s5 {rid} `{key}` — 직전 경기 {fire_days}일 전"
                        f"(문턱 {FATIGUE_DAYS}일) · 안 돈다")
             continue
-        tz, km, why = _travel(said, ref, key)
         if tz is None and km is None:
             state.note(f"s5 {rid} `{key}` — 직전 경기 **장소를 모른다**({why})")
             continue
-        hit = ((tz is not None and abs(tz) >= FATIGUE_TZ_HOURS)
-               or (km is not None and km >= FATIGUE_KM))
-        if not hit:
-            state.note(f"s5 {rid} `{key}` — {days}일 쉬었고 이동 부담이 문턱 아래다"
-                       f"({why})")
+        if not ((tz is not None and abs(tz) >= FATIGUE_TZ_HOURS)
+                or (km is not None and km >= FATIGUE_KM)):
+            state.note(f"s5 {rid} `{key}` — {fire_days}일 쉬었고 이동 부담이 "
+                       f"문턱 아래다({why})")
             continue
-        out.append(_ir_var(_rid_for(rid, key, ref), kind, row, key,
-                           f"{_name(ref, key)} 일정 피로 — 직전 경기 {days}일 전 · "
-                           f"{why}", ref))
-        state.note(f"s5 {rid} `{key}` **발동** — {days}일 · {why}")
-    return out
+        one["fired"] = True
+        one["claim"] = (f"{_name(ref, key)} 일정 피로 — 직전 경기 {fire_days}일 "
+                        f"전 · {why}")
+        state.note(f"s5 {rid} `{key}` **발동** — {fire_days}일 · {why}")
+    fired = [k for k in (ref.home, ref.away) if got[k]["fired"]]
+    if not fired:
+        return []
+    if len(fired) == 1:
+        key = fired[0]
+        return [_ir_var(_rid_for(rid, key, ref), kind, row, key,
+                        got[key]["claim"], ref)]
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴 **둘 다 걸렸다** — 상쇄시키지 않고 **부등호**를 세운다(M25)
+    # ══════════════════════════════════════════════════════════════════
+    side, why = _fatigue_more(got[ref.home], got[ref.away])
+    pair = (f"{ref.home_name} {_fatigue_said(got[ref.home])} ↔ "
+            f"{ref.away_name} {_fatigue_said(got[ref.away])}")
+    if not side:
+        # 🔴 **같다** — 확률에 안 넣는다(맥락 전용). ⚠️ subject 는 한쪽을 적어야
+        #    하므로 홈으로 두고, 글이 *"같다"* 를 말한다(방향은 없다).
+        claim = (f"피로도 **같다** — {ref.home_name} = {ref.away_name}"
+                 f"(사다리가 못 가렸다: {why}) · {pair} · 🔴 두 팀이 상쇄하므로 "
+                 f"**확률에 안 넣는다**(맥락)")
+        state.note(f"s5 {rid} — 두 팀 다 발동 · **같다**({why}) → 맥락 전용")
+        return [_ir_var(_rid_for(rid, ref.home, ref), kind, row, ref.home,
+                        claim, ref, usable=False)]
+    key = ref.home if side == "home" else ref.away
+    other = ref.away_name if side == "home" else ref.home_name
+    claim = (f"피로도 **{_name(ref, key)} > {other}** — 더 피로한 쪽이 불리하다"
+             f"(갈린 자 {why}) · {pair}")
+    state.note(f"s5 {rid} — 두 팀 다 발동 · **{side} 가 더 피로**({why})")
+    return [_ir_var(_rid_for(rid, key, ref), kind, row, key, claim, ref)]
 
 
 def _days_since(said: object, kickoff) -> int | None:
@@ -2197,19 +2311,25 @@ def _travel(said: dict, ref: MatchRef, key: str) -> tuple[float | None,
 #    **보조 조건**(4일 이내 + 이동)으로만 쓴다.
 
 
-def _three_in_window(ref: MatchRef, facts: Facts) -> dict[str, str]:
-    """🔴 **8일 안에 이번이 3번째 경기**인 팀들. `{열쇠: 사유}` — 아니면 빈 표.
+def _window_days(ref: MatchRef, facts: Facts) -> dict[str, list[int]]:
+    """🔴 팀마다 **8일 창 안 직전 경기들**이 며칠 전인가. `{열쇠: [일]}`.
 
     🔴 재료는 `facts.recent[팀]["sequence"]` 의 **날짜**다(폼 표가 이미 들고 있다).
     ⚠️ 날짜를 못 읽은 줄은 **세지 않는다**(0 으로 때우지 않는다 · #3).
+    🔴 재는 곳은 여기 하나다(사본 금지) — `_three_in_window`(발동)와 피로도
+       **사다리**(M25 · 경기 수 비교)가 같은 이 수를 읽는다.
     """
     from datetime import date
 
-    out: dict[str, str] = {}
+    out: dict[str, list[int]] = {}
     when = ref.kickoff_utc.date()
     for key, raw in (facts.recent or {}).items():
         box = dict(raw) if isinstance(raw, dict) else {}
         days: list[int] = []
+        #: 🔴 **날짜를 하나라도 읽었나** — 못 읽었으면 그 팀은 표에 넣지 않는다.
+        #  ⚠️ 빈 칸(`[]`)과 **못 쟀다**를 가른다 — 빈 칸은 *"창 안에 경기가
+        #     없다"*(잰 사실)이고, 못 쟀으면 사다리가 그 자를 **건너뛴다**(#3).
+        read = False
         for row in (box.get("sequence") or []):
             said = str(dict(row).get("date") or "")[:10]
             if not said:
@@ -2218,14 +2338,24 @@ def _three_in_window(ref: MatchRef, facts: Facts) -> dict[str, str]:
                 then = date.fromisoformat(said)
             except ValueError:
                 continue
+            read = True
             gap = (when - then).days
             if 0 <= gap <= FATIGUE_WINDOW_DAYS:
                 days.append(gap)
+        if read:
+            out[str(key)] = sorted(days)
+    return out
+
+
+def _three_in_window(ref: MatchRef, facts: Facts) -> dict[str, str]:
+    """🔴 **8일 안에 이번이 3번째 경기**인 팀들. `{열쇠: 사유}` — 아니면 빈 표."""
+    out: dict[str, str] = {}
+    for key, days in _window_days(ref, facts).items():
         # 🔴 **이번 경기를 포함해** 센다 — 앞선 경기가 (3-1)개면 이번이 3번째다
         if len(days) >= FATIGUE_WINDOW_GAMES - 1:
             out[str(key)] = (f"{FATIGUE_WINDOW_DAYS}일 안에 이번이 "
                              f"{len(days) + 1}번째 경기"
-                             f"(직전 {sorted(days)}일 전)")
+                             f"(직전 {days}일 전)")
     return out
 
 

@@ -1008,6 +1008,95 @@ def test_IR11_은_8일_3경기로도_발동한다():
     assert "_three_in_window" in calls, "🔴 IR11 이 8일 3경기 조건을 안 부른다"
 
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **M25 — 피로도가 상쇄하면 부등호를 세운다**(사용자 결정 2026-10-18)
+# ══════════════════════════════════════════════════════════════════
+
+
+def _fatigue_facts(ref, *, home_days: list[int], away_days: list[int]):
+    """🔴 8일 창 안 직전 경기 날짜만 든 `Facts` — 사다리 ① 을 먹인다."""
+    from datetime import timedelta
+
+    from app.core.schema import Facts
+    day = ref.kickoff_utc.date()
+
+    def seq(days):
+        return {"sequence": [{"date": str(day - timedelta(days=d))}
+                             for d in days]}
+    return Facts(recent={str(ref.home): seq(home_days),
+                         str(ref.away): seq(away_days)})
+
+
+def test_IR11_두_팀_다_걸리면_부등호로_한_변수만_낸다():
+    """🔴🔴 M25 — *"피로도가 상쇄하면 **부등호 표시** .. 같다고 해라 ..
+    피로도가 **더 큰쪽이 더 안좋은거다**"*(사용자 결정 2026-10-18).
+
+    ⚠️ 종전: 두 팀 다 발동하면 변수 **둘**이 서로 반대쪽을 밀어 `flat_prob` 의
+       순 쏠림이 **0** 이 됐다(MLS 는 일정이 빽빽해 거의 늘 그랬다).
+    🔴 돌연변이: 사다리를 지우면 다시 변수 둘이 나와 상쇄한다.
+    """
+    import importlib
+
+    from app.core.stages import s5_verify as s5
+    from app.core.state import RunState
+    ref = importlib.import_module("tests.e2e.test_v6_replay")._ref()
+    row = {"favors": "opponent", "goals": "none"}
+    # ① 둘 다 8일 3경기 — **경기 수가 같으니** 사다리 ②(쉰 날)로 갈린다
+    facts = _fatigue_facts(ref, home_days=[3, 7], away_days=[2, 6])
+    got = s5._ir_fatigue("IR11", "fatigue", row, ref, facts,
+                         state=RunState(match_key="x"))
+    assert len(got) == 1, f"🔴 두 팀 다 걸렸는데 변수가 {len(got)}개다 — 상쇄한다"
+    one = got[0]
+    # 🔴 쉰 날이 **적은** 원정이 더 피로하다 → 표의 `opponent` 가 홈을 민다
+    assert one.subject == ref.away, (one.subject, one.claim)
+    assert one.favors == "home", (one.favors, one.claim)
+    assert ">" in one.claim and "쉰 날" in one.claim, one.claim
+    assert one.usable_as_basis, one.claim
+    # ② 경기 수가 **다르면** 사다리 ① 이 먼저 정한다(많은 쪽이 더 피로)
+    more = s5._ir_fatigue("IR11", "fatigue", row, ref,
+                          _fatigue_facts(ref, home_days=[2, 4, 6],
+                                         away_days=[2, 6]),
+                          state=RunState(match_key="x"))
+    assert len(more) == 1 and more[0].subject == ref.home, more
+    assert more[0].favors == "away" and "8일 안 경기 수" in more[0].claim, more
+    # ③ 전부 같으면 **"같다"** — 확률에 안 넣는다(맥락 전용)
+    same = s5._ir_fatigue("IR11", "fatigue", row, ref,
+                          _fatigue_facts(ref, home_days=[2, 6],
+                                         away_days=[2, 6]),
+                          state=RunState(match_key="x"))
+    assert len(same) == 1, same
+    assert same[0].usable_as_basis is False, same[0].claim
+    assert "같다" in same[0].claim, same[0].claim
+    # 🔴 한쪽만 걸리면 **종전 그대로**(부등호를 세우지 않는다)
+    one_side = s5._ir_fatigue("IR11", "fatigue", row, ref,
+                              _fatigue_facts(ref, home_days=[2, 6],
+                                             away_days=[2]),
+                              state=RunState(match_key="x"))
+    assert len(one_side) == 1 and one_side[0].subject == ref.home, one_side
+    assert "일정 과부하" in one_side[0].claim, one_side[0].claim
+
+
+def test_피로도_사다리는_잰_값끼리만_비교한다():
+    """🔴 M25 — 못 잰 자는 **건너뛰고 사유에 적는다**(#3) · 합산 점수는 없다(#4).
+
+    ⚠️ 돌연변이: `None` 을 0 으로 때우면 *"8일 안 경기 0번"* 이 사실처럼 선다.
+    """
+    from app.core.stages import s5_verify as s5
+    # ① 한쪽을 못 쟀으면 그 자는 못 가린다 → 다음 자로 내려간다
+    side, why = s5._fatigue_more({"games": None, "days": 2, "km": None},
+                                 {"games": 3, "days": 4, "km": None})
+    assert side == "home" and "쉰 날" in why, (side, why)
+    assert "⬜" in why, why
+    # ② 잴 자가 하나도 없으면 **빈 글자**(부르는 쪽이 "같다" 로 적는다)
+    none, why2 = s5._fatigue_more({"games": None, "days": None, "km": None},
+                                  {"games": None, "days": None, "km": None})
+    assert none == "" and "⬜" in why2, (none, why2)
+    # ③ 사다리는 **셋**이고 방향이 못 박혀 있다(경기 수·이동은 큰 쪽 · 쉰 날은 적은 쪽)
+    assert [(k, d) for k, d, _l, _u in s5.FATIGUE_LADDER] == [
+        ("games", "more"), ("days", "less"), ("km", "more")], s5.FATIGUE_LADDER
+
+
+
 # ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
 #    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
 #    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
