@@ -225,7 +225,22 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #  🔴 원천이 `🔴 LLM 기억` 으로 박히고 **확률·등급에 못 닿는다**.
     #  ⚠️ 여기가 자리인 까닭 — 딥서치(③)·추출(⑤)·검증이 **끝난 뒤**여야
     #     *"못 찾았다"* 를 말할 수 있다.
-    facts, said_recall = _recall_fill(ref, facts, variables, state=st)
+    facts, said_recall, docs_recall = await _recall_fill(
+        ref, facts, variables, state=st, chain=chain, net=net, cache=cache)
+    # 🔴 **받은 문서를 ④ 가 읽는다** — 2차 수확이 뜻을 가지려면 추출까지 가야
+    #    한다(#2: 받아 놓고 안 쓰면 안 받은 것과 같다).
+    if docs_recall:
+        docs = [*docs, *docs_recall]
+        said_more_c = await s4_extract.run(ref, docs_recall, state=st,
+                                           chain=chain, net=net, cache=cache)
+        if said_more_c:
+            cands = [*cands, *said_more_c]
+            variables = s5_verify.run(ref, facts, docs, cands, state=st,
+                                      turnover=turn)
+            st.note(f"⑤-d 2차 수확 → 후보 {len(said_more_c)}개 · 변수 다시 "
+                    f"{len(variables)}개")
+        else:
+            st.note(f"⑤-d 2차 수확 — 문서 {len(docs_recall)}건인데 후보 0개")
 
     # 🔴🔴 **② 전역 새 사실로 깃발을 덮는다**(사용자 결정 2026-10-10 (a)②) —
     #    변수가 생긴 **뒤**에만 볼 수 있다(새 사실이 변수로 온다).
@@ -1062,15 +1077,27 @@ def _gate_of(ref: MatchRef, facts, turn: dict, *, state: RunState):
                        clash=_gate.clash_of(xi_ids=ids, boxes=boxes))
 
 
-def _recall_fill(ref: MatchRef, facts, variables, *, state: RunState):
-    """🔴🔴 **LLM 이 빈 칸을 겨냥한 질의를 쓴다**(지시 2026-10-14). `(facts, 사유)`.
+async def _recall_fill(ref: MatchRef, facts, variables, *, state: RunState,
+                       chain=None, net=None, cache=None):
+    """🔴🔴 **2차 수확** — LLM 이 빈 칸 질의를 쓰고 **사슬이 던진다**.
 
     > llm 회상하는게 아니라 **서치**하는거다 · 검색할 대상은 **변수에 관련된
-    > 내용**이다 — **x search 가 약해서** 한다.
+    > 내용**이다 — **x search 가 약해서** 한다 (지시 2026-10-14)
+    > **2차 수확 배선해라** (지시 2026-10-18)
 
-    🔴 LLM 은 **글자만** 낸다 — 사실은 문서에서만 온다(계약 GS1·GS2).
-    ⚠️ `facts` 를 **바꾸지 않는다** — 2차 수확을 아직 안 이었다(그 사실을 사유에
-       적는다 · #2 안 이은 것을 이었다고 말하지 않는다).
+    돌려주는 것: `(facts, 사유, 받은 문서)`.
+
+    ══════════════════════════════════════════════════════════════════
+    🔴 왜 이제 던지나 — 실측 2026-10-18(오스틴 FC)
+    ══════════════════════════════════════════════════════════════════
+    `🔎 회상 — … LLM 질의 **12개** 중 **8개**를 쓴다 · 🔴 **2차 수확 미배선**
+     — 질의 8개를 아직 사슬에 안 던진다` 가 카드에 그대로 찍혔다. 질의를 짜
+    놓고 **버리고 있었다**(CLAUDE.md #2 의 그 꼴).
+
+    🔴 LLM 은 **글자만** 낸다 — 문서는 우리 사슬이 받고(`s3_docs.gap_docs` ·
+       ③ 과 **같은 몸통**), 사실은 `s4_extract`·`s5_verify` 가 만든다.
+    🔴 `facts` 는 **안 바꾼다** — 받은 문서는 돌려주고, 그것을 ④ 가 읽는다.
+    ⚠️ 여기가 자리인 까닭 — ③·⑤ 가 **끝난 뒤**여야 *"못 찾았다"* 를 말할 수 있다.
     """
     from app.core.stages import s4b_gapsearch as _rc
     keys = [str(getattr(ref, "home", "") or ""), str(getattr(ref, "away", "") or "")]
@@ -1085,11 +1112,45 @@ def _recall_fill(ref: MatchRef, facts, variables, *, state: RunState):
                     sides=sides)
     thin = _rc.thin_kinds(variables)
     qs, why = _rc.ask(ref, facts, state=state, want=want, thin=thin)
-    # 🔴 질의는 **사슬이** 던진다 — 이 함수는 글자만 넘긴다(계약 GS4).
-    #    ⚠️ 2차 수확 배선은 아직 안 했다 — 지금은 질의와 사유만 카드에 적는다
-    #       (안 이은 것을 이었다고 말하지 않는다 · #2·#3).
-    return facts, (why + (f" · 🔴 **2차 수확 미배선** — 질의 {len(qs)}개를 "
-                          "아직 사슬에 안 던진다" if qs else ""))
+    if not qs:
+        return facts, why + " · ⬜ 던질 질의가 없다", []
+    if chain is None or net is None:
+        return facts, why + " · ⬜ 사슬·망이 없다(던지지 않는다)", []
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **던진다** — ③ 과 **같은 몸통**이다(`s3_docs.gap_docs`)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 언어는 ③ 과 **같은 자리**가 정한다(`langs_final` · 지시 2026-10-18)
+    #     — 두 통로가 다른 판정을 쓰던 그 병을 되살리지 않는다.
+    #  🔴 쪽으로 쪼갠다 — `_side_queries` 가 그 일을 한다(사본 금지).
+    #  ⚠️ 카드 상한(`state.clock`)이 바닥이면 **그 자리에서 멈춘다**.
+    from app.core.stages import s3_docs as _sd2
+    said_langs, why_lang = _rc.langs_final(ref, facts)
+    state.note(f"⑤-d 2차 수확 — 질의 {len(qs)}개 · 언어 {said_langs}({why_lang})")
+    pairs = [(str(q), str(lg)) for q in qs for lg in said_langs]
+    got_docs: list = []
+    said_g: list[str] = []
+    for side in ("home", "away"):
+        clock = getattr(state, "clock", None)
+        if clock is not None and clock.over():
+            said_g.append(clock.skip(f"⑤-d 2차 수확({side})"))
+            continue
+        mine, sub = _rc._side_queries(ref, pairs, side)
+        if not mine or sub is None:
+            said_g.append(f"{side} ⬜ 그 팀을 담은 질의가 없다")
+            continue
+        try:
+            rows_d = await _sd2.gap_docs(ref, state=state, chain=chain,
+                                         net=net, cache=cache, queries=mine,
+                                         sub=sub, tag=f"recall-{side}")
+        except Exception as exc:                            # noqa: BLE001
+            said_g.append(f"{side} 🔴 **터졌다**({exc!r:.60})")
+            continue
+        got_docs += rows_d
+        said_g.append(f"{side} 문서 {len(rows_d)}건")
+    return facts, (why + f" · 🔴 **2차 수확 배선됐다**(2026-10-18) — 질의 "
+                   f"{len(qs)}개를 던져 문서 **{len(got_docs)}건** · "
+                   + " · ".join(said_g)), got_docs
 
 
 def _absence_merge(ref: MatchRef, facts, variables, *, state: RunState):

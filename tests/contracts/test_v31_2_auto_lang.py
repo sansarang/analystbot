@@ -99,3 +99,45 @@ def test_al5_나라_코드가_사실에_담기고_배선됐다() -> None:
     assert 'ccode=str(box.get("ccode")' in said_a, "🔴 `adapt` 가 안 싣는다"
     # 🔴 읽는 함수는 `fotmob.ccode_of` 하나다(사본 금지)
     assert "fm.ccode_of(j)" in said, "🔴 나라 코드를 따로 파싱한다(사본)"
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **2차 수확 배선** — 사용자 지시 2026-10-18(*"2차 수확 배선해라"*)
+# ══════════════════════════════════════════════════════════════════
+def test_rc1_2차_수확이_던진다() -> None:
+    """🔴🔴 질의를 짜 놓고 **버리던** 자리다.
+
+    ⚠️ 실측 2026-10-18(오스틴 FC): 카드에
+       `🔎 회상 — … LLM 질의 **12개** 중 **8개**를 쓴다 · 🔴 **2차 수확
+        미배선** — 질의 8개를 아직 사슬에 안 던진다`
+       가 그대로 찍혔다(CLAUDE.md #2 — 안 이은 코드).
+    🔴 이제 **③ 과 같은 몸통**(`s3_docs.gap_docs`)으로 던진다.
+    """
+    import inspect
+
+    from app.core import pipeline as pl
+    src = inspect.getsource(pl._recall_fill)
+    # 🔴 **D46** — 글자 검사는 **독스트링·주석을 뺀 코드만** 본다(머리말이
+    #    옛 사유를 *인용*하는 것과 코드가 그것을 *내는* 것은 다르다).
+    body = "\n".join(x for x in src.splitlines()
+                      if not x.lstrip().startswith("#"))
+    body = body.split('"""')[0] + '"""'.join(body.split('"""')[2:])
+    assert "미배선" not in body, "🔴 아직 '미배선' 이라고 적는다"
+    assert "2차 수확 배선됐다" in body, "🔴 배선 사실을 안 적는다"
+    assert "_sd2.gap_docs(" in src, "🔴 사슬에 안 던진다"
+    assert "_rc.langs_final(ref, facts)" in src, "🔴 언어 판정이 ③ 과 다르다"
+    assert "_rc._side_queries(" in src, "🔴 쪽으로 안 쪼갠다"
+    # 🔴 받은 문서를 **④ 가 읽어야** 뜻이 있다
+    said = inspect.getsource(pl)
+    assert "docs_recall" in said and "s4_extract.run(ref, docs_recall" in said, \
+        "🔴 받아 놓고 추출을 안 돌린다"
+
+
+def test_rc2_사슬이_없으면_안_던지고_사유를_남긴다() -> None:
+    """🔴 #3 — 못 던졌으면 **그 사실을 적는다**(조용히 0 이 아니다)."""
+    import inspect
+
+    from app.core import pipeline as pl
+    src = inspect.getsource(pl._recall_fill)
+    assert "사슬·망이 없다(던지지 않는다)" in src, src[-400:]
+    assert "던질 질의가 없다" in src, src[-400:]
