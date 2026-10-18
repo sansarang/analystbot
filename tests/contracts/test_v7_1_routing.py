@@ -104,18 +104,25 @@ def test_v7_C6_표에_없는_유형은_배치_실패로_내려간다():
 # 🔴 조건부 자리 — 적합 전·XI 불일치
 # ══════════════════════════════════════════════════════════════════
 
-def test_v7_적합_안_된_피로는_축2로_안_간다():
-    """🔴 V-3 — *"fatigue … 축2 압박 감쇠(T2)만 — **적합된 경우**"*.
+def test_v7_피로는_적합_없이도_축2로_간다():
+    """🔴🔴 **뒤집혔다** — 사용자 지시 2026-10-18.
 
-    🔴 우리 T2 계수는 적합 전이다 → 피로는 **V3·가설**로만 간다.
+    > 오늘 경기력의 변수는 오늘 라인업·날씨·**피로도** 등이다 →
+    > **피로도만 해라**
+
+    ⚠️ 종전 V-3 은 *"fatigue … 축2 — **적합된 경우**"* 였고 우리 T2 계수가
+       적합 전이라 피로는 `V3`·가설로만 갔다. 🔴 실측 2026-10-18(휴스턴 vs
+       댈러스): `IR11` 이 **두 팀 다 발동**했는데 확률 표에 없었다 — 그
+       문지기 때문이다. 사용자가 피로도를 오늘 변수로 못 박아 **걷었다**.
     """
     from app.core import routing
     one = routing.place([_var("IR11", "fatigue")]).rows[0]
-    assert "axis2" not in one.places, f"🔴 적합 없이 축2 로 갔다 — {one.places}"
+    assert "axis2" in one.places, f"🔴 축2 로 안 갔다 — {one.places}"
     assert "V3" in one.places and routing.HYPO in one.places
-    # 🔴 적합이 들어오면 축2 로 간다(그때 이 줄이 길을 열어 준다)
-    two = routing.place([_var("IR11", "fatigue")], fitted=("T2",)).rows[0]
-    assert "axis2" in two.places, two.places
+    # 🔴 λ 보정표에도 있어야 **확률이 센다**(자리만으론 안 된다)
+    fav = (((routing.table().get("lambda_rules") or {}).get("by_var") or {})
+           .get("favors") or {})
+    assert "fatigue" in {str(x) for x in (fav.get("types") or [])}, fav
 
 
 def test_v7_감독_발언은_XI와_일치할_때만_축2다():

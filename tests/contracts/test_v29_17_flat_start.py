@@ -53,9 +53,16 @@ def test_폼은_득점_방향으로_센다() -> None:
 
 
 def test_표시_전용은_안_센다() -> None:
+    """🔴 표시 전용 유형은 확률을 못 민다.
+
+    ⚠️ **`stakes` 는 빠졌다**(사용자 지시 2026-10-18 *"전부다 수정해"*) — 동기
+       비대칭이 자리 때문에 버려지던 것을 고쳐 **이제 확률에 닿는다**
+       (`test_v10_4_short_names.py` 가 그 뒤집힘을 센다).
+    🔴 여기 남는 것은 `mood` 처럼 **자리가 `V*`·가설뿐인** 유형이다.
+    """
     got, _ = pm.flat_prob(rt.place([
         V("IR12D", "mood", favors="home"),
-        V("R9", "stakes", favors="home")]), ref=REF)
+        V("R8", "coach_quote", favors="home")]), ref=REF)
     assert abs(got["home"] - 1 / 3) < 1e-9, got
 
 

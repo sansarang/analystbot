@@ -862,7 +862,7 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
             one, _b, why_vd = _vd.ask(ref, prob, mr, varset, state=st,
                                       provider=pv, box=said_box)
             said_got[pv] = one
-            said_vd.append(_vd.said_of(one, said_box, provider=pv))
+            said_vd.append(_vd.said_of(one, said_box, provider=pv, ref=ref))
             st.note(f"⑯ 종합 평({pv}) — {why_vd}")
         # 🔴 **두 평의 공통점 ↔ 확률**(러너와 같은 줄) — 코드가 센다
         said_vd.append(_vd.agree_of(said_got, prob))

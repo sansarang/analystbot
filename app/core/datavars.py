@@ -185,7 +185,6 @@ def _absence_quality(ref: MatchRef, facts: Facts, box: dict, *,
     if gap is None:
         state.note(f"가 A2 — {NONE_MARK} 문턱 표가 없다(`{CONF}`)")
         return out
-    said_book = dict(_ab.pid_book(facts, ref) or {})
     for side in ("home", "away"):
         key = _key(ref, side)
         gone = [str(getattr(m, "name", "") or "")
@@ -197,16 +196,21 @@ def _absence_quality(ref: MatchRef, facts: Facts, box: dict, *,
         mine, _why = _ab.squad_of(facts, ref, side)
         traits = sorted({t for r in dict(_ab.branch_table()).values()
                          for t in (r.get("traits") or [])})
-        now = [v for v in (_ab._pct_of(p, traits) for p in mine)
-               if v is not None]
+        # 🔴 능력치 표(`box`)의 열쇠는 **선수 이름**이다(`ability.side_pct` 가
+        #    `box.get(p["name"])` 로 읽는다 · 사본 금지).
+        #    ⚠️ 실사고 2026-10-18: 행(`p`) 자체를 `_pct_of` 에 넘겨 **늘 빈
+        #       값**이었다 — A1 은 0.55 를 쟀는데 A2 만 *"백분위가 없다"* 였다.
+        now = [v for v in (_ab._pct_of(box.get(p["name"]) or {}, traits)
+                           for p in mine) if v is not None]
         if not now:
             state.note(f"가 A2 `{side}` — {NONE_MARK} 오늘 선발 백분위가 없다")
             continue
         base = sum(now) / len(now)
         hits: list[tuple[str, float]] = []
         for nm in gone:
-            pid = said_book.get(nm)
-            one = dict(box.get(str(pid)) or {}) if pid else {}
+            # 🔴 같은 까닭 — **이름**으로 찾는다(`pid` 는 선수 페이지 열쇠일
+            #    뿐이고 능력치 표의 열쇠가 아니다)
+            one = dict(box.get(nm) or {})
             val = _ab._pct_of(one, traits) if one else None
             if val is not None:
                 hits.append((nm, float(val)))
@@ -452,6 +456,65 @@ def _goal_spread(ref: MatchRef, facts: Facts, cf: dict, *,
                  f"원정 {na}) · {said}")]
 
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **한 집안에서 확률에 닿는 것은 하나** — 사용자 지시 2026-10-18
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 실측(휴스턴 vs 댈러스): 갈래가 `BR-1·2·3` + 묶음 `BR0` 로 **네 표**가
+#     됐고, `ST1`↔`ST2`·`FL1`↔`FL2` 는 **서로 지워 0표**가 됐다.
+#  🔴 집안마다 **가장 센 것 하나**만 남기고 나머지는 **맥락 전용**으로 내린다
+#     (`usable_as_basis=False` → `routing.place` 가 `hypo` 로 내린다).
+#  🔴 집안·세기는 **여기 표**가 든다 — 변수 id 접두로 가린다(사본 금지:
+#     id 를 만드는 곳이 이 파일 하나다).
+
+#: 🔴 집안 — `{집안 이름: (id 접두들)}`. ⚠️ 묶음 변수(`BR0`)는 **갈래 집안**이다
+FAMILY: dict[str, tuple[str, ...]] = {
+    "갈래": ("BR-", "BR0"),
+    "능력치": ("AB1", "AB3"),
+    "실력": ("ST1", "ST2", "ST3"),
+    "흐름": ("FL1", "FL2", "FL4"),
+}
+
+
+def _family_of(rid: str) -> str:
+    said = str(rid or "")
+    for name, pres in FAMILY.items():
+        if any(said.startswith(p) for p in pres):
+            return name
+    return ""
+
+
+def _one_per_family(rows: list[Variable], *,
+                    state: RunState) -> list[Variable]:
+    """🔴🔴 집안마다 **하나**만 확률에 닿게 한다. `[Variable]`(수는 그대로).
+
+    🔴 고르는 기준은 **글에 적힌 차**가 아니라 **먼저 나온 것**이다 — 각
+       집안의 함수가 **센 것부터** 담기 때문이다(갈래는 가려진 순서 · 실력은
+       ST1→ST2→ST3 · 흐름은 FL1→FL2→FL4). ⚠️ 그 사실을 사유에 적는다.
+    🔴 내린 변수는 **사라지지 않는다** — `usable_as_basis=False` 로 맥락 전용이
+       되어 ⑯ 이 읽는다(#3).
+    """
+    if not bool(_load().get("one_per_family")):
+        state.note("집안 하나 — ⬜ 끔(`one_per_family` 가 거짓이다)")
+        return rows
+    seen: set[str] = set()
+    out: list[Variable] = []
+    for one in rows:
+        fam = _family_of(getattr(one, "id", ""))
+        if not fam or fam not in seen:
+            if fam:
+                seen.add(fam)
+            out.append(one)
+            continue
+        out.append(one.model_copy(update={
+            "usable_as_basis": False,
+            "claim": f"{one.claim} · ⚠️ **맥락 전용으로 내렸다** — 집안 "
+                     f"`{fam}` 에서 이미 한 변수가 확률에 닿았다(한 사실이 "
+                     "여러 표가 되지 않게)"}))
+        state.note(f"집안 하나 — `{one.id}` 를 맥락 전용으로 내렸다(집안 `{fam}`)")
+    return out
+
+
 def run(ref: MatchRef, facts: Facts, box: dict, *,
         state: RunState) -> tuple[list[Variable], str]:
     """🔴🔴 **가·나·다 전부** — `(변수 목록, 사유)`.
@@ -480,8 +543,12 @@ def run(ref: MatchRef, facts: Facts, box: dict, *,
             continue
         out += got
         said.append(f"{nm} {len(got)}개")
+    out = _one_per_family(out, state=state)
+    n_hit = sum(1 for x in out if getattr(x, "usable_as_basis", True))
     return out, ("받은 자료 변수 — " + " · ".join(said)
-                 + f" → 모두 **{len(out)}개**")
+                 + f" → 모두 **{len(out)}개**"
+                 + f"(확률에 닿는 것 {n_hit}개 · 맥락 전용 "
+                   f"{len(out) - n_hit}개 — 집안마다 하나)")
 
 
 # ══════════════════════════════════════════════════════════════════

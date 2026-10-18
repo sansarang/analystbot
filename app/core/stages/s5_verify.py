@@ -958,8 +958,6 @@ def _from_facts(ref: MatchRef, facts: Facts, *, state: RunState
             continue
         if kind == "recent_pattern":
             out += _ir_recent(rid, row, ref, facts, state=state)
-        elif kind == "h2h_pattern":
-            out += _ir_h2h(rid, row, ref, facts, state=state)
         elif kind == "home_field":
             out += _ir_home(rid, row, ref, facts, state=state)
         elif kind == "match_type" and rid.startswith("S"):
@@ -1092,91 +1090,16 @@ def _side_of_avg(avg, share: float) -> str:
     return "none"
 
 
-def _ir_h2h(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
-            state: RunState) -> list[Variable]:
-    """IR02 — 맞대결. 🔴 **기록이 가리키는 쪽**이 주체다(동률이면 만들지 않는다)."""
-    from app import league
-    box = dict(facts.h2h or {})
-    got = box.get("summary")
-    n = int(box.get("count") or 0)
-    if not (isinstance(got, (list, tuple)) and len(got) == 3 and n):
-        state.note(f"s5 {rid} — 맞대결 요약이 없다(변수 안 만든다)")
-        return []
-    w, d, lose = (int(x) for x in got)
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **집계 검사**(사용자 지시 2026-10-07 ③) — 승+무+패 = 표본 수여야 한다
-    # ══════════════════════════════════════════════════════════════════
-    #
-    # > 승+무+패 = 표본 수가 아니면 **그 숫자를 쓰지 말고** 블록 1에
-    # > *"맞대결 집계 불일치"* 로 적는다.
-    #
-    # 🔴 원인(실측 2026-10-07 미국–캐나다): `count` 는 **창을 자른** 경기 수(10)인데
-    #    `summary` 는 fotmob 의 **전체 전적**(5-4-4 = 13)이다 — 두 창이 한 줄에
-    #    섞여 있었다. ⚠️ 그 수로 방향을 정하면 창 밖 경기가 방향을 정하는 것이다.
-    if w + d + lose != n:
-        # ══════════════════════════════════════════════════════════════
-        # 🔴🔴 **버리지 않는다 — 목록에서 다시 센다**(사용자 지시 2026-10-09 ①)
-        # ══════════════════════════════════════════════════════════════
-        #
-        # > 맞대결 집계 불일치일 때 **버리지 말고**, 경기 페이지의 맞대결 경기
-        # > 목록(날짜·스코어)을 **직접 세어 다시 만든다.**
-        #
-        # 🔴 왜 셀 수 있나 — `matches` 가 **창 안의 줄 전부**를 날짜·스코어와 함께
-        #    들고 있다(`fotmob.parse_h2h`). 종전 코드는 그것을 보고도 버렸다.
-        # ⚠️ 그래도 **못 세면** 버린다 — 스코어가 없는 자료(야구 일부)가 있다.
-        said0 = (f"맞대결 집계 불일치 — 전적 {w}승 {d}무 {lose}패(합 "
-                 f"{w + d + lose})인데 표본은 {n}경기다"
-                 + (f" · 전체 {box['all_games']}경기" if box.get("all_games")
-                    else ""))
-        counted = league.h2h_tally(list(box.get("matches") or []), ref.home_name)
-        if counted is None:
-            said = said0 + " → 🔴 **그 숫자를 쓰지 않는다**(스코어가 없어 셀 수 없다)"
-            state.drop(f"{rid}/h2h", DropReason.CONFLICT, said)
-            state.note(f"s5 {rid} — {said}")
-            return []
-        w, d, lose = counted
-        n = w + d + lose
-        said = (said0 + f" → 🔴 **목록에서 다시 셌다**(창 {n}경기 · "
-                f"{ref.home_name} 기준 {w}승 {d}무 {lose}패)")
-        state.note(f"s5 {rid} — {said}")
-        # 🔴 카드가 같은 수를 찍어야 한다 — 블록 3 이 `facts.h2h` 를 그대로 읽는다
-        #    (실측 2026-10-07: s5 가 버렸는데 블록 3 은 옛 수를 계속 찍었다).
-        try:
-            facts.h2h["recounted"] = {"w": w, "d": d, "l": lose, "n": n,
-                                      "basis": ref.home_name, "why": said0}
-        except (TypeError, AttributeError):
-            state.note(f"s5 {rid} — 다시 센 수를 facts 에 못 실었다(카드가 옛 수를 찍는다)")
-    if w == lose:
-        state.note(f"s5 {rid} — 맞대결이 {w}승 {d}무 {lose}패로 **동률**이다 "
-                   f"(어느 쪽도 아니다 · 변수 안 만든다)")
-        return []
-    key = ref.home if w > lose else ref.away
-    hard, weight = _sample_weight(n)
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **맞대결은 한 번만, 팀 이름을 붙여 적는다**(사용자 지시 2026-10-09 ④)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    # > 맞대결은 **한 번만**, 항상 `{홈팀} n승 n무 n패(상대 n승)` 처럼 팀 이름을
-    # > 붙여 적는다.
-    #
-    # 🔴 왜 — 실측 2026-10-09(대전–전북): 같은 전적을 카드가 **두 번** 적었고
-    #    기준이 서로 뒤집혀 있었다(대전 쪽 *"1승 4무 5패"* · 전북 쪽 *"5승 4무
-    #    1패"*). ⚠️ 수는 맞지만 한 카드에 두 숫자가 보이면 사람이 어느 쪽을
-    #    믿을지 모른다. 🔴 그래서 **홈팀 기준 한 줄**로 못 박고 상대 승수를
-    #    괄호에 적는다 — 읽는 쪽이 뒤집을 필요가 없다.
-    claim = (f"맞대결 {n}경기 {ref.home_name} {w}승 {d}무 {lose}패"
-             f"(상대 {lose}승)"
-             + (f" · 평균 {box['window_avg_goals']}골"
-                if box.get("window_avg_goals") is not None else ""))
-    return [Variable(
-        id=f"{rid}", type="h2h_pattern", subject=key,
-        favors=favors_of("h2h_pattern", key, claim, ref),   # type: ignore[arg-type]
-        goals=goals_of("h2h_pattern"),                      # type: ignore[arg-type]
-        target="h2h", hardness=("hard" if hard == "hard" else "soft"),
-        weight=weight, claim=claim, quote=claim, doc_ids=[], from_rule=rid,
-        # 🔴 표본 무게가 1.0 미만이면 **근거로 쓰지 않는다**(실측: 3경기 창이 거짓을
-        #    말했고 그 수로 언더에 0.9 를 걸어 낙첨했다 — `league.h2h_weight` 독스트링)
-        usable_as_basis=(hard == "hard"))]
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **`_ir_h2h`(맞대결) 를 지웠다** — 사용자 지시 2026-10-18
+# ══════════════════════════════════════════════════════════════════
+#
+# > os02을 삭제해라 .. **5경기 패턴 분석해라**
+#
+# ⚠️ `S02` 는 **두 팀의 역대 전적**이었다(지난 5경기와 다른 자료다).
+# 🔴 남는 것은 지난 5경기 패턴이다 — `S01`·`IR12`·`ST1~ST3`·
+#    `FL1`·`FL2`·`FL4`·`DV6`·`DV7`.
+# ⚠️ 맞대결 **자료**(`facts.h2h`)는 그대로 받는다 — 규칙만 없앴다.
 
 
 def _ir_home(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
@@ -1658,9 +1581,16 @@ def _ir_soccer(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
                 out.append(_ir_var(_rid_for(rid, key, ref), kind,
                                    {**dict(row), "favors": fav}, key,
                                    f"{_name(ref, key)} {said}"
+                                   # 🔴 **무는 방향이 없다**(지시 2026-10-17
+                                   #    *"무 표시"*) — 종전엔 `fav` 가 빈
+                                   #    글자여도 *"유리하다"* 로 적혀 글과
+                                   #    부호(`both`)가 어긋났다(실사고
+                                   #    2026-10-18 · 메모 M15).
                                    + ("(그 팀이 불리하다)"
                                       if fav == "opponent" else
-                                      "(그 팀이 유리하다)"), ref))
+                                      "(그 팀이 유리하다)" if fav == "subject"
+                                      else "(**무는 방향이 없다** — 어느 쪽도 "
+                                           "안 민다)"), ref))
         if not out:
             state.note(f"s5 {rid} — 직전 경기 결과를 못 읽었다"
                        "(경기 목록이 비었다)")

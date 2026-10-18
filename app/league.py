@@ -154,46 +154,6 @@ def h2h_window(matches: list[dict]) -> list[dict]:
     return sorted(dated, key=lambda m: str(m["date"]), reverse=True)[:n]
 
 
-def h2h_tally(matches: list[dict], home: str) -> tuple[int, int, int] | None:
-    """🔴🔴 맞대결 전적을 **경기 목록에서 직접 센다**(사용자 지시 2026-10-09 ①).
-
-    > 맞대결 집계 불일치일 때 버리지 말고, 경기 페이지의 맞대결 경기 목록
-    > (날짜·스코어)을 **직접 세어 다시 만든다.**
-
-    `home` 기준 `(승, 무, 패)`. ⚠️ 스코어 없는 줄은 **안 센다**(합이 표본보다
-    작으면 호출부가 그 수로 센 경기 수를 쓴다 — 0 으로 때우지 않는다).
-
-    🔴 왜 필요한가 — 실측 2026-10-09(대전–전북): fotmob `summary` 는 `[3, 9, 13]`
-       로 **전체 25경기**의 전적인데 `count` 는 창을 자른 **10경기**였다. 두 창이
-       한 줄에 섞여 종전 코드는 그 변수를 **통째로 버렸다**(`CONFLICT`). 🔴 목록에
-       날짜·스코어가 다 있으므로 **세면 된다** — 버릴 이유가 없었다.
-    """
-    key = norm_team(home)
-    if not key:
-        return None
-    w = d = lose = 0
-    seen = 0
-    for m in (matches or []):
-        hs, as_ = m.get("home_score"), m.get("away_score")
-        if hs is None or as_ is None:
-            continue
-        a, b = norm_team(str(m.get("home") or "")), norm_team(str(m.get("away") or ""))
-        if key == a:
-            mine, theirs = int(hs), int(as_)
-        elif key == b:
-            mine, theirs = int(as_), int(hs)
-        else:
-            continue
-        seen += 1
-        if mine > theirs:
-            w += 1
-        elif mine == theirs:
-            d += 1
-        else:
-            lose += 1
-    return (w, d, lose) if seen else None
-
-
 def h2h_season(matches: list[dict], *, when: str,
                comp: str = "") -> tuple[list[dict], int]:
     """🔴 **올 시즌 맞대결만**(같은 지시 ① 둘째 줄). `(줄들, 시즌)` — 오래된 것부터.
@@ -234,16 +194,6 @@ def _season_of(day: str, cut_month: int) -> int | None:
     if cut_month > 1 and month < cut_month:
         return year - 1
     return year
-
-
-def norm_team(name: str) -> str:
-    """🔴 팀 이름 대조용 꼴 — 맞대결 목록과 `MatchRef` 표기를 잇는다.
-
-    ⚠️ 목록은 fotmob 표기(`Jeonbuk Hyundai Motors FC`)이고 우리 열쇠도 같은
-       출처에서 왔지만, 공백·대소문자가 갈린다. 🔴 **이름을 지어내지 않는다** —
-       낮춰 쓰고 공백만 줄인다.
-    """
-    return " ".join(str(name or "").strip().lower().split())
 
 
 def _window_n(cfg: dict) -> int:

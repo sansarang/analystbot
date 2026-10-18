@@ -349,8 +349,40 @@ def _ruleids(said: str) -> list[str]:
     return list(dict.fromkeys(_RULEID.findall(str(said or ""))))
 
 
+def _is_team_short(said: str, ref) -> bool:
+    """🔴🔴 그 글자가 **이 경기 두 팀의 약칭**인가(사용자 지시 2026-10-18).
+
+    🔴 가리는 법 — 두 팀 이름을 낱말로 쪼개고, 글자의 낱말이 **전부** 그
+       묶음에 들어 있거나 **머리글자**(`KC` ⊂ `Kansas City`)이면 약칭이다.
+    ⚠️ 두 팀 이름은 `ref` 가 든다 — 여기서 표를 만들지 않는다(사본 금지).
+    ⚠️ `ref` 가 없으면 **거짓**이다(지어내지 않는다).
+    """
+    if ref is None:
+        return False
+    words: set[str] = set()
+    heads: set[str] = set()
+    for side in ("home", "away"):
+        nm = str(getattr(ref, f"{side}_name", "") or
+                 getattr(ref, side, "") or "")
+        said_w = [w for w in nm.replace(".", " ").split() if w]
+        words |= {w.lower() for w in said_w}
+        heads.add("".join(w[0] for w in said_w).lower())
+        # 🔴 뒤 낱말들의 머리글자도 센다(`Kansas City` → `KC`)
+        for i in range(len(said_w)):
+            heads.add("".join(w[0] for w in said_w[i:]).lower())
+    mine = [w for w in str(said or "").replace(".", " ").split() if w]
+    if not mine:
+        return False
+    for w in mine:
+        low = w.lower()
+        if low in words or low in heads:
+            continue
+        return False
+    return True
+
+
 def judge(got: Verdict | None, box: list[str], *,
-          provider: str = "") -> tuple[str, list[str]]:
+          provider: str = "", ref=None) -> tuple[str, list[str]]:
     """🔴🔴 **지어냈나** — `(결론, 위반 목록)`. 사용자 지시 2026-10-15.
 
     결론은 `지어냈다` · `안 지어냈다` · `못 쟀다` 셋뿐이다.
@@ -414,6 +446,19 @@ def judge(got: Verdict | None, box: list[str], *,
             if any(str(nm).lower() in str(x).lower()
                    for x in (_COMP_WORDS, said_box.lower())):
                 continue
+            # ══════════════════════════════════════════════════════════
+            # 🔴🔴 **팀 약칭은 이름이 아니다** — 사용자 지시 2026-10-18
+            # ══════════════════════════════════════════════════════════
+            #
+            #  ⚠️ 실사고 2026-10-18(캔자스): 정식명이 `Sporting Kansas City`
+            #     인데 모델이 **약칭 `Sporting KC`** 를 써서 (다)가 *"없는
+            #     이름"* 으로 **3건** 잡았다 — 멀쩡한 평이 `지어냈다` 로
+            #     떨어졌다.
+            #  🔴 그 경기 **두 팀 이름의 낱말**로 가린다 — 약칭은 그 낱말들의
+            #     부분집합이다(`Sporting KC` ⊂ {Sporting, Kansas, City} 의
+            #     첫 글자). ⚠️ 두 팀 이름은 `ref` 가 든다(사본 금지).
+            if _is_team_short(nm, ref):
+                continue
             bad.append(f"🔴 (다) **없는 이름**({nm}) — `{one[:50]}`")
             break
         # 🔴🔴 (라) **규칙·변수 번호** — 묶음에 그 글자가 있어야 한다
@@ -467,9 +512,20 @@ def judge(got: Verdict | None, box: list[str], *,
     #     **표기만 뒤집혔다**. 그 줄만 보고 읽는 사람은 홈 승으로 읽는다.
     #  🔴 **뒤집힌 꼴만** 잡는다 — 다른 점수(예 *"1-1 로 접힐 여지"*)는
     #     **대안 시나리오**라 잡지 않는다(그것까지 막으면 평이 얕아진다).
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **묶음에 있는 스코어는 넘긴다** — 사용자 지시 2026-10-18
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실사고 2026-10-18(살케·리버풀·캔자스): 평이 **지난 경기 스코어**를
+    #     인용했는데((마)가 그것을 *"예측을 거꾸로 적었다"* 로 잡았다:
+    #     *"직전 경기에서 졌다(**1-2** 패)"* · *"**1-1·1-2** 로 뒤집히고"*).
+    #     🔴 **패턴 분석을 제대로 한 평일수록 떨어졌다.**
+    #  🔴 그래서 **묶음에 있는 스코어**(`ok_scores` — 코드가 실은 지난 경기
+    #     점수)는 (마)에서 넘긴다. ⚠️ 모델이 **지어낸** 뒤집힌 스코어는 그대로
+    #     잡는다(그것이 이 검사의 본래 일이다 · 캔자스 solar 가 그 꼴이었다).
     if said_sc and "-" in said_sc:
         rev = "-".join(reversed(said_sc.split("-", 1)))
-        if rev != said_sc:
+        if rev != said_sc and rev not in ok_scores:
             for one in rows:
                 if rev in _scores(one):
                     bad.append(
@@ -641,10 +697,11 @@ def agree_of(cards: dict, prob) -> str:
 
 
 def said_of(got: Verdict | None, box: list[str], *,
-            provider: str = "solar") -> str:
+            provider: str = "solar", ref=None) -> str:
     """🔴 카드·보고에 찍는 글 — 평 + **지어냈나 결론**."""
     # 🔴 이름을 **넘긴다** — 사유가 못 낸 쪽을 바로 적는다(위 `judge` 머리말)
-    verdict, bad = judge(got, box, provider=provider)
+    # 🔴 `ref` 를 넘긴다 — (다)가 **팀 약칭**을 가리는 데 쓴다
+    verdict, bad = judge(got, box, provider=provider, ref=ref)
     head = f"🧭 **종합 평**({provider}) — 지어냄 판정 **{verdict}**"
     if got is None:
         return head + "\n" + "\n".join(f"- {x}" for x in bad)

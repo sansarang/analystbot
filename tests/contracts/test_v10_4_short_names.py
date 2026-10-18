@@ -97,14 +97,25 @@ def test_losing_streak_counts_from_the_one_list() -> None:
     assert mix["streak_losing"] == 1, mix
 
 
-def test_losing_streak_never_touches_probability() -> None:
-    """🔴 그 변수는 `stakes` 다 — 자리는 **V2·가설**뿐(확률 금지)."""
+def test_losing_streak_now_touches_probability() -> None:
+    """🔴🔴 **뒤집혔다** — 사용자 지시 2026-10-18(*"전부다 수정해"*).
+
+    ⚠️ 종전 어림은 *"`stakes` 자리는 **V2·가설**뿐 — 확률 금지"* 였다
+       (연패 = 간절함을 **가설 근거로만** 쓰라던 2026-10-11 지시).
+    🔴 그런데 실측 2026-10-18(캔자스): 변수 11개 중 **3개**만 확률을 밀었고
+       맞대결·홈 이점·순위 동기·동기 비대칭이 **자리 때문에 버려졌다**. 사용자가
+       *"전부다 수정해"* 라고 해서 **축을 더했다**.
+    🔴 그래서 이제 센다: **축과 λ 보정표에 둘 다** 있나(한쪽만으론 안 센다).
+    """
     from app.core import routing
     box = dict(dict(routing.table().get("types") or {}).get("stakes") or {})
-    assert sorted(box.get("places") or []) == ["V2", "hypo"], box
-    #: 🔴 그래서 축(axis0~3)·λ 상수 자리가 **없다**
-    assert not [p for p in (box.get("places") or [])
-                if str(p).startswith("axis") or p == "lambda_const"]
+    said = [str(p) for p in (box.get("places") or [])]
+    assert "V2" in said and routing.HYPO in said, box
+    assert [p for p in said
+            if p.startswith("axis") or p == "lambda_const"], box
+    fav = (((routing.table().get("lambda_rules") or {}).get("by_var") or {})
+           .get("favors") or {})
+    assert "stakes" in {str(x) for x in (fav.get("types") or [])}, fav
 
 
 def test_short_forms_skip_country_fragments() -> None:

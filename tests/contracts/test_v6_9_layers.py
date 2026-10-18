@@ -1283,39 +1283,27 @@ def test_폼_변수에_득점_방향이_붙는다():
 #    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
 #    걷은 시험: `test_득점_방향이_반대인_driver_를_뺀다`
 
-def test_맞대결_집계가_안_맞으면_목록에서_다시_센다():
-    """🔴 ① — 돌연변이: 불일치면 버린다(종전 동작).
+def test_맞대결_규칙은_지웠다() -> None:
+    """🔴🔴 **S02 삭제** — 사용자 지시 2026-10-18.
 
-    > 맞대결 집계 불일치일 때 **버리지 말고**, 경기 페이지의 맞대결 경기 목록
-    > (날짜·스코어)을 **직접 세어 다시 만든다.**
+    > os02을 삭제해라 .. **5경기 패턴 분석해라**
 
-    실측 2026-10-09(대전–전북): fotmob `summary` 는 전체 25경기의 `[3, 9, 13]`
-    인데 `count` 는 창 10경기였다 — 종전 코드는 변수를 통째로 버렸다.
+    ⚠️ 종전 어림은 *"`s5` 가 맞대결 집계를 **목록에서 다시 센다**"*
+       (`league.h2h_tally`)였다 — 집계와 목록이 어긋난 실사고를 막던 자리다.
+    🔴 그 규칙(`S02` · `h2h_pattern`)과 집계 함수를 **지웠다**. 맞대결은 두 팀의
+       **역대 전적**이고 사용자가 보려는 것은 **지난 5경기 패턴**이다.
+    🔴 그래서 센다: 규칙 표에 `S02` 가 없고, `s5` 가 그 유형을 안 만든다.
+    ⚠️ 맥락 **자료**(`facts.h2h`)는 그대로 받는다 — 되살리려면 규칙만 넣으면 된다.
     """
-    from app import league
-    rows = [
-        {"date": "2026-07-21", "home": "Jeonbuk", "away": "Daejeon",
-         "home_score": 0, "away_score": 0},
-        {"date": "2026-03-21", "home": "Daejeon", "away": "Jeonbuk",
-         "home_score": 0, "away_score": 1},
-        {"date": "2025-11-08", "home": "Jeonbuk", "away": "Daejeon",
-         "home_score": 3, "away_score": 1},
-        {"date": "2024-10-19", "home": "Jeonbuk", "away": "Daejeon",
-         "home_score": 0, "away_score": 2},
-    ]
-    assert league.h2h_tally(rows, "Daejeon") == (1, 1, 2)
-    # 🔴 **반대쪽 기준도 뒤집혀야** 한다 — 한쪽으로 박아 두면 홈/원정이 바뀔 때 거짓
-    assert league.h2h_tally(rows, "Jeonbuk") == (2, 1, 1)
-    # ⚠️ 스코어가 없으면 **센 척하지 않는다**
-    assert league.h2h_tally([{"date": "2026-01-01", "home": "A", "away": "B"}],
-                            "A") is None
-    # 🔴 s5 가 그 길로 가나 — 버리는 코드가 남아 있으면 이 글자가 없다
-    import pathlib
-    src = pathlib.Path("app/core/stages/s5_verify.py").read_text(encoding="utf-8")
-    assert "league.h2h_tally(" in src, "s5 가 다시 세지 않는다"
-    assert 'facts.h2h["recounted"]' in src, "다시 센 수를 카드에 안 넘긴다"
+    import inspect
 
-
+    from app.core.stages import s5_verify as s5
+    rids = {str(r.get("id")) for r in s5.interpret_rules()}
+    assert "S02" not in rids, sorted(rids)
+    kinds = {str(r.get("type")) for r in s5.interpret_rules()}
+    assert "h2h_pattern" not in kinds, sorted(kinds)
+    src = inspect.getsource(s5)
+    assert "_ir_h2h(" not in src, "🔴 그 함수가 아직 있다"
 def test_올_시즌_맞대결을_따로_센다():
     """🔴 ① 둘째 줄 — 돌연변이: 창 안에서만 고른다 · 시즌 경계를 코드에 박는다."""
     from app import league

@@ -243,6 +243,32 @@ def home_mul(facts, varset, *, ref=None,
 #  ⚠️ 어느 변수가 어느 쪽을 밀었는지 **이름으로** 적는다(#3).
 
 
+def _layers() -> dict:
+    """🔴 두 층의 크기 표 — `lambda_rules.by_layer`(없으면 빈 표)."""
+    from app.core import routing as _rt
+    box = dict(_rt.table().get("lambda_rules") or {})
+    return dict(box.get("by_layer") or {})
+
+
+def _is_past(kind: str) -> bool:
+    """🔴 그 유형이 **과거(경기력)** 인가 — 표가 든다(사본 금지)."""
+    said = {str(x) for x in (_layers().get("past_types") or [])}
+    return str(kind) in said
+
+
+def _layer_mul(kind: str, f_box: dict) -> float:
+    """🔴🔴 그 변수의 **크기** — 과거는 바탕, 오늘은 조정(지시 2026-10-18).
+
+    ⚠️ 표가 없으면 종전 값(`favors.mul`)을 쓴다 — 조용히 1.0 으로 때우지 않는다.
+    """
+    box = _layers()
+    key = "past" if _is_past(kind) else "today"
+    try:
+        return float(box[key])
+    except (KeyError, TypeError, ValueError):
+        return float(f_box.get("mul") or 1.05)
+
+
 def flat_prob(varset, *, ref) -> tuple[dict, str]:
     """🔴 1/3 균등에서 변수만 움직인 승무패. `({home,draw,away}, 사유)`."""
     from app.core import routing as _rt
@@ -317,11 +343,22 @@ def flat_prob(varset, *, ref) -> tuple[dict, str]:
             why = f"goals {goals}"
         if not want:
             continue
-        mul = float(f_box.get("mul") or 1.05)
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **과거는 바탕 · 오늘은 조정** — 사용자 지시 2026-10-18
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > 지난경기를 가지고 **오늘 경기에 대입하는거다** .. **경기력**이고 ..
+        #  > 오늘 경기력의 변수는 **오늘 라인업·날씨·피로도** 등이다
+        #
+        #  🔴 크기는 **표가 든다**(`lambda_rules.by_layer`) — 코드에 박지 않는다.
+        #  ⚠️ 표가 없으면 종전처럼 `favors.mul` 하나를 쓴다(조용히 1.0 로
+        #     때우지 않는다 · #3).
+        mul = _layer_mul(kind, f_box)
         other = "away" if want == "home" else "home"
         got[want] *= mul
         got[other] /= mul
-        said.append(f"[{rid}] {want} ×{mul:g}({why})")
+        said_l = "과거" if _is_past(kind) else "오늘"
+        said.append(f"[{rid}] {want} ×{mul:g}({why} · {said_l})")
         net[want] = net.get(want, 0) + 1
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **쏠리면 무를 깎는다** — 사용자 결정 2026-10-15(2번)
@@ -342,6 +379,8 @@ def flat_prob(varset, *, ref) -> tuple[dict, str]:
                     "전문가가 한다 · 개수로 세지 않는다)")
     lean = abs(int(net.get("home", 0)) - int(net.get("away", 0)))
     if lean:
+        # 🔴 무를 깎는 크기는 **기본값 하나**다(층과 무관) — 쏠림은 층이 아니라
+        #    **방향**의 이야기다. ⚠️ 그 사실을 사유에 적는다.
         mul = float(f_box.get("mul") or 1.05)
         got["draw"] /= mul ** lean
         said.append(f"무 ÷{mul:g}^{lean}(쏠림 {lean}단계)")

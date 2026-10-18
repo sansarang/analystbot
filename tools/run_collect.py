@@ -709,7 +709,7 @@ async def main(argv: list[str]) -> int:
         v, bad = _vd.judge(got_vd, said_box)
         said_cards[pv] = (got_vd, v, bad)
         print(f"### {pv} — 호출 {why_vd}")
-        print(_vd.said_of(got_vd, said_box, provider=pv))
+        print(_vd.said_of(got_vd, said_box, provider=pv, ref=ref))
         print(flush=True)
     # 🔴🔴 **두 평의 공통점 ↔ 확률**(사용자 지시 2026-10-15) — 코드가 센다
     print(_vd.agree_of({k: v[0] for k, v in said_cards.items()}, prob),
