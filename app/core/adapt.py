@@ -251,6 +251,9 @@ def facts_of(raw: dict, *, xi: dict[str, XI] | None = None,
         # 🔴 **구장·날씨**(지시 2026-10-18 ②) — 이 줄을 빼면 IR15 가 영구히
         #    ⬜ 가 된다(자료는 오는데 변수가 안 서던 그 자리다)
         venue=dict(box.get("venue") or {}),
+        # 🔴 **나라 코드**(지시 2026-10-18) — 이 줄을 빼면 검색 언어가 다시
+        #    손 목록에 매달린다(MLS 가 한국어로 나가던 그 꼴)
+        ccode=str(box.get("ccode") or ""),
         player_pos=dict(player_pos or {}),
         player_value={str(k): float(v) for k, v in (player_value or {}).items()
                       if v and float(v) > 0},

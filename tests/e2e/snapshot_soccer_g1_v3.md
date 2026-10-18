@@ -34,8 +34,8 @@
 
 **1. 자료 한계 고백**
 - 🔴🔴 **🔴 대회를 알아보지 못했다** — 받은 표기 `Friendlies` → **기준(①)·경우의 수·리그 평균이 비었다**. 등급은 전부 **보류**이고, 이 표기는 운영자 알림으로 보냈다(표에 넣어야 한다)
-- 버린 것: `body_missing` 17건 · `identity_mismatch` 135건 · `replay_miss` 1건 · `sport_mismatch` 2건 · `stale` 18건 · `team_tier_mismatch` 2건 · `type_off_catalog` 10건
-- 🔎 **검색** — 질의 20 · 결과 337 · 날짜 통과 117 · 문서 5 · 잃음 — ④ 신원 137 · ② 질의·날짜 18 · ③ 본문 17 · ① 원천 12 · ⬜ 미분류(replay_miss) 1 · ⬜ 원천 등급·사실 종류별 수는 **아직 못 적는다**(카드가 문서 URL 을 안 들고 있다 · §6-5)
+- 버린 것: `body_missing` 17건 · `identity_mismatch` 135건 · `replay_miss` 2건 · `sport_mismatch` 2건 · `stale` 18건 · `team_tier_mismatch` 4건 · `type_off_catalog` 10건
+- 🔎 **검색** — 질의 20 · 결과 337 · 날짜 통과 117 · 문서 5 · 잃음 — ④ 신원 139 · ② 질의·날짜 18 · ③ 본문 17 · ① 원천 12 · ⬜ 미분류(replay_miss) 2 · ⬜ 원천 등급·사실 종류별 수는 **아직 못 적는다**(카드가 문서 URL 을 안 들고 있다 · §6-5)
 - 문서 5건 · 변수 7개 · 시나리오 0개
 - 못 받은 칸 — 오늘 XI 없음(상태 none — IR02·IR03 이 안 돈다) · 감독 미확보 · 순위표 없음
 
@@ -73,6 +73,9 @@
 | `s4` | `team_tier_mismatch` | ⬜ 제목 없음 | 🔴 다른 등급 낱말이 주어다({'asiad': ['asian games']}) — 이 경기는 `senior` |
 | `s4` | `team_tier_mismatch` | ⬜ 제목 없음 | 🔴 다른 등급 낱말이 주어다({'u23': ['under-23']}) — 이 경기는 `senior` 다 |
 | `s4` | `replay_miss` | ⬜ 제목 없음 | replay_miss: 카세트 없음 — tests/fixtures/cassettes/nomatch/socce |
+| `s4` | `team_tier_mismatch` | ⬜ 제목 없음 | 🔴 다른 등급 낱말이 주어다({'asiad': ['asian games']}) — 이 경기는 `senior` |
+| `s4` | `team_tier_mismatch` | ⬜ 제목 없음 | 🔴 다른 등급 낱말이 주어다({'u23': ['under-23']}) — 이 경기는 `senior` 다 |
+| `s4` | `replay_miss` | ⬜ 제목 없음 | replay_miss: 카세트 없음 — tests/fixtures/cassettes/nomatch/socce |
 | `s3/신원` | `identity_mismatch` | Tennis Player Kwon Soon-woo Retires in 11 Minutes Due to Left Knee Inj | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'tennis player kwon soon-woo r |
 | `s3/신원` | `identity_mismatch` | [ASIAN GAMES] S. Korea reach men's football final | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — "[asian games] s. korea reach  |
 | `s3/신원` | `identity_mismatch` | 축구 뉴스, 페이지 1 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — '축구 뉴스, 페이지 1 2일 전‘이미 전용기 타고 사 |
@@ -107,11 +110,8 @@
 | `s3/등급` | `identity_mismatch` | Uzbekistan U23 테이블 및 순위 - 2026 | 🔴 **등급이 다르다** — 글은 ['u23'] 인데 이 경기는 아니다 |
 | `s3/신원` | `identity_mismatch` | Stock market outlook today, 6 Oct: Sensex, Nifty prediction - DJIA, S& | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'stock market outlook today, 6 |
 | `s3/신원` | `identity_mismatch` | NYT Pips hints, answers for October 6, 2026 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'nyt pips hints, answers for o |
-| `s3/신원` | `identity_mismatch` | NYT Connections Sports Edition hints and answers for October 6: Tips t | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'nyt connections sports editio |
-| `s3/신원` | `identity_mismatch` | NYT Strands hints, answers for October 6, 2026 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'nyt strands hints, answers fo |
-| `s3/신원` | `identity_mismatch` | Cardano (ADA), XRP, Zcash (ZEC) and Sui (SUI) Price Analysis October 6 | 🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — 'cardano (ada), xrp, zcash (ze |
-- ⚠️ **145줄 더 있다**(표는 40줄까지 적는다)
-- 합계 — `s3/body_missing` 17건 · `s3/sport_mismatch` 2건 · `s3/날짜/stale` 18건 · `s3/도메인/type_off_catalog` 10건 · `s3/등급/identity_mismatch` 12건 · `s3/신원/identity_mismatch` 123건 · `s4/replay_miss` 1건 · `s4/team_tier_mismatch` 2건
+- ⚠️ **148줄 더 있다**(표는 40줄까지 적는다)
+- 합계 — `s3/body_missing` 17건 · `s3/sport_mismatch` 2건 · `s3/날짜/stale` 18건 · `s3/도메인/type_off_catalog` 10건 · `s3/등급/identity_mismatch` 12건 · `s3/신원/identity_mismatch` 123건 · `s4/replay_miss` 2건 · `s4/team_tier_mismatch` 4건
 
 **🧠 라인업 전략 (자세히)** — 판정 `🟡 **예상 XI 판정**(확정 전 · 규칙 풀림 2026-10-15)`
 - **South Korea** — `평소 그대로` · 근거 [] · 🔴 **코드 판정**(LLM 판정을 버렸다) — 방향을 읽을 신호가 없다 — 바뀐 자리 못 쟀다 · ΔA 못 쟀다 · ΔD 못 쟀다 · 핵심 선수 표 없음 · 🔴 **임시값**(적합 전)

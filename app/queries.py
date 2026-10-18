@@ -259,6 +259,21 @@ def langs_for(league: str, *teams: str) -> tuple[tuple[str, ...], str]:
     from app import entities
     for t in teams:
         for lang in entities.langs_of(str(t or "")):
+            # ══════════════════════════════════════════════════════════
+            # 🔴🔴 **`ko` 별칭은 현지어 증거가 아니다** — 지시 2026-10-18
+            # ══════════════════════════════════════════════════════════
+            #
+            #  ⚠️ 실사고 2026-10-18(캔자스 vs 솔트레이크): MLS 질의가 **전부
+            #     한국어**로 나가 ③ 문서가 1~2건이었다(영어권인데).
+            #     🔴 까닭 — `config/entities.yaml` 의 `Sporting Kansas City` 에
+            #     `ko: [스포팅 캔자스시티, …]` 가 있어 `langs_of` 가 `ko` 를
+            #     돌려줬다. 그 별칭은 **한국 사용자가 한글로 물어서** 붙은
+            #     것이고 *"그 팀 기사가 한국어로 나온다"* 는 뜻이 아니다.
+            #  🔴 그래서 **`ko` 만 뺀다** — 우리 사용자 언어라서 어느 팀에나
+            #     붙는다. ⚠️ 한국 리그는 **리그·나라 표**가 `ko` 를 준다(아래
+            #     `league_of_team` 길) — 그 길은 그대로다.
+            if lang == "ko":
+                continue
             if lang != "en" and lang not in local:
                 local.append(lang)
                 if str(t) not in named:

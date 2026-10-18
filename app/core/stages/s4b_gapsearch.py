@@ -568,7 +568,8 @@ def ask(ref: MatchRef, facts, *, state: RunState, want: dict,
            + (f" · 🔴 팀 표기 없어 버림 {len(bad)}" if bad else "")
            + (f" · 🔴 글자 규칙에서 버림 {n_cut}" if n_cut else "")
            + f" · 공급자 {' → '.join(tried)}"
-           + f" · 언어 순서 {langs_got or list(langs or ['en'])}"
+           + f" · 언어 순서 {langs_final(ref, facts)[0]}"
+           + f"({langs_final(ref, facts)[1]})"
            + " · 🔴 사실은 **문서에서만** 온다(모델 기억 안 씀)")
     state.note(f"s4b 표적 검색 — {why}")
     _LAST_LANGS.clear()
@@ -656,7 +657,7 @@ async def harvest(ref: MatchRef, facts, *, state: RunState, chain, net,
     #  🔴 그래서 고정물이 문서·추출·기사 변수까지 **계속 센다**(이 배선이 없으면
     #     재생 카드가 문서 0건이 되어 불변식 2·9·17·29 가 빈 통과가 된다).
     if _replaying():
-        rows_r, why_r = _recorded_queries(ref)
+        rows_r, why_r = _recorded_queries(ref, facts)
         if not rows_r:
             return [], f"재생 — 🔴 녹음에 **그 경기 질의가 없다**({why_r})"
         got_r: list = []
@@ -718,7 +719,9 @@ async def harvest(ref: MatchRef, facts, *, state: RunState, chain, net,
     #     이 받는다(같은 날 실측: `Ulsan Bucheon lineup` → yep 20건).
     #  ⚠️ **질의가 늘지 않는다** — 같은 글자의 다른 통로다. 상한은 사슬이
     #     질의마다 보고(`search_cap`), 그 상한은 받은 짝 수로 잡는다.
-    said_langs = langs_of() or ["en"]
+    # 🔴 **한 자리에서 정한다**(위 `langs_final` 머리말 · 지시 2026-10-18)
+    said_langs, why_lang = langs_final(ref, facts)
+    state.note(f"④ 검색 언어 — {why_lang}")
     pairs: list[tuple[str, str]] = []
     for one in rows:
         for lang in said_langs:
@@ -799,7 +802,7 @@ async def _media_narrow(ref, facts, pairs: list, *, state: RunState, net
         if not ok:
             return [], f"매체 표 — 🔴 robots 확인을 **아무도 못 지났다**({hosts})"
         # 🔴 **현지어 질의를 앞에 둔다** — `site_queries` 가 앞에서 두 개를 쓴다
-        said_langs = langs_of() or ["en"]
+        said_langs, _why_l = langs_final(ref, facts)
         local = [q for q, lg in pairs if str(lg) != "en"]
         rows = [*local, *[q for q, lg in pairs if str(lg) == "en"]]
         got = _qw.site_queries(list(ok), rows)
@@ -817,7 +820,7 @@ def _replaying() -> bool:
     return bool(_r())
 
 
-def _recorded_queries(ref) -> tuple[list[tuple[str, str]], str]:
+def _recorded_queries(ref, facts=None) -> tuple[list[tuple[str, str]], str]:
     """🔴🔴 재생 — **녹음이 실제로 던진 질의**를 되읽는다. `([(질의, 언어)], 사유)`.
 
     🔴 코드가 질의를 **만들지 않는다** — 카세트 `query` 칸의 글자를 그대로 쓴다
@@ -835,7 +838,7 @@ def _recorded_queries(ref) -> tuple[list[tuple[str, str]], str]:
                 got.append(one)
         if not got:
             return [], "⬜ 녹음에 `search` 질의가 없다"
-        said_langs = langs_of() or ["en"]
+        said_langs, _why_l = langs_final(ref, facts)
         lang = said_langs[0]
         return ([(q, lang) for q in got],
                 f"녹음 질의 **{len(got)}개**(언어 `{lang}`)")
@@ -921,6 +924,47 @@ def _side_queries(ref, pairs: list, side: str):
                   opp_key=str(getattr(ref, other, "")),
                   seed="", rerank_query=HARVEST_RERANK, budget=said_b)
     return mine, sub
+
+
+def langs_final(ref, facts=None) -> tuple[list[str], str]:
+    """🔴🔴 **언어 판정은 한 자리다** — 사용자 지시 2026-10-18(*"m12 수정"*).
+
+    ⚠️ 실사고 2026-10-18(캔자스): ③ 질의는 **한국어**로 나갔는데 ⑤ 회상 줄은
+       `언어 순서 ['en','es']` 였다 — **두 통로가 서로 다른 판정**을 썼다
+       (③ 은 `_local_lang`(코드) · ⑤ 는 `langs_of()`(모델이 고른 것)).
+    🔴 그래서 여기서 **한 번** 정한다: 코드가 현지어를 **알면 그것**,
+       모르면 **모델이 고른 것**, 둘 다 없으면 영어.
+    ⚠️ 사유를 함께 돌려준다 — 카드가 어느 길로 정했는지 적는다(#3).
+    """
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **나라 코드가 먼저다 — 자동으로 찾는다** (지시 2026-10-18)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > MLS 는 영어, K리그는 `ko`, J리그는 `ja`. **리그 언어를 사용하게
+    #  > 해라** .. **자동으로 찾아서** .. **매번 오류 내지 말고**
+    #
+    #  🔴 경기 페이지가 준 나라 코드(`facts.ccode`)에서 `autoleague` 가
+    #     FIFA→ISO→CLDR 로 **자동** 판정한다 — 손 목록을 늘리지 않는다.
+    #     실측: `USA → en` · `ITA → it` · `KOR → ko` · `JPN → ja` ·
+    #           `ENG → en`(축구협회라 ISO 가 없다 — 그 표가 안다).
+    #  ⚠️ CLDR 은 그 나라 **공식 언어 여럿**을 준다(`ITA → it,fr,vec,en`) —
+    #     기사 언어는 **첫 것**이면 충분하다(+영어). 그 사실을 사유에 적는다.
+    said_cc = str(getattr(facts, "ccode", "") or "")
+    if said_cc:
+        from app.core import autoleague as _al
+        rows, why_cc = _al.langs_with_why(said_cc)
+        got_cc = [x for x in rows if x][:1]
+        if got_cc:
+            out = got_cc + (["en"] if got_cc[0] != "en" else [])
+            return out, f"나라 코드 `{said_cc}` → {out}(자동 · {why_cc[:60]})"
+    said = _local_lang(ref)
+    if said:
+        return ([said, "en"] if said != "en" else ["en"],
+                f"이름표 판정 `{said}`(현지어 먼저)")
+    got = [str(x) for x in (langs_of() or []) if str(x)]
+    if got:
+        return got, f"모델이 고른 것 {got}(코드가 현지어를 못 정했다)"
+    return ["en"], "⬜ 둘 다 없다 — 영어로 간다"
 
 
 def _local_lang(ref) -> str:

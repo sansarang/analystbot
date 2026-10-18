@@ -30,10 +30,20 @@ def test_세_묶음을_다_덮는다():
     assert groups == {"입력", "버그"}, groups
     names = {k for k, _n, _g in mc.ROWS}
     # 🔴 §2 가 이름으로 든 입력 칸이 **빠짐없이** 있다
-    for want in ("elo_floor", "axis0", "axis1", "axis2", "axis3", "form_n",
-                 "xi", "absence_rung", "coach", "league_offset",
+    # ══════════════════════════════════════════════════════════════
+    # 🔴🔴 **Elo·축 다섯 칸은 걷혔다** — 사용자 지시 2026-10-18
+    # ══════════════════════════════════════════════════════════════
+    #
+    #  > **m5 elo 삭제**
+    #
+    #  ⚠️ 실측: 1단이 *"필수 입력 빠짐 — Elo 바닥 승무패 · 축0(⬜)"* 으로
+    #     **영구히 기계 보류** 였다(Elo·상성을 지웠는데 필수로 물었다).
+    #  🔴 그래서 센다: 남은 칸은 **있고**, Elo·축 칸은 **없다**.
+    for want in ("form_n", "xi", "absence_rung", "coach", "league_offset",
                  "comp_history", "board_lines"):
         assert want in names, want
+    for gone in ("elo_floor", "axis0", "axis1", "axis2", "axis3"):
+        assert gone not in names, f"🔴 `{gone}` 가 돌아왔다 — Elo·상성은 지웠다"
     # 🔴 버그 칸은 **설정 표**가 이름을 든다(사본 금지)
     bugs = dict(mc.table().get("bugs") or {})
     for key, _n, group in mc.ROWS:

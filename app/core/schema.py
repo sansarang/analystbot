@@ -470,6 +470,10 @@ class Facts(Frozen):
     #   `{"name","lat","lon","weather":{temperature,windSpeed,precipitation,
     #     description}}`. ⚠️ 비면 **없는 것**이다(IR15 가 안 돈다 · #3).
     venue: dict = Field(default_factory=dict)
+    #: 🔴🔴 **그 경기의 나라 코드**(FIFA 세 글자 · 사용자 지시 2026-10-18) —
+    #   검색 언어를 **자동으로** 정하는 재료다(`autoleague.langs_with_why`).
+    #   ⚠️ 비면 **모르는 것**이다(영어로 가고 그 사실을 사유에 적는다).
+    ccode: str = ""
 
 
 class Doc(Frozen):

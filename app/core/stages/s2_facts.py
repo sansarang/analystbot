@@ -169,6 +169,27 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
                    + (" · 날씨 " + " · ".join(f"{k} {v}" for k, v in
                                               said_w.items())
                       if said_w else " · 날씨 ⬜ 페이지에 없다"))
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **그 경기의 나라 코드** — 사용자 지시 2026-10-18
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > MLS 는 영어, K리그는 `ko`, J리그는 `ja`. **리그 언어를 사용하게
+    #  > 해라** .. 사용자가 물으면 **자동으로 찾아서** 하게 해라 ..
+    #  > **매번 오류 내지 말고**
+    #
+    #  🔴 손 목록을 늘리지 않는다 — 경기 페이지가 **나라 코드**를 준다
+    #     (`fotmob.ccode_of` · 실측 `ITA`·`USA`·`KOR`). 그 코드에서 언어는
+    #     `core/autoleague.langs_with_why`(FIFA→ISO→CLDR)가 **자동으로** 뽑는다.
+    #  ⚠️ 못 읽으면 **빈 글자**다(지어내지 않는다 · 종전 길로 간다).
+    said_cc = _ccode(raw_pages)
+    if said_cc:
+        box["ccode"] = said_cc
+        from app.core import autoleague as _al2
+        said_l, said_wl = _al2.langs_with_why(said_cc)
+        state.note(f"s2 나라 코드 `{said_cc}` → 검색 언어 {said_l[:3]}"
+                   f"({said_wl[:70]})")
+    else:
+        state.note("s2 나라 코드 — ⬜ 경기 페이지가 안 줬다(언어는 종전 길로)")
     said = await _group(ref, state=state, net=net, pages=raw_pages)
     if said:
         # 🔴 `Facts.standings` 안의 **`group` 칸**이다 — 기존 칸(홈 이점·쪼갠 표)을
@@ -1405,6 +1426,22 @@ async def _group(ref: MatchRef, *, state: RunState, net: Any,
         return table
     state.note("s2 §1 조 순위표 — 경기 페이지에서 표 주소를 못 만들었다(어댑터가 안 준다)")
     return {}
+
+
+def _ccode(pages: list[str]) -> str:
+    """🔴 경기 페이지가 말하는 **나라 코드**(FIFA 세 글자). 없으면 빈 글자.
+
+    🔴 읽는 함수는 `fotmob.ccode_of` 하나다(사본 금지).
+    """
+    from app.collect import fotmob as fm
+    for text in pages:
+        j = fm.payload(text)
+        if not j:
+            continue
+        got = str(fm.ccode_of(j) or "").strip()
+        if got:
+            return got
+    return ""
 
 
 def _venue(pages: list[str]) -> dict:
