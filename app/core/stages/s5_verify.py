@@ -1461,6 +1461,19 @@ def _have(need: str, facts: Facts, ref: MatchRef) -> bool:
     if head == "xi":
         return any(getattr(v, tail, None) for v in facts.xi.values())
     if isinstance(box, dict):
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **평평한 칸도 본다** — 사용자 지시 2026-10-18(② 배선)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 실측 2026-10-18(캔자스 재분석): 날씨는 **들어왔는데**
+        #     `IR15(venue_weather) 건너뜀 — 사실 칸이 없다: ['venue.weather']`
+        #     로 떨어졌다.
+        #     🔴 까닭 — 아래 고리는 칸이 **팀별 표**(`{팀: {칸: 값}}`)라고
+        #     믿는다. `facts.venue` 는 **평평한 표**(`{name, lat, lon,
+        #     weather}`)라 `팀 → 행` 고리가 그 칸을 못 찾았다.
+        #  🔴 그래서 **자기 칸을 먼저** 본다(한 줄) — 팀별 표는 그대로 돈다.
+        if box.get(tail) is not None:
+            return True
         for v in box.values():
             row = dict(v) if isinstance(v, dict) else {}
             if row.get(tail) is not None:

@@ -90,6 +90,40 @@ added_by_user_instruction:
     instruction: 연승은 표현하지 않는다 · 직전 경기에 패했으면 경기력은 더 안좋아지는거나
     doc: docs/HANDOFF_2026-10-17_night.md
     why: 직전 경기 하나가 방향을 정한다. 🔴 **승과 무를 묶지 않는다** — 글에는 경기마다 승무패·득점·실점을 적는다(통합 금지).
+  # ══════════════════════════════════════════════════════════════════
+  # 🔴🔴 **받은 자료에서 만든 다섯** — 사용자 지시 2026-10-18
+  # ══════════════════════════════════════════════════════════════════
+  #
+  # > 선수 능력치, 갈래, **우리가 받은자료에서 변수 추가할것** ·
+  # > **가나다 전부 변수에 닿게**
+  #
+  # ⚠️ 실측 2026-10-18(캔자스 재분석): 변수 11개 중 **3개**만 확률을 밀었다 —
+  #    선발 22명 능력치·순위 8칸·선수 가치·상태 배율이 전부 변수가 아니었다.
+  - type: squad_ability
+    date: 2026-10-18
+    instruction: 선수 능력치, 갈래, 우리가 받은자료에서 변수 추가할것 · 가나다 전부 변수에 닿게
+    doc: docs/fable/stages/2026-10-18_fix_memo.md
+    why: 선발 전원 백분위를 받아 두고 **갈래 판정에만** 쓰고 있었다(변수 0개). 선발 평균 차(A1)와 자리 묶음 쏠림(A3)을 변수로 세운다.
+  - type: absence_quality
+    date: 2026-10-18
+    instruction: 같은 지시
+    doc: docs/fable/stages/2026-10-18_fix_memo.md
+    why: 🔴 `IR02` 는 *"몇 명 빠졌다"* 만 센다 — **누가** 빠졌나(백분위 손실)를 센다.
+  - type: branch_numbers
+    date: 2026-10-18
+    instruction: 같은 지시 · 갈래
+    doc: docs/fable/stages/2026-10-18_fix_memo.md
+    why: 갈래 판정이 **LLM 주장**이 있어야 돌았다. 그 LLM 을 지웠으니(2026-10-18) 갈래를 **코드가 세우고** 능력치로 가린다.
+  - type: squad_value
+    date: 2026-10-18
+    instruction: 같은 지시 · 받은 자료
+    doc: docs/fable/stages/2026-10-18_fix_memo.md
+    why: "`facts.player_value` 를 받고 있었는데 변수가 0개였다."
+  - type: state_rate
+    date: 2026-10-18
+    instruction: 같은 지시 · 받은 자료
+    doc: docs/fable/stages/2026-10-18_fix_memo.md
+    why: "`facts.state_rates` 를 받고 있었는데 변수가 0개였다(라리가에만 표가 있다 · 메모 M10)."
   - type: lineup_value
     date: 2026-10-03
     instruction: 축구 라인업 시장가치 소스를 쓰나 — 딥서치해서 찾아서 넣어라
@@ -467,6 +501,69 @@ types:
   #  🔴 종전엔 재생 고정물에서 IR12 가 안 만들어져 **한 번도 안 걸렸다** —
   #     2026-10-17 에 IR12 를 *"직전 경기"* 로 바꾸자 변수가 서면서 드러났다.
   #  🔴 뜻은 `recent_pattern`(최근 폼)과 같은 결이고 쪼갠 유형이다(2026-10-15).
+  # ══════════════════════════════════════════════════════════════
+  # 🔴🔴 **받은 자료에서 만든 유형 넷** — 사용자 지시 2026-10-18
+  # ══════════════════════════════════════════════════════════════
+  #
+  #  > 선수 능력치, 갈래, **우리가 받은자료에서 변수 추가할것**
+  #  > **가나다 전부 변수에 닿게**
+  #
+  #  🔴 만드는 곳은 `app/core/datavars.py` 하나다(손값은 `config/datavars.yaml`).
+  #  ⚠️ `match` 는 **기사 낱말**인데 이 넷은 기사에서 오지 않는다(구조 사실이다)
+  #     — 그래서 빈 목록이고, 추출이 이 유형을 붙이지 않는다.
+  squad_ability:
+    sports: [soccer]
+    cell_question: 선발 평균 백분위 · 자리 묶음별 쏠림
+    direction_rule: 백분위가 높은 쪽
+    favors: subject
+    goals: none
+    match: []
+    watch: lineup
+    why: |
+      🔴 선발 전원 능력치(`core/ability`)가 **갈래 판정에만** 쓰이고 변수가
+      아니었다(실측 2026-10-18 캔자스 — 22명을 받고 변수 0개).
+  absence_quality:
+    sports: [soccer]
+    cell_question: 빠진 선수의 백분위 ↔ 오늘 선발 평균
+    direction_rule: 품질 손실이 큰 팀의 **상대**
+    favors: subject
+    goals: none
+    match: []
+    watch: lineup
+    why: |
+      🔴 `IR02` 는 *"몇 명 빠졌다"* 만 센다 — **누가** 빠졌는지를 센다.
+  branch_numbers:
+    sports: [soccer]
+    cell_question: 전술 갈래를 능력치 수로 가린 결과
+    direction_rule: 갈래가 가리킨 쪽
+    favors: subject
+    goals: none
+    match: []
+    watch: lineup
+    why: |
+      🔴 종전 갈래 판정은 **LLM 주장**이 있어야 돌았다(⑤-b2). 그 LLM 을
+      지웠으므로(2026-10-18) 갈래를 **코드가 세우고** 1단으로 가린다.
+  squad_value:
+    sports: [soccer]
+    cell_question: 두 팀 선발 가치 합의 비
+    direction_rule: 가치 합이 큰 쪽
+    favors: subject
+    goals: none
+    match: []
+    watch: lineup
+    why: |
+      🔴 `facts.player_value` 를 받고 있었는데 변수가 0개였다(2026-10-18).
+  state_rate:
+    sports: [soccer]
+    cell_question: 뒤진 상태의 득점 배율(되돌리는 힘)
+    direction_rule: 뒤짐 득점 배율이 큰 쪽
+    favors: subject
+    goals: none
+    match: []
+    watch: lineup
+    why: |
+      🔴 `facts.state_rates` 를 받고 있었는데 변수가 0개였다 — 라리가에만
+      표가 있다(실측 2026-10-18 · 메모 M10).
   form_streak:
     sports: [soccer]
     cell_question: 직전 경기 승무패·득실 · 그 앞 네 경기 각각의 승무패·득실

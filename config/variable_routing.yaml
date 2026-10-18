@@ -180,6 +180,34 @@ types:
     places:
     - hypo
     why: 야구 선발 상태 — 축구 상성 축에 자리가 없다(가설 근거로만)
+  # 🔴🔴 **받은 자료 유형 다섯**(사용자 지시 2026-10-18 *"가나다 전부 변수에
+  #    닿게"*) — ⚠️ 자리를 **축**으로 둔다. 그래야 확률에 닿는다(`flat_prob` 이
+  #    `AXES`·`CONST` 자리만 센다). 🔴 이것은 **확률 경로 변경**이다.
+  squad_ability:
+    places:
+    - axis0
+    - hypo
+    why: ① 전력 — 선발 능력치는 그 팀의 전력이다
+  absence_quality:
+    places:
+    - axis0
+    - hypo
+    why: ① 전력 — 결장 품질 손실(`absence` 계열과 같은 자리)
+  branch_numbers:
+    places:
+    - axis2
+    - hypo
+    why: ③ 전술 — 갈래는 전술 비교다
+  squad_value:
+    places:
+    - axis0
+    - hypo
+    why: ① 전력 — 가치는 전력의 어림이다
+  state_rate:
+    places:
+    - axis1
+    - hypo
+    why: ② 흐름 — 뒤졌을 때 되돌리는 힘이다
   form_streak:
     places:
     - axis1
@@ -250,6 +278,13 @@ lambda_rules:
       - lineup_intent
       - form_streak
       - team_stats
+      # 🔴 **받은 자료 유형 다섯**(지시 2026-10-18) — 크기는 **새 수가 아니다**
+      #    (위 `mul: 1.05` 를 그대로 쓴다)
+      - squad_ability
+      - absence_quality
+      - branch_numbers
+      - squad_value
+      - state_rate
       why: ① 전력 · ② 흐름 · ③ 전술 — `favors` 가 가리키는 쪽 λ 를 올린다(`goals` 가 이미 말한 변수는 **중복으로
         안 센다**)
   cap_mul: 1.25

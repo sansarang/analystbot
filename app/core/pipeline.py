@@ -380,6 +380,45 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     st.note("⑤-b2 LLM 전략분석 — 🔴 **지웠다**(사용자 지시 2026-10-18) · "
             "능력치·전략 판정·직전 5경기 자료는 그대로 모은다")
     # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **⑤-b4 받은 자료에서 변수** — 사용자 지시 2026-10-18
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 선수 능력치, 갈래, **우리가 받은자료에서 변수 추가할것** ·
+    #  > **가나다 전부 변수에 닿게**
+    #
+    #  🔴 LLM 0 · 새 통신 0 — 이미 들어온 자료(능력치·결장·가치·상태 배율·
+    #     직전 5경기 포메이션·득실 줄)로 **코드가** 변수를 만든다.
+    #  🔴 자리가 여기인 까닭 — ⑤-b1b 능력치 **뒤**이고 배치를 **다시 세우기
+    #     전**이다(그래야 새 변수가 확률 자리에 들어간다).
+    # ⚠️ 별명이 `_dv` 면 **`divergence` 와 겹친다**(계약 BL1 이 잡았다)
+    from app.core import datavars as _dvar
+    var_dv, said_dv = _dvar.run(ref, facts, said_sq, state=st)
+    st.note(f"⑤-b4 받은 자료 변수 — {said_dv}")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **⑤-c 순위 동기(C1)** — 운영 배선(지시 2026-10-18 *"다"*)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ `s4c_leagueread` 는 2026-10-14 에 지었는데 **러너만** 불렀다 —
+    #     그래서 `standing_motive`(IR14) 변수가 운영에서 0개였다(메모 C1).
+    #  🔴 입력은 fotmob `standings["group"]` 이 준 **그 표뿐**이다.
+    from app.core.stages import s4c_leagueread as _lr
+    var_lr: list = []
+    try:
+        got_lr, said_lr = _lr.ask(ref, facts, state=st)
+        var_lr = list(_lr.variable(ref, got_lr))
+        st.note(f"⑤-c 리그 표 분석 — {said_lr} · 변수 {len(var_lr)}개")
+    except Exception as exc:                                # noqa: BLE001
+        st.note(f"⑤-c 리그 표 분석 — 🔴 터졌다 {exc!r:.160}")
+    said_more = [*var_dv, *var_lr]
+    if said_more:
+        variables = [*variables, *said_more]
+        # 🔴 **묶음은 하나다** — 배치를 다시 세운다(둘로 갈리면 배치와 축이
+        #    어긋난다 · 실사고 2026-10-15 그 자리다)
+        varset = _routing.place(variables)
+        st.note(f"⑤-b4 변수 배치 다시 — {varset.why()}")
+        for said in varset.fails:
+            st.note(f"⑤-b4 {said}")
+    # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **상성 단계를 지웠다** — 사용자 지시 2026-10-17
     # ══════════════════════════════════════════════════════════════════
     #

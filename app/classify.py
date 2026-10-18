@@ -1389,6 +1389,13 @@ NOT_CLASSIFIED = {
     #    패했으면 경기력은 더 안좋아지는거나"*. 재료는 `facts.recent.sequence`
     #    (경기 줄)이고 **세포가 묻는 꼴이 아니다**.
     "form_streak": "v6 전용 — 직전 경기 흐름(경기 줄에서 코드가 읽는다)",
+    # 🔴 **받은 자료 유형 다섯**(사용자 지시 2026-10-18 *"가나다 전부 변수에
+    #    닿게"*) — 만드는 곳은 `app/core/datavars.py` 하나다
+    "squad_ability": "v6 전용 — 선발 평균 백분위·자리 쏠림(코드가 센다)",
+    "absence_quality": "v6 전용 — 빠진 선수의 백분위 손실(코드가 센다)",
+    "branch_numbers": "v6 전용 — 전술 갈래를 능력치 수로 가린 결과",
+    "squad_value": "v6 전용 — 두 팀 선발 가치 합의 비",
+    "state_rate": "v6 전용 — 뒤진 상태의 득점 배율(되돌리는 힘)",
     # 🔴 축구 완성 지시서 §3 카탈로그 표가 더한 둘
     "suspension": "v6 전용 — 징계 결장(구조 사실 `Missing.reason=suspension`)",
     "returning": "v6 전용 — 복귀(결장의 거울 · 직전 경기 XI 가 재료다)",
