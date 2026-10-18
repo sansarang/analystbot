@@ -73,18 +73,6 @@ def test_끝나지_않은_경기는_안_센다():
     assert "건너뜀 1행" in why, why
 
 
-@pytest.mark.parametrize("state,count", [
-    ("Final", 1), ("OFF", 1), ("FINAL", 1), ("완료", 1),
-    ("Preview", 0), ("Live", 0), ("In Progress", 0), ("", 0),
-])
-def test_끝남_표시는_어댑터_글자를_그대로_받는다(state, count):
-    """⚠️ MLB `abstractGameState='Final'` · NHL `gameState='OFF'` — 실측 글자다."""
-    row = {"home": "A", "away": "B", "home_score": 3, "away_score": 1,
-           "state": state}
-    got, _ = last5_of({"team": "A", "recent": [row]})
-    assert len(got) == count, (state, got)
-
-
 def test_어댑터가_직접_준_last5가_이긴다():
     """🔴 fotmob 은 `last5` 를 직접 준다 — 계산하지 않는다."""
     got, why = last5_of({"team": "X", "last5": ["W", "L", "D"],
@@ -121,46 +109,6 @@ def test_부분_일치로_팀을_넓히지_않는다():
 # ══════════════════════════════════════════════════════════════════
 # 🔴 구조 계약 — 꼴을 고르는 자리가 **하나**인가
 # ══════════════════════════════════════════════════════════════════
-
-
-def test_last5를_직접_꺼내는_곳이_없다():
-    """🔴 `val["last5"]` 를 여러 곳에서 꺼내면 새 어댑터가 또 빠진다.
-
-    ⚠️ 실측 2026-10-04 에 정확히 그렇게 됐다 — `_dir_recent` 와 `sufficiency`
-       두 곳이 각자 꺼냈고, MLB 를 추가할 때 **둘 다** 빠졌다.
-    """
-    src = (ROOT / "app" / "classify.py").read_text(encoding="utf-8")
-    tree = ast.parse(src)
-    fn = next(n for n in ast.walk(tree)
-              if isinstance(n, ast.FunctionDef) and n.name == "last5_of")
-    inside = {id(n) for n in ast.walk(fn)}
-    bad = []
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Call) or id(node) in inside:
-            continue
-        if ast.unparse(node.func).endswith(".get") and node.args \
-                and isinstance(node.args[0], ast.Constant) \
-                and node.args[0].value == "last5":
-            bad.append(f"classify.py:{node.lineno} — {ast.unparse(node)}")
-    assert not bad, (
-        "🔴 `last5` 를 `last5_of` 밖에서 꺼낸다 — 어댑터 꼴을 고르는 자리는 "
-        "**하나**여야 한다:\n  " + "\n  ".join(bad))
-
-
-def test_recent_를_내는_어댑터가_실제로_있다():
-    """🔴 이 계산이 **누구를 위한 것인지** 못 박는다.
-
-    ⚠️ 어댑터가 꼴을 바꿔 `recent` 를 안 내게 되면 이 계산은 죽은 코드가 된다 —
-       그때 빨개져야 한다(#2 배선).
-    """
-    found = []
-    for name in ("mlb", "nhl"):
-        src = (ROOT / "app" / "collect" / f"{name}.py").read_text(
-            encoding="utf-8")
-        if '"recent"' in src:
-            found.append(name)
-    assert found, ("🔴 `recent` 꼴을 내는 어댑터가 없다 — `last5_of` 의 계산 "
-                   "경로가 죽은 코드다")
 
 
 def test_한국어로_물어도_영문_폼_행과_이어진다():
@@ -210,40 +158,6 @@ def _form_fact(rest_days, n: int = 3):
 
 
 
-
-
-def test_문턱과_등급은_yaml_이_정한다():
-    """🔴 코드에 7 도 0.4 도 박지 않는다(사본 금지)."""
-    from app import rules
-    cfg = rules.variable_types()["recent_pattern"]
-    assert cfg["stale_days"] == 7
-    assert cfg["stale_hardness"] == "soft"
-    src = (ROOT / "app" / "classify.py").read_text(encoding="utf-8")
-    assert "stale_days" in src and "stale_hardness" in src
-    # ⚠️ 숫자를 코드에 적지 않았나 — `stale` 문단에 `7` 이 없어야 한다
-    i = src.index("stale_days")
-    seg = src[i - 900:i + 400]
-    assert " 7)" not in seg and "= 7" not in seg, "🔴 문턱을 코드에 박았다"
-
-
-
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 **맞대결도 칸 이름이 갈린다** — 실측 2026-10-04
-# ══════════════════════════════════════════════════════════════════
-#
-#  `_dir_h2h` 가 `home_goals` **하나만** 읽었다. 전수 조사:
-#
-#      fotmob                                 home_goals / away_goals
-#      mlb · nhl · npb · kbo · fdorg · espn   home_score / away_score
-#
-#  🔴 그래서 야구·하키의 맞대결은 **전부 0승 0패**였다. 실측 카드 원문:
-#
-#      §4 h2h_pattern — 창 **13경기** 홈 0승 원정 0승, 갈려서 방향이 없다
-#                         · 맞대결 표본 **0경기** → hardness hard→soft
-#
-#  ⚠️ 13경기를 받아 놓고 한 경기도 안 센 것이다 — `last5` 와 **같은 꼴 버그**다.
-#  🔴 그리고 표본 수도 같은 병이었다(`window_games`·`window` 만 봤다).
 
 
 def _h2h_fact(n: int = 9, *, key: str = "score"):

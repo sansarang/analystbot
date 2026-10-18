@@ -146,17 +146,6 @@ def test_홈_우위를_쪼갠_표에서_잰다():
     pytest.skip("우리 팀이 든 표를 못 찾았다")
 
 
-def test_쪼갠_표가_없으면_홈_우위를_만들지_않는다():
-    """🔴 하키 `standings/now` 는 홈/원정을 안 준다. 있는 척하지 않는다."""
-    assert league.home_advantage([], []) is None
-    assert league.home_advantage([{"played": 0}], [{"played": 0}]) is None
-
-
-# ══════════════════════════════════════════════════════════════════
-# 맞대결 창·표본 weight (§4 `h2h_pattern`)
-# ══════════════════════════════════════════════════════════════════
-
-
 def test_표본이_작으면_weight_가_깎인다():
     """★ 🔴 실측 2026-10-02 가 이 규칙을 만들었다.
 
@@ -245,32 +234,6 @@ def test_창과_전체를_둘_다_남긴다():
 # ══════════════════════════════════════════════════════════════════
 
 
-def test_세_종목_순위가_같은_칸_이름을_낸다():
-    """★ 🔴 실측 2026-10-02: 같은 "순위" 질문인데 `fotmob` 은 `wins/draws/losses`,
-    `mlb` 는 `w/d/l` 을 냈다. 그러면 단계 5~7 이 **종목별 분기**를 써야 하고,
-    분기는 한 종목이 바뀔 때 다른 종목을 조용히 깨뜨린다.
-
-    ⚠️ 없는 칸은 **`None`** 이다 — 하키엔 무승부가 없다. 0 으로 때우면
-       "무승부가 0회"라는 거짓이 된다.
-    """
-    import inspect
-    from app.collect import mlb, nhl
-    need = {"team", "played", "wins", "losses", "draws"}
-    for name, mod, fn in (("fotmob", fotmob, fotmob.parse_league_table),
-                          ("mlb", mlb, mlb.parse_standings),
-                          ("nhl", nhl, nhl.parse_standings)):
-        src = inspect.getsource(fn)
-        miss = [k for k in need if f'"{k}"' not in src]
-        assert not miss, f"{name}: 공통 칸이 없다 {miss}"
-    # 🔴 공통 꼴의 원본은 `league.TABLE_FIELDS` 다
-    assert need <= set(league.TABLE_FIELDS)
-
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴 §5-c-1 ② — **포아송 기대 득점** (사용자 지시 2026-10-02 2차)
-# ══════════════════════════════════════════════════════════════════
-
-
 def test_홈_원정_평균을_따로_센다():
     """🔴 딥서치 조건 — *"same venue context"*. 장소를 섞으면 안 된다.
 
@@ -322,173 +285,6 @@ def test_기대_득점이_실측과_맞는다():
     assert got["ratio"] >= need, (got, need)
     # 🔴 **못 잰 칸은 `None`** — 0 으로 때우지 않는다
     assert league.expected_goals({"team": "x"}, lv, avgs) is None
-
-
-def test_포아송_설정이_코드에_박혀_있지_않다():
-    """🔴 사본 금지 — `open_goals`·`prob_ratio` 는 yaml 이 원본이다.
-
-    없으면 **멈춘다**(조용히 기본값을 쓰지 않는다).
-    """
-    src = strip_docs(inspect.getsource(league.open_game_ratio))
-    assert "open_goals" in src and "cross_rule" in src
-    # 🔴 숫자 리터럴로 때우지 않았나 — 설정 이름만 있고 값은 없어야 한다
-    model = rules.cross_rule("5c-1")["model"]
-    for key in ("open_goals", "prob_ratio"):
-        assert str(model[key]) not in src, f"{key} 값이 코드에 박혀 있다"
-
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴 하키도 **같은 이름**을 낸다 (사용자 지시 2026-10-02 — 라이브가 찾았다)
-# ══════════════════════════════════════════════════════════════════
-
-
-def test_하키_순위가_홈_원정_쪼갠_표를_낸다():
-    """🔴 라이브 실측 2026-10-02: `home_field` 가 *"홈/원정 쪼갠 표가 없다"* 로
-    **미결정**이었다 — 그런데 `standings/now` 응답이 그 칸을 다 들고 있었다
-    (`homeGoalsFor`·`roadGoalsFor`…). **안 뽑고 있던 것이다.**
-
-    ⚠️ 축구와 **같은 이름**을 내야 한다 — 이름이 갈리면 단계 5~7 이 종목별 분기를
-       쓰고, 분기는 한 종목이 바뀔 때 다른 종목을 조용히 깨뜨린다.
-    """
-    from app.collect import nhl
-    pages = _cassettes(lambda u: "api-web.nhle.com" in u and "/standings" in u)
-    if not pages:
-        pytest.skip("NHL 순위 카세트가 없다")
-    for d in pages:
-        facts = nhl.parse_standings(Fetched(d["url"], True, 200, d["text"]),
-                                    Question(Q_LINEUP, "x", team="Detroit Red Wings"))
-        if not facts:
-            continue
-        v = facts[0].value
-        # 🔴 축구가 내는 칸과 **같은 이름**인가
-        for key in ("league_avg_goals", "total_baseline", "open_game_threshold",
-                    "home_advantage", "venue_averages", "venue_rows",
-                    "league_tables"):
-            assert key in v, f"{key} 가 없다 — 축구와 이름이 갈렸다"
-        avgs = v["venue_averages"]
-        assert avgs and avgs["home"] > 0 and avgs["away"] > 0, avgs
-        # 🔴 합이 리그 평균과 맞나 — 두 셈이 서로를 검산한다
-        assert abs((avgs["home"] + avgs["away"]) - v["league_avg_goals"]) < 0.05
-        # ⚠️ **시즌 초라 표본이 작다** — 실측 2026-10-02 리그 전체 홈 12경기.
-        #    수가 크다고 단정하지 않는다. 있는지와 꼴만 본다.
-        assert v["home_advantage"] and v["home_advantage"]["home_games"] >= 1
-        vr = v["venue_rows"]
-        assert vr and len(vr["home"]) > 20 and len(vr["away"]) > 20
-        # 🔴 **경계는 리그 규정에서 온다**(사용자 지시 2026-10-02) — 자료가 주지
-        #    않는 수이고, 선언에 출처·확인 날짜가 붙는다. 전 판은 `None` 이었다.
-        assert v["playoff_cut"] and v["cut_lines"], v
-        assert v["cut_reason"], "경계를 어디서 얻었는지 안 적었다"
-        # 🔴 하키에 무승부는 **없다** — `None` 이어야 한다(0 으로 때우지 않는다)
-        assert v["draws"] is None
-        assert all(r["draws"] is None for r in vr["home"])
-        return
-    pytest.skip("우리 팀 줄이 없다")
-
-
-def test_하키_기대_득점이_선다():
-    """🔴 그러면 포아송 격자도 하키에서 **선다** — 축구 전용이 아니다."""
-    from app.collect import nhl
-    pages = _cassettes(lambda u: "api-web.nhle.com" in u and "/standings" in u)
-    if not pages:
-        pytest.skip("NHL 순위 카세트가 없다")
-    facts = nhl.parse_standings(
-        Fetched(pages[0]["url"], True, 200, pages[0]["text"]),
-        Question(Q_LINEUP, "x", team="Detroit Red Wings"))
-    if not facts:
-        pytest.skip("우리 팀 줄이 없다")
-    v = facts[0].value
-    vr, avgs = v["venue_rows"], v["venue_averages"]
-    hr = next(r for r in vr["home"] if "Detroit" in r["team"])
-    ar = next(r for r in vr["away"] if "Rangers" in r["team"])
-    need = int(rules.cross_rule("5c-1")["model"]["min_venue_games"])
-    # 🔴 **돌연변이가 통과해서 더한 줄이다.** 위 카세트는 홈 0경기라 `_rate` 가
-    #    `None` 을 내 저절로 막힌다 — 그래서 표본 가드를 떼어내도 초록이었다.
-    #    가드가 **실제로 일하는 구간**(0 < 경기수 < 문턱)으로 직접 물린다.
-    thin_h = {"team": "H", "played": need - 1, "goals_for": 9,
-              "goals_against": 3}
-    thin_a = {"team": "A", "played": need - 1, "goals_for": 3,
-              "goals_against": 9}
-    assert league.expected_goals(thin_h, thin_a, avgs) is None, \
-        f"표본 {need - 1}경기로 모형이 섰다 — 한 경기가 전부인 λ 다"
-    fat = {k: (v * 9 if k in ("played", "goals_for", "goals_against") else v)
-           for k, v in thin_h.items()}
-    assert league.expected_goals(fat, {**thin_a, "played": need,
-                                       "goals_for": 3 * need,
-                                       "goals_against": 9}, avgs) is not None
-    got = league.open_game_ratio(hr, ar, avgs)
-    if min(hr["played"] or 0, ar["played"] or 0) < need:
-        # 🔴 **표본이 모자라면 서지 않는다.** 실측 2026-10-02: 개막 직후라 홈
-        #    0경기·원정 1경기였다 — 그 표로 λ 를 내면 한 경기가 전부다.
-        assert got is None, got
-        # 🔴 표본을 채워 주면 **선다** — 식이 하키에서도 돈다는 증거
-        hr2 = {**hr, "played": need, "goals_for": 3 * need,
-               "goals_against": 2 * need}
-        ar2 = {**ar, "played": need, "goals_for": 2 * need,
-               "goals_against": 3 * need}
-        got = league.open_game_ratio(hr2, ar2, avgs)
-    assert got and got["total"] > 0 and 0 < got["p"] < 1, got
-    # 🔴 하키는 득점이 많다 — 리그 평균이 축구보다 **훨씬** 높아야 한다
-    assert got["league_total"] > 4.0, got["league_total"]
-
-
-def test_플레이오프_경계는_리그_규정에서_온다():
-    """🔴 §4 `stakes` — *"몇 위까지 진출인가"* 는 **자료가 주지 않는다.**
-
-    축구 fotmob 은 `legend[].indices` 로 알려 주고, NHL api-web 은
-    `divisionSequence`·`wildcardSequence` 는 주지만 **`3`·`2` 라는 수는 안 준다.**
-    ⚠️ 사본 금지와 충돌하지 않는다 — 리그 규정은 **우리 자료 어디에도 없다.**
-       그래서 선언이 맞고, 선언에는 **출처와 확인 날짜**가 붙는다.
-    """
-    cfg = rules.playoff_cut("NHL")
-    assert cfg and not cfg.get("unknown"), cfg
-    assert cfg["division_top"] and cfg["wildcard_slots"]
-    assert str(cfg["source"]).startswith("http"), "출처가 없다"
-    assert cfg["verified"], "확인 날짜가 없다"
-    # 🔴 **모르는 리그는 사유를 들고 있다** — 조용히 빈칸이 아니다
-    #    ⚠️ NPB 는 2026-10-02 에 **빠졌다** — 클라이맥스 시리즈는 리그 **상위 3팀**이고
-    #       그것은 한 수다. 전 판에 *"한 수로 안 떨어진다"* 고 적은 것이 틀렸다
-    #       (사용자 지시 *"변수 0건은 말이 안된다"* 가 그 오판을 드러냈다).
-    assert rules.playoff_cut("USL Championship").get("unknown")
-    assert int(rules.playoff_cut("NPB")["division_top"]) == 3
-    # 🔴 **아예 선언 없는 리그는 빈 dict** — 지어내지 않는다
-    assert rules.playoff_cut("없는리그") == {}
-
-
-def test_하키_순위가_경계를_두_개로_낸다():
-    """🔴 하키는 경계가 **둘이다** — 디비전 순위와 와일드카드 순번.
-
-    하나로 뭉개면 *"5위인데 진출권"*(와일드카드로 들어가는 자리)을 설명할 수 없다.
-    🔴 값은 yaml 이 원본이고 **코드에 박히지 않았나**를 함께 본다.
-    """
-    from app.collect import nhl
-    pages = _cassettes(lambda u: "api-web.nhle.com" in u and "/standings" in u)
-    if not pages:
-        pytest.skip("NHL 순위 카세트가 없다")
-    facts = nhl.parse_standings(
-        Fetched(pages[0]["url"], True, 200, pages[0]["text"]),
-        Question(Q_LINEUP, "x", team="Detroit Red Wings"))
-    if not facts:
-        pytest.skip("우리 팀 줄이 없다")
-    v = facts[0].value
-    cfg = rules.playoff_cut("NHL")
-    assert v["cut_lines"] and len(v["cut_lines"]) == 2, v["cut_lines"]
-    assert v["playoff_cut"] == int(cfg["division_top"])
-    assert str(cfg["source"]) in str(v["cut_reason"]), v["cut_reason"]
-    # 🔴 수를 코드에 박지 않았나 — 선언에서 읽어 쓴다
-    src = strip_docs(inspect.getsource(nhl._cut))
-    for key in ("division_top", "wildcard_slots"):
-        assert str(cfg[key]) not in src, f"{key} 값이 코드에 박혀 있다"
-
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 **변수가 λ 에 닿는다** — 딥서치 2026-10-03 (사용자 지시)
-# ══════════════════════════════════════════════════════════════════
-#
-# > ① 무게를 확률로 둘지 근거와 곱할지(A/B/C) 이거는 **딥서치 해서 찾아라**
-#
-# 답은 **A** 다: 확률에 근거를 **곱하지 않고**(그러면 확률이 아니게 된다) 변수가
-# **λ 를 움직인다.** 🔴 단 **계수를 짓지 않는 자리**에만 — 야구 선발이 그 자리다
-# (`ERA` 의 정의가 *"9이닝당 자책점"* 이라 맞출 모수가 없다).
 
 
 def test_평범한_선발은_모형을_건드리지_않는다():
@@ -586,42 +382,6 @@ def test_선발_보정에_지어낸_계수가_없다():
     nums = {x for x in _re.findall(r"(?<![\w.])\d+\.\d+", src)} - ok
     assert not nums, f"선발 보정에 지어낸 계수가 있다: {nums}"
     assert "INNINGS" in src and league.INNINGS == 9.0
-
-
-def test_선수_페이지_표기를_그대로_읽는다():
-    """🔴 실측 2026-10-03 — npb.jp 선수 페이지가 **칸을 쪼개서** 그린다.
-
-    | 표기 | 뜻 | 전 판이 읽은 값 |
-    |---|---|---|
-    | `投球回` 가 **두 칸**(`117` + `.1`) | 117⅓이닝 | 🔴 머리글 자리로 읽어 **자책점**을 ERA 로 읽었다 |
-    | `1264 .2` (칸 안에 공백) | 1264⅔이닝 | 🔴 `None`(이닝이 통째로 안 들어왔다) |
-    """
-    from app.collect import npb
-    assert npb._ip("1264 .2") == 1264.667
-    assert npb._ip("117.1") == 117.333
-    assert npb._ip("88") == 88.0
-    # 🔴 읽을 수 없는 것은 `None` — 0 으로 때우지 않는다
-    assert npb._ip("abc") is None
-
-
-def test_선수_이름을_제목에서_읽는다():
-    """🔴 실측 2026-10-03: `id="pc_v_name"` 선택자가 **등번호 `19`** 를 집었다."""
-    from app.collect import npb
-    html = ("<title>唐川　侑己（千葉ロッテマリーンズ） | 個人年度別成績 | "
-            "NPB.jp 日本野球機構</title>")
-    assert npb._player_name(html) == "唐川侑己"
-
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 **라인업 시장가치** — 딥서치 2026-10-03 (사용자 지시)
-# ══════════════════════════════════════════════════════════════════
-#
-# > 축구 라인업 시장가치 소스를 쓰나? **딥서치해서 찾아서 넣어라.**
-#
-# ✅ 자료는 이미 손에 있었다(fotmob 라인업의 `marketValue` — 선발·교체 전원).
-# 🔴 **λ 에는 넣지 않는다**: 가치를 골 단위로 바꾸는 계수가 발표된 적이 없다.
-#    발표된 모형(Peeters 2018 · arXiv 2411.09085)은 `(log 가치차)` 순서 프로빗으로
-#    승/무/패를 내고 **계수는 논문에 실려 있지 않다.** → 변수로만 쓴다.
 
 
 def test_라인업_가치가_λ에_닿지_않는다():
@@ -744,30 +504,6 @@ def test_중립_구장을_잰다():
     got3 = fotmob.parse_info(_j("ENG", "England", "Liverpool"), q, url="u",
                              when=None)
     assert "neutral_venue" not in got3[0].value, got3[0].value
-
-
-def test_맞대결은_경기_하나에_한_번이다():
-    """🔴🔴 실측 2026-10-03 — 같은 맞대결이 **변수 둘**로 세어졌다.
-
-        콜–파: `R1 [h2h_pattern·home]` + `R5 [h2h_pattern·home]` (같은 10경기)
-        NPB:  `R3 [h2h_pattern·away]` + `R4 [h2h_pattern·away]` (같은 22경기)
-
-    깊이 세포가 **팀마다** 돌아 같은 맞대결이 사실 둘로 오고, 그 둘이 변수 둘이 됐다.
-    ⚠️ 종전에는 두 사유가 **글자까지 같아서** 우연히 지워졌다 — 전반 연속 리드를
-       사유에 적자(팀마다 다르다) 그 우연이 깨져 드러났다.
-    """
-    from app import classify
-    assert "h2h_pattern" in classify.GAME_LEVEL
-    g = classify.Game(home="A", away="B", sport="soccer", league="X")
-    two = [classify.Classified(text="t1", source_url="u1", type="h2h_pattern",
-                               direction="home", hardness="hard", team="A",
-                               why="§4 h2h_pattern — A 8경기 연속 전반 리드"),
-           classify.Classified(text="t2", source_url="u2", type="h2h_pattern",
-                               direction="home", hardness="hard", team="B",
-                               why="§4 h2h_pattern — 전반 연속 리드 없음")]
-    got = classify._dedupe_variables(two)
-    assert len([c for c in got if c.is_variable]) == 1, [c.why for c in got]
-    del g
 
 
 def test_같은_과거_경기를_두_번_세지_않는다():

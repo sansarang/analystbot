@@ -16,7 +16,7 @@ from app.blackboard import Blackboard
 from app.cells import (Q_ABSENCE, Q_COUNTER, Q_INTENT, Q_LINEUP, Q_LIVE,
                        Q_SLATE, Q_STANDINGS, Q_STARTER_RECENT, Cell, Question,
                        SourceScores, awake)
-from app.collect import espn, fdorg, fotmob, kbo, kleague, mlb, nhl, npb
+from app.collect import espn, fdorg, fotmob, kleague
 from app.llm import Budget as LLMBudget
 from app.net import Net
 from app.search import SearchChain, build_chain
@@ -25,26 +25,19 @@ logger = logging.getLogger(__name__)
 KST = timezone(timedelta(hours=9))
 
 #: 어느 리그를 어느 어댑터가 맡나. 🔴 **분기 말고 표다** — 리그가 늘면 행이 는다.
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **축구 하나만 한다** — 사용자 지시 2026-10-18
+# ══════════════════════════════════════════════════════════════════
+#
+#  > **종목은 축구 하나로 한다 ... 불필요한거 다 지워라** · **지워라**
+#
+#  🔴 지운 것 — `collect/mlb.py`(774줄) · `collect/npb.py`(981) ·
+#     `collect/nhl.py`(574) · `collect/kbo.py`(269). 그리고 그 리그의 고정물.
+#  ⚠️ 종전 이 표에는 `MLB`·`NPB`·`KBO`·`NHL` 이 있었다(사용자 지시 2026-10-01
+#     *"야구 축구 하키 농구 배구"*). 그 지시는 **오늘 지시가 덮는다.**
 ADAPTERS = {
-    "MLB": mlb,
-    "NPB": npb,
-    # 🔴 **KBO** — `config.LEAGUES_AUTO` 에 처음부터 있었는데 여기 **없었다**.
-    #    즉 설정이 *"KBO 를 모은다"* 고 적어 두고 코드는 아무것도 안 했다
-    #    (CLAUDE.md #2 배선). 실측 2026-10-03 에 사용자 질문으로 드러났다.
-    #    ⚠️ 공식 사이트(`koreabaseball.com`)는 **robots 전면 금지**라 못 간다 —
-    #       소스를 고른 경위는 `app/collect/kbo.py` 머리글에 전부 적혀 있다.
-    kbo.LEAGUE: kbo,
-    # 🔴 §19-g-1 의 리그다 — 일정 날짜 검증(`verify.slate_date_ok`)이 여기서 돈다.
-    #    ⚠️ K리그는 `games` 표에 적지 않는다(ext_id 규약 미정 — `kleague` 머리글).
     kleague.LEAGUE: kleague,
-    # ── 사용자 지시 2026-10-01: "야구 축구 하키 농구 배구" 를 당일·내일로 저장한다
-    #    ⚠️ **v4 §9 에 없는 확장이다** — §9 단계 9 가 이름을 댄 것은
-    #       `KBO·NPB·MLB·K리그·해외축구`(야구·축구)뿐이다.
-    #       → `docs/fable/questions/2026-10-01_five_sports.md`
-    #    🔴 농구·배구는 **여기 없다.** 무료 일정 소스를 못 찾았다(실측) —
-    #       있는 척하지 않는다. 그 사유는 위 문서에 적혀 있다.
     fdorg.LEAGUE: fdorg,      # 해외축구 13개 대회 (키만·카드 없음)
-    nhl.LEAGUE: nhl,          # 하키 (키 없음)
 }
 
 # ══════════════════════════════════════════════════════════════════
@@ -68,11 +61,6 @@ ADAPTERS = {
 SOURCE_ADAPTERS = {
     "fotmob": fotmob,
     "espn": espn,
-    # 🔴 **MLB** — 종전에 이 줄이 **없었다**(접두가 없어 라우팅 자체가 불가)
-    "statsapi": mlb,
-    "nhl": nhl,
-    "npb": npb,
-    "tsdb": kbo,          # ⚠️ KBO 어댑터가 tsdb 를 **일정 소스로만** 쓴다
     "fdorg": fdorg,
     "kleague": kleague,
 }
@@ -484,7 +472,8 @@ async def _game_cells(pool, bb, net, scores, search, league: str, day: date, *,
     rows = await _slate_rows(pool, bb, league, day)
     out = {"lineup": 0, "intent": 0, "starter_recent": 0, "asleep": 0}
     dropped: list[str] = []
-    short = getattr(npb, "TEAMS", {}) if league == "NPB" else {}
+    # 🔴 **축구만 한다**(2026-10-18) — 종전엔 NPB 약칭 표를 썼다
+    short: dict = {}
     local_of = {full: s for s, full in short.items()}
 
     for r in rows:

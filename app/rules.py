@@ -485,23 +485,6 @@ def derived_shape() -> dict:
     return {"direction": direction, "open": openn}
 
 
-def playoff_cut(league: str) -> dict:
-    """🔴 §4 `stakes` 가 묻는 **플레이오프 경계**. 리그 **규정**이 정한다.
-
-    돌려주는 것: `{"rule":…, "division_top":…, …}` 또는 `{"unknown": 사유}`.
-    ⚠️ **자료가 알려 주는 리그는 이 파일에 없다**(축구 fotmob 의 `legend`) — 적으면
-       그 순간 사본이 된다. 모르는 리그는 `{}` 다.
-    """
-    got = league_rule(league)
-    if got.get("division_top") is not None:
-        return got
-    unknown = (_load(LEAGUE_RULES).get("unknown_cut") or {})
-    name = str(league or "").strip()
-    if name in unknown:
-        return {"unknown": str(unknown[name])}
-    return {}
-
-
 def league_rule(league: str) -> dict:
     """🔴 그 리그의 **규정** 묶음. 모르면 `{}` — 지어내지 않는다."""
     got = _load(LEAGUE_RULES).get("leagues") or {}

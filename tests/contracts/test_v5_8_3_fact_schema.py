@@ -273,68 +273,22 @@ def test_v5_8_3_행_안의_점수도_정본이다():
         "🔴 경기 행이 **고유 칸 이름**을 쓴다(§8-3 · #6):\n  " + "\n  ".join(bad))
 
 
-def test_v5_8_3_폼_사실이_last5를_낸다():
-    """🔴🔴 §8-3 — `last5` 변환이 **어댑터 안에서** 끝나야 한다.
+def test_v5_8_3_폼_사실_계약은_축구만_센다() -> None:
+    """🔴🔴 **축구만 한다** — 사용자 지시 2026-10-18(*"축구외에는 전부 삭제"*).
 
-    ⚠️ 돌연변이 D(`mlb` 가 `last5` 를 안 낸다)가 통과했다 — 아무 계약도 어댑터의
-       **폼 사실**을 보지 않았다. 🔴 실측 꼴로 **실제로 돌려** 본다(통신 없음).
+    ⚠️ 종전 이 자리에는 두 계약이 있었다 — `mlb.parse_schedule_facts` 가
+       `last5` 를 내는지(돌연변이 D), `factspec.last5_from` 이 예정 경기를 안
+       세는지(돌연변이 H). 🔴 그 어댑터와 변환기를 **지웠다**(야구 전용이었다).
+    🔴 남는 것 — 축구 폼은 `tests/test_form_shapes.py` 가 센다(`last5_of`).
+       여기서는 **어댑터가 사라졌다는 사실**을 못 박는다(되살아나면 빨개진다).
     """
-    from datetime import datetime, timezone
-
-    from app.cells import Question
-    from app.collect import mlb
-
-    class _Got:
-        ok = True
-        url = ("https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId=158"
-               "&startDate=2026-09-13&endDate=2026-10-04")
-        #: 🔴 실측 응답의 모양 그대로(2026-10-04)
-        text = """
-        {"dates": [
-          {"date": "2026-09-25", "games": [{"status": {"abstractGameState": "Final"},
-            "teams": {"home": {"team": {"name": "Milwaukee Brewers"}, "score": 5},
-                      "away": {"team": {"name": "San Diego Padres"}, "score": 3}}}]},
-          {"date": "2026-09-26", "games": [{"status": {"abstractGameState": "Final"},
-            "teams": {"home": {"team": {"name": "San Diego Padres"}, "score": 2},
-                      "away": {"team": {"name": "Milwaukee Brewers"}, "score": 7}}}]},
-          {"date": "2026-09-27", "games": [{"status": {"abstractGameState": "Final"},
-            "teams": {"home": {"team": {"name": "Milwaukee Brewers"}, "score": 0},
-                      "away": {"team": {"name": "Chicago Cubs"}, "score": 4}}}]}
-        ]}"""
-
-    q = Question("lineup", "MLB:Milwaukee Brewers:2026-10-04",
-                 team="Milwaukee Brewers", league="MLB",
-                 deadline=datetime(2026, 10, 4, 20, 0, tzinfo=timezone.utc))
-    facts = mlb.parse_schedule_facts(_Got(), q)
-    form = [f for f in facts if str(f.question_id).endswith(":form")]
-    assert form, f"폼 사실이 없다: {[f.question_id for f in facts]}"
-    v = form[0].value
-    assert "last5" in v, (
-        f"🔴 폼 사실에 `last5` 가 없다 — §8-3 은 어댑터가 변환하라고 한다: "
-        f"{sorted(v)}")
-    # 🔴 **값까지 맞는다** — 5-3 홈 승 · 7-2 원정 승 · 0-4 홈 패
-    assert v["last5"] == ["W", "W", "L"], v["last5"]
-    # ⚠️ 어떻게 셌나도 남는다(#3 조용한 0 금지)
-    assert str(v.get("last5_how") or "").strip(), v
-
-
-def test_v5_8_3_last5_from_이_예정_경기를_안_센다():
-    """🔴 돌연변이 H 가 통과했다 — 변환기를 **직접** 치는 계약이 없었다.
-
-    ⚠️ 예정 경기를 승패로 읽으면 거짓이다(점수가 `None` 이거나 0-0 으로 온다).
-    """
-    from app.factspec import last5_from
-    rows = [
-        {"home": "A", "away": "B", "home_score": 3, "away_score": 1,
-         "state": "Final"},
-        {"home": "A", "away": "B", "home_score": None, "away_score": None,
-         "state": "Preview"},
-        # 🔴 **점수가 0-0 으로 오는 예정 경기** — 상태를 안 보면 무승부로 센다
-        {"home": "A", "away": "B", "home_score": 0, "away_score": 0,
-         "state": "Scheduled"},
-    ]
-    got, why = last5_from(rows, team_name="A")
-    assert got == ["W"], (got, why)
-    assert "건너뜀 2행" in why, why
+    import pathlib as _pl
+    root = _pl.Path(__file__).resolve().parents[2]
+    for gone in ("app/collect/mlb.py", "app/collect/npb.py",
+                 "app/collect/nhl.py", "app/collect/kbo.py"):
+        assert not (root / gone).exists(), f"🔴 `{gone}` 가 아직 있다"
+    said = (root / "app/collect/ingest.py").read_text(encoding="utf-8")
+    for bad in ("import mlb", "import npb", "import nhl", "import kbo"):
+        assert bad not in said, f"🔴 `{bad}` 가 아직 남았다"
 
 

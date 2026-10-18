@@ -79,6 +79,7 @@ def test_행을_못_만든_사유를_이름으로_남긴다() -> None:
 
 def test_수집기들은_창을_그대로_쓴다() -> None:
     """⚠️ `asked=True` 가 수집기로 새면 슬레이트가 넓어진다(호출·비용)."""
-    for rel in ("app/collect/espn.py", "app/collect/nhl.py",
+    # 🔴 **축구만**(2026-10-18) — `collect/nhl.py` 는 지웠다
+    for rel in ("app/collect/espn.py",
                 "app/collect/fdorg.py"):
         assert "asked=True" not in _src(rel), rel

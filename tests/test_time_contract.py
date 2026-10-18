@@ -118,18 +118,6 @@ def test_fromisoformat_뒤에_tz_를_확인한다():
                      + "\n  ".join(bad))
 
 
-def test_어댑터가_naive_를_안_내보낸다():
-    """🔴 세 어댑터의 `_when` 은 **tz 가 없으면 `None`** 이다.
-
-    ⚠️ 종전엔 `Z` 없는 꼴이 오면 naive 가 그대로 슬레이트로 갔다.
-    """
-    from app.collect import fdorg, mlb, nhl
-    for mod in (mlb, nhl, fdorg):
-        assert mod._when("2026-10-03T16:00:00Z") is not None, mod.__name__
-        assert mod._when("2026-10-03T16:00:00") is None, (
-            f"{mod.__name__}: tz 없는 값을 내보낸다")
-
-
 def test_DB_가_tz_있는_칸을_쓴다():
     """🔴 절대규칙 2 — 표가 `TIMESTAMP`(tz 없음)면 **거기서부터 샌다**.
 

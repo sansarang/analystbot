@@ -32,14 +32,14 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 def test_v5_8_1_출처_목록이_선언돼_있다():
     """🔴 §8-1 이 이름 댄 출처들 — 손으로 흩어 적지 않는다."""
     from app.matchkey import SOURCES
-    for s in ("fotmob", "statsapi", "nhl", "npb", "tsdb", "fdorg", "espn"):
+    # 🔴 **축구만**(2026-10-18) — 야구·하키 출처는 지웠다
+    for s in ("fotmob", "fdorg", "espn"):
         assert s in SOURCES, (s, sorted(SOURCES))
 
 
 @pytest.mark.parametrize("source,mid,want", [
     ("fotmob", "5181853", "fotmob:5181853"),
     ("statsapi", 849825, "statsapi:849825"),
-    ("nhl", "2026020021", "nhl:2026020021"),
 ])
 def test_v5_8_1_열쇠를_출처_콜론_아이디로_만든다_M30(source, mid, want):
     from app.matchkey import make
@@ -63,7 +63,6 @@ def test_v5_8_1_빈_아이디는_거부한다():
     ("fotmob:5181853", ("fotmob", "5181853")),
     # 🔴 **옛 꼴도 읽는다** — 쌓인 행이 있다(이관 중이다)
     ("fotmob-5181780", ("fotmob", "5181780")),
-    ("nhl-2026020021", ("nhl", "2026020021")),
     ("tsdb-123", ("tsdb", "123")),
     # 🔴🔴 **접두 없는 MLB 열쇠** — 숫자만이다. 출처를 못 말한다
     ("849825", ("", "849825")),
@@ -109,7 +108,9 @@ def test_v5_8_1_어댑터가_열쇠를_matchkey로_짓는다():
     """
     #: 🔴 `ext_id` 를 **쓰는** 어댑터들. ⚠️ 이름으로 적는다 — 하나가 늘면
     #   여기 적어야 하고, 적지 않으면 그 어댑터가 옛 꼴로 쓸 수 있다.
-    WRITERS = ("mlb", "nhl", "fotmob", "espn", "kbo", "fdorg", "npb")
+    # 🔴 **축구만**(사용자 지시 2026-10-18 *"축구외에는 전부 삭제"*) —
+    #    종전 `("mlb","nhl","kbo","npb", …)` 는 어댑터째 지웠다
+    WRITERS = ("fotmob", "espn", "fdorg")
     bad = []
     for name in WRITERS:
         p = ROOT / "app" / "collect" / f"{name}.py"
@@ -143,8 +144,10 @@ def test_v5_8_1_라우팅이_두_꼴을_다_찾는다():
     for key in ("fotmob:5181853", "fotmob-5181780"):
         mod = ingest.adapter_of(ext_id=key)
         assert mod is not None and "fotmob" in mod.__name__, (key, mod)
-    # 🔴 **새 꼴 MLB 열쇠는 찾는다**
-    mod = ingest.adapter_of(ext_id="statsapi:849825")
-    assert mod is not None and "mlb" in mod.__name__, mod
+    # 🔴 **축구만**(사용자 지시 2026-10-18) — 종전엔 MLB 열쇠
+    #    (`statsapi:849825`)를 찾는지 셌다(실측 2026-10-04 의 그 사고).
+    #    그 어댑터를 지웠으므로 **못 찾는 것이 맞다**.
+    assert ingest.adapter_of(ext_id="statsapi:849825") is None
+    assert ingest.adapter_of(ext_id="npb:123") is None
 
 

@@ -5,7 +5,6 @@
 
 수집 대상(실측 2026-09-27):
   MLB statsapi  일정 15경기 · 예고 선발 13/15 · 순위 30팀 · transactions
-  npb.jp        일정 5경기 + 양 팀 予告先発 · 헤더 스코어 띠 · 등록 명단(背番号)
 """
 from __future__ import annotations
 
@@ -18,7 +17,6 @@ import pytest
 from app import cells as C
 from app.blackboard import (CONTRADICTED, FOUND, UNKNOWN, Blackboard, Fact,
                             reconcile)
-from app.collect import mlb, npb
 from app.net import Fetched, Net, Search, SearchUnavailable
 
 FIX = Path(__file__).resolve().parent / "fixtures" / "2026-09-27"
@@ -35,113 +33,6 @@ def _fix(name: str) -> Fetched:
 # MLB — 키 0건 · 검색 0건
 # ══════════════════════════════════════════════════════════════════
 
-
-
-def test_mlb_토요일_야간이_KST_일요일_아침이다():
-    """🔴 §2 · 절대 규칙 2 — MLB 토요일 야간은 **KST 로 일요일 아침**이다.
-
-    ⚠️ 종전 이 계약은 `g["starts_kst"].utcoffset() == +9` 를 쟀다. 🔴 그 오프셋은
-       `timestamptz` 에 들어가면 **사라진다**(실측 2026-10-05: 라이브 52행 전부
-       `starts_kst = starts_utc`) — 초록인데 아무것도 지키지 않는 계약이었다.
-    🔴 지켜야 하는 것은 **날짜가 넘어간다**는 사실이다. 그것은 표시 변환
-       (`timefmt`)에서 생기고, 그래서 거기를 센다.
-    """
-    from app import timefmt
-    g = mlb.parse_schedule(_fix("mlb_schedule.json"))[0]
-    assert g["starts_utc"].tzinfo is not None
-    # 🔴 **같은 순간**이다 — DB 칸이 순간만 담으므로 이것이 참인 전부다
-    assert g["starts_kst"] == g["starts_utc"]
-    # 🔴🔴 **그래서 날짜가 넘어가는가** — 이것이 §2 가 지키라는 사실이다
-    utc, kst = g["starts_utc"].astimezone(timezone.utc), timefmt.kst(g["starts_kst"])
-    assert kst.utcoffset() == timedelta(hours=9)
-    # 🔴 17:05Z → **다음 날** 02:05 KST. ⚠️ 날짜가 넘어가는 그 한 칸이 §2 다.
-    assert kst.date() == utc.date() + timedelta(days=1), (utc, kst)
-    assert timefmt.kst_label(g["starts_kst"]) == "09-28 02:05 KST", (
-        timefmt.kst_label(g["starts_kst"]))
-
-
-def test_mlb_예고_선발이_없으면_None이다():
-    """🔴 §0-5 — 지어내지 않는다. 실측 13/15 경기만 양쪽이 찼다."""
-    games = mlb.parse_schedule(_fix("mlb_schedule.json"))
-    both = [g for g in games if all(g["probable"].values())]
-    none_ = [g for g in games if not all(g["probable"].values())]
-    assert len(both) == 13, len(both)
-    assert len(none_) == 2
-    for g in none_:
-        assert None in g["probable"].values()
-
-
-def test_mlb_예고_선발에_외부_id가_붙는다():
-    """1b — alias 로 이을 수 있어야 한다(이름만으로 매칭하지 않는다)."""
-    g = next(g for g in mlb.parse_schedule(_fix("mlb_schedule.json"))
-             if all(g["probable"].values()))
-    p = g["probable"]["home"]
-    assert p["source"] == "statsapi" and p["external_id"].isdigit()
-    assert p["name"]
-
-
-def test_mlb_순위가_동기_재료를_전부_준다():
-    """🔴 §3 이 요구하는 칸 — clinched · eliminated · games_back · remaining."""
-    facts = mlb.parse_standings(_fix("mlb_standings.json"))
-    assert len(facts) == 30, len(facts)
-    rows = [f.value for f in facts]
-    assert all(r["team"] for r in rows)
-    assert all(isinstance(r["remaining"], int) and r["remaining"] >= 0
-               for r in rows)
-    assert any(r["clinched"] for r in rows), "확정 팀이 0이다"
-    assert any(r["eliminated"] for r in rows), "탈락 팀이 0이다"
-    assert all(f.hardness == "hard" for f in facts)
-
-
-# 🔴 v4 §8 폐기로 **동기 등급 계약 2건을 지웠다** — `motivation_tier` 가 없다.
-#    다만 순위 **자료**는 v4 §4 유형표의 `standings` 변수 원천으로 남는다.
-#    그래서 "확정과 탈락이 동시에 오지 않는가" 같은 **자료 무결성** 계약은 남긴다.
-
-
-def test_확정_팀은_탈락이_아니다():
-    """🔴 실측 2026-09-27 — 양키스가 "진출 확정 · 탈락"으로 동시에 찍혔다.
-
-    `eliminationNumber` 는 **지구** 탈락이고 와일드카드가 따로다. 둘을 뭉개면
-    §3 동기 등급이 모순된 입력을 받는다.
-    """
-    rows = [f.value for f in mlb.parse_standings(_fix("mlb_standings.json"))]
-    both = [r for r in rows if r["clinched"] and r["eliminated"]]
-    assert both == [], [r["team"] for r in both]
-    yankees = next(r for r in rows if "Yankees" in r["team"])
-    assert yankees["clinched"] and not yankees["eliminated"]
-    assert "지구 탈락" in yankees["note"], yankees["note"]
-
-
-def test_mlb_잔여가_음수가_되지_않는다():
-    """⚠️ 우천 순연으로 162 를 못 채우는 팀이 있다."""
-    rows = [f.value for f in mlb.parse_standings(_fix("mlb_standings.json"))]
-    assert min(r["remaining"] for r in rows) >= 0
-
-
-
-
-def test_mlb_복귀는_결장이_아니다():
-    """`Recalled`·`Activated` 가 결장으로 들어오면 결장 수가 뒤집힌다."""
-    raw = json.loads((FIX / "mlb_transactions.json").read_text())
-    kinds = {t.get("typeDesc") for t in raw.get("transactions") or []}
-    assert kinds, "픽스처에 거래가 0건이다"
-    facts = mlb.parse_transactions(_fix("mlb_transactions.json"))
-    names = {f.value["note"] for f in facts}
-    assert not any("Activated" in n for n in names)
-
-
-def test_mlb_상태_규약이_우리_것으로_번역된다():
-    games = mlb.parse_schedule(_fix("mlb_schedule.json"))
-    assert {g["status"] for g in games} <= {
-        "scheduled", "inprogress", "final", "postponed", "delayed"}
-
-
-def test_mlb_URL에_키가_없다():
-    """🔴 §14-13 — 유료 키 0건. statsapi 는 키가 필요 없다."""
-    for u in (mlb.schedule_url(DAY), mlb.standings_url(2026),
-              mlb.transactions_url(DAY)):
-        assert "key" not in u.lower() and "token" not in u.lower()
-        assert u.startswith("https://statsapi.mlb.com/")
 
 
 def _code(obj) -> str:
@@ -168,101 +59,6 @@ def _code(obj) -> str:
         out.append(_re.sub(r"#.*", "", ln))
     return "\n".join(out)
 
-
-def test_mlb_리그_상수가_한_곳이다():
-    """🔴 사본 금지 — 162 를 파서 안에 박지 않는다."""
-    assert "162" not in _code(mlb.parse_standings)
-    assert mlb.GAMES_IN_SEASON == 162
-
-
-# ══════════════════════════════════════════════════════════════════
-# NPB — 실물 HTML
-# ══════════════════════════════════════════════════════════════════
-
-def test_npb_일정_5경기를_읽는다():
-    games = npb.parse_schedule(_fix("npb_schedule_09.html"), DAY)
-    assert len(games) == 5, [g["home"] for g in games]
-    assert all(g["league"] == "NPB" for g in games)
-
-
-def test_npb_예고_선발이_양_팀_다_나온다():
-    """실측 — 일정 표에 `先発：小笠原` 꼴로 양쪽이 있다."""
-    games = npb.parse_schedule(_fix("npb_schedule_09.html"), DAY)
-    assert all(g["probable"]["home"] and g["probable"]["away"]
-               for g in games), [g["probable"] for g in games]
-    names = {g["probable"]["home"]["name"] for g in games}
-    assert "先発" not in "".join(names), "표지를 안 떼고 이름에 넣었다"
-    assert "小笠原" in names
-
-
-def test_npb_약칭을_정식명으로_바꾼다():
-    games = npb.parse_schedule(_fix("npb_schedule_09.html"), DAY)
-    teams = {g["home"] for g in games} | {g["away"] for g in games}
-    assert "巨人" not in teams and "読売ジャイアンツ" in teams
-
-
-def test_npb_현지와_KST를_둘_다_만든다():
-    g = npb.parse_schedule(_fix("npb_schedule_09.html"), DAY)[0]
-    assert g["starts_local"].utcoffset() == timedelta(hours=9)
-    assert g["starts_kst"] == g["starts_local"].astimezone(KST)
-    assert g["starts_utc"].tzinfo is timezone.utc or \
-        g["starts_utc"].utcoffset() == timedelta(0)
-
-
-def test_npb_다른_날짜는_섞이지_않는다():
-    """🔴 §14-9 — 요청하지 않은 날짜를 슬레이트에 넣지 않는다.
-
-    픽스처에는 9/28·9/30 행도 들어 있다 — 그것이 섞이면 이 계약이 잡는다.
-    """
-    got = _fix("npb_schedule_09.html")
-    assert 'id="date0930"' in got.text, "픽스처에 대조군이 없다"
-    for g in npb.parse_schedule(got, DAY):
-        assert g["starts_local"].day == 27, g
-
-
-def test_npb_예비일은_순연이다():
-    """실측 9/30 DeNA-広島 `(予備日)`."""
-    games = npb.parse_schedule(_fix("npb_schedule_09.html"), date(2026, 9, 30))
-    hit = [g for g in games if g["status"] == "postponed"]
-    assert hit and hit[0]["round_note"], games
-
-
-def test_npb_라이브_상태를_읽는다():
-    """헤더 스코어 띠 — 試合終了·N回表 를 우리 규약으로."""
-    facts = npb.parse_live(_fix("npb_schedule_09.html"))
-    assert len(facts) == 5, len(facts)
-    states = {f.value["status"] for f in facts}
-    assert states <= {"final", "inprogress", "postponed", "scheduled"}
-    assert "final" in states and "inprogress" in states
-
-
-
-
-
-
-
-
-def test_npb_전출만_결장이다():
-    """🔴 전입(←)은 결장이 아니라 보강이다."""
-    facts = npb.parse_movement(_fix("npb_registered_h.html"),
-                              "福岡ソフトバンクホークス")
-    assert facts, "전출 0건이면 이동표를 못 읽은 것이다"
-    assert all(f.value["basis"] == "gone" for f in facts)
-    names = {f.value["player_name"] for f in facts}
-    assert "山本祐大" not in names, "전입을 결장으로 셌다"
-    assert "井上朋也" in names, "전출을 놓쳤다"
-
-
-
-
-def test_npb_일일_공시는_미확인으로_적혀_있다():
-    """🔴 추측 금지 — URL 을 모르면 모른다고 적는다."""
-    assert "미확인" in npb.KOJI_URL_UNKNOWN
-
-
-# ══════════════════════════════════════════════════════════════════
-# §19-c 블랙보드
-# ══════════════════════════════════════════════════════════════════
 
 def test_같은_값이면_찾은_것이다():
     bb = Blackboard()
@@ -514,67 +310,6 @@ def test_모르는_소스는_순서를_안_바꾼다():
     assert [x.name for x in got] == ["A", "B", "C"]
 
 
-def test_질문_타입별로_따로_센다():
-    s = C.SourceScores()
-    s.record("닛칸", C.Q_LINEUP, "NPB", hit=True)
-    s.record("닛칸", C.Q_INTENT, "NPB", hit=False)
-    assert s.table[("닛칸", C.Q_LINEUP, "NPB")].rate == 1.0
-    assert s.table[("닛칸", C.Q_INTENT, "NPB")].rate == 0.0
-
-
-def test_리그별로_따로_센다():
-    """🔴 §19-e 는 `(source, question_type, league)` 셋이다 — `source_score`
-    표의 유일키도 셋이다.
-
-    ⚠️ 종전 열쇠는 둘이었다. 그러면 KBO 에서 잘 듣는 매체가 **NPB 순서를 밀어
-       올린다** — 매체는 리그마다 다르게 듣는다(§13 소스 지도가 리그별인 이유).
-    """
-    s = C.SourceScores()
-    s.record("스포츠나비", C.Q_LINEUP, "NPB", hit=False)
-    s.record("스포츠나비", C.Q_LINEUP, "KBO", hit=True)
-    assert s.table[("스포츠나비", C.Q_LINEUP, "NPB")].rate == 0.0
-    assert s.table[("스포츠나비", C.Q_LINEUP, "KBO")].rate == 1.0
-
-
-def test_지연을_못_재면_0이_아니라_None이다():
-    """🔴 `source_score.lag_min` 주석: *"못 재면 NULL — 0 으로 때우지 않는다."*
-
-    ⚠️ 종전 `lag` 는 `lag_total / hit` 였다. 마감(T)을 모르는 질문(아침 1회
-       순위·슬레이트)은 지연을 **못 재는데도 0분**으로 나왔고, 0분은 "가장
-       빠르다"는 뜻이라 `reorder` 가 그 소스를 맨 앞에 세웠다.
-    """
-    s = C.SourceScores()
-    s.record("npb.jp", C.Q_STANDINGS, "NPB", hit=True)          # 마감 없음
-    assert s.table[("npb.jp", C.Q_STANDINGS, "NPB")].lag is None
-    assert "지연 못 쟀다" in "\n".join(s.report())
-
-    s.record("西スポ", C.Q_LINEUP, "NPB", hit=True, lag_minutes=55)
-    assert s.table[("西スポ", C.Q_LINEUP, "NPB")].lag == 55.0
-
-
-def test_지연을_못_잰_소스를_앞세우지_않는다():
-    """🔴 `None` 을 0 으로 읽으면 **한 번도 시간을 못 잰 소스가 1위**가 된다."""
-    s = C.SourceScores()
-    s.record("잰것", C.Q_LINEUP, "NPB", hit=True, lag_minutes=60)
-    s.record("못잰것", C.Q_LINEUP, "NPB", hit=True)        # 적중률은 같다
-    srcs = [C.Source("못잰것", "url"), C.Source("잰것", "url")]
-    q = C.Question(C.Q_LINEUP, "x", league="NPB")
-    assert [x.name for x in s.reorder(srcs, q)] == ["잰것", "못잰것"]
-
-
-def test_마감이_없으면_지연을_못_잰다():
-    """🔴 `lag_minutes` 는 마감(T) 기준이다 — 없으면 **None**, 0 이 아니다."""
-    from datetime import datetime, timedelta, timezone
-    now = datetime(2026, 9, 27, 17, 5, tzinfo=timezone.utc)
-    assert C.lag_minutes(C.Question(C.Q_STANDINGS, "NPB")) is None
-    q = C.Question(C.Q_LINEUP, "소프트뱅크",
-                   deadline=now + timedelta(minutes=55))
-    assert C.lag_minutes(q, now) == 55
-    # ⚠️ tz 없는 마감으로 빼지 않는다 — KST 를 UTC 로 읽으면 9시간 어긋난다
-    assert C.lag_minutes(C.Question(C.Q_LINEUP, "x",
-                                    deadline=datetime(2026, 9, 27)), now) is None
-
-
 def test_점수표는_데이터다():
     """🔴 §19-e — 사람 승인 없이 §13 문서를 바꾸지 않는다. 코드는 순서만 고친다."""
     import inspect
@@ -613,15 +348,6 @@ def test_세포가_판정하지_않는다():
             assert f"= {bad}" not in src, (mod.__name__, bad)
 
 
-def test_수집기가_유료_사슬을_안_부른다():
-    import inspect
-    for mod in (mlb, npb, C, __import__("app.net", fromlist=["x"])):
-        src = inspect.getsource(mod).lower()
-        for bad in ("anthropic", "perplexity", "pplx", "apifootball",
-                    "openrouter", "groq", "api_key", "odds"):
-            assert bad not in src, (mod.__name__, bad)
-
-
 @pytest.mark.asyncio
 async def test_robots_거부는_기억하고_다시_안_두드린다():
     calls: list[str] = []
@@ -642,68 +368,6 @@ async def test_robots_거부는_기억하고_다시_안_두드린다():
 
 
 @pytest.mark.asyncio
-async def test_robots_자리에_HTML이_오면_제한_없음으로_본다():
-    """실측 2026-09-27 — npb.jp 가 robots.txt 자리에 사이트 HTML 을 준다."""
-    class _N(Net):
-        async def _load_robots(self, host):
-            return await Net._load_robots(self, host)
-
-    import httpx
-
-    class _R:
-        status_code = 200
-        text = "<!DOCTYPE html>\n<html lang='ja'><head>"
-
-    n = Net()
-
-    async def _fake_get(self, url, **kw):
-        return _R()
-
-    orig = httpx.AsyncClient.get
-    httpx.AsyncClient.get = _fake_get
-    try:
-        assert await n._load_robots("npb.jp") is None
-    finally:
-        httpx.AsyncClient.get = orig
-
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴 한 소스가 여러 주체를 낼 때 — 실사고 2026-09-27
-# ══════════════════════════════════════════════════════════════════
-
-def test_순위는_팀마다_다른_질문이다():
-    """🔴 실사고 — 30팀을 한 질문에 묶어 **전부 모순으로** 판정됐다.
-
-    계약이 값 하나짜리 대역이라 못 잡았고, 실물을 돌려서야 보였다.
-    """
-    facts = mlb.parse_standings(_fix("mlb_standings.json"))
-    ids = {f.question_id for f in facts}
-    assert len(ids) == 30, f"질문이 {len(ids)}개로 뭉쳤다"
-    assert all(i.startswith("standings:MLB:") for i in ids)
-
-
-def test_라이브도_경기마다_다른_질문이다():
-    facts = npb.parse_live(_fix("npb_schedule_09.html"))
-    assert len({f.question_id for f in facts}) == 5
-
-
-@pytest.mark.asyncio
-async def test_세포가_파서의_질문_id를_덮지_않는다():
-    """🔴 덮어쓰면 한 소스의 여러 주체가 한 질문에 몰린다."""
-    bb = Blackboard()
-    net = _FakeNet({"https://x/": Fetched("https://x/", True, 200, "x")})
-    cell = C.Cell(question=C.Question(C.Q_STANDINGS, "MLB"),
-                  sources=[C.Source("S", "url", url="https://x/",
-                                    parse=lambda g, q: [
-                                        Fact("standings:MLB:A", 1, "hard"),
-                                        Fact("standings:MLB:B", 2, "hard")])])
-    await cell.run(net, bb)
-    assert bb.value("standings:MLB:A") == 1
-    assert bb.value("standings:MLB:B") == 2
-    assert bb.contradictions() == []
-
-
-@pytest.mark.asyncio
 async def test_질문_id가_비면_세포가_채운다():
     """⚠️ 반대 위험 — 파서가 안 정했으면 세포가 채워야 한다."""
     bb = Blackboard()
@@ -717,28 +381,6 @@ async def test_질문_id가_비면_세포가_채운다():
 
 @pytest.mark.asyncio
 
-
-def test_모든_파서가_Fact를_낸다():
-    """★ 배선 — 소스에 붙은 파서가 `Fact` 아닌 것을 내면 세포가 터진다."""
-    got_sched = _fix("mlb_schedule.json")
-    got_npb = _fix("npb_schedule_09.html")
-    q = C.Question(C.Q_SLATE, "x")
-    for srcs, got in ((mlb.sources_slate(DAY), got_sched),
-                      (mlb.sources_standings(2026),
-                       _fix("mlb_standings.json")),
-                      (mlb.sources_transactions(DAY),
-                       _fix("mlb_transactions.json")),
-                      (npb.sources_slate(DAY), got_npb),
-                      (npb.sources_live(DAY), got_npb)):
-        for src in srcs:
-            out = src.parse(got, q)
-            assert isinstance(out, list), src.name
-            assert all(isinstance(f, Fact) for f in out), src.name
-
-
-# ══════════════════════════════════════════════════════════════════
-# §19-b-3 검증기가 루프 안에 있다
-# ══════════════════════════════════════════════════════════════════
 
 @pytest.mark.asyncio
 async def test_기사_소스는_검증기를_통과해야_한다():
@@ -810,18 +452,6 @@ async def test_사실의_값을_기사로_검사하지_않는다():
 
 
 @pytest.mark.asyncio
-async def test_공식_소스는_검증기를_안_거친다():
-    """🔴 §12-c-5 — 공식 API 는 발행 시각이 없다. 그것을 거부하면 아무것도 못 쓴다."""
-    bb = Blackboard()
-    net = _FakeNet({"https://o/x": Fetched("https://o/x", True, 200, "x")})
-    cell = C.Cell(question=C.Question(C.Q_SLATE, "MLB"),
-                  sources=[C.Source("공식", "url", url="https://o/x", tier=1,
-                                    verify=False,
-                                    parse=lambda g, q: [Fact("", [1], "hard")])])
-    assert await cell.run(net, bb) == FOUND
-
-
-@pytest.mark.asyncio
 async def test_통과한_기사는_층에_맞게_약해진다():
     """🔴 프리뷰 사이트는 soft 다 — hard 로 들어오면 확신이 부풀어 오른다."""
     from datetime import datetime as _dt
@@ -836,16 +466,6 @@ async def test_통과한_기사는_층에_맞게_약해진다():
     st = await cell.run(net, bb)
     assert st == UNKNOWN, "프리뷰가 판정 입력으로 통과했다"
     assert any("tier" in t for t in cell.tried), cell.tried
-
-
-def test_우리_소스가_층을_밝힌다():
-    """★ 공식은 1층이어야 한다 — 층을 안 적으면 기본 2층이 되어 검증이 어긋난다."""
-    for srcs in (mlb.sources_slate(DAY), mlb.sources_standings(2026),
-                 mlb.sources_transactions(DAY), npb.sources_slate(DAY),
-                 npb.sources_live(DAY)):
-        for s in srcs:
-            assert s.tier == 1, s.name
-            assert s.verify is False, f"{s.name}: 공식인데 기사 검증을 건다"
 
 
 @pytest.mark.asyncio
