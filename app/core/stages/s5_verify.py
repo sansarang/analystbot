@@ -328,11 +328,15 @@ def _turn_vars(ref: MatchRef, turnover: dict | None, *,
     ⚠️ 깃발이 꺼졌으면 **만들지 않는다**(지어낸 변수 금지).
     """
     out: list[Variable] = []
+    #: 🔴 집안 하나(2026-10-18) — **누가 더 많이 바꿨나**. 재료는 `off_squad` 명수다
+    #  ⚠️ `r`(가중)은 **안 쓴다** — 그 수의 방향을 아직 안 쟀다(#4).
+    rank: dict = {}
     for side, one in dict(turnover or {}).items():
         box = dict(one)
         if not box.get("on"):
             continue
         key = str(getattr(ref, side, "") or "")
+        rank[side] = (len(list(box.get("off_squad") or [])),)
         name = str(getattr(ref, f"{side}_name", "") or "")
         gone = [str(x) for x in (box.get("off_squad") or [])]
         out.append(Variable(
@@ -345,7 +349,11 @@ def _turn_vars(ref: MatchRef, turnover: dict | None, *,
             quote=str(box.get("why") or ""), doc_ids=[],
             from_rule="IR03T", usable_as_basis=True))
         state.note(f"s5 선수단 교체 변수 — `TURN-{side}` ({name})")
-    return out
+    # 🔴🔴 **집안 하나**(2026-10-18) — 양 팀이 다 바꿨으면 **더 많이 바꾼 쪽**만
+    #    확률에 닿는다. ⚠️ 실측 2026-10-18(서울–김천): `TURN-home → away` ·
+    #    `TURN-away → home` 으로 **정확히 서로 지웠다**(양 팀 다 선수단 교체).
+    return _family_one(out, rank, ref, "TURN",
+                       label="명단에 없는 최근 선발", state=state)
 
 
 #: 🔴 센 등급이 먼저다 — 한 주장을 여러 매체가 말하면 **가장 센 쪽**으로 센다
@@ -1035,6 +1043,58 @@ def _form_more(home: dict, away: dict, gap: float) -> tuple[str, str]:
     return "", (" · ".join(skipped) or "잰 자가 하나도 없다")
 
 
+def _family_one(out: list[Variable], rank: dict, ref: MatchRef, rid: str, *,
+                label: str, state: RunState) -> list[Variable]:
+    """🔴🔴 **집안 하나 — 부등호로 센다**(사용자 지시 2026-10-18 · 공통 자리).
+
+    > S01 부터 고쳐라 **집안마다 부등호 하나**
+
+    `rank[side]` 는 그 쪽의 **잰 값 묶음**(튜플)이다 — **큰 쪽이 센 쪽**이고 그
+    변수 하나만 확률에 닿는다(방향은 그 규칙의 `favors` 가 이미 안다).
+    ⚠️ 못 잰 쪽이 있거나 한 쪽만 섰으면 **종전 그대로** 둔다(견줄 상대가 없다).
+    🔴 두 쪽이 **같으면** 둘 다 맥락 전용이다 — *"같다"* 를 글로 적는다.
+    🔴 돌려주는 줄 수는 **그대로**다(카드는 양 쪽을 다 보인다 · #3).
+    """
+    if len(out) < 2:
+        return out
+    a, b = rank.get("home"), rank.get("away")
+    if a is None or b is None:
+        state.note(f"s5 {rid} — 집안 하나: 한쪽을 못 쟀다(홈 {a} · 원정 {b}) → "
+                   f"종전대로 둔다")
+        return out
+    said = f"{label} 홈 {_said_rank(a)} ↔ 원정 {_said_rank(b)}"
+    if a == b:
+        state.note(f"s5 {rid} — 집안 하나: **같다**({said}) → 둘 다 맥락")
+        return [one.model_copy(update={
+            "usable_as_basis": False,
+            "claim": f"{one.claim} · 🔴 **같다**({said}) — 확률에 안 넣는다"})
+            for one in out]
+    side = "home" if a > b else "away"
+    mark = ">" if a > b else "<"
+    got: list[Variable] = []
+    for one in out:
+        mine = "home" if one.subject == ref.home else "away"
+        if mine == side:
+            got.append(one.model_copy(update={
+                "claim": f"{one.claim} · 🔴 **{label} {_said_rank(a)} {mark} "
+                         f"{_said_rank(b)}** — 이 쪽이 집안 대표다"}))
+        else:
+            got.append(one.model_copy(update={
+                "usable_as_basis": False,
+                "claim": f"{one.claim} · 🔴 **집안 하나** — {said} 로 상대 쪽이 "
+                         f"대표다(확률에 안 넣는다)"}))
+    state.note(f"s5 {rid} — 집안 하나: **{side} 가 대표**({said})")
+    return got
+
+
+def _said_rank(got: object) -> str:
+    """🔴 잰 값 묶음을 사람이 읽는 글로 — 한 칸이면 그 수만."""
+    if isinstance(got, tuple):
+        return " · ".join(f"{x:g}" for x in got) if len(got) > 1 else \
+            f"{got[0]:g}"
+    return f"{got}"
+
+
 def _ir_recent(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
                state: RunState) -> list[Variable]:
     """IR01 — 최근 폼. 🔴 **양 팀 다** 만들지만 확률에 닿는 것은 **하나**다.
@@ -1650,6 +1710,9 @@ def _ir_soccer(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
         #     4경기"* 가 **홈에 유리**(×1.05)로 들어갔다 — 뜻이 반대다.
         #  🔴 무패·연승 → 그 팀 **유리**(`subject`) · 무승·연패 → 그 팀 **불리**
         #     (= `opponent` 유리). 표의 칸을 그 줄에서만 바꿔 넘긴다.
+        #: 🔴 집안 하나(2026-10-18) — **직전 경기가 누가 더 좋았나**
+        #  (① 결과 W>D>L ② 그 경기 득실차). ⚠️ 무는 방향이 없으니 안 담는다.
+        rank: dict = {}
         for key, raw in facts.recent.items():
             box = dict(raw) if isinstance(raw, dict) else {}
             said, fav = "", ""
@@ -1700,6 +1763,20 @@ def _ir_soccer(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
                                       "(그 팀이 유리하다)" if fav == "subject"
                                       else "(**무는 방향이 없다** — 어느 쪽도 "
                                            "안 민다)"), ref))
+                if fav in ("subject", "opponent"):
+                    # 🔴 **잰 값만** — 결과 순서(W 2 · D 1 · L 0)와 그 경기 득실차.
+                    #    ⚠️ 순서는 **크고 작음**일 뿐 가중이 아니다(#4).
+                    try:
+                        gd = float(gf) - float(ga)     # type: ignore[arg-type]
+                    except (TypeError, ValueError):
+                        gd = 0.0
+                    rank["home" if key == ref.home else "away"] = (
+                        {"W": 2.0, "D": 1.0, "L": 0.0}.get(said_last, 1.0), gd)
+        # 🔴🔴 **집안 하나**(2026-10-18) — 양 팀 직전 결과가 다 방향을 가지면
+        #    **더 좋았던 쪽**만 확률에 닿는다. ⚠️ 실측 2026-10-18(전북·서울):
+        #    `IR12-home → away` · `IR12-away → home` 으로 서로 지웠다.
+        out = _family_one(out, rank, ref, rid,
+                          label="직전 경기(결과·득실차)", state=state)
         if not out:
             state.note(f"s5 {rid} — 직전 경기 결과를 못 읽었다"
                        "(경기 목록이 비었다)")
@@ -1770,6 +1847,8 @@ def _ir_rotation(rid: str, kind: str, row: dict, ref: MatchRef, facts: Facts, *,
        적은 것이고, 그것은 거짓이다.
     """
     out: list[Variable] = []
+    #: 🔴 집안 하나(2026-10-18) — **누가 더 많이 빠졌나**(직전 선발 기준 인원 수)
+    rank: dict = {}
     for key, last in facts.last_xi.items():
         now = facts.xi.get(key)
         if now is None or now.state == "none":
@@ -1795,12 +1874,20 @@ def _ir_rotation(rid: str, kind: str, row: dict, ref: MatchRef, facts: Facts, *,
             out.append(_ir_var(_rid_for(rid, key, ref), kind, row, key,
                                f"{_name(ref, key)} 직전 선발 "
                                f"{', '.join(gone[:3])} 가 오늘 {said}", ref))
+            rank["home" if key == ref.home else "away"] = (len(gone),)
         if rid == "IR03" and back:
             out.append(_ir_var(_rid_for(rid, key, ref), kind, row, key,
                                f"{_name(ref, key)} {', '.join(back[:3])} 복귀",
                                ref))
     if not out:
         state.note(f"s5 {rid} — 직전 선발과 오늘 명단을 견줄 자료가 없다")
+    # 🔴🔴 **집안 하나**(2026-10-18) — `IR02` 가 양 팀에 걸리면 **더 많이 빠진
+    #    쪽**만 확률에 닿는다. ⚠️ 실측 2026-10-18(마치다·서울 두 경기):
+    #    `IR02-home → away` · `IR02-away → home` 으로 서로 지웠다.
+    #    🔴 `IR03`(복귀)은 이 자리에서 건드리지 않는다 — 오늘 잰 상쇄가 없다.
+    if rid == "IR02":
+        return _family_one(out, rank, ref, rid,
+                           label="오늘 명단에 없는 직전 선발", state=state)
     return out
 
 

@@ -77,11 +77,23 @@ def test_직전_승은_그_팀을_올린다() -> None:
 
 
 def test_확률에서도_방향이_맞다() -> None:
-    """🔴 직전에 진 팀의 승 확률이 **내려가야** 한다(그게 삭감이다)."""
+    """🔴 직전에 진 팀의 승 확률이 **내려가야** 한다(그게 삭감이다).
+
+    🔴🔴 **집안 하나로 바뀌었다**(사용자 지시 2026-10-18 — *"집안마다 부등호
+       하나"*). 양 팀 직전 결과가 다 방향을 가지면 **더 좋았던 쪽**(여기서는
+       원정 `W`)만 확률에 닿고, 홈 `L` 변수는 **맥락 전용**으로 내려간다.
+    ⚠️ 그래서 이 시험은 **집안을 함께** 넣어 방향을 본다 — 한 줄만 넣고 보면
+       대표가 아닌 쪽이라 안 민다(그것이 의도한 동작이다).
+    🔴 지키는 뜻은 그대로다 — **직전에 진 팀 쪽으로는 확률이 안 간다**.
+    """
     got = _vars(_seq("L", "W", "W"), _seq("W", "L", "L"))
-    one = got["IR12-home"]
-    p, said = pm.flat_prob(rt.place([one]), ref=REF)
+    rows = [got["IR12-home"], got["IR12-away"]]
+    p, said = pm.flat_prob(rt.place(rows), ref=REF)
     assert p["home"] < 1 / 3 < p["away"], (p, said)
+    # 🔴 대표가 아닌 쪽은 **맥락 전용**이고 그 사실을 글로 적는다(#3)
+    assert got["IR12-home"].usable_as_basis is False, got["IR12-home"].claim
+    assert "집안 하나" in got["IR12-home"].claim, got["IR12-home"].claim
+    assert got["IR12-away"].usable_as_basis, got["IR12-away"].claim
 
 
 def test_둘이_같이_있으면_한쪽으로_몰린다() -> None:
