@@ -392,8 +392,11 @@ def squad_of(facts, ref, side: str) -> tuple[list[dict], str]:
     box = dict(getattr(facts, "xi", None) or {})
     key = str(getattr(ref, side, "") or "")
     one = box.get(key)
-    if one is None:
-        return [], f"{NONE_MARK} `{side}` XI 가 없다"
+    #  🔴🔴 **오늘 XI 가 없으면 평소 XI 로 되물린다**(2026-10-19 · 3번) —
+    #     라인업 블록이 통째로 없는 판(이란 `content.lineup = None`)이 그 경우다.
+    #     ⚠️ 비어 있는 `lineup` 도 같다 — 명단이 0명이면 받을 사람이 없다.
+    if one is None or not list(getattr(one, "lineup", None) or []):
+        return usual_of(facts, ref, side)
     got: list[dict] = []
     n_nopid = 0
     # ══════════════════════════════════════════════════════════════════
@@ -426,6 +429,82 @@ def squad_of(facts, ref, side: str) -> tuple[list[dict], str]:
         said += f" · {NONE_MARK} 번호 없는 선발 {n_nopid}명"
     if not got:
         return [], said
+    return got[:squad_cap()], said
+
+
+# ══════════════════════════════════════════════════════════════════════
+# 🔴🔴 **라인업 블록이 아예 없으면 평소 XI 로 되물린다** — 2026-10-19 (3번)
+# ══════════════════════════════════════════════════════════════════════
+#
+#  > 사용자가 경기를 물으면 우선 능력치부터 수집한다 .. **라인업이 안 떴어도**
+#  > .. 기존에 **예상 라인업 수집하는 로직**이 있다 .. 거기에 선수들을 적용한다
+#
+#  🔴 **대개는 이 길이 필요 없다** — fotmob 이 발표 전에도
+#     `lineupType='lastStarting11'` 을 주고 `adapt.xi_of` 가 그것을 `predicted`
+#     로 그대로 싣는다(실측 2026-10-19 이집트: 11+11 · 자리·측면·번호까지).
+#  🔴 이 길이 도는 것은 **블록이 통째로 없을 때**다 — 실측 2026-10-19(이란
+#     `Mes Shahr Babak vs Persepolis`): `content.lineup` 이 **`None`** 이었다
+#     (`weather`·`table`·`h2h` 는 왔는데 그 칸만 null).
+#  🔴 그때 쓸 명단은 **평소 XI** 다 — 빈도 규칙은 `s2b_base` 가 원본이고
+#     여기서 다시 짜지 않는다(#1 사본 금지). ⚠️ 그 함수는 **이름만** 주므로
+#     번호·자리는 과거 XI 행에서 끌어온다.
+#  ⚠️ **자리는 최빈값**이다(그 규칙이 여태 없었다) — 경기마다 자리가 달랐던
+#     선수는 가장 많이 선 자리로 둔다. 동률이면 **더 최근** 경기 쪽이다
+#     (무작위로 고르면 회차마다 갈래가 흔들린다 · `ranked` 와 같은 결).
+#  🔴 **되물린 사실을 사유에 적는다** — 오늘 XI 가 아니다(#3 조용한 대입 금지).
+
+
+def usual_of(facts, ref, side: str) -> tuple[list[dict], str]:
+    """🔴🔴 **평소 XI** — 과거 경기 선발 빈도 상위 11명 + 자리는 **최빈값**.
+
+    `([{name,pid,pos,flank,bench}], 사유)` — `squad_of` 와 **같은 모양**이다.
+    ⚠️ 번호(`pid`)가 없는 선수는 **안 담는다**(선수 페이지를 못 연다).
+    """
+    from app.core.stages import s2b_base as _s2b      # 🔴 빈도 규칙의 원본
+    key = str(getattr(ref, side, "") or "")
+    rows = list(dict(getattr(facts, "past_xi", None) or {}).get(key) or [])
+    if not rows:
+        return [], f"{NONE_MARK} `{side}` 과거 선발이 없다(평소 XI 를 못 만든다)"
+    names, why = _s2b.usual_xi(rows)
+    # 🔴 이름 → 번호·자리(최빈값). `i` 가 작을수록 **최근** 경기다.
+    box: dict[str, dict] = {}
+    for i, xi in enumerate(rows):
+        for p in list(getattr(xi, "lineup", None) or []):
+            nm = str(getattr(p, "name", "") or "").strip()
+            if not nm:
+                continue
+            one = box.setdefault(nm, {"pid": None, "pos": {}, "flank": {},
+                                      "first": i})
+            pid = getattr(p, "pid", None)
+            if one["pid"] is None and isinstance(pid, int) and pid > 0:
+                one["pid"] = pid
+            for what in ("pos", "flank"):
+                said = str(getattr(p, what, "") or "")
+                if said:
+                    seen = one[what].setdefault(said, [0, i])
+                    seen[0] += 1
+                    seen[1] = min(seen[1], i)
+
+    def _top(tally: dict) -> str:
+        """🔴 최빈값 — 동률이면 **더 최근**(작은 `i`) 쪽."""
+        if not tally:
+            return ""
+        return sorted(tally.items(), key=lambda kv: (-kv[1][0], kv[1][1]))[0][0]
+
+    got: list[dict] = []
+    n_nopid = 0
+    for nm in names:
+        one = box.get(nm)
+        if not one or not isinstance(one.get("pid"), int):
+            n_nopid += 1
+            continue
+        got.append({"name": nm, "pid": one["pid"],
+                    "pos": _top(one["pos"]), "flank": _top(one["flank"]),
+                    "bench": False})
+    said = (f"{side} 🔁 **평소 XI**(오늘 XI 가 없다) — {why} · "
+            f"번호 있는 선수 **{len(got)}명**")
+    if n_nopid:
+        said += f" · {NONE_MARK} 번호 없는 선수 {n_nopid}명"
     return got[:squad_cap()], said
 
 

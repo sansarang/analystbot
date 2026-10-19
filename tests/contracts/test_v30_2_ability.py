@@ -567,7 +567,35 @@ def test_ab20_검문이_확률_앞에_배선됐다() -> None:
     assert "_ab3.xi_gate(" in said, "🔴 검문을 안 부른다"
     assert "선발 능력치 미확보" in said, "🔴 퇴로 머리글이 없다"
     assert "said_xi_rows == 0" in said, "🔴 XI 없는 판 예외가 없다"
+    # ══════════════════════════════════════════════════════════════
+    # 🔴🔴 **수집은 라인업보다 먼저** — 사용자 지시 2026-10-19
+    #
+    #  > 사용자가 경기를 물으면 **우선 능력치부터 수집한다** .. 라인업이 안
+    #  > 떴어도 .. 라인업 확정이 되면 **능력치만 가져다가 쓴다**
+    #
+    #  🔴 실측이 그 길을 열었다(이집트 1부): 발표 전 경기 페이지가
+    #     `lineupType='lastStarting11'` 로 **11+11 + 자리·측면·번호**를 준다 →
+    #     `facts.xi` 에 이미 들어온다(`parse_lineup` 이 꼴을 안 가린다).
+    # ══════════════════════════════════════════════════════════════
+    i_sq = said.index("_ab3.squad_fetch(")
+    assert i_sq < said.index("_s2d.run("), \
+        "🔴 능력치 수집이 전략 판정(⑦) **뒤**다 — 예상 XI 판에서 못 받는다"
+    #  🔴🔴 **문서·검색보다도 앞이다** — 사용자 지시 *"물으면 **우선** 능력치부터"*
+    #     ⚠️ 실측 2026-10-19(클루지): 전략 판정 앞에만 뒀을 때 `s4_extract` 가
+    #        먼저 돌았다. 카드 상한(15분)을 검색이 먹으면 `fetch` 가 *"카드 상한을
+    #        넘겨 멈췄다"* 로 능력치를 **못 받는다**.
+    assert i_sq < said.index("s4_extract.run("), \
+        "🔴 능력치 수집이 ③ 문서 추출 **뒤**다 — 카드 상한을 검색이 먼저 먹는다"
+    #  🔴 재료(`facts`)가 생긴 **바로 뒤**여야 한다 — 그 사이에 다른 await 가
+    #     끼면 또 뒤로 밀린다(실측으로 두 번 밀렸다)
+    assert i_sq < said.index("s2b_base.run("), \
+        "🔴 능력치 수집이 ② 바닥 확률 **뒤**다"
+    assert i_sq < said.index("said_gate = "), \
+        "🔴 능력치 수집이 라인업 신원 검문 **뒤**다"
+    #  🔴 그런데 **검문은 신원 검문 뒤**다 — 모순 입력이 먼저 걸려야 한다
     i_gate = said.index("_ab3.xi_gate(")
+    assert said.index("said_gate = ") < i_gate, \
+        "🔴 능력치 검문이 라인업 신원 검문 **앞**이다 — 까닭이 섞인다"
     #  🔴 확률은 `probmodel` 을 **처음 부르는 자리**다(이름이 바뀌어도 모듈은
     #     그대로다 · 사본 금지)
     i_prob = said.index("import probmodel")
@@ -578,6 +606,93 @@ def test_ab20_검문이_확률_앞에_배선됐다() -> None:
     assert "have=said_sq" in said, "🔴 받은 묶음을 재사용하지 않는다"
     #  🔴 그 글자를 **버리지 않는다**(CLAUDE.md #2 배선)
     assert "st.note(f\"⑤-b1 {line}\")" in said, "🔴 글자를 만들고 버린다"
+
+
+class _P2(_P):
+    """🔴 자리·측면까지 있는 선수(과거 XI 행의 모양)."""
+
+    def __init__(self, name: str, pid: int | None, pos: str = "",
+                 flank: str = "") -> None:
+        super().__init__(name, pid)
+        self.pos, self.flank = pos, flank
+
+
+def test_ab22_오늘_XI_가_없으면_평소_XI_로_되물린다() -> None:
+    """🔴🔴 **3번** — 라인업 블록이 통째로 없는 판(2026-10-19 사용자 설계).
+
+    > 사용자가 경기를 물으면 우선 능력치부터 수집한다 .. **라인업이 안 떴어도**
+    > .. 기존에 **예상 라인업 수집하는 로직**이 있다 .. 거기에 선수들을 적용한다
+
+    ⚠️ 실측 2026-10-19(이란 `Mes Shahr Babak vs Persepolis`): 경기 페이지의
+       `content.lineup` 이 **`None`** 이었다(`weather`·`table`·`h2h` 는 왔다).
+    🔴 빈도 규칙은 `s2b_base.usual_xi` 가 원본이다(#1 사본 금지) — 여기서는
+       **자리 최빈값**과 **되물린 사실이 사유에 남는가**를 센다.
+    """
+    #  🔴 세 경기: A·B 는 3회 · C 는 2회 · D 는 1회 → 빈도 순서가 정해진다
+    #     A 의 자리는 CB 두 번 · RB 한 번 → **CB**(최빈값)
+    past = [
+        _XI([_P2("A", 1, "CB", "중앙"), _P2("B", 2, "ST", "중앙"),
+             _P2("C", 3, "DM", "중앙")]),
+        _XI([_P2("A", 1, "CB", "중앙"), _P2("B", 2, "ST", "중앙"),
+             _P2("C", 3, "DM", "중앙")]),
+        _XI([_P2("A", 1, "RB", "오른"), _P2("B", 2, "ST", "중앙"),
+             _P2("D", None, "LW", "왼")]),
+    ]
+    facts = _F(past={"team:000001": past})
+    got, why = ab.squad_of(facts, _R(), "home")
+    #  🔴 ① 오늘 XI 가 없는데 **빈 목록이 아니다**(종전엔 `[]` 였다)
+    assert got, why
+    assert [x["name"] for x in got] == ["A", "B", "C"], got
+    #  🔴 ② 자리는 **최빈값**이다(CB 2회 > RB 1회)
+    assert dict((x["name"], x["pos"]) for x in got) == \
+        {"A": "CB", "B": "ST", "C": "DM"}, got
+    assert dict((x["name"], x["flank"]) for x in got)["A"] == "중앙", got
+    #  🔴 ③ **되물린 사실이 사유에 남는다**(#3 조용한 대입 금지)
+    assert "평소 XI" in why and "오늘 XI 가 없다" in why, why
+    #  🔴 ④ 번호 없는 선수는 **안 담고 수를 적는다**
+    assert "번호 없는 선수 1명" in why, why
+    #  🔴 ⑤ 오늘 XI 가 **있으면** 그것을 쓴다(되물리지 않는다)
+    f2 = _F(xi={"team:000001": _XI([_P2("Z", 9, "GK", "중앙")])}, past=
+            {"team:000001": past})
+    got2, why2 = ab.squad_of(f2, _R(), "home")
+    assert [x["name"] for x in got2] == ["Z"], got2
+    assert "평소 XI" not in why2, why2
+    #  🔴 ⑥ 과거도 없으면 **그 사실을 적는다**(0 으로 때우지 않는다)
+    got3, why3 = ab.squad_of(_F(), _R(), "home")
+    assert got3 == [] and "과거 선발이 없다" in why3, why3
+
+
+def test_ab21_카드_경로는_하루_캐시를_켠다() -> None:
+    """🔴🔴 **판을 건너 능력치를 가져다 쓴다** — 사용자 지시 2026-10-19(2번).
+
+    > 라인업 확정이 되면 **능력치만 가져다가 쓴다**
+
+    🔴 그 저장소는 **하루 캐시**다 — `/players/` 가 `Net.DAY_CACHE` 에 있어서
+       예상 XI 판(T−3h)에서 받은 선수 페이지를 확정 XI 판이 디스크에서 읽는다.
+       ⚠️ 그러니 켜지지 않은 Net 으로 카드를 내면 그 재사용이 **안 된다**.
+    ⚠️ 실측 2026-10-19: 운영(`app/bot/main.py`)은 켰는데 `tools/v6_run.py` ·
+       `tools/layer1_review.py` 는 `Net()` 맨몸이었다 — 둘 다 **카드를 내는
+       길**(`pipeline.analyze`)이다. 손으로 맞추는 세 자리는 갈린다(#1) →
+       🔴 **한 곳**(`net.card_net`)에서 만든다.
+    """
+    from app import net as _net
+    #  🔴 ① 그 한 곳이 실제로 켜 준다(행동으로 센다 · 글자 검사 아님)
+    got = _net.card_net()
+    assert got._day_path("https://www.fotmob.com/players/1/x", "") is not None, \
+        "🔴 `/players/` 가 하루 캐시에 안 담긴다 — 판을 건너 못 쓴다"
+    #  🔴 ② `/match/` 는 **담지 않는다**(라인업이 굳으면 확정 XI 가 와도 안 바뀐다)
+    assert got._day_path("https://www.fotmob.com/match/1", "") is None, \
+        "🔴 경기 페이지가 하루 캐시에 담긴다 — 예상 XI 가 굳는다"
+    #  🔴 ③ **카드를 내는 길은 전부** 그 한 곳을 쓴다
+    #     ⚠️ **D46** — 주석·독스트링을 빼고 **코드만** 본다. 주석이 옛 `Net()` 을
+    #        *설명하는* 것과 코드가 그것을 *부르는* 것은 다르다(한 번 걸렸다).
+    from tests._helpers import strip_docs
+    for rel in ("app/bot/main.py", "tools/v6_run.py", "tools/layer1_review.py"):
+        code = strip_docs((ROOT / rel).read_text(encoding="utf-8"))
+        assert "card_net(" in code, f"🔴 {rel} 가 카드용 Net 을 안 쓴다"
+        #  ⚠️ 맨몸 `Net()` 으로 카드를 내면 판을 건너는 재사용이 깨진다
+        assert "Net()" not in code.replace("card_net()", ""), \
+            f"🔴 {rel} 에 맨몸 `Net()` 이 남아 있다"
 
 
 def test_ab16_문턱_표가_설정에_있다() -> None:

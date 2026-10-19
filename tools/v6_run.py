@@ -78,7 +78,11 @@ async def main(argv: list[str]) -> int:
     q = Question(raw=arg, team=team, opponent=opp,
                  asked_at=datetime.now(timezone.utc))
 
-    net = _net_mod.Net()
+    # 🔴🔴 **운영과 같은 Net** — 하루 캐시를 켜야 예상 XI 판에서 받은
+    #    능력치를 확정 XI 판이 **가져다 쓴다**(사용자 지시 2026-10-19 2번).
+    #    ⚠️ 종전엔 `Net()` 맨몸이라 판마다 선수 페이지를 다시 받았고,
+    #       여기서 잰 시간이 운영과 달랐다(#12 프로브 금지의 그 어긋남).
+    net = _net_mod.card_net()
     ref = await s1_resolve.run(q, pool=pool, state=state, net=net)
     if isinstance(ref, Ambiguous):
         print("🔴 s1 — 경기를 확정하지 못했다")
