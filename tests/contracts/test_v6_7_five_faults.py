@@ -717,14 +717,11 @@ def test_v7_C8_선수단_교체는_r_가중을_받는다():
                     claim="선수단 교체", quote="q")
     vs = routing.place([turn])
     r = _mu.r_of(vs, ref)
-    assert 0.0 < r["home"] < 1.0 and r["away"] == 1.0, r
-    # 🔴 축1 이 그 r 로 과거를 깎는다
-    box = {"form": {"home": _form.TeamForm(team="H", n=10, adj_gf=20.0,
-                                           adj_ga=10.0),
-                    "away": _form.TeamForm(team="A", n=10, adj_gf=10.0,
-                                           adj_ga=10.0)}}
-    axis = _mu.axis1(box, vs, r=r)
-    assert abs(float(axis.home) - 1.0 * r["home"]) < 1e-6, axis.home
-    assert "r=" in axis.why
-    # 🔴 그 r 은 **표**가 든다(코드에 수를 박지 않는다)
+    # 🔴🔴 **뒤집혔다**(2026-10-18) — `squad_rotation` 이 맥락 전용이 되어
+    #    축 자리를 잃었으므로 r 을 **더는 깎지 않는다**(양쪽 1.0).
+    #    ⚠️ 사용자 지시 *"과거 경기력 폼 제외"* 에 선수단 교체가 들어갔다.
+    #       실측 — 즈볼러 4-1 에서 `TURN` 이 원정(패자)을 밀었다.
+    assert r == {"home": 1.0, "away": 1.0}, r
+    # 🔴 그래도 **그 수를 표가 든다**는 규율은 그대로다(코드에 박지 않는다)
     assert "turnover_r" in str(_mu.table().get("axis1"))
+    _ = _form

@@ -427,6 +427,16 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     said_more = [*var_dv, *var_lr]
     if said_more:
         variables = [*variables, *said_more]
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **한 사실 한 표**(사용자 지시 2026-10-19 — 구조적 결함)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 실측(우디네세 0-3 레체): 결장자 한 명이 `IR02-away`·`AB2-away`
+        #     **두 표**로 홈을 밀어 홈 1위가 됐다. 두 변수는 **다른 모듈**에서
+        #     오므로(s5_verify ↔ datavars) 각자 집안 규칙으로는 못 묶는다.
+        #  🔴 그래서 **둘이 합쳐진 뒤** 이 자리에서 한 번 본다 — 배치를 다시
+        #     세우기 **전**이어야 맥락으로 내린 것이 확률에 안 닿는다.
+        variables = _dvar.one_fact_one_vote(variables, state=st)
         # 🔴 **묶음은 하나다** — 배치를 다시 세운다(둘로 갈리면 배치와 축이
         #    어긋난다 · 실사고 2026-10-15 그 자리다)
         varset = _routing.place(variables)

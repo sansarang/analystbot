@@ -201,6 +201,11 @@ def test_v7_선수단_교체가_변수로_만들어진다():
     ⚠️ 실측 2026-10-10: 선수단 교체가 **깃발로만** 있어 배치표를 지나지 않았고,
        김천 VariableSet 에 `squad_rotation` 이 **0개**였다 — 축이 받을 통로가 없다.
     ⚠️ 돌연변이: `_turn_vars` 를 지우면 그 통로가 다시 막힌다.
+
+    🔴🔴 **뒤집혔다 — 선수단 교체는 확률에서 뺐다**(사용자 지시 2026-10-18
+       *"과거 경기력 폼 제외...오로지 변수로만"* → `squad_rotation` 포함).
+       자리가 `hypo` 뿐이고 λ 보정표에도 없다 — 카드·⑯ 은 그대로 읽는다.
+    ⚠️ 까닭은 실측이다 — 즈볼러 4-1(우리 원정 40.8% · `TURN` 이 원정을 밀었다).
     """
     from datetime import datetime, timedelta, timezone
 
@@ -219,9 +224,10 @@ def test_v7_선수단_교체가_변수로_만들어진다():
               "away": {"on": False}}, state=RunState(match_key="x"))
     assert len(got) == 1 and got[0].id == "TURN-home", [x.id for x in got]
     assert got[0].type == "squad_rotation" and got[0].hardness == "hard"
-    # 🔴 배치표가 그것을 축0·축1·축3·V1 로 보낸다
+    # 🔴🔴 배치표가 그것을 **맥락(`hypo`)으로만** 보낸다(2026-10-18 · 아래 머리말)
+    #    ⚠️ 종전엔 축0·축1·축3·V1 였다 — 과거 층을 확률에서 뺄 때 함께 내렸다.
     row = routing.place(got).rows[0]
-    assert set(row.places) == {"axis0", "axis1", "axis3", "V1", "hypo"}
+    assert set(row.places) == {"hypo"}, row.places
     # 🔴 깃발이 꺼지면 **안 만든다**(지어낸 변수 금지)
     assert s5_verify._turn_vars(ref, {"home": {"on": False}},
                                 state=RunState(match_key="x")) == []

@@ -130,6 +130,26 @@ def from_ability(ref: MatchRef, facts: Facts, box: dict, *,
     elif nh < low or na < low:
         state.note(f"가 A1 — 홈 {nh}명 ↔ 원정 {na}명 · 한쪽이 {low}명 미만이라 "
                    "평균이 몇 사람에 휘둘린다(안 센다)")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **인원 수가 다르면 평균을 견주지 않는다**(사용자 지시 2026-10-19)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 점수차가 많이 나는거는 실제로 우리 코드에 문제가 있다는거다
+    #  > → **고쳐라**
+    #
+    #  ⚠️ 실측 2026-10-19 — 큰 점수차 네 판 중 **인원이 같은 셋은 다 맞췄고**
+    #     유일하게 틀린 판이 인원이 **다른** 판이었다:
+    #       우디네세 0-3   0.40(10명) ↔ 0.46(10명) → 원정 ✅
+    #       브라이턴 5-0   0.62(10명) ↔ 0.52(10명) → 홈   ✅
+    #       호펜하임 1-2   0.42(10명) ↔ 0.54(10명) → 원정 ✅
+    #       🔴 르아브르 1-3 0.50(**8명**) ↔ 0.37(10명) → 홈 ✗(실제 원정 승)
+    #  🔴 까닭 — 능력치를 못 받는 선수는 보통 **출전이 적은 선수**다. 그들을
+    #     빼고 낸 평균은 **위로 치우친다**. 표본 수가 다른 두 평균을 그대로
+    #     견주면 비교의 전제가 깨진다.
+    #  🔴 새 손값을 만들지 않는다 — *"같지 않으면 안 센다"* 하나다.
+    elif abs(nh - na) > _ab.count_slack():
+        state.note(f"가 A1 — 홈 {nh}명 ↔ 원정 {na}명 · **인원 차 "
+                   f"{abs(nh - na)}명**(허용 {_ab.count_slack()}명) → 안 센다")
     elif abs(h - a) < gap:
         state.note(f"가 A1 — 홈 {h:.3f} ↔ 원정 {a:.3f} · 차 {abs(h - a):.3f} "
                    f"< 문턱 {gap:g}(안 센다)")
@@ -152,8 +172,17 @@ def from_ability(ref: MatchRef, facts: Facts, box: dict, *,
     for kind, rule in dict(_ab.branch_table()).items():
         hh, n1, _w1 = _ab.side_pct(facts, ref, "home", box, rule)
         aa, n2, _w2 = _ab.side_pct(facts, ref, "away", box, rule)
+        # 🔴🔴 **인원이 다르면 자리별 평균도 견주지 않는다**(2026-10-19 · A1 과 같은 까닭)
+        #    ⚠️ 실측 — `AB3` 가 **9명 ↔ 6명**으로 견준 판이 있었다(호펜하임).
         if hh is None or aa is None or n1 < _ab.branch_min() \
-                or n2 < _ab.branch_min() or abs(hh - aa) < tilt_gap:
+                or n2 < _ab.branch_min() \
+                or abs(n1 - n2) > _ab.count_slack() \
+                or abs(hh - aa) < tilt_gap:
+            if (hh is not None and aa is not None
+                    and abs(n1 - n2) > _ab.count_slack()):
+                state.note(f"가 A3 `{kind}` — 홈 {n1}명 ↔ 원정 {n2}명 · "
+                           f"**인원 차 {abs(n1 - n2)}명**(허용 "
+                           f"{_ab.count_slack()}명) → 그 자리는 안 센다")
             continue
         won["home" if hh > aa else "away"].append(str(kind))
     n_h, n_a = len(won["home"]), len(won["away"])
@@ -182,6 +211,8 @@ def _absence_quality(ref: MatchRef, facts: Facts, box: dict, *,
     cf = _box("ability")
     gap = _num(cf, "absence_gap")
     out: list[Variable] = []
+    #: 🔴 집안 하나(2026-10-19 ㄱ) — 쪽별 **손실 크기**를 담는다
+    loss: dict = {}
     if gap is None:
         state.note(f"가 A2 — {NONE_MARK} 문턱 표가 없다(`{CONF}`)")
         return out
@@ -230,8 +261,52 @@ def _absence_quality(ref: MatchRef, facts: Facts, box: dict, *,
                         f"{base:.2f} 보다 {top[1] - base:.2f} 높다"
                         f"(문턱 {gap:g} · 결장 {len(gone)}명 중 백분위를 받은 "
                         f"{len(hits)}명)"))
+        #: 🔴 집안 하나가 읽을 **잰 값** — 손실 크기(빠진 최고 − 오늘 평균)
+        loss[side] = float(top[1] - base)
         state.note(f"가 A2 `{side}` **발동** — {top[0]} {top[1]:.3f}")
-    return out
+    return _ab2_one(out, loss, ref, gap, state=state)
+
+
+def _ab2_one(out: list[Variable], loss: dict, ref: MatchRef, gap: float, *,
+             state: RunState) -> list[Variable]:
+    """🔴🔴 **결장 품질도 집안 하나 — 부등호로 센다**(사용자 지시 2026-10-19 ㄱ).
+
+    ⚠️ 실측 2026-10-19 — `AB2` 가 **양 팀에 같이 걸려 서로 지웠다**:
+       · 우디네세 0-3 레체 — `AB2-home` ↔ `AB2-away` 상쇄 · 우리 홈 1위(틀림)
+       · 글라드바흐 1-2 호펜하임 — 같은 모양 · 우리 홈 1위(틀림)
+       🔴 `AB2` 는 `FAMILY` 표에 **없어서** 집안 하나 규칙이 건드리지 않았다.
+    🔴 그래서 **손실이 큰 쪽**만 확률에 닿는다(그 팀이 불리하므로 표의 방향대로
+       상대를 민다). 두 손실 차가 문턱(`absence_gap`) 미만이면 **"같다"** 로
+       적고 둘 다 맥락 전용이다.
+    🔴 문턱은 **새 손값이 아니다** — A2 가 쓰는 그 `absence_gap` 을 그대로 쓴다.
+    """
+    if len(out) < 2 or len(loss) < 2:
+        return out
+    a, b = float(loss.get("home", 0.0)), float(loss.get("away", 0.0))
+    said = f"손실 홈 {a:.2f} ↔ 원정 {b:.2f}"
+    if abs(a - b) < float(gap):
+        state.note(f"가 A2 — 집안 하나: **같다**({said} · 차 {abs(a - b):.2f} < "
+                   f"{float(gap):g}) → 둘 다 맥락")
+        return [one.model_copy(update={
+            "usable_as_basis": False,
+            "claim": f"{one.claim} · 🔴 **결장 품질 같다**({said}) — "
+                     f"확률에 안 넣는다"}) for one in out]
+    worse = "home" if a > b else "away"
+    mark = ">" if a > b else "<"
+    got: list[Variable] = []
+    for one in out:
+        mine = "home" if str(getattr(one, "id", "")).endswith("-home") else "away"
+        if mine == worse:
+            got.append(one.model_copy(update={
+                "claim": f"{one.claim} · 🔴 **손실이 더 크다**({said} · "
+                         f"{a:.2f} {mark} {b:.2f}) — 이 쪽이 집안 대표다"}))
+        else:
+            got.append(one.model_copy(update={
+                "usable_as_basis": False,
+                "claim": f"{one.claim} · 🔴 **집안 하나** — 상대 쪽 손실이 더 "
+                         f"크다({said} · 확률에 안 넣는다)"}))
+    state.note(f"가 A2 — 집안 하나: **{worse} 손실이 더 크다**({said})")
+    return got
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -333,6 +408,16 @@ def _squad_value(ref: MatchRef, facts: Facts, cf: dict, *,
     if nh < low or na < low:
         state.note(f"다 C3 — 가치를 가진 선발 홈 {nh}명 ↔ 원정 {na}명 · "
                    f"한쪽이 {low}명 미만이다(안 센다)")
+        return []
+    # 🔴🔴 **인원 수가 다르면 합을 견주지 않는다**(2026-10-19 · A1 과 같은 까닭)
+    #    ⚠️ 가치 **합**은 인원 수에 그대로 비례한다 — 한쪽이 두 명 적으면
+    #       그 팀 합이 작아 보이고, 그것을 *"전력이 낮다"* 로 읽는다.
+    from app.core import ability as _ability
+    slack = _ability.count_slack()
+    if abs(nh - na) > slack:
+        state.note(f"다 C3 — 가치를 가진 선발 홈 {nh}명 ↔ 원정 {na}명 · "
+                   f"**인원 차 {abs(nh - na)}명**(허용 {slack}명 · "
+                   "합이 인원에 비례한다) → 안 센다")
         return []
     if not vh or not va:
         state.note(f"다 C3 — {NONE_MARK} 한쪽 합이 0 이다(홈 {vh:g} ↔ 원정 {va:g})")
@@ -486,7 +571,35 @@ PREFER: dict[str, str] = {"갈래": "BR0"}
 #: 🔴 집안 — `{집안 이름: (id 접두들)}`. ⚠️ 묶음 변수(`BR0`)는 **갈래 집안**이다
 FAMILY: dict[str, tuple[str, ...]] = {
     "갈래": ("BR-", "BR0"),
+    # ══════════════════════════════════════════════════════════════
+    # 🔴🔴 **선발 명단 하나에서 일곱 표가 나왔다** — 사용자 지시 2026-10-19
+    # ══════════════════════════════════════════════════════════════
+    #
+    #  > 구조적 결함 있는지 전수 검사 해라 → **1번 고치고 재측정해봐라**
+    #
+    #  ⚠️ 전수 검사(2026-10-19): `facts.xi` **한 칸**에서 확률에 닿는 변수가
+    #     **일곱**이었다 — `IR02`·`IR03`·`DV3`·`AB1`·`AB3`·`BR0`·`BR-n`.
+    #     실측(브라이턴): 센 변수 넷 중 **셋**이 선발 명단에서 나왔다
+    #     (`AB1`·`AB2`·`BR0`) — *"명단이 좋다"* 가 세 번 세어졌다.
+    #  🔴 그 칸이 답하는 질문은 **셋**이다. 질문마다 표 하나로 묶는다:
+    #       ① 누가 나왔나(선발 전력) — `AB1`·`AB3`·**`DV3`**(가치는 전력의 어림)
+    #       ② 누가 빠졌나(결장)      — `AB2`·`IR02`(`one_fact_one_vote`)
+    #       ③ 전술 비교(갈래)        — `BR0`·`BR-n`(묶음이 대표)
+    #  ⚠️ 대표를 **어느 것으로** 할지는 아홉 판으로 정할 수 없다 — 지금은 각
+    #     집안 함수가 담는 **순서**(AB1 → AB3 → DV3)를 쓰고, 그 순서가 옳은지는
+    #     백필 측정으로 가린다(🔴 수를 짓지 않는다).
+    #  🔴🔴 **되돌렸다**(사용자 지시 2026-10-19) — 묶음은 `AB1`·`AB3` 만이다.
+    #     ⚠️ 실측 아홉 판 비교 — `DV3` 까지 묶으면 적중 **6 → 5**, 빗남 1 → 2
+    #        였다(벨그라노·호펜하임이 동률로 내려갔다: `AB3`·`DV3` 가 같은 쪽을
+    #        가리킨 판에서 한 표로 줄기 때문이다).
+    #     🔴 그래도 **중복은 사실이다** — `facts.xi` 한 칸에서 확률에 닿는 변수가
+    #        여섯이다(`IR02`·`IR03`·`DV3`·`AB1`·`AB3`·`BR*`). 어느 것을 대표로
+    #        할지는 백필 2,582경기가 말해야 한다(표본 아홉으로는 못 가린다).
     "능력치": ("AB1", "AB3"),
+    # 🔴 `AB2`(결장 품질)는 **쪽마다 하나씩** 나므로 크기를 견줘야 한다 —
+    #    그 판정은 `_ab2_one` 이 하고(2026-10-19 ㄱ), 이 표는 집안 이름만 든다.
+    #    ⚠️ 종전엔 이 표에 없어서 집안 하나 규칙이 **건드리지 않았다**.
+    "결장 품질": ("AB2",),
     "전력차": ("TB1", "TB2"),
     "실력": ("ST1", "ST2", "ST3"),
     "흐름": ("FL1", "FL2", "FL4"),
@@ -499,6 +612,50 @@ def _family_of(rid: str) -> str:
         if any(said.startswith(p) for p in pres):
             return name
     return ""
+
+
+#: 🔴🔴 **같은 사실을 두 번 세지 않는다**(사용자 지시 2026-10-19 — 구조적 결함)
+#
+#  ⚠️ 실측 2026-10-19(우디네세 0-3 레체): 결장자 **한 명**(Ivan Ilić)이 확률에
+#     **두 표**로 들어갔다 —
+#       `IR02-away` *"직전 선발 Ilić 가 오늘 명단에 없다"*      → 홈 ×1.03
+#       `AB2-away`  *"결장 품질 손실 — Ilić 0.58 > 평균 0.46"*  → 홈 ×1.03
+#     그 둘이 홈을 2표로 밀어 홈 1위(36.5%)가 됐고 결과는 **0-3 원정 완승**이다.
+#     (같은 사실이 `A5 전력 누수`·`A8 자리 교체`로도 적히지만 그 둘은 맥락이다.)
+#  🔴 **대표는 `AB2`** 다 — 그것이 *"누가"* 빠졌나(능력치까지)를 센다.
+#     `IR02`(몇 명)는 맥락으로 내린다. ⚠️ `AB2` 가 없으면 `IR02` 가 그대로 선다.
+#  🔴 쪽마다 따로 본다 — 홈에 `AB2` 가 있고 원정에 없으면 원정 `IR02` 는 남는다.
+SAME_FACT: tuple[tuple[str, str], ...] = (("AB2", "IR02"),)
+
+
+def one_fact_one_vote(rows: list, *, state: RunState) -> list:
+    """🔴🔴 **한 사실 한 표** — 대표가 있으면 겹치는 쪽을 맥락으로 내린다.
+
+    `SAME_FACT` 의 `(대표 접두, 내릴 접두)` 를 **쪽별로** 본다(`-home`·`-away`).
+    🔴 돌려주는 줄 수는 그대로다 — 내린 것은 `usable_as_basis=False` 로 남아
+       ⑯ 이 읽는다(#3 조용한 0 금지).
+    """
+    said = {str(getattr(x, "id", "")) for x in (rows or [])}
+    out = []
+    for one in (rows or []):
+        rid = str(getattr(one, "id", ""))
+        hit = ""
+        for lead, drop in SAME_FACT:
+            if not rid.startswith(drop):
+                continue
+            tail = rid[len(drop):]            # 🔴 `-home`·`-away`(없으면 빈 글자)
+            if f"{lead}{tail}" in said:
+                hit = f"{lead}{tail}"
+                break
+        if not hit:
+            out.append(one)
+            continue
+        out.append(one.model_copy(update={
+            "usable_as_basis": False,
+            "claim": f"{one.claim} · 🔴 **한 사실 한 표** — 같은 결장을 "
+                     f"`{hit}` 가 품질까지 세므로 이 줄은 확률에 안 넣는다"}))
+        state.note(f"한 사실 한 표 — `{rid}` 를 맥락으로 내렸다(대표 `{hit}`)")
+    return out
 
 
 def _one_per_family(rows: list[Variable], *,

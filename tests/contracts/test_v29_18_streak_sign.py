@@ -85,22 +85,29 @@ def test_확률에서도_방향이_맞다() -> None:
     ⚠️ 그래서 이 시험은 **집안을 함께** 넣어 방향을 본다 — 한 줄만 넣고 보면
        대표가 아닌 쪽이라 안 민다(그것이 의도한 동작이다).
     🔴 지키는 뜻은 그대로다 — **직전에 진 팀 쪽으로는 확률이 안 간다**.
+    🔴🔴 **뒤집혔다 — 과거 폼은 확률에서 뺐다**(사용자 지시 2026-10-18
+       *"과거 경기력 폼 제외...오로지 변수로만"*). `recent_pattern`·
+       `form_streak`·`squad_rotation` 은 자리가 `hypo` 고 λ 보정표에도 없다.
+    ⚠️ 까닭은 실측이다 — 즈볼러 4-1(우리 원정 40.8%) · 우디네세 0-3(우리 홈 41.8%)
+       에서 과거 층이 **결과와 정반대**였다.
     """
     got = _vars(_seq("L", "W", "W"), _seq("W", "L", "L"))
     rows = [got["IR12-home"], got["IR12-away"]]
     p, said = pm.flat_prob(rt.place(rows), ref=REF)
-    assert p["home"] < 1 / 3 < p["away"], (p, said)
-    # 🔴 대표가 아닌 쪽은 **맥락 전용**이고 그 사실을 글로 적는다(#3)
-    assert got["IR12-home"].usable_as_basis is False, got["IR12-home"].claim
+    # 🔴 **확률은 안 움직인다** — 균등 그대로다
+    assert abs(p["home"] - 1 / 3) < 1e-9 and abs(p["away"] - 1 / 3) < 1e-9, p
+    assert "맥락 전용" in said, said
+    # 🔴 그래도 **글자(부호)는 사실대로** 선다 — 카드·⑯ 이 읽는다
+    assert got["IR12-home"].favors == "away", got["IR12-home"].claim
     assert "집안 하나" in got["IR12-home"].claim, got["IR12-home"].claim
-    assert got["IR12-away"].usable_as_basis, got["IR12-away"].claim
 
 
-def test_둘이_같이_있으면_한쪽으로_몰린다() -> None:
+def test_둘이_같이_있어도_확률은_안_움직인다() -> None:
+    """🔴 위 머리말과 같다 — 과거 폼은 2026-10-18 에 확률에서 뺐다."""
     got = _vars(_seq("L", "W", "W"), _seq("W", "L", "L"))
     rows = [got["IR12-home"], got["IR12-away"]]
     p, _ = pm.flat_prob(rt.place(rows), ref=REF)
-    assert p["away"] > p["home"], p
+    assert abs(p["away"] - 1 / 3) < 1e-9, p
 
 
 def test_표는_그대로다() -> None:

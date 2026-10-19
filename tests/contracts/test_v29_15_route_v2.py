@@ -31,7 +31,11 @@ def test_켜면_여섯_집안_판이_돈다(monkeypatch) -> None:  # noqa: ANN00
     got = dict(rt.table()["types"])
     assert got["team_stats"]["places"] == ["axis1", "hypo"], got["team_stats"]
     assert got["def_absence"]["places"] == ["axis0", "hypo"]
-    assert got["lineup_intent"]["places"] == ["axis2", "hypo"]
+    # 🔴🔴 **뒤집혔다**(2026-10-19 ㄴ) — `lineup_intent`(DV6 포메이션
+    #    변화)는 *"상대가 불안하다"* 는 간접 신호라 **맥락 전용**이다.
+    #    ⚠️ 실측 — 우디네세 0-3 · 호펜하임 1-2 에서 그 신호가 명단
+    #       신호를 눌러 홈 1위를 만들었다(설정 두 줄로 되돌린다).
+    assert got["lineup_intent"]["places"] == ["hypo"]
 
 
 def test_켠_판은_확률_통로가_하나다(monkeypatch) -> None:  # noqa: ANN001

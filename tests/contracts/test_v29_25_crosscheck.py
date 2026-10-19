@@ -195,18 +195,21 @@ def test_cc8_맥락_전용은_확률을_못_민다() -> None:
 
     rows = [
         # 🔴 확률 자리(축)에 있는 변수 — **센다**
-        VarRow(id="S01-home", type="recent_pattern", subject="H",
-               favors="subject", goals="up", places=["axis1", "hypo"]),
+        #    ⚠️ 유형을 `squad_ability` 로 바꿨다 — `recent_pattern` 은
+        #       2026-10-18 에 **확률에서 뺐다**(과거 폼 제거). 이 시험이 지키는
+        #       것은 *"자리 없는 변수는 표를 못 던진다"* 이고 그 뜻은 그대로다.
+        VarRow(id="AB1", type="squad_ability", subject="H",
+               favors="home", places=["axis0", "hypo"]),
         # 🔴 맥락 전용 — 자리가 `hypo` 뿐이다 → **안 센다**
-        VarRow(id="S01-away", type="recent_pattern", subject="A",
-               favors="subject", goals="up", places=["hypo"]),
+        VarRow(id="AB9", type="squad_ability", subject="A",
+               favors="away", places=["hypo"]),
         # 🔴 `context_only` 가 참이면 자리가 있어도 **안 센다**
-        VarRow(id="IR99", type="form_streak", subject="A", favors="subject",
-               places=["axis1"], context_only=True),
+        VarRow(id="IR99", type="squad_ability", subject="A", favors="away",
+               places=["axis0"], context_only=True),
     ]
     got, why = pm.flat_prob(VariableSet(rows=rows), ref=_Ref())
-    assert "S01-home" in why, why
-    assert "S01-away" not in why, f"CC8 🔴 맥락 전용이 표를 던졌다 — {why}"
+    assert "AB1" in why, why
+    assert "AB9" not in why, f"CC8 🔴 맥락 전용이 표를 던졌다 — {why}"
     assert "IR99" not in why, f"CC8 🔴 `context_only` 가 표를 던졌다 — {why}"
     assert "맥락 전용 변수 2개는 **안 셌다**" in why, why
     # 🔴 홈 한 표만 들어갔으니 홈이 앞선다

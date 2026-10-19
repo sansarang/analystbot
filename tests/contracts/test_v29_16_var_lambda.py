@@ -1,4 +1,8 @@
-"""🔴🔴 **폼·결장·전략 변수가 확률에 닿는다** — 사용자 지시 2026-10-15.
+"""🔴 2026-10-19 — 시험 대역의 유형을 `lineup_intent` →
+`squad_ability` 로 바꿨다(그 유형이 확률에서 빠졌다 · 아래 머리말과 같은 까닭).
+이 시험들이 지키는 것은 **`flat_prob` 의 기계**(쏠림·무 깎기·두 번 안 세기)이고
+유형이 무엇인지는 상관없다.
+🔴🔴 **폼·결장·전략 변수가 확률에 닿는다** — 사용자 지시 2026-10-15.
 
 > 폼·결장·전략 변수 **연결해라** → *"변수 넣기전 초기 확률 33.3 프로로 동등하게
 > 해라 … 그외에는 아무 의미 없다"*
@@ -39,13 +43,25 @@ def test_설정에_칸이_있다() -> None:
     assert float(dict(by["favors"])["mul"]) == 1.05
 
 
-def test_폼이_확률을_움직인다() -> None:
+def test_폼은_확률을_못_민다() -> None:
+    """🔴🔴 **뒤집혔다 — 과거 폼은 확률에서 뺐다**(사용자 지시 2026-10-18).
+
+    > 과거 경기력 폼 제외...오로지 변수로만 하자 → **이거 지워라**
+
+    ⚠️ 실측 2026-10-18 저녁 — 과거 층이 **결과와 정반대**였다:
+       즈볼러 4-1 고어헤드(우리 원정 40.8% · `FL1`·`ST2`·`IR12`·`TURN` 이 원정을
+       밀었다) · 우디네세 0-3 레체(우리 홈 41.8% · `ST2`·`FL2` 가 홈을 밀었다).
+    🔴 그래서 `recent_pattern`·`form_streak`·`squad_rotation` 은 **맥락 전용**이다
+       (자리도 `hypo` · λ 보정표에도 없다). 카드·⑯ 은 그대로 읽는다.
+    🔴 이 시험은 *"되살아나지 않는다"* 를 지킨다 — 지우면 되살아나도 아무도 안 본다.
+    """
     got, said = pm.flat_prob(rt.place([
         V("S01-home", "recent_pattern", goals="down"),
         V("S01-away", "recent_pattern", subject="team:100002", goals="up")]),
         ref=REF)
-    assert got["away"] > got["home"], got
-    assert "S01-home" in said, said
+    assert abs(got["home"] - 1 / 3) < 1e-9, got
+    assert abs(got["away"] - 1 / 3) < 1e-9, got
+    assert "맥락 전용" in said, said
 
 
 def test_결장이_확률을_움직인다() -> None:
@@ -57,14 +73,14 @@ def test_결장이_확률을_움직인다() -> None:
 
 def test_전략_변수가_확률을_움직인다() -> None:
     got, _ = pm.flat_prob(rt.place([
-        V("SL1", "lineup_intent", favors="home", goals="up")]), ref=REF)
+        V("SL1", "squad_ability", favors="home", goals="up")]), ref=REF)
     assert got["home"] > got["away"], got
 
 
 def test_한_변수를_두_번_세지_않는다() -> None:
     """🔴 `favors` 와 `goals` 를 둘 다 가진 변수를 두 번 세면 이중 계산이다."""
     _got, said = pm.flat_prob(rt.place([
-        V("SL1", "lineup_intent", favors="home", goals="up")]), ref=REF)
+        V("SL1", "squad_ability", favors="home", goals="up")]), ref=REF)
     assert said.count("[SL1]") == 1, said
 
 

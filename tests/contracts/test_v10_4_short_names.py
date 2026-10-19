@@ -97,25 +97,20 @@ def test_losing_streak_counts_from_the_one_list() -> None:
     assert mix["streak_losing"] == 1, mix
 
 
-def test_losing_streak_now_touches_probability() -> None:
-    """🔴🔴 **뒤집혔다** — 사용자 지시 2026-10-18(*"전부다 수정해"*).
-
-    ⚠️ 종전 어림은 *"`stakes` 자리는 **V2·가설**뿐 — 확률 금지"* 였다
-       (연패 = 간절함을 **가설 근거로만** 쓰라던 2026-10-11 지시).
-    🔴 그런데 실측 2026-10-18(캔자스): 변수 11개 중 **3개**만 확률을 밀었고
-       맞대결·홈 이점·순위 동기·동기 비대칭이 **자리 때문에 버려졌다**. 사용자가
-       *"전부다 수정해"* 라고 해서 **축을 더했다**.
-    🔴 그래서 이제 센다: **축과 λ 보정표에 둘 다** 있나(한쪽만으론 안 센다).
+def test_losing_streak_no_longer_touches_probability() -> None:
+    """🔴🔴 **뒤집혔다 — 간접 신호는 확률에서 뺐다**(사용자 지시 2026-10-19 ㄴ).
+       `stakes`(IR14 순위 동기)·`lineup_intent`(DV6 포메이션 변화)는 *"상대가
+       불안하다"* 는 **간접 추론**이라 자리가 `hypo` 뿐이고 λ 표에도 없다.
+    ⚠️ 까닭은 실측이다 — 우디네세 0-3 · 호펜하임 1-2 에서 그 신호들이 명단
+       신호(능력치·가치)를 눌러 **홈 1위**를 만들었다.
     """
     from app.core import routing
     box = dict(dict(routing.table().get("types") or {}).get("stakes") or {})
     said = [str(p) for p in (box.get("places") or [])]
-    assert "V2" in said and routing.HYPO in said, box
-    assert [p for p in said
-            if p.startswith("axis") or p == "lambda_const"], box
+    assert said == [routing.HYPO], box
     fav = (((routing.table().get("lambda_rules") or {}).get("by_var") or {})
            .get("favors") or {})
-    assert "stakes" in {str(x) for x in (fav.get("types") or [])}, fav
+    assert "stakes" not in {str(x) for x in (fav.get("types") or [])}, fav
 
 
 def test_short_forms_skip_country_fragments() -> None:

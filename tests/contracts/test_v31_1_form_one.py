@@ -79,12 +79,24 @@ def test_한쪽만_있으면_종전대로_둔다() -> None:
     assert "집안 하나" not in got[0].claim and "폼 같다" not in got[0].claim
 
 
-def test_폼_부등호가_확률_보정표에_있다() -> None:
-    """🔴 자리와 λ 표가 **둘 다** 있어야 센다 — `favors` 목록에 유형이 있나."""
+def test_폼은_확률_보정표에서_빠졌다() -> None:
+    """🔴🔴 **뒤집혔다**(사용자 지시 2026-10-18 — *"과거 경기력 폼 제외"*).
+
+    ⚠️ 2026-10-18 낮에는 폼 부등호를 λ 표에 **넣었다**. 같은 날 저녁 실측
+       (즈볼러 4-1 · 우디네세 0-3)에서 과거 층이 결과와 반대로 가자 **뺐다**.
+    🔴 부등호 자체는 남는다 — 카드·⑯ 이 읽는 글자다(확률만 안 움직인다).
+    """
     from app.core import routing
-    fav = (((routing.table().get("lambda_rules") or {}).get("by_var") or {})
-           .get("favors") or {})
-    assert "recent_pattern" in {str(x) for x in (fav.get("types") or [])}, fav
+    box = routing.table().get("lambda_rules") or {}
+    fav = ((box.get("by_var") or {}).get("favors") or {})
+    gls = ((box.get("by_var") or {}).get("goals") or {})
+    for name in ("recent_pattern", "form_streak", "squad_rotation"):
+        assert name not in {str(x) for x in (fav.get("types") or [])}, name
+        assert name not in {str(x) for x in (gls.get("types") or [])}, name
+    # 🔴 자리도 `hypo` 뿐이다(한쪽만 걷으면 다시 샌다)
+    types = routing.table().get("types") or {}
+    for name in ("recent_pattern", "form_streak", "squad_rotation"):
+        assert list((types.get(name) or {}).get("places") or []) == ["hypo"], name
     # 🔴 사다리는 **둘**이고 방향이 못 박혀 있다(득점은 큰 쪽 · 실점은 적은 쪽)
     assert [(k, d) for k, d, _l in s5.FORM_LADDER] == [
         ("scored", "more"), ("conceded", "less")], s5.FORM_LADDER
@@ -157,3 +169,88 @@ def test_네_집안이_같은_함수를_쓴다() -> None:
     assert want.get("_turn_vars"), "🔴 `TURN` 이 집안 하나를 안 부른다"
     assert want.get("_ir_soccer"), "🔴 `IR12` 가 집안 하나를 안 부른다"
     assert sum(want.values()) >= 3, f"🔴 집안 셋이 안 이어졌다 — {want}"
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **한 사실 한 표** — 사용자 지시 2026-10-19(구조적 결함)
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 실측(우디네세 0-3 레체): 결장자 **한 명**(Ivan Ilić)이 확률에 **두 표**로
+#     들어갔다 — `IR02-away`(몇 명 빠졌나) + `AB2-away`(누가 빠졌나).
+#     그 둘이 홈을 밀어 홈 1위(36.5%)가 됐고 결과는 0-3 원정 완승이다.
+#  🔴 둘은 **다른 모듈**에서 온다(s5_verify ↔ datavars) — 그래서 각자 집안
+#     규칙으로는 못 묶이고, 합쳐진 뒤 `pipeline` 이 한 번 본다.
+
+def test_같은_결장은_한_표만_센다() -> None:
+    """🔴 대표는 `AB2`(품질까지 센다) · `IR02` 는 맥락으로 내려간다.
+
+    🔴 돌연변이: `one_fact_one_vote` 를 빼면 한 결장이 두 표가 된다.
+    """
+    from app.core import datavars as dv
+    from app.core.schema import Variable
+    from app.core.state import RunState
+
+    def _v(vid: str, kind: str):
+        return Variable(id=vid, type=kind, subject="team:000001", favors="home",
+                        goals="none", target="t", hardness="soft", weight=0.7,
+                        claim=f"{vid} 글", quote="q", doc_ids=[], from_rule=vid)
+    rows = [_v("IR02-away", "def_absence"), _v("AB2-away", "absence_quality"),
+            _v("IR02-home", "def_absence")]
+    got = dv.one_fact_one_vote(rows, state=RunState(match_key="x"))
+    box = {str(v.id): v for v in got}
+    assert len(got) == 3, got                   # 🔴 줄 수는 그대로다
+    assert box["AB2-away"].usable_as_basis, box["AB2-away"].claim
+    # 🔴 같은 쪽(`-away`)의 `IR02` 는 맥락으로 내려간다
+    assert box["IR02-away"].usable_as_basis is False, box["IR02-away"].claim
+    assert "한 사실 한 표" in box["IR02-away"].claim
+    # 🔴 **다른 쪽**(`-home`)은 대표가 없으니 그대로 선다
+    assert box["IR02-home"].usable_as_basis, box["IR02-home"].claim
+
+
+def test_한_사실_한_표가_파이프라인에_이어져_있다() -> None:
+    """🔴 #2 배선 — 만든 것은 부르는 곳이 있어야 한다."""
+    import ast
+    import pathlib
+    src = pathlib.Path("app/core/pipeline.py").read_text(encoding="utf-8")
+    tree = ast.parse(src)
+    calls = {c.func.attr for c in ast.walk(tree)
+             if isinstance(c, ast.Call) and isinstance(c.func, ast.Attribute)}
+    assert "one_fact_one_vote" in calls, "🔴 파이프라인이 그 자리를 안 부른다"
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **인원 수가 다른 평균·합은 견주지 않는다** — 사용자 지시 2026-10-19
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 점수차가 많이 나는거는 실제로 우리 코드에 문제가 있다는거다 → **고쳐라**
+#
+#  ⚠️ 실측 — 큰 점수차 네 판 중 인원이 **같은** 셋은 다 맞췄고, 유일하게 틀린
+#     판이 인원이 **다른** 판이었다(르아브르 1-3 · 0.50(8명) ↔ 0.37(10명) → 홈).
+#  🔴 능력치를 못 받는 선수는 보통 출전이 적은 선수다 — 빼고 낸 평균은 위로
+#     치우친다. 가치 **합**은 인원 수에 그대로 비례한다.
+
+def test_인원이_다르면_능력치_평균을_안_센다() -> None:
+    """🔴 돌연변이: `nh != na` 검사를 지우면 8명 ↔ 10명 평균이 다시 선다."""
+    import ast
+    import pathlib
+    src = pathlib.Path("app/core/datavars.py").read_text(encoding="utf-8")
+    tree = ast.parse(src)
+    fn = next(n for n in ast.walk(tree)
+              if isinstance(n, ast.FunctionDef) and n.name == "from_ability")
+    seg = ast.get_source_segment(src, fn) or src
+    # 🔴 허용값(`count_slack`)은 **설정**이 든다(사용자 결정 2026-10-19 ㄴ)
+    assert "count_slack" in seg, "🔴 A1 이 인원 차를 안 본다"
+    assert "인원 차" in seg, "🔴 사유를 이름으로 안 남긴다(#3)"
+
+
+def test_인원이_다르면_가치_합을_안_센다() -> None:
+    """🔴 가치 합은 인원에 비례한다 — 같은 수가 아니면 견주지 않는다."""
+    import ast
+    import pathlib
+    src = pathlib.Path("app/core/datavars.py").read_text(encoding="utf-8")
+    tree = ast.parse(src)
+    fn = next(n for n in ast.walk(tree)
+              if isinstance(n, ast.FunctionDef) and n.name == "_squad_value")
+    seg = ast.get_source_segment(src, fn) or ""
+    assert "count_slack" in seg, "🔴 C3 이 인원 차를 안 본다"
+    assert "인원 차" in seg, seg[-200:]

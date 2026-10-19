@@ -488,15 +488,23 @@ def test_fl4_흔들림은_폭이_작은_쪽이다() -> None:
     assert one.favors == "home" and "덜 흔들린다" in one.claim, one
 
 
-def test_fl_흐름도_확률에_닿는다() -> None:
-    """🔴 `flat_prob` 에 넣어 **움직이는지** 본다(글자 검사로 끝내지 않는다)."""
+def test_흐름은_맥락이고_실력은_확률에_닿는다() -> None:
+    """🔴 `flat_prob` 에 넣어 **움직이는지** 본다(글자 검사로 끝내지 않는다).
+
+    🔴🔴 **과거 폼은 확률에서 뺐다**(사용자 지시 2026-10-18) — `recent_pattern`
+       계열은 자리가 `hypo` 이고 λ 보정표에도 없다. 그래서 이 시험은 **부호(글자)**
+       만 본다(확률 이동은 아래 `squad_ability` 로 확인한다).
+    """
     from app.core import probmodel as pm
     from app.core.routing import place
     rows = [dv._var("FL1", "recent_pattern", _R(), "home", "대역", goals="up"),
             dv._var("ST3", "squad_ability", _R(), "home", "대역")]
     got, why = pm.flat_prob(place(rows), ref=_R())
     assert got["home"] > got["away"], (got, why)
-    assert "FL1" in why and "ST3" in why, why
+    assert "ST3" in why, why
+    # 🔴 흐름(`recent_pattern`)은 **맥락**이다 — 표를 안 던진다
+    assert "FL1" not in why, f"🔴 과거 폼이 확률을 밀었다 — {why}"
+    assert "맥락 전용" in why, why
 
 
 def test_dv_run_이_다섯_집안을_돈다() -> None:
@@ -522,7 +530,11 @@ def test_goals_부호는_주어_기준이다() -> None:
     for side, other in (("home", "away"), ("away", "home")):
         one = dv._var("FL1", "recent_pattern", _R(), side, "대역", goals="up")
         assert one.goals == "up", one
-        got, why = pm.flat_prob(place([one]), ref=_R())
+        # 🔴 부호는 그대로 `up` 이고 **주어가 유리한 팀**이다(글자 규율).
+        #    ⚠️ 확률 이동은 같은 꼴의 `squad_ability` 로 본다 — `recent_pattern`
+        #       은 2026-10-18 에 확률에서 뺐다(위 머리말).
+        two = dv._var("ST9", "squad_ability", _R(), side, "대역")
+        got, why = pm.flat_prob(place([two]), ref=_R())
         assert got[side] > got[other], (side, got, why)
     # 🔴 코드에 그 꼴이 다시 생기면 빨개진다
     src = (ROOT / "app/core/datavars.py").read_text(encoding="utf-8")
@@ -559,13 +571,25 @@ def test_tb1_전력차가_변수가_된다() -> None:
     assert pm._is_past("strength_gap"), "🔴 전력차가 오늘 층으로 센다"
 
 
-def test_tb_전력차가_확률을_민다() -> None:
+def test_tb_전력차는_확률을_못_민다() -> None:
+    """🔴🔴 **뒤집혔다 — 전력차(순위표)도 확률에서 뺐다**(사용자 지시 2026-10-19).
+
+    > tb를 빼면 어떻게 되냐 … **빼라**
+
+    ⚠️ 실측 — `TB1`(경기당 승점)이 ×1.05 로 혼자 방향을 정했다:
+       · 벨그라노 vs 리버 — 리버 쪽 네 표(가치 **5.08배**·능력치·갈래·동기) ↔
+         `TB1` 홈 한 표 → 홈 34.0% 1위 → 결과 **0-3 원정 완승**
+       · 즈볼러 vs 고 어헤드 — `TB1` 원정 → 결과 **4-1 홈 승**
+    🔴 재계산(아홉 판) — 빼면 1·2위 차 평균 5.8%p → 4.0%p(덜 주장한다).
+    🔴 변수 자체는 남는다 — 카드·⑯ 이 읽는 맥락이다.
+    """
     from app.core import probmodel as pm
     from app.core.routing import place
     one = dv._var("TB1", "strength_gap", _R(), "away", "대역")
     got, why = pm.flat_prob(place([one]), ref=_R())
-    assert got["away"] > got["home"], (got, why)
-    assert "TB1" in why and "과거" in why, why
+    assert abs(got["away"] - 1 / 3) < 1e-9, (got, why)
+    assert "TB1" not in why, f"🔴 전력차가 확률을 밀었다 — {why}"
+    assert "맥락 전용" in why, why
 
 
 def test_m28_갈래는_묶음이_대표다() -> None:

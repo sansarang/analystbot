@@ -397,8 +397,15 @@ def test_ab16_문턱_표가_설정에_있다() -> None:
     #  🔴 **표가 자랐다**(2026-10-17) — 전술 갈래를 능력치로 가리는 칸이 더해졌다.
     #     ⚠️ 그래도 *"우리가 고르는 수만 여기 있다"* 는 규율은 같다 — 지표
     #        이름·비교 묶음은 **출처가 준다**(여기 안 적는다 · #1).
+    #  🔴 **표가 또 자랐다**(2026-10-19) — `count_slack`(양쪽 인원 차 허용값)이
+    #     더해졌다. ⚠️ 그것도 **사용자가 정한 손값**이다(측정값이 아니다):
+    #     르아브르 1-3 에서 8명 ↔ 10명 평균을 견주다 틀렸고, 완전 일치(0)로
+    #     막으니 즈볼러의 쓸 만한 갈래(10↔11)까지 버려져 **1** 로 두었다.
     assert set(box) == {"strong", "weak", "branches", "branch_gap",
-                        "branch_min", "squad_cap_per_side"}, sorted(box)
+                        "branch_min", "squad_cap_per_side",
+                        "count_slack"}, sorted(box)
+    #  🔴 그 값은 **정수**이고 음수가 아니다(0 이면 완전 일치)
+    assert isinstance(box["count_slack"], int) and box["count_slack"] >= 0
     #  🔴 갈래 표는 **지표 이름만** 적는다(값·계수가 아니다)
     for kind, rule in dict(box["branches"]).items():
         assert set(rule) == {"pos", "flank", "traits", "why"}, (kind, rule)
