@@ -635,7 +635,16 @@ def one_fact_one_vote(rows: list, *, state: RunState) -> list:
     🔴 돌려주는 줄 수는 그대로다 — 내린 것은 `usable_as_basis=False` 로 남아
        ⑯ 이 읽는다(#3 조용한 0 금지).
     """
-    said = {str(getattr(x, "id", "")) for x in (rows or [])}
+    # 🔴🔴 **대표가 확률에 닿는지까지 본다**(사용자 지시 2026-10-19 · 결함 2)
+    #
+    #  ⚠️ 실사고 2026-10-19(우디네세 0-3 레체): `AB2` 양쪽이 *"같다"* 로 맥락에
+    #     내려갔는데도 이 자리가 *"대표가 있다"* 로 보고 `IR02-away` 를 내렸다 —
+    #     아니, 더 나쁘게는 **대표가 없는 셈**이 되어 `IR02` 가 혼자 홈을 밀었다.
+    #  🔴 대표가 **맥락이면 대표가 아니다** — 그때는 `IR02` 를 그대로 둔다.
+    #     ⚠️ 그래도 같은 사실을 **두 표**로 세는 일은 없다: 대표가 맥락이면
+    #        확률에 닿는 것은 `IR02` 하나뿐이다.
+    said = {str(getattr(x, "id", "")): bool(getattr(x, "usable_as_basis", True))
+            for x in (rows or [])}
     out = []
     for one in (rows or []):
         rid = str(getattr(one, "id", ""))
@@ -644,7 +653,7 @@ def one_fact_one_vote(rows: list, *, state: RunState) -> list:
             if not rid.startswith(drop):
                 continue
             tail = rid[len(drop):]            # 🔴 `-home`·`-away`(없으면 빈 글자)
-            if f"{lead}{tail}" in said:
+            if said.get(f"{lead}{tail}"):     # 🔴 **확률에 닿는** 대표만
                 hit = f"{lead}{tail}"
                 break
         if not hit:

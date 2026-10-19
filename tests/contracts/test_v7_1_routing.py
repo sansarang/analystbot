@@ -125,14 +125,22 @@ def test_v7_피로는_적합_없이도_축2로_간다():
     assert "fatigue" in {str(x) for x in (fav.get("types") or [])}, fav
 
 
-def test_v7_감독_발언은_XI와_일치할_때만_축2다():
-    """🔴 V-3 — *"coach_intent … 축2 전략 판정 입력(**확정 XI 와 일치할 때**)"*."""
+def test_v7_감독_발언은_맥락_전용이다():
+    """🔴🔴 **뒤집혔다 — 자리를 `hypo` 로 내렸다**(사용자 지시 2026-10-19 · 결함 3).
+
+    ⚠️ 종전 V-3 은 *"coach_intent … 축2(확정 XI 와 일치할 때)"* 였다. 그런데
+       `coach_intent` 는 **λ 보정표에 없다** — 자리만 축이면 `flat_prob` 이
+       *맥락 전용으로도* 세지 않아 그 변수가 **조용히 사라진다**(#3 조용한 0).
+    🔴 전수 검사(2026-10-19)에서 그런 유형이 넷이었다 — `coach_conflict` ·
+       `coach_intent` · `match_type` · `travel_schedule`. 넷 다 자리를 내렸다.
+    🔴 되살릴 때는 **자리와 λ 표를 함께** 되돌린다(한쪽만으론 또 사라진다).
+    """
     from app.core import routing
     off = routing.place([_var("R3", "coach_intent")]).rows[0]
-    assert "axis2" not in off.places, off.places
-    assert "V4" in off.places
+    assert off.places == [routing.HYPO], off.places
+    # 🔴 확정 XI 와 일치해도 **축으로 가지 않는다**(λ 표에 없으므로)
     on = routing.place([_var("R3", "coach_intent")], xi_match={"R3"}).rows[0]
-    assert "axis2" in on.places, on.places
+    assert on.places == [routing.HYPO], on.places
 
 
 # ══════════════════════════════════════════════════════════════════

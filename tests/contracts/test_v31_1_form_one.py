@@ -254,3 +254,33 @@ def test_인원이_다르면_가치_합을_안_센다() -> None:
     seg = ast.get_source_segment(src, fn) or ""
     assert "count_slack" in seg, "🔴 C3 이 인원 차를 안 본다"
     assert "인원 차" in seg, seg[-200:]
+
+
+def test_대표가_맥락이면_IR02는_그대로_선다() -> None:
+    """🔴🔴 결함 2(사용자 지시 2026-10-19) — 대표가 **확률에 닿을 때만** 대표다.
+
+    ⚠️ 실사고 — 우디네세 0-3: `AB2` 양쪽이 *"같다"* 로 맥락에 내려갔는데도
+       `one_fact_one_vote` 가 *"대표가 있다"* 로 보고 `IR02` 를 내렸다.
+    🔴 돌연변이: `said.get(...)` 를 `in said` 로 되돌리면 이 시험이 빨개진다.
+    """
+    from app.core import datavars as dv
+    from app.core.schema import Variable
+    from app.core.state import RunState
+
+    def _v(vid: str, kind: str, usable: bool = True):
+        return Variable(id=vid, type=kind, subject="team:000001", favors="home",
+                        goals="none", target="t", hardness="soft", weight=0.7,
+                        claim=f"{vid} 글", quote="q", doc_ids=[], from_rule=vid,
+                        usable_as_basis=usable)
+    # 🔴 대표(`AB2-away`)가 **맥락**이면 `IR02-away` 는 그대로 선다
+    rows = [_v("AB2-away", "absence_quality", usable=False),
+            _v("IR02-away", "def_absence")]
+    got = {str(v.id): v for v in
+           dv.one_fact_one_vote(rows, state=RunState(match_key="x"))}
+    assert got["IR02-away"].usable_as_basis, got["IR02-away"].claim
+    assert "한 사실 한 표" not in got["IR02-away"].claim
+    # ✅ 대표가 확률에 닿으면 종전대로 내린다
+    rows2 = [_v("AB2-away", "absence_quality"), _v("IR02-away", "def_absence")]
+    got2 = {str(v.id): v for v in
+            dv.one_fact_one_vote(rows2, state=RunState(match_key="x"))}
+    assert got2["IR02-away"].usable_as_basis is False
