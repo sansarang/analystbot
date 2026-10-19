@@ -14,10 +14,9 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.core import infoquality as _iq
-from app.core.schema import (AdjProb, Ambiguous, BaseProb, Board, Card, Doc,
+from app.core.schema import (AdjProb, Ambiguous, BaseProb, Card, Doc,
                              Facts, Funnel, HypoSet, Judgement, MarketEval,
-                             MarketProb, MatchRef, ProbTriple, Question,
-                             Variable)
+                             MatchRef, ProbTriple, Question, Variable)
 from app.core.state import RunState
 
 
@@ -71,8 +70,8 @@ def _xi_of(path: str, *, state: RunState) -> dict | None:
 
 
 async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
-                  state: RunState | None = None, board: Board | None = None,
-                  board_text: str = "", board_image: str = "",
+                  state: RunState | None = None,
+                  board_text: str = "",
                   pick_key: str = "", xi_image: str = "",
                   reuse: dict | None = None, before: Card | None = None,
                   now: datetime | None = None,
@@ -80,14 +79,14 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
                   break_rerun: str = "") -> Card | Ambiguous:
     """🔴 질문 하나 → 카드 하나. ⚠️ 경기를 **못 고르면** `Ambiguous`(묻는다).
 
-    🔴 `board_text` 를 주면 **코드가 파싱한다**(축구 §4 · `app/core/board.py`) —
-       LLM 이 보드를 읽지 않는다.
-    🔴 `board_image` 를 주면 **로컬 OCR** 로 글을 뽑아 같은 파서로 보낸다(네 층 §2-6).
-       ⚠️ 외부 OCR API 를 부르지 않는다 — `app/core/ocr.py` 가 실행 파일을 직접 쓴다.
+    🔴🔴 **배당은 받지 않는다 — 사용자 지시 2026-10-19**(*"시장배당은 아예 쓰지도
+       않는다"*). ⚠️ 종전 인자 `board`·`board_image` 와 ④ 시장 층은 **걷혔다**.
+    🔴 `board_text` 는 남는다 — 쓰임이 **경기 신원 단서**(날짜·시각·두 팀·리그
+       표기)이지 배당이 아니다(§1-1 ① · `board.hint_of`).
     """
     import asyncio
 
-    from app.core.stages import (s1_resolve, s2_facts, s2b_base, s2c_market,
+    from app.core.stages import (s1_resolve, s2_facts, s2b_base,
                                  s4_extract, s5_verify,
                                  s7_judge)
     # 🔴 문서를 긷는 **유일한 입구**(딥서치를 지웠다 · 2026-10-17)
@@ -102,28 +101,17 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
         st.clock = _dline.Deadline(_slate.CARD_CAP_MIN)
     q = _question(raw, now=now)
     # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **보드를 s1 보다 먼저 읽는다** — 사용자 지시 2026-10-10(재작성) §1-1 ①
+    # 🔴🔴 **보드 글을 s1 보다 먼저 읽는다** — 사용자 지시 2026-10-10 §1-1 ①
     # ══════════════════════════════════════════════════════════════════
     #
     #  > 보드가 있으면 보드의 날짜·시각·두 팀·리그 표기를 **먼저 읽는다**
     #  > (이게 가장 정확한 단서다).
     #
-    #  ⚠️ 종전에는 OCR 이 **s1 뒤**였다 — 그러면 캡처가 가진 가장 정확한 단서를
-    #     경기 찾기가 **못 쓴다**. 🔴 캡처 → 글자 → s1 순서로 바꿨다.
-    got_board, extra, bad, ocr_text = board, [], [], ""
-    if board_image.strip() and not board_text.strip():
-        from app.core import ocr as _ocr
-        got_board, extra, bad, ocr_text = _ocr.board_of(board_image.strip())
-        st.note(f"보드 캡처 — 로컬 OCR {len(ocr_text)}자 · "
-                f"{len(getattr(got_board, 'lines', []) or [])}줄 · 못 읽음 {len(bad)}")
-        # 🔴 OCR 글자가 **경기 찾기의 단서**다(§1-1 ①)
-        board_text = ocr_text or board_text
+    #  🔴 읽는 것은 **그 넷뿐이다** — 배당은 안 읽는다(2026-10-19).
+    # 🔴🔴 **배당 보드는 안 읽는다**(사용자 지시 2026-10-19) — 종전 여기서
+    #    캡처를 로컬 OCR 로 읽고 `board.parse` 로 **배당 줄**을 만들었다.
+    #    🔴 그 둘을 지웠다. 보드 글은 **경기 단서로만** s1 에 넘긴다(§1-1 ①).
     xi_said = _xi_of(xi_image, state=st)
-    if board_text.strip():
-        from app.core import board as _board
-        got_board, extra, bad = _board.parse(board_text)
-        st.note(f"보드 {len(got_board.lines)}줄 · 추가 {len(extra)} · "
-                f"못 읽음 {len(bad)}")
     ref = await s1_resolve.run(q, pool=pool, state=st, net=net,
                                board_text=board_text, pick_key=pick_key)
     if isinstance(ref, Ambiguous):
@@ -135,9 +123,10 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #
     #  ⚠️ 한 층이 실패해도 다른 층을 막지 않는다(§1 마지막 줄) — 그래서 `gather` 로
     #     나란히 돌리고 **사유를 들고 빈 층**이 지나간다.
-    facts, (feed_mk, user_mk) = await asyncio.gather(
-        s2_facts.run(ref, state=st, net=net, xi_capture=xi_said),
-        s2c_market.run(ref, pool=pool, net=net, state=st, board=got_board))
+    # ⚠️ 종전에는 ④ 시장 층(`s2c_market`)과 **병렬**이었다 — 그 층을 지웠으므로
+    #    나란히 돌릴 것이 없다(§1 *"한 층이 실패해도 다른 층을 막지 않는다"* 는
+    #    층이 둘 이상일 때의 규율이다).
+    facts = await s2_facts.run(ref, state=st, net=net, xi_capture=xi_said)
     base_p, adj_p = await s2b_base.run(ref, facts, state=st, net=net)
     # 🔴🔴 §2 경우의 수 — **코드만**(LLM 없음). 순위표가 없으면 빈 표다
     look = s2b_base.outlook(ref, facts, state=st)
@@ -274,22 +263,14 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #
     #  🔴 **여기까지 확률이 없다**(가설 입력은 변수·사실뿐) — 그것이 §계약
     #     *"단계 2 는 단계 3 결과를 입력으로 받지 않는다"* 다.
-    if ocr_text and got_board is not None:
-        from app.core import odds as _odds
-        user_mk = _odds.from_board(got_board, source="user_board(ocr)")
     # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **평가 줄의 출처 순서**(사용자 지시 2026-10-07 ①)
+    # 🔴🔴 **평가 줄의 출처 — 이제 하나다**(사용자 지시 2026-10-19)
     # ══════════════════════════════════════════════════════════════════
     #
-    # > 사용자 보드 **>** 피드의 메인 라인(총점·핸디 `point` 그대로) **>** 없음.
-    board_src = "user_board" if (got_board is not None and got_board.lines) else ""
-    if not board_src and feed_mk.probs:
-        from app.core import odds as _odds
-        from app.core.schema import Board as _Board
-        got_board = _Board(lines=_odds.lines_from(feed_mk))
-        board_src = "feed"
-        st.note(f"보드 없음 → **피드 메인 라인 {len(got_board.lines)}줄**로 평가한다"
-                f"(기준선은 피드가 적은 그대로 · 메인 {_odds.main_points(feed_mk)})")
+    #  ⚠️ 종전 순서는 *"사용자 보드 **>** 피드의 메인 라인 **>** 없음"* 이었다
+    #     (2026-10-07 ①). 🔴 배당을 **아예 쓰지 않으므로** 셋 다 사라지고
+    #     **기준선**(우리가 만든 줄)만 남는다 — 그 길은 `s7_judge._lines` 에
+    #     이미 있다(*"보드가 없다 — 기준선 대입표"*).
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **우리 열을 먼저 세고, 시나리오 무게를 그 열에 묶는다**(2026-10-07 재가중 ①)
     # ══════════════════════════════════════════════════════════════════
@@ -405,7 +386,6 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #     직전 5경기 포메이션·득실 줄)로 **코드가** 변수를 만든다.
     #  🔴 자리가 여기인 까닭 — ⑤-b1b 능력치 **뒤**이고 배치를 **다시 세우기
     #     전**이다(그래야 새 변수가 확률 자리에 들어간다).
-    # ⚠️ 별명이 `_dv` 면 **`divergence` 와 겹친다**(계약 BL1 이 잡았다)
     from app.core import datavars as _dvar
     var_dv, said_dv = _dvar.run(ref, facts, said_sq, state=st)
     st.note(f"⑤-b4 받은 자료 변수 — {said_dv}")
@@ -465,8 +445,8 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     # 🔴 **가설은 S2 뒤에 선다**(C3) — 그래서 여기서는 **빈 묶음**으로 열을 만든다.
     #    ⚠️ `_layers` 는 시나리오를 **읽지 않는다**(확률을 S3 가 낸다) — 빈 묶음이
     #       뜻을 바꾸지 않는다.
-    layers = _layers(ref, facts, variables, base_p, adj_p, feed_mk,
-                     user_mk, state=st, outlook=look, strategy=plan)
+    layers = _layers(ref, facts, variables, base_p, adj_p,
+                     state=st, outlook=look, strategy=plan)
     layers["recall"] = said_recall
     layers["strategy"] = plan
     layers["matchup"] = edge
@@ -633,24 +613,13 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
             layers.get("base").model_copy(
                 update={"probs": (adj_p.probs if adj_p.probs is not None
                                   else base_p.probs)}),
-            layers["ours"], layers.get("market"), variables,
-            measured=adj_p.measured,
-            label=str(layers.get("market_label") or ""))
+            layers["ours"], variables, measured=adj_p.measured)
         layers["compare"] = said6["compare"]
         layers["tilt"] = said6["tilt"]
-        # 🔴 시장 열 이름표는 첫 계산이 이미 붙였다 — 그 줄만 살려 이어 붙인다
-        layers["compare_lines"] = [*said6["_lines"],
-                                   *[x for x in (layers.get("compare_lines")
-                                                 or []) if "시장 열 —" in str(x)]]
-        st.note(f"§6 세 열 판정 **다시** — {said6['compare']}(S3 가 낸 우리 열로)")
-        # 🔴🔴 ④ **근거 검열도 다시 센다** — ⚠️ 실사고 2026-10-11(엘체–셀타):
-        #    `_layers` 가 S3 **앞에서** 돌아 `ours=None` 이었고, `compare.py` 의
-        #    대체(*"시장이 미는 쪽의 반대가 우리 결론"*)가 우리 27%/45% 를
-        #    **Elche 쪽**이라고 적었다. 🔴 수를 덮으면 그 수로 **근거 줄도 다시**.
-        from app.core import compare as _cmp
-        layers["market_why"] = _cmp.market_reasons(
-            base_p, adj_p, layers.get("market"), variables, ref,
-            ours=layers["ours"])
+        layers["compare_lines"] = list(said6["_lines"])
+        st.note(f"§6 두 열 판정 **다시** — {said6['compare']}(S3 가 낸 우리 열로)")
+        # 🔴🔴 **④ 근거 검열은 걷혔다**(사용자 지시 2026-10-19) — 그 함수가 센
+        #    것은 *"시장이 미는 쪽의 근거"* 였고 시장이 없으면 셀 것이 없다.
         # 🔴🔴 **`잠정` 열을 지웠다** — 사용자 지시 2026-10-17 *"시뮬도 삭제"*.
         #    ⚠️ 그 열은 **리그 평균 확률을 시뮬로** 만든 것이고, 기여 분해
         #       (`share`)의 기준이었다. 상성·시뮬을 지워 기여가 비었으므로
@@ -684,7 +653,6 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
                 f"⬜ 지난 실행의 XI 상태가 `{was}` 다 — 예상 XI 판이 아니다")
     else:
         layers["prob_expected_why"] = "⬜ 지난 실행이 없다(첫 분석이다)"
-    layers["ocr_text"] = ocr_text
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **단계 4 — 검증(가설 ↔ 시뮬) → 시나리오**(순서 재편 §4)
     # ══════════════════════════════════════════════════════════════════
@@ -714,51 +682,22 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     layers["varset"] = varset
     # 🔴 F5 — **생존은 시뮬 분포에서** 센다(시나리오는 표시용이다)
     # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **P5 시장 괴리**(예측 지시 2026-10-13 23:10 KST) — **표시 + 상한**
+    # 🔴🔴 **P5 시장 괴리 · 보드 수집 사다리 — 둘 다 걷혔다**(2026-10-19)
     # ══════════════════════════════════════════════════════════════════
     #
-    #  > 차이 ≥10%p 줄은 🔴 시장 괴리 + 그 경기에서 **⬜ 인 입력 목록** ·
-    #  > ⬜ 걸린 괴리 줄은 **결론 상한 "접는다"**.
-    #
-    #  🔴 시장 확률은 **등급 계산에 안 들어간다**(네 층 §7) — 들어가는 것은
-    #     *"접는다 상한"* 하나이고 그것은 **우리가 모르는 정보**를 경계하는 장치다.
-    said_div, said_fold = _divergence_of(ref, facts, prob, got_board, layers)
-    if said_div:
-        st.note(f"P5 시장 괴리 — {said_div[:160]}")
-    # 🔴 카드 줄도 **이 글자**를 쓴다(렌더러가 다시 세지 않는다)
-    if said_div:
-        layers["divergence"] = said_div
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **보드 수집 사다리**(의심 검증 v2 §1) — 봇이 직접 가져온다
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  ① 사용자 캡처 ② 공개 페이지(football-data) ③ 배당 API ④ 비교 사이트.
-    #  🔴 ①~④ 전부 실패면 **경보**다 — 보드 없는 경기는 정상이 아니다(§1-3).
-    from app.core import boardfeed as _bf
-    from app.core import picks as _pk
-    said_bl, said_bwhy = _pk.board_lines(got_board)
-    said_feed = ""
-    got_feed = None
-    if not said_bl:
-        try:
-            got_feed = await _bf.of(
-                f"{ref.home_name} vs {ref.away_name}", net=net,
-                market=dict(layers or {}).get("market"))
-            said_feed = _bf.said_of(got_feed)
-            said_bl = got_feed.names()
-            if got_feed.alarm:
-                st.note(f"보드 수집 실패 — {got_feed.alarm[:120]}")
-        except Exception as exc:                            # noqa: BLE001
-            said_feed = f"🔴 보드 사다리가 터졌다 — {exc!r:.120}"
-    layers["board_feed"] = said_feed
-    layers["board_lines"] = sorted(said_bl)
-    # 🔴 계기판이 쓰는 **줄 객체**(판정 미사용) — 사다리가 모은 것 그대로.
-    #    ⚠️ 사용자 보드(①)로 이미 줄이 섰으면 사다리를 안 돌았으므로 그 줄은
-    #       `got_board.lines` 에 있다 — 둘 다 본다(없으면 계기판이 ⬜ 다).
-    layers["board_rows"] = (list(getattr(got_feed, "rows", None) or [])
-                            or list(getattr(got_board, "lines", None) or []))
-    if not said_bl:
-        st.note(f"칠 표 — {said_bwhy}")
+    #  ⚠️ 종전 이 자리에서 둘을 했다:
+    #     ① **시장 괴리**(P5) — 우리 확률과 배당 확률의 차가 10%p 이상이면
+    #        🔴 줄을 적고 결론을 *"접는다"* 로 **상한**을 걸었다.
+    #     ② **보드 수집 사다리**(의심 v2 §1) — ①사용자 캡처 ②football-data.co.uk
+    #        ③배당 API ④비교 사이트를 차례로 **받아 왔다**(외부 호출 둘).
+    #  🔴 사용자 지시 2026-10-19: *"시장배당은 **아예 쓰지도 않는다**"* → 둘 다
+    #     지웠다. ⚠️ 그래서 **결론 상한을 거는 길이 하나 줄었다**(그 상한은
+    #     *"우리가 모르는 정보"* 를 경계하는 장치였다) — 남은 경계는 1단 기계
+    #     점검·InfoQ·확신 구간이다.
+    #  🔴 `board_lines` 는 **늘 빈 목록**이다 — 칠 표가 그 사실을 *"보드 없음 —
+    #     표준 줄로 골랐다"* 로 적는다(`core/picks`).
+    said_fold = ""
+    layers["board_lines"] = []
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **1단 기계 점검**(의심 검증 v2 §2) — 2단(의심) 앞의 첫 관문
     # ══════════════════════════════════════════════════════════════════
@@ -782,8 +721,7 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #     **핸디·언오버를 칠 표에서 빼는 규칙은 그대로 둔다**(근거는 보정표가
     #     아니라 AUC 0.511 실측이다 · `archive/doubt_v2/ah_cause.log`).
 
-    said = s7_judge.run(ref, facts, variables, state=st, board=got_board,
-                        board_source=board_src, now=now,
+    said = s7_judge.run(ref, facts, variables, state=st, now=now,
                         fold_why=said_fold,
                         # 🔴🔴 **보드 없음 결론 규칙 (가)의 재료**(사용자 결정
                         #    2026-10-13) — 우리 확률의 **최고값**이다. ⚠️ 판정
@@ -842,10 +780,8 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     layers["shape"] = got_shape
     # 🔴 F1 — 직전 카드가 있으면 **바뀐 것**을 함께 싣는다(머리줄이 그것을 적는다)
     changed = (_diff(before, facts, variables, said)
-               + _market_moved(before, layers, state=st)
                + _moved(before, layers, mr) if before is not None else [])
-    card = card_of(ref, facts, variables, said, state=st,
-                   board_extra=extra, board_bad=bad, layers=layers,
+    card = card_of(ref, facts, variables, said, state=st, layers=layers,
                    changed=(changed or None))
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **옛 글 경로(`with_say` → `s9_say`)를 걷었다** — 사용자 지시 2026-10-17
@@ -1428,8 +1364,6 @@ def _diff(before: Card, facts: Facts, variables: list[Variable],
 
 def card_of(ref: MatchRef, facts: Facts, variables: list[Variable],
             said: Judgement, *, state: RunState,
-            board_extra: list[str] | None = None,
-            board_bad: list[str] | None = None,
             changed: list[str] | None = None,
             layers: dict | None = None) -> Card:
     """🔴 카드 하나로 모은다 — 렌더러가 보는 것은 **이 타입 하나**다(§3).
@@ -1439,16 +1373,9 @@ def card_of(ref: MatchRef, facts: Facts, variables: list[Variable],
     """
     box = dict(layers or {})
     return Card(
-        board_extra=[str(x) for x in (board_extra or [])],
-        board_bad=[str(x) for x in (board_bad or [])],
         changed=[str(x) for x in (changed or [])],
         base_prob=box.get("base") or BaseProb(why="① 을 안 돌렸다"),
         adj_prob=box.get("adj") or AdjProb(why="② 를 안 돌렸다"),
-        market=box.get("market") or MarketProb(why="④ 를 안 돌렸다"),
-        user_market=box.get("user_market") or MarketProb(),
-        divergence=str(box.get("divergence") or ""),
-        board_lines=[str(x) for x in (box.get("board_lines") or [])],
-        board_feed=str(box.get("board_feed") or ""),
         machine=str(box.get("machine") or ""),
         machine_hold=bool(box.get("machine_hold")),
         recall=str(box.get("recall") or ""),
@@ -1456,9 +1383,6 @@ def card_of(ref: MatchRef, facts: Facts, variables: list[Variable],
         compare=str(box.get("compare") or ""),
         compare_lines=[str(x) for x in (box.get("compare_lines") or [])],
         tilt=[str(x) for x in (box.get("tilt") or [])],
-        market_why=[str(x) for x in (box.get("market_why") or [])],
-        ocr_text=str(box.get("ocr_text") or ""),
-        board_source=str(said.board_source or "none"),
         moves=[dict(x) for x in (box.get("moves") or [])],
         shape=dict(box.get("shape") or {}),
         commentary=box.get("commentary"),
@@ -1581,10 +1505,12 @@ def _comment_layers(got, shape: dict) -> dict:
             "comment_violations": list(got.violations)}
 
 
-def compare_block(base_for_compare, ours, market,
-                  variables: list, *, measured: bool = False,
-                  label: str = "") -> dict:
-    """🔴🔴 **§6 세 열 판정 — 한 곳**. 카드 칸(`compare`·`compare_lines`·`tilt`).
+def compare_block(base_for_compare, ours,
+                  variables: list, *, measured: bool = False) -> dict:
+    """🔴🔴 **§6 두 열 판정 — 한 곳**. 카드 칸(`compare`·`compare_lines`·`tilt`).
+
+    ⚠️ 종전에는 **세 열**(기준·우리·**시장**)이었다 — 🔴 사용자 지시 2026-10-19
+       (*"시장배당은 아예 쓰지도 않는다"*)로 시장 열이 걷혔다.
 
     ══════════════════════════════════════════════════════════════════
     🔴 왜 함수로 뺐나 — 실사고 2026-10-10 (제노아 vs 피오렌티나)
@@ -1601,21 +1527,22 @@ def compare_block(base_for_compare, ours, market,
     🔴 그래서 S3 뒤에 **이 함수를 다시 부른다**. 규칙은 한 곳이다(사본 금지).
     """
     from app.core import compare
-    verdict, lines = compare.verdict_of(base_for_compare, ours, market)
+    verdict, lines = compare.verdict_of(base_for_compare, ours)
     tilt = compare.tilt_reasons(ours, base_for_compare, variables,
                                 measured=measured)
     return {"compare": verdict, "tilt": tilt, "_lines": lines,
-            "compare_lines": [*lines, (f"시장 열 — {label}" if label else "")]}
+            "compare_lines": list(lines)}
 
 
 def _layers(ref: MatchRef, facts: Facts, variables: list[Variable],
-            base_p: BaseProb, adj_p: AdjProb,
-            feed_mk: MarketProb, user_mk: MarketProb, *,
+            base_p: BaseProb, adj_p: AdjProb, *,
             state: RunState, outlook: dict | None = None,
             strategy: object = None, ours=None) -> dict:
-    """🔴 ③ 우리 확률 + §6 세 열 비교를 만든다. ⚠️ 못 만든 열은 **사유만** 남는다."""
+    """🔴 ③ 우리 확률 + §6 **두 열** 비교를 만든다(기준·우리).
+
+    ⚠️ ④ 시장 층은 **걷혔다**(2026-10-19) — 받아오지도, 적지도 않는다.
+    """
     from app.core import compare
-    from app.core.stages import s2c_market
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **③ 로그 오즈 경로를 끊었다** — 상성 엔진 지시서 §2·C7
     # ══════════════════════════════════════════════════════════════════
@@ -1634,78 +1561,37 @@ def _layers(ref: MatchRef, facts: Facts, variables: list[Variable],
     #    ② 를 반영한 수로 한다(카드 표와 **같은 수**여야 설명이 맞는다).
     base_for_compare = (base_p.model_copy(update={"probs": start})
                         if start is not None else base_p)
-    market, label = s2c_market.column(feed_mk, user_mk)
-    said3 = compare_block(base_for_compare, ours, market, variables,
-                          measured=adj_p.measured, label=label)
+    said3 = compare_block(base_for_compare, ours, variables,
+                          measured=adj_p.measured)
     verdict, lines, tilt = said3["compare"], said3["_lines"], said3["tilt"]
-    # 🔴 ④ — **우리 결론의 방향**을 넘긴다(근거 검열의 기준이다)
-    reasons = compare.market_reasons(base_p, adj_p, market, variables, ref,
-                                     ours=ours)
     # 🔴 §5 중복 금지 — ② 가 돌았으면 결장 계열 무게 0 · 전력/폼 절반
     _, notes = compare.weight_rules(variables, measured=adj_p.measured)
     for line in notes:
         state.note(f"§5 중복 금지 — {line}")
-    state.note(f"§6 세 열 판정 — **{verdict}**"
+    state.note(f"§6 두 열 판정 — **{verdict}**"
                + (f"(우리 {why})" if ours is not None else f"({why})"))
-    return {"base": base_p, "adj": adj_p, "market": market,
+    return {"base": base_p, "adj": adj_p,
             "outlook": dict(outlook or {}),
             # 🔴🔴 **③ 이동 목록은 비었다**(C7) — 변수는 로그 오즈를 안 민다.
             #    ⚠️ 칸은 남겨 둔다(카드·계약이 그 이름을 안다) — 늘 빈 목록이고
             #       그 사실이 *"변수가 확률을 직접 안 움직인다"* 의 증거다.
             "moves": [],
-            "user_market": user_mk, "ours": ours, "compare": verdict,
-            "compare_lines": [*lines, (f"시장 열 — {label}" if label else "")],
-            "tilt": tilt, "market_why": reasons}
-
-
-def _divergence_of(ref, facts, prob, board, layers) -> tuple[str, str]:
-    """🔴🔴 **P5** — 보드가 있으면 괴리 줄과 **상한 사유**를 만든다.
-
-    🔴 ⬜ 입력 목록은 **카드가 이미 아는 사유**에서 읽는다(사본 금지):
-       기준(Elo)·리그 오프셋·대회 이력·축1~3·XI 판.
-    """
-    from app.core import divergence as _dv
-    if prob is None or not prob.ok() or board is None:
-        return "", ""
-    prices: list[float] = []
-    for market, side in (("win", "home"), ("draw", ""), ("win", "away")):
-        got = [float(x.price) for x in (board.lines or [])
-               if str(x.market) == market and str(x.side or "") == side
-               and x.price]
-        prices.append(got[0] if got else 0.0)
-    if min(prices) <= 0:
-        return "", ""
-    # 🔴 ⬜ 인 입력들 — 그 경기에서 **못 센 칸**만 이름으로 모은다
-    box = dict(getattr(facts, "standings", None) or {})
-    gaps: list[str] = []
-    said_base = dict(layers or {}).get("base")
-    if said_base is None or getattr(said_base, "probs", None) is None:
-        gaps.append("Elo 기준")
-    if "⬜" in str(box.get("league_gap") or "") or not box.get("league_gap"):
-        gaps.append("리그 오프셋")
-    said_hist = str(box.get("comp_history") or "")
-    if "⬜" in said_hist or "🟡" in said_hist or not said_hist:
-        gaps.append("대회 이력")
-    said_edge = dict(getattr(prob, "share", None) or {})
-    if any(abs(float(said_edge.get(k) or 0.0)) < 1e-9
-           for k in ("axis1", "axis2", "axis3")):
-        gaps.append("축1~3 일부")
-    if not (facts.xi or {}):
-        gaps.append("XI 판")
-    return _dv.said_of([prob.home, prob.draw, prob.away], prices, gaps=gaps)
+            "ours": ours, "compare": verdict,
+            "compare_lines": list(lines),
+            "tilt": tilt}
 
 
 def _direction(said: Judgement, layers: dict, ref: MatchRef) -> Judgement:
-    """🔴 §7 방향 판정 — **세 열의 홈승·원정승을 다 적는다**(블록 9).
+    """🔴 §7 방향 판정 — **두 열의 홈승·원정승을 다 적는다**(블록 9).
 
-    ⚠️ 종전 방향 줄은 우리 확률만 적었다 — 세 열이 있으면 그 셋을 나란히 적고, 둘
-       이상이 한 팀을 0.15 이상 앞세울 때만 그 팀을 적는다(§7 마지막 줄).
+    ⚠️ 종전에는 **세 열**(기준·우리·시장)이었다 — 🔴 시장 열은 걷혔다(2026-10-19).
+       둘 이상이 한 팀을 0.15 이상 앞세울 때만 그 팀을 적는다(§7 마지막 줄).
     🔴🔴 **열이 우리뿐이어도 적는다**(예측 지시 2026-10-13 §0) — 그 열 하나로
        정하고 *"열이 하나다"* 를 글자에 남긴다(문장 꼴은 `survive.direction_line`
        하나다 · 사본 금지). ⚠️ 없는 열은 **지어내지 않는다**(빈 칸으로 넘긴다).
     """
     from app.core import compare
-    base_p, market = layers.get("base"), layers.get("market")
+    base_p = layers.get("base")
     said_ours = layers.get("ours")
     # 🔴🔴 **우리 확률만 있어도 방향을 적는다**(예측 지시 2026-10-13 §0:
     #    *"결론은 봇 확률(%)만으로"*). ⚠️ 종전에는 기준·시장이 둘 다 없으면
@@ -1716,11 +1602,8 @@ def _direction(said: Judgement, layers: dict, ref: MatchRef) -> Judgement:
     if base_p is None:
         from app.core.schema import BaseProb as _BP
         base_p = _BP(probs=None, why="⬜ 기준(Elo) 없다")
-    if market is None:
-        from app.core.schema import MarketProb as _MP
-        market = _MP()
     return said.model_copy(update={
-        "direction": compare.direction_line(base_p, said_ours, market, ref)})
+        "direction": compare.direction_line(base_p, said_ours, ref)})
 
 
 def _grade_by_check(said: Judgement, layers: dict, *,
@@ -1767,36 +1650,3 @@ def _grade_by_check(said: Judgement, layers: dict, *,
     state.note(f"⑫ 검증 — 등급 **내림** {step}칸 — {why}")
     return said.model_copy(update={"evals": out,
                                    "conclusion": f"{said.conclusion} · {why}"})
-
-
-def _market_moved(before: Card, layers: dict, *, state: RunState) -> list[str]:
-    """🔴 §6 — 배당이 **5%p 이상** 움직였나. 움직였으면 *"시장 이동"* 줄들.
-
-    > 배당이 크게 움직였다는 건 **시장이 새 정보를 받았다**는 신호다.
-    ⚠️ 그래도 **우리 확률을 시장 쪽으로 옮기지 않는다**(§6 금지) — 새 사실이 변수로
-       들어와서 바뀌는 것만 허용한다. 🔴 이 함수는 **적기만** 한다.
-    """
-    from app.core import compare
-    now = layers.get("market")
-    if now is None or not (now.probs or {}):
-        return []
-    said = compare.moved(before.market, now)
-    for line in said:
-        state.note(f"§6 {line} — 새 기사를 다시 찾아볼 신호다")
-    return said
-
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 **`with_say`(옛 글 경로)를 지웠다** — 사용자 지시 2026-10-17
-# ══════════════════════════════════════════════════════════════════
-#
-#  > 옛 글 경로(s9_say) **필요없다** · 어제처럼 solar deepseek 평이 나와야 한다
-#
-#  🔴 호출을 걷자 계약이 **고아 함수**로 잡았다(`test_wiring` — *"부르는 곳이
-#     없다: app.core.pipeline.with_say"*). 🔴 안 이은 코드는 없는 코드보다
-#     나쁘다(#2) — 그래서 함수째 지운다.
-#  ⚠️ `stages/s9_say` 모듈 자체는 **안 지웠다**(다른 계약·도구가 읽는다) —
-#     운영 카드가 그것을 **안 부른다**는 것이 이 변경의 뜻이다.
-#  🔴 평문은 ⑯ 종합 평(`stages/s6_verdict` · solar·deepseek) 하나가 낸다.
-
-

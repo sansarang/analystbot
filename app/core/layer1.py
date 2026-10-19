@@ -30,10 +30,11 @@ from app.core.schema import Card
 CAP_ALL = 1400
 CAP_REASON = 400
 
-#: 🔴 §1 — 버튼 넷(순서 그대로). ⚠️ 글자를 바꾸면 사용자가 누르던 것이 달라진다
+#: 🔴 §1 — 버튼 셋(순서 그대로). ⚠️ 글자를 바꾸면 사용자가 누르던 것이 달라진다
+#  ⚠️ 넷째였던 `💹 시장 비교` 는 **걷혔다**(2026-10-19) — 비교할 시장이 없다.
 BUTTONS: tuple[tuple[str, str], ...] = (
     ("📖 자세히", "deep"), ("🧩 시나리오", "scen"),
-    ("💹 시장 비교", "market"), ("🔄 재분석", "again"))
+    ("🔄 재분석", "again"))
 
 #: 🔴 §2 — 방향 문구의 문턱(승률 차 %p). ⚠️ 수를 바꾸면 문구가 달라진다
 LEAD_STRONG = 0.15
@@ -82,9 +83,11 @@ def bet_words(card: Card) -> str:
     | 시작한 경기 | `이미 시작 — 예측 아님` |
     | 등급 있음 | `{줄} {등급}` |
     | 등급 없음 | `이 경기는 걸지 않는다` |
-    | 보드 없음 | `보드를 주면 판정` |
 
     🔴 **순서가 뜻이다** — 시작한 경기가 먼저다(끝난 일에 등급을 적지 않는다).
+    ⚠️ 종전에 있던 `보드 없음 → 보드를 주면 판정` 은 **걷혔다**(2026-10-19) —
+       배당을 안 받으므로 *"보드를 달라"* 고 할 일이 없고, 보드 없는 경기의 결론은
+       **규칙 (가)**(봇 확률만)가 낸다(`core/conclude`).
     """
     if card.started:
         return "이미 시작 — 예측 아님"
@@ -95,8 +98,6 @@ def bet_words(card: Card) -> str:
         from app.core import lineups as _ln
         best = named[0]
         return f"{line_name(best)} {_ln.grade_word(xi_confirmed(card), best.grade)}"
-    if str(card.board_source or "none") == "none":
-        return "보드를 주면 판정"
     return "이 경기는 걸지 않는다"
 
 
@@ -780,17 +781,18 @@ def _probs_tag(card: Card) -> str:
 
 
 def _probs(card: Card) -> str:
-    """🔴 §1 `📊` 줄 — **우리 열**이다. 시장 열이 있으면 **괄호로** 함께."""
+    """🔴 §1 `📊` 줄 — **우리 열**이다.
+
+    ⚠️ 종전에는 시장 열이 있으면 **괄호로** 함께 적었다 — 🔴 시장은 걷혔다
+       (2026-10-19)이므로 괄호도 없다.
+    """
     m = card.match
     ours = card.our_prob
     if ours is None:
         return "📊 우리 열이 비었다 — 기준이 없다(시나리오 비율을 쓰지 않는다)"
-    box = dict(getattr(card.market, "probs", None) or {})
 
     def _m(key: str) -> str:
-        from app.core import odds
-        got = box.get(odds.key_of("win", key))
-        return f" ({got:.0%})" if got is not None else ""
+        return ""
 
     # 🔴🔴 §3 카드 — 확률 줄에 **출처(상성)** 와 `🔴 임시` 를 적는다(C10)
     said = _probs_tag(card)
@@ -864,8 +866,6 @@ def _board(card: Card) -> str:
                 + " / ".join(f"{plain_line(e, card)} "
                              f"**{_ln.grade_word(ok, e.grade)}**"
                              for e in named[:3]))
-    if str(card.board_source or "none") == "none":
-        return "걸 줄 없음 — 보드가 없다(보드를 주면 판정한다)"
     if card.started:
         return "걸 줄 없음 — 이미 시작한 경기다"
     return f"걸 줄 없음 — {_why_none(card)}"

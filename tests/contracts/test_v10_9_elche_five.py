@@ -19,11 +19,21 @@ def _src(rel: str) -> str:
     return (ROOT / rel).read_text(encoding="utf-8")
 
 
-def test_1_근거_검열을_S3_뒤에_다시_센다() -> None:
+def test_1_판정을_S3_뒤에_다시_센다() -> None:
+    """🔴 수를 덮으면 그 수로 **판정도 다시** 센다(실사고 2026-10-11 엘체–셀타).
+
+    ⚠️ 종전 이 시험은 **근거 검열**(`compare.market_reasons`)을 S3 뒤에 다시
+       부르는지 셌다 — 🔴 그 함수는 걷혔다(2026-10-19 · 시장이 없으면 *"시장이
+       다르게 보는 까닭"* 을 셀 수 없다).
+    🔴 **지켜야 할 것은 남는다** — `_layers` 가 S3 **앞에서** 돌아 `ours=None`
+       으로 판정을 적은 뒤 수만 덮으면, 낡은 말이 새 수 옆에 남는다. 그래서
+       `compare_block` 을 **우리 열로 다시** 부르는지 센다.
+    """
     got = _src("app/core/pipeline.py")
-    assert "_cmp.market_reasons(" in got, "🔴 S3 뒤에 근거 줄을 다시 세지 않는다"
-    head = got.split("_cmp.market_reasons(")[1][:200]
-    assert 'ours=layers["ours"]' in head, "🔴 S3 가 낸 우리 열을 안 넘긴다"
+    assert got.count("compare_block(") >= 2, \
+        "🔴 S3 뒤에 판정을 다시 세지 않는다(`compare_block` 을 한 번만 부른다)"
+    head = got.split("said6 = compare_block(")[1][:300]
+    assert 'layers["ours"]' in head, "🔴 S3 가 낸 우리 열을 안 넘긴다"
 
 
 # ⚠️ **걷은 시험** — `s9_audit`(최종 평 LLM **검열**)이 지시서

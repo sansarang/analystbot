@@ -24,9 +24,6 @@ import re
 
 import pytest
 
-from app.core import devig, odds
-from app.core.schema import MarketQuote
-
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 APP = ROOT / "app"
 
@@ -43,151 +40,6 @@ def _code(*paths: str) -> str:
 # ══════════════════════════════════════════════════════════════════
 # §2-5 디빅
 # ══════════════════════════════════════════════════════════════════
-
-def test_디빅_비례가_지시서의_수를_낸다():
-    """🔴 §9 — `1.66/3.79/4.55 → 55.5/24.3/20.2%`(±0.1), 합 1.0.
-
-    돌연변이: **역수 합으로 안 나누기** → 합이 1.086 이 되어 빨개진다.
-    """
-    probs, vig = devig.proportional([1.66, 3.79, 4.55])
-    assert [round(p * 100, 1) for p in probs] == [55.5, 24.3, 20.2]
-    assert abs(sum(probs) - 1.0) < 1e-9
-    assert round(vig * 100, 2) == 8.60      # 업체 몫 = 역수 합 − 1
-
-
-def test_같은_마켓_배당이_하나라도_빠지면_시장_확률이_없다():
-    """🔴 §2-5 — 승무패는 **셋 다** 있어야 한다. 돌연변이: 빠진 칸을 0 으로."""
-    two = [MarketQuote(market="win", side=s, price=p, bookmaker="pinnacle")
-           for s, p in (("home", 1.66), ("draw", 3.79))]
-    probs, _, _, bad = odds.probs_of(two, basis=["pinnacle"])
-    assert not probs, probs
-    assert bad and "§2-5" in bad[0], bad
-
-
-def test_업체가_여럿이면_디빅한_확률의_중앙값이다():
-    """🔴 §2-4 — 피나클이 없으면 **업체별 디빅 후 중앙값**. 돌연변이: 단순 평균.
-
-    세 업체의 홈 확률이 0.50·0.55·0.70 이면 중앙값은 **0.55 쪽**이고 평균(0.583)과
-    다르다 — 그 차이가 이 검사를 살린다.
-    """
-    rows = []
-    for book, prices in (("a", (2.00, 4.00, 4.00)), ("b", (1.80, 4.00, 4.60)),
-                         ("c", (1.40, 5.00, 7.00))):
-        rows += [MarketQuote(market="win", side=s, price=p, bookmaker=book)
-                 for s, p in zip(("home", "draw", "away"), prices, strict=True)]
-    names, label = odds.pick_basis(rows)
-    assert "중앙값" in label, label
-    probs, _, _, _ = odds.probs_of(rows, basis=names)
-    got = probs[odds.key_of("win", "home")]
-    # 🔴 업체별 디빅 후 홈 확률은 0.5000 · 0.5431 · 0.6757 → **중앙값 0.5431**
-    each = [devig.proportional(list(p))[0][0]
-            for p in ((2.00, 4.00, 4.00), (1.80, 4.00, 4.60), (1.40, 5.00, 7.00))]
-    assert abs(got - sorted(each)[1]) < 0.002, (got, each)
-    assert abs(got - sum(each) / 3) > 0.02, "중앙값이 아니라 평균을 썼다"
-    # ⚠️ 디빅 **전** 평균(배당 평균 1.733 → 0.577)과도 달라야 한다
-    assert abs(got - devig.proportional([1.7333, 4.3333, 5.2])[0][0]) > 0.02
-
-
-def test_피나클이_있으면_피나클이_기준이다():
-    """🔴 §2-4 — 돌연변이: 다른 업체와 섞어 중앙값."""
-    rows = [MarketQuote(market="win", side=s, price=p, bookmaker=b)
-            for b, prices in (("pinnacle", (1.66, 3.79, 4.55)),
-                              ("other", (1.20, 6.00, 9.00)))
-            for s, p in zip(("home", "draw", "away"), prices, strict=True)]
-    names, label = odds.pick_basis(rows)
-    assert names == ["pinnacle"] and "pinnacle" in label
-    probs, _, _, _ = odds.probs_of(rows, basis=names)
-    assert round(probs[odds.key_of("win", "home")] * 100, 1) == 55.5
-
-
-def test_더블찬스는_승무패에서_유도한다():
-    """🔴 §2-5 마지막 — 따로 받지 않는다."""
-    rows = [MarketQuote(market="win", side=s, price=p, bookmaker="pinnacle")
-            for s, p in (("home", 1.66), ("draw", 3.79), ("away", 4.55))]
-    probs, _, _, _ = odds.probs_of(rows, basis=["pinnacle"])
-    h, d, a = (probs[odds.key_of("win", s)] for s in ("home", "draw", "away"))
-    assert abs(probs["unbeaten:home"] - (h + d)) < 1e-6
-    assert abs(probs["unbeaten:away"] - (a + d)) < 1e-6
-
-
-def probs_home(rows: list[MarketQuote]) -> float:
-    """🔴 비례 방식 홈 확률 — Shin 과 **다른 수**인지 보려고 쓴다."""
-    probs, _, _, _ = odds.probs_of(rows, basis=["pinnacle"])
-    return probs[odds.key_of("win", "home")]
-
-
-def test_승무패에는_Shin_도_함께_나온다():
-    """🔴 §2-5 — 3-way 는 Shin 방식도 계산해 **괄호로** 보인다."""
-    rows = [MarketQuote(market="win", side=s, price=p, bookmaker="pinnacle")
-            for s, p in (("home", 1.66), ("draw", 3.79), ("away", 4.55))]
-    _, shin, _, _ = odds.probs_of(rows, basis=["pinnacle"])
-    # ⚠️ 표에 담을 때 소수 여섯 자리로 **둥근다** — 합 오차는 그 자리까지만 본다
-    assert shin and abs(sum(shin.values()) - 1.0) < 2e-6
-    # 🔴 Shin 은 비례와 **다른 수**다(실측: 홈 0.5688 vs 비례 0.5547)
-    assert round(shin[odds.key_of("win", "home")], 4) == 0.5688
-    assert shin[odds.key_of("win", "home")] > probs_home(rows)
-
-
-# ══════════════════════════════════════════════════════════════════
-# §2-2·§2-3 예산과 매칭
-# ══════════════════════════════════════════════════════════════════
-
-
-def test_경기_매칭은_후보가_하나일_때만():
-    """🔴 §2-3 — 킥오프 ±8h + 두 팀 열쇠 일치. 돌연변이: **첫 후보 자동 선택**."""
-    import importlib
-    from datetime import timedelta
-    t = importlib.import_module("tests.e2e.test_v6_replay")
-    ref = t._ref()
-    ev = {"id": "1", "commence_time": ref.kickoff_utc.isoformat(),
-          "home_team": ref.home_name, "away_team": ref.away_name}
-    got, why = odds.match_event(ref, [ev])
-    assert got is ev, why
-    # 🔴 같은 창에 **둘** → 고르지 않는다
-    got2, why2 = odds.match_event(ref, [ev, dict(ev, id="2")])
-    assert got2 is None and "하나로 못 좁혔다" in why2, why2
-    # 🔴 창 밖(±8h 초과) → 0건
-    far = dict(ev, commence_time=(ref.kickoff_utc + timedelta(hours=9)).isoformat())
-    got3, why3 = odds.match_event(ref, [far])
-    assert got3 is None and "후보 0건" in why3, why3
-
-
-def test_월_한도를_넘으면_호출이_0이다():
-    """🔴 §2-2 — 100% 면 중단, 80% 면 경고. 돌연변이: 한도 검사 제거."""
-    ok, why = odds.budget_left(500, 500)
-    assert not ok and "중단" in why
-    ok2, why2 = odds.budget_left(450, 500)
-    assert ok2 and "가깝다" in why2
-    ok3, why3 = odds.budget_left(10, 500)
-    assert ok3 and "10/500" in why3
-
-
-def test_요청_예산이_분석_2회_재분석_1회다():
-    """🔴 §2-2 — 표가 그 수를 든다(코드에 박지 않는다)."""
-    from app import rules
-    box = rules.odds_budget()
-    assert int(box["per_analyze"]) == 2 and int(box["per_reanalyze"]) == 1
-    assert int(box["events_cache_hours"]) == 6
-
-
-def test_카드_등록이_필요한_피드는_쓰지_않는다():
-    """🔴 §2-1 — `card_required: true` 면 **키가 있어도** 빠진다."""
-    import app.core.odds as mod
-    from app import rules
-    real = rules.odds_feeds
-    rules.odds_feeds = lambda **_: [            # type: ignore[assignment]
-        {"name": "needs_card", "card_required": True, "needs_key": False}]
-    try:
-        got, whys = mod.ready_feeds()
-    finally:
-        rules.odds_feeds = real                 # type: ignore[assignment]
-    assert not got and any("카드 등록" in w for w in whys), whys
-
-
-# ══════════════════════════════════════════════════════════════════
-# §3 ① 기준 확률
-# ══════════════════════════════════════════════════════════════════
-
 
 def test_Elo_We_가_지시서_수와_같다() -> None:
     """🔴🔴 **Elo 를 지웠다** — 사용자 지시 2026-10-17 *"elo 지워라"*.
@@ -381,21 +233,55 @@ def test_2가_계산되면_결장_계열_무게가_0이다():
     assert "R1" not in none and none["R2"] == 0.5, none
 
 
-def test_시장은_등급을_못_바꾼다():
-    """🔴🔴 **원칙 수정**(2026-10-06(8차) ①) + **F4**(2026-10-11) — 시장 열은
-    등급·확률을 **어떤 경우에도** 바꾸지 않는다.
+def test_배당을_받아오는_코드가_app_에_없다():
+    """🔴🔴 **계약을 뒤집었다** — 사용자 지시 2026-10-19.
 
-    🔴 F4 가 세 열 규칙(`compare.grade_step`)을 **통째로 지웠다** — 표의 절반이
-       시장이었기 때문이다. 등급을 내리는 자리는 ⑫ 검증 하나다.
+    > 시장배당은 **아예 쓰지도 않는다.**
+
+    ⚠️ 종전 계약은 *"시장이 **판정에 들어가면** 실패"* 였다(2026-10-06(8차) ① ·
+       F4). 🔴 원칙이 세졌으므로 검사도 세진다 — **받아오면 실패**다.
+    🔴 세 가지를 센다:
+       ① 배당 피드·보드 수집 **주소·호스트**가 `app/` 에 없다
+       ② 걷은 모듈을 **부르지 않는다**(`core.odds`·`boardfeed`·`devig`·
+          `divergence`·`s2c_market`)
+       ③ 시장 확률 **타입**이 되살아나지 않았다(`MarketProb`·`MarketQuote`)
+    ⚠️ **D46** — 독스트링·주석은 뺀 코드만 본다(`_code` 가 그 일을 한다).
+       문서가 *"걷었다"* 고 설명하는 것과 코드가 그것을 *부르는* 것은 다르다.
+    """
+    code = _code("app")
+    # ① 주소·호스트
+    for host in ("the-odds-api.com", "api.the-odds-api", "odds-api.io",
+                 "oddspapi", "football-data.co.uk", "fixtures.csv",
+                 "oddsportal", "betexplorer"):
+        assert host not in code, f"🔴 배당을 받아오는 주소가 있다 — {host}"
+    # ② 걷은 모듈·함수
+    for name in ("core.odds", "core import odds", "boardfeed", "core import devig",
+                 "core import divergence", "s2c_market", "from_feed",
+                 "ready_feeds", "odds_feeds", "odds_sources", "odds_budget",
+                 "ODDS_API"):
+        assert name not in code, f"🔴 배당 수집 코드가 남아 있다 — {name}"
+    # ③ 타입
+    from app.core import schema as _s
+    for gone in ("MarketProb", "MarketQuote", "Board"):
+        assert not hasattr(_s, gone), f"🔴 `{gone}` 가 돌아왔다 — 배당 타입이다"
+    # 🔴 설정 표도 없다(피드 이름·키 환경변수를 들고 있던 곳)
+    assert not (ROOT / "config/odds_sources.yaml").exists(), \
+        "🔴 `config/odds_sources.yaml` 이 돌아왔다"
+
+
+def test_세_열_등급_규칙은_여전히_없다():
+    """🔴 F4(2026-10-11) — 세 열 등급 규칙(`compare.grade_step`)은 지워진 채다.
+
+    ⚠️ 그 표의 절반이 시장이었다. 🔴 시장이 걷힌 뒤에도 **등급을 내리는 자리는
+       ⑫ 검증 하나**다(이 시험이 그것을 지킨다).
     돌연변이: `grade_step` 을 되살려 파이프라인에 잇기.
     """
     import inspect
 
     from app.core import compare, pipeline
     assert not hasattr(compare, "grade_step"), (
-        "🔴 세 열 등급 규칙이 돌아왔다 — 시장이 등급에 닿는 길이다(F4)")
-    # 🔴 **D46** — 독스트링·주석은 뺀다(문서가 그 이름을 *설명하는* 것과 코드가
-    #    그것을 *부르는* 것은 다르다 · CLAUDE.md 7). AST 로 **호출**만 센다.
+        "🔴 세 열 등급 규칙이 돌아왔다 — 등급에 닿는 샛길이다(F4)")
+    # 🔴 **D46** — AST 로 **호출**만 센다(CLAUDE.md 7).
     tree = ast.parse(inspect.getsource(pipeline))
     called = {n.func.attr for n in ast.walk(tree)
               if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)}
@@ -538,54 +424,6 @@ def test_리그_경기의_계수도_같은_대회_유형만_쓴다() -> None:
     said = (root / "app/core/stages/s2b_base.py").read_text(encoding="utf-8")
     assert "BaseProb(probs=None" in said, "🔴 기준을 빈 값으로 안 낸다"
     assert "기준(Elo)은 지웠다" in said, "🔴 그 사실을 사유에 안 적는다"
-
-
-def test_피드_종목_열쇠는_표에서_온다():
-    """🔴 ④ — 대회명 → 피드 열쇠. 돌연변이: 모르는 대회에 아무 열쇠나 붙이기.
-
-    ⚠️ 실측 2026-10-06: 이 피드에 **대표팀 친선·CONCACAF·AFC 가 없다**.
-    """
-    import importlib
-    from app import rules
-    from app.core import odds
-    feed = [f for f in rules.odds_feeds() if f["name"] == "the_odds_api"][0]
-    ref = importlib.import_module("tests.e2e.test_v6_replay")._ref()
-    got, why = odds.sport_key_of(feed, ref)       # Friendlies
-    assert got == "" and "친선" in why, (got, why)
-    said, _ = odds.sport_key_of(feed, ref.model_copy(
-        update={"competition": "Premier League"}))
-    assert said == "soccer_epl"
-    # 🔴 표가 측정값을 든다 — 친선·CONCACAF·AFC 는 `null` 이다
-    scope = dict(feed.get("scope") or {})
-    assert scope["national_friendly"] is None and scope["concacaf"] is None
-    assert scope["epl"] == "soccer_epl"
-
-
-def test_크레딧이_든_요청만_센다():
-    """🔴 §2-2 — `/events` 는 0 크레딧이다(실측). 돌연변이: 늘 1 로 세기."""
-    from app.core import odds
-    assert odds._last_cost({"x-requests-last": "0"}) == 0
-    assert odds._last_cost({"x-requests-last": "1"}) == 1
-    # 🔴 모르면 **1 로 본다** — 0 으로 보면 한도를 조용히 넘는다
-    assert odds._last_cost({}) == 1
-    said = odds._quota({"x-requests-remaining": "499", "x-requests-used": "1"})
-    assert said == {"remaining": 499, "used": 1, "limit_said": 500}, said
-
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 **사용자 지시 2026-10-06(6차)** — ① 기준에서 출발 · ③ 포지션 짝
-# ══════════════════════════════════════════════════════════════════
-
-
-def _vars(*specs):
-    from app.core.schema import Variable
-    out = []
-    for i, (kind, favors, weight) in enumerate(specs):
-        out.append(Variable(id=f"V{i}", type=kind, subject="team:000129",
-                            favors=favors, goals="none", target="t",
-                            hardness="soft", weight=weight, claim="c",
-                            quote="q"))
-    return out
 
 
 def test_기여표는_같은_포지션끼리_짝짓는다():
@@ -806,82 +644,6 @@ def test_동기_낱말에_이겨야_비겨도_골차가_있다():
 # 🔴🔴 **시장은 참고용이다**(사용자 지시 2026-10-06(8차) ④) — AST 로 잠근다
 # ══════════════════════════════════════════════════════════════════
 
-
-def test_시장_확률이_우리확률_등급_함수의_입력이_아니다():
-    """🔴🔴 ④ — `MarketProb`·시장 확률이 `our_prob`·등급 계산 함수의 **입력으로 들어가면
-    실패**다. 돌연변이: `our_prob(..., market=…)` 를 더하거나 `_lower` 에 시장을 넘기기.
-
-    🔴 세는 방법: **서명(signature)** 과 **본문**을 둘 다 AST 로 본다.
-      ① 금지 함수의 인자 이름에 `market`·`mkt`·`odds`·`price` 가 없다
-      ② 그 함수 본문에서 `MarketProb`·`market.probs`·`_market_triple` 을 안 읽는다
-    ⚠️ 글자 검사가 아니라 **AST** 다(주석에 그 말이 있는 것은 괜찮다 · D46).
-    """
-    import ast as _ast
-
-    banned_args = ("market", "mkt", "odds", "price", "vig", "book")
-    targets = {
-        "app/core/compare.py": ("our_prob", "_apply", "_from_scenarios",
-                                "weight_rules", "tilt_reasons"),
-        # 🔴 F4 — `_lower`(세 열) 가 `_grade_by_check`(⑫ 검증)로 바뀌었다
-        "app/core/pipeline.py": ("_grade_by_check",),
-        "app/core/stages/s7_judge.py": ("_grade", "_enough", "_cap",
-                                        "_same_direction_cap"),
-        "app/survive.py": ("verdict_word",),
-    }
-    bad: list[str] = []
-    for rel, names in targets.items():
-        p = ROOT / rel
-        if not p.is_file():
-            continue
-        tree = _ast.parse(p.read_text(encoding="utf-8"))
-        for node in _ast.walk(tree):
-            if not isinstance(node, (_ast.FunctionDef, _ast.AsyncFunctionDef)):
-                continue
-            if node.name not in names:
-                continue
-            args = [a.arg for a in (node.args.args + node.args.kwonlyargs)]
-            for a in args:
-                if any(w in a.lower() for w in banned_args):
-                    bad.append(f"{rel}:{node.name} 인자 `{a}`")
-            # ② 본문에서 시장 확률을 읽나
-            for sub in _ast.walk(node):
-                if isinstance(sub, _ast.Name) and sub.id in ("MarketProb",
-                                                             "_market_triple"):
-                    bad.append(f"{rel}:{node.name} 본문이 `{sub.id}` 를 쓴다")
-                if isinstance(sub, _ast.Attribute) and sub.attr == "probs" \
-                        and isinstance(sub.value, _ast.Name) \
-                        and sub.value.id in ("market", "mkt", "user_market"):
-                    bad.append(f"{rel}:{node.name} 본문이 `{sub.value.id}.probs`")
-    assert not bad, "🔴 시장이 판정 경로로 들어왔다: " + " · ".join(bad)
-
-
-def test_시장_확률은_설명_함수만_읽는다():
-    """🔴 ④ 반대 방향 — 시장을 읽는 곳은 **설명·표시 함수**뿐이어야 한다.
-
-    🔴 `_market_triple` 을 부르는 곳을 AST 로 센다: `verdict_of`(판정 **글자**만 만든다)
-       · `market_reasons`(이유 후보) · `direction_line`(세 열을 **적는다**) · `moved`.
-    ⚠️ 그 넷 밖에서 부르면 시장이 수에 닿을 길이 생긴 것이다.
-    """
-    import ast as _ast
-
-    allow = {"verdict_of", "market_reasons", "direction_line", "moved",
-             "_market_triple"}
-    tree = _ast.parse((ROOT / "app/core/compare.py").read_text(encoding="utf-8"))
-    for node in _ast.walk(tree):
-        if not isinstance(node, (_ast.FunctionDef, _ast.AsyncFunctionDef)):
-            continue
-        for sub in _ast.walk(node):
-            if isinstance(sub, _ast.Call) and isinstance(sub.func, _ast.Name) \
-                    and sub.func.id == "_market_triple":
-                assert node.name in allow, (
-                    f"🔴 `{node.name}` 이 시장 확률을 읽는다 — 설명 함수만 읽어야 한다")
-
-
-# ⚠️ **걷은 시험** — 그 단계가 지시서 2026-10-12(셋째) §1 처분으로 지워졌다
-#    (⑭ 가설 · ⑮ 무너뜨릴 조건 · ⑰ 가설 검증 · ⑱ 반증 딥서치 · ⑳ 시나리오·
-#    재가중 · ㉒ 반증 판정). 🔴 보장이 어디로 갔는지는
-#    `docs/fable/stages/2026-10-12_dropped_contracts.md` 가 든다.
-#    걷은 시험: `test_역습_갈래가_필수형으로_들어온다`
 
 def test_감독_로테이션은_같은_주제면_하나다():
     """🔴 ② — `coach_intent`·`coach_conflict`·`squad_rotation` 이 같은 팀 + 같은 주제면
@@ -1116,35 +878,6 @@ def test_피로도_사다리는_잰_값끼리만_비교한다():
 # ⚠️ **걷은 시험** — §1 처분(2026-10-12 셋째)으로 그 입구가 바뀌었다
 #    (`our_board(drafts=)` → `fav=/dog=` · `s7_judge.run(hypo)` → 격자).
 #    걷은 시험: `test_보드가_있으면_그_줄만_등급을_받는다`
-
-def test_피드_메인_라인만_평가한다():
-    """🔴 ① — 피드 기준선은 **그대로** 쓰고 **메인 라인 하나**만 센다.
-
-    ⚠️ 실측 2026-10-07(MLS): 업체마다 달라 핸디 0.25·0.5·1.0·1.5 가 한꺼번에 왔고
-       같은 마켓이 네 줄로 서서 등급이 네 번 나왔다.
-    돌연변이: 모든 기준선을 평가 줄로 넣기.
-    """
-    from app.core import odds
-    from app.core.schema import MarketProb, MarketQuote
-    q = []
-    for book in ("a", "b", "c"):
-        q.append(MarketQuote(market="total", side="over", point=3.5, price=1.9,
-                             bookmaker=book))
-        q.append(MarketQuote(market="total", side="under", point=3.5, price=1.9,
-                             bookmaker=book))
-    q.append(MarketQuote(market="total", side="over", point=2.5, price=1.5,
-                         bookmaker="d"))
-    probs = MarketProb(quotes=q)
-    assert odds.main_points(probs)["total"] == 3.5
-    lines = odds.lines_from(probs)
-    said = {(x.market, x.point) for x in lines}
-    assert ("total", 3.5) in said and ("total", 2.5) not in said, said
-    # 🔴 **우리가 수를 고르지 않는다** — 업체 수를 센 것뿐이다(2.5 가 다수면 2.5 다)
-    more = MarketProb(quotes=q + [
-        MarketQuote(market="total", side="over", point=2.5, price=1.5,
-                    bookmaker=b) for b in ("e", "f", "g", "h")])
-    assert odds.main_points(more)["total"] == 2.5
-
 
 def test_등급_글자에_보류가_있다():
     """🔴 ② — `없음`(문턱 미달)과 `보류`(걸 줄 없음)는 **다른 말**이다."""

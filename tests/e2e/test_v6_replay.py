@@ -35,9 +35,15 @@ KICK = datetime(2026, 10, 6, 11, 0, tzinfo=timezone.utc)
 #: 🔴 카드를 **킥오프 전**에 만든 것으로 센다 — 지난 뒤면 등급이 거둬진다(M97).
 NOW = KICK - timedelta(hours=3)
 
-#: 🔴🔴 **사용자 보드**(네 층 지시서 §11 검수 표) — *"사용자 보드(1.66/3.79/4.55)를
-#   같이 주면 두 열이 따로 보이는지"*. 🔴 배당이 든 보드다(§2-6 이 그것을 요구한다).
-BOARD_TEXT = "보드: 승무패 1.66 3.79 4.55 / 언더오버 2.5 1.95 / 핸디 -0.5 1.90"
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **사용자 보드 고정물을 걷었다** — 사용자 지시 2026-10-19
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 시장배당은 **아예 쓰지도 않는다.**
+#
+#  ⚠️ 종전 고정물: `보드: 승무패 1.66 3.79 4.55 / 언더오버 2.5 1.95 / 핸디 -0.5
+#     1.90`(네 층 §11 검수 표 — *"두 열이 따로 보이는지"*). 🔴 보드 파서·시장
+#     층·괴리 줄을 지웠으므로 그 글자를 넣을 곳이 **없다**.
 
 
 def _ref() -> MatchRef:
@@ -98,12 +104,10 @@ def card(replaying) -> Card:
     """🔴 재생으로 만든 카드 **하나** — 모든 불변식이 이것을 본다."""
     from app import net as _net_mod
     from app import search as _search
-    from app.core import board as _board
     from app.core import shape as _shape
-    from app.core.stages import (s2_facts, s2b_base, s2c_market, s3_docs,
+    from app.core.stages import (s2_facts, s2b_base, s3_docs,
                                  s2d_strategy, s4_extract, s5_verify,
                                  s7_judge)
-    BOARD, _extra, _bad = _board.parse(BOARD_TEXT)
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **재정렬을 예열한다** — 실측 2026-10-06
     # ══════════════════════════════════════════════════════════════════
@@ -119,12 +123,9 @@ def card(replaying) -> Card:
         net = _net_mod.Net()
         chain = _search.build_chain()
         facts = await s2_facts.run(ref, state=state, net=net)
-        # 🔴🔴 **네 층**(네 층 지시서 §1) — ① ② 는 s2b, ④ 는 s2c. 🔴 녹화본으로 돈다
-        #    (키가 없으면 ④ 는 "시장 없음 — 키가 없다" 이고 그것도 **세는 사실**이다).
+        # 🔴🔴 **층은 셋이다**(① ② 는 s2b) — ④ 시장 층은 걷혔다(2026-10-19).
         base_p, adj_p = await s2b_base.run(ref, facts, state=state, net=net,
                                           when=NOW.date())
-        feed_mk, user_mk = await s2c_market.run(ref, pool=None, net=net,
-                                               state=state, board=BOARD)
         cache: dict = {}
         # 🔴🔴 **딥서치를 지웠다**(사용자 지시 2026-10-17) — 문서는 LLM 서치가
         #    긷는다. ⚠️ 재생에서는 LLM 을 안 부르고 **녹음이 던진 질의**를
@@ -166,7 +167,7 @@ def card(replaying) -> Card:
         prob = _pm.run(ref, facts, mr, varset, edge=edge,
                        state=state)
         layers = pipeline._layers(ref, facts, variables, base_p, adj_p,
-                                  feed_mk, user_mk, state=state, strategy=plan)
+                                  state=state, strategy=plan)
         layers["strategy"] = plan
         layers["varset"] = varset
         edge["report"] = mr
@@ -181,7 +182,6 @@ def card(replaying) -> Card:
             #    — `probmodel.league_base` 가 리그 평균을 시뮬로 만들던 열이다.
         layers["matchup"] = edge
         said = s7_judge.run(ref, facts, variables, state=state, now=NOW,
-                            board=BOARD, board_source="user_board",
                             dist=dict(dict(edge.get("sim") or {})
                                       .get("scores") or {}))
         said = pipeline._direction(said, layers, ref)
@@ -192,7 +192,6 @@ def card(replaying) -> Card:
                                    .get("scores") or {}))
         # 🔴🔴 **F7(2026-10-11)** — 글은 **한 편**이다(작성 1 + 검열 1). 옛 논평
         layers["shape"] = got_shape
-        layers["board_source"] = "user_board"
         got_card = pipeline.card_of(ref, facts, variables, said,
                                     state=state, layers=layers)
         # ══════════════════════════════════════════════════════════
@@ -462,22 +461,20 @@ def test_불변식14_추가_옵션_묶음과_기대값_금지(card: Card):
     🔴🔴 **배당 칸 금지는 걷혔다** — 네 층 지시서 §2-6(2026-10-06)
     ══════════════════════════════════════════════════════════════════
 
-    종전 이 불변식은 `BoardLine` 에 `price` 칸이 **없음**을 셌다(절대규칙 6).
-    🔴 새 지시서가 그 칸을 **요구한다** — *"파서는 배당을 버리지 않고 `BoardLine.price`
-       에 담는다"*. 그래서 세는 것을 **바꾼다**: 배당은 있어도 되고,
-       🔴 **기대값·손익분기·켈리·금액은 어디에도 없어야 한다**(§0 금지).
+    ⚠️ 이 불변식은 **두 번 뒤집혔다**:
+      ① 처음 — `BoardLine` 에 `price` 칸이 **없음**을 셌다(절대규칙 6).
+      ② 2026-10-06 — 네 층 §2-6 이 그 칸을 **요구했다**(*"파서는 배당을 버리지
+         않고 `BoardLine.price` 에 담는다"*) → 있음을 셌다.
+      ③ 🔴 **2026-10-19(지금)** — *"시장배당은 아예 쓰지도 않는다"* → **없음**을
+         다시 센다. 그리고 `추가:` 줄 묶음도 사라졌다(보드 파서를 지웠다).
+    🔴 변하지 않은 것 하나 — **기대값·손익분기·켈리·금액은 어디에도 없다**(§0).
     """
     from app.core.schema import BoardLine
-    assert "price" in BoardLine.model_fields          # 🔴 §2-6 이 요구한다
+    assert "price" not in BoardLine.model_fields, \
+        "🔴 배당 칸이 돌아왔다 — 시장배당은 쓰지 않는다(2026-10-19)"
     said = render.card_text(card)
     for word in ("기대값", "EV ", "손익분기", "켈리", "스테이크", "배팅액", "원)"):
         assert word not in said, word
-    if card.board_extra:
-        # 🔴 추가 줄은 **그 묶음 아래**에만 나온다
-        head = said.index("추가 옵션에 있으면")
-        for row in card.board_extra:
-            market = row.split()[0]
-            assert said.rindex(market) > head or said.count(market) > 1, row
 
 
 def test_불변식15_재분석_카드에_바뀐_것_블록이_있다(card: Card):
@@ -588,28 +585,25 @@ def test_불변식20_모든_확률_셋은_합이_1이다(card: Card):
         f"🔴 기준이 빈 까닭을 안 적었다 — {card.base_prob.why}"
 
 
-def test_불변식21_시장_열에_출처와_시각이_적혀_있다(card: Card):
-    """21. 시장 열이 있으면 **출처**(피나클/중앙값/단일/사용자 보드)가 적혀 있다."""
+def test_불변식21_22_카드에_시장_열이_없다(card: Card):
+    """21·22. 🔴 **카드에 시장 열·배당 숫자가 없다**(사용자 지시 2026-10-19).
+
+    ⚠️ 종전 두 불변식:
+      · **21** 시장 열이 있으면 **출처**(피나클/중앙값/단일/사용자 보드)와 받은
+        시각이 적혀 있다.
+      · **22** 사용자 보드 배당과 피드 배당이 **한 열에 섞이지 않았다**(§2-6).
+    🔴 열 자체가 사라졌으므로 세는 것이 뒤집힌다 — **그 열이 없음**을 센다.
+    """
+    from app.core.schema import Card as _C
+    for gone in ("market", "user_market", "divergence", "ocr_text",
+                 "market_why", "board_feed", "board_lines"):
+        assert gone not in _C.model_fields, f"🔴 카드 칸 `{gone}` 가 돌아왔다"
     said = render.card_text(card)
-    box = card.market
-    if not box.probs:
-        assert "시장 없음" in said, "🔴 시장이 없는데 사유가 없다"
-        return
-    assert box.basis, "🔴 시장 확률이 있는데 출처가 비었다"
-    assert box.basis in said, box.basis
-    if box.source != "user_board" and box.captured_at is not None:
-        from app import timefmt
-        assert timefmt.kst_label(box.captured_at) in said
-
-
-def test_불변식22_사용자_보드와_피드가_한_열에_섞이지_않았다(card: Card):
-    """22. 사용자 보드 배당과 피드 배당이 **한 열에** 섞이지 않았다(§2-6)."""
-    books = {q.bookmaker for q in (card.market.quotes or [])}
-    assert not ({"user_board", "user_board(ocr)"} & books) or books <= \
-        {"user_board", "user_board(ocr)"}, \
-        f"🔴 시장 열에 사용자 보드와 피드 업체가 섞였다: {books}"
-    mine = {q.bookmaker for q in (card.user_market.quotes or [])}
-    assert mine <= {"user_board", "user_board(ocr)"}, mine
+    for word in ("시장 =", "| 시장 |", "사용자 보드", "업체 몫", "Shin",
+                 "보드 캡처를 보내 달라", "💹 시장 비교"):
+        assert word not in said, f"🔴 카드에 시장 글자가 남았다 — {word}"
+    # 🔴 두 열(기준·우리)은 **그대로** 있어야 한다 — 걷은 것은 시장뿐이다
+    assert "| 기준" in said and "우리" in said, "🔴 두 열 표가 사라졌다"
 
 
 def test_불변식23_우리_열이_방향_판정의_우리_확률과_같다(card: Card):
@@ -633,8 +627,7 @@ def test_불변식25_기준이나_시장이_없으면_사유와_함께_열이_�
     said = render.card_text(card)
     if card.base_prob.probs is None:
         assert "기준 없음" in said and card.base_prob.why
-    if not card.market.probs:
-        assert "시장 없음" in said and card.market.why
+    # ⚠️ *"시장 없음 — 사유"* 조항은 걷혔다(2026-10-19) — 시장 열이 없다
     # 🔴🔴 **② 는 이제 확률을 안 움직인다** — 사용자 지시 2026-10-17 *"elo 지워라"*.
     #    ⚠️ 종전엔 ② 가 `ΔS` 를 **Elo 점수 차로 환산**해 승무패를 다시 냈다.
     #       기준(Elo)을 지워 그 가지가 영원히 안 도므로 `probs` 는 **늘 `None`**

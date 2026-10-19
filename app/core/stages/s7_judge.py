@@ -18,7 +18,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from app.core.schema import (Board, BoardLine, Facts, Grade,
+from app.core.schema import (BoardLine, Facts, Grade,
                              Judgement, MarketEval, MatchRef,
                              Variable)
 from app.core.state import RunState
@@ -40,8 +40,7 @@ _MAP: dict[str, tuple[str, str]] = {
 # ⚠️ **`_Draft` 는 지웠다** — 시나리오를 `survive` 의 무게 계산에 넘기던
 #    최소 꼴이다. §1 처분으로 시나리오가 없다.
 def run(ref: MatchRef, facts: Facts, variables: list[Variable],
-        *, state: RunState, board: Board | None = None,
-        board_source: str = "", dist: dict | None = None,
+        *, state: RunState, dist: dict | None = None,
         now: Any = None, top: float | None = None,
         fold_why: str = "") -> Judgement:
     """🔴 마켓마다 대입하고 등급을 매긴다. ⚠️ 등급이 없어도 **카드는 나온다**.
@@ -59,9 +58,8 @@ def run(ref: MatchRef, facts: Facts, variables: list[Variable],
     from app import survive
     notes: list[str] = []
     started, started_why = survive.started(ref.kickoff_utc, now)
-    lines, src = _lines(ref, facts, board=board, notes=notes,
-                        source=board_source, dist=dist, ref_names=(
-                            ref.home_name, ref.away_name))
+    lines, src = _lines(ref, facts, notes=notes, dist=dist,
+                        ref_names=(ref.home_name, ref.away_name))
     enough, thin_why = _enough(variables)
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **대회를 못 알아보면 등급을 전부 보류**(사용자 지시 2026-10-09(4차) §2)
@@ -94,19 +92,24 @@ def run(ref: MatchRef, facts: Facts, variables: list[Variable],
             evals.append(got)
     evals = _same_direction_cap(evals, notes=notes)
     if src == "none":
-        # 🔴🔴 **보드가 없으면 등급을 안 붙인다**(지시 ②) — `보류(보드 없음)`
+        # 🔴🔴 **보드가 없으면 등급을 안 붙인다**(지시 ② · 2026-10-07)
         #    ⚠️ 생존·상한·마크는 **그대로 보인다**(참고표로 쓸 수 있게).
+        # 🔴🔴 **이제 이 길이 유일하다** — 배당을 안 받으므로(2026-10-19) `src` 는
+        #    **늘 `none`** 이다. ⚠️ 그래서 **줄 등급은 영구히 `보류`** 이고, 결론은
+        #    `_conclusion` 의 **규칙 (가)**(봇 확률 최고값)가 낸다(2026-10-13 결정:
+        #    *"종전의 ⏸ 보류 — 보드가 없다 는 걷혔다"*). 🔴 등급을 **우리 기준선**
+        #    에 붙일지는 사용자가 정할 일이다 — 여기서 고르지 않는다.
         evals = [e.model_copy(update={
             "grade": "보류",
             "why": (f"{e.why} · 보드 없음 — 걸 줄이 없어 **보류**").strip(" ·")})
             for e in evals]
-        notes.append("🔴 등급 **전부 보류** — 사용자 보드도 피드 메인 라인도 없다")
+        notes.append("🔴 등급 **전부 보류** — 배당을 쓰지 않으므로 보드가 없다"
+                     "(결론은 규칙 (가)가 낸다)")
     state.set("markets_graded", sum(1 for e in evals
                                     if e.grade not in ("자료부족", "보류")))
     # ⚠️ **방향은 여기서 안 센다** — 종전엔 시나리오 무게로 셌고(§1 처분으로
     #    시나리오가 없다), 지금은 `pipeline._direction` 이 **확률**로 센다.
     return Judgement(evals=evals, direction="",
-                     board_source=src,
                      # 🔴 **규칙 (가)의 재료** — 우리 확률의 **최고값**과 대회
                      #    유형. ⚠️ `dist` 가 없으면 `top` 은 `None` 이고 결론은
                      #    *"확률이 없다"* 다(지어내지 않는다).
@@ -123,44 +126,30 @@ def run(ref: MatchRef, facts: Facts, variables: list[Variable],
 
 
 # ══════════════════════════════════════════════════════════════════
-# 보드 줄 — 🔴 있으면 보드만, 없으면 기준선 복수(§6-c-3)
+# 줄 — 🔴 **기준선 복수**(§6-c-3). 보드 줄 길은 걷혔다(2026-10-19)
 # ══════════════════════════════════════════════════════════════════
 
 
-def _lines(ref: MatchRef, facts: Facts, *, board: Board | None,
-           notes: list[str], source: str = "", dist: dict | None = None,
-           ref_names: tuple[str, str] = ("", "")
+def _lines(ref: MatchRef, facts: Facts, *, notes: list[str],
+           dist: dict | None = None, ref_names: tuple[str, str] = ("", "")
            ) -> tuple[list[tuple[Any, BoardLine]], str]:
     """🔴 `(옛 Market, v6 BoardLine)` 짝 목록과 **출처**. ⚠️ 변환을 한 곳에 둔다.
 
     ══════════════════════════════════════════════════════════════════
-    🔴🔴 **출처 순서**(사용자 지시 2026-10-07 ①)
+    🔴🔴 **출처는 하나다 — `none`**(사용자 지시 2026-10-19)
     ══════════════════════════════════════════════════════════════════
 
-    > 사용자 보드 **>** 피드의 메인 라인(총점·핸디 `point` 그대로) **>** 없음.
-
-    🔴 돌려주는 둘째 값이 그 출처다(`user_board`·`feed`·`none`). ⚠️ `none` 이면
-       기준선 표는 **참고**이고 등급은 전부 `보류` 다(지시 ②) — 그 판단은 `_one` 이
-       아니라 `run` 이 한다(한 가지 일은 한 곳).
+    ⚠️ 종전 순서는 *"사용자 보드 **>** 피드의 메인 라인 **>** 없음"* 이었다
+       (2026-10-07 ①). 🔴 배당을 **아예 쓰지 않으므로** 앞 둘이 사라졌다 — 이
+       함수는 이제 **기준선만** 만들고 출처는 늘 `none` 이다.
+    🔴 둘째 값을 **남겨 둔다** — `run` 이 그 글자로 *"등급 전부 보류"* 를 정하고,
+       그 판단은 `_one` 이 아니라 `run` 한 곳에 있어야 한다(한 가지 일은 한 곳).
     """
     from app import survive
     from app.core.stages.s5_verify import game_of
-    if board is not None and board.lines:
-        notes.append(f"보드 {len(board.lines)}줄을 받았다({source or '출처 미상'})"
-                     f" — **보드 줄만** 센다")
-        out: list[tuple[Any, BoardLine]] = []
-        for line in board.lines:
-            old = _old_of(line, ref)
-            if old is None:
-                # 🔴 못 옮긴 줄은 **이름으로 남긴다**(#3 조용한 0 금지)
-                notes.append(f"🔴 보드 줄 `{line.market}/{line.side}` 를 대입 꼴로 "
-                             f"못 옮겼다 — 그 줄은 **세지 않았다**")
-                continue
-            out.append((old, line))
-        return out, (source or "user_board")
-    # 🔴 보드가 **없다** — 기준선 목록은 **참고용**으로만 만든다(등급을 붙이지 않는다)
-    notes.append("🔴 **보드가 없다** — 기준선 대입표는 **참고**이고 등급은 "
-                 "전부 `보류` 다(사용자 지시 2026-10-07 ②)")
+    # 🔴 기준선 목록은 **참고용**으로만 만든다(등급을 붙이지 않는다)
+    notes.append("🔴 **보드가 없다**(배당을 쓰지 않는다) — 기준선 대입표는 "
+                 "**참고**이고 등급은 전부 `보류` 다")
     # 🔴🔴 **강팀은 격자가 댄다**(§1 처분 — 시나리오 무게가 없다) — §11 과 **같은
     #    함수**를 쓴다(`underdog.read`). ⚠️ 격자가 없으면 강팀도 없다(핸디 줄 없음).
     fav = dog = ""
@@ -202,37 +191,14 @@ def _new_of(m: Any) -> BoardLine | None:
     return None
 
 
-def _old_of(line: BoardLine, ref: MatchRef | None = None) -> Any:
-    """🔴 `BoardLine` → 옛 `Market`(대입 산수가 그 타입을 받는다).
-
-    ══════════════════════════════════════════════════════════════════
-    🔴🔴 **핸디·팀총점의 `team` 은 팀 이름이어야 한다**(실측 2026-10-06)
-    ══════════════════════════════════════════════════════════════════
-
-    ⚠️ 보드 파서는 쪽을 `home`·`away` 로 적는데 `survive.apply` 는 **팀 이름**으로
-       센다 — `team="home"` 이면 `'?'` 가 돌아와 그 줄이 **카드에서 사라졌다**
-       (사용자 보드의 `핸디 -0.5` 가 대입 표에 안 보였다 · 9차 ③ 점검표).
-    🔴 그래서 `ref` 로 **이름으로 바꿔** 넘긴다. ⚠️ `ref` 가 없으면 옛 꼴 그대로다
-       (그때는 그 줄이 사라지고, 사유가 남는다).
-    """
-    from app.types import Market as OldMarket
-    back = {("win", "home"): "home", ("win", "away"): "away",
-            # 🔴🔴 **피드가 무승부를 `win/draw` 로 준다**(네 층 §2-5) — 보드 파서는
-            #    `draw/""` 로 적는다. ⚠️ 그 꼴을 안 적어 둬서 네이션스리그 라이브
-            #    실행이 통째로 죽었다(실측 2026-10-06: `market_type='win'` 거부).
-            ("win", "draw"): "draw", ("draw", ""): "draw",
-            ("draw", "draw"): "draw",
-            ("unbeaten", "home"): "home_dc", ("unbeaten", "away"): "away_dc"}
-    mt = back.get((line.market, line.side))
-    if mt:
-        return OldMarket(market_type=mt)
-    if line.market == "win":
-        # 🔴 모르는 쪽 이름이 온 `win` 줄은 **버린다** — 옛 타입에 `win` 이 없다
-        return None
-    team = str(line.side)
-    if ref is not None and team in ("home", "away"):
-        team = ref.home_name if team == "home" else ref.away_name
-    return OldMarket(market_type=line.market, team=team, line=line.point)
+# ══════════════════════════════════════════════════════════════════
+# ⚠️ **`_old_of` 는 걷혔다**(2026-10-19) — `BoardLine` → 옛 `Market` 되돌리기
+# ══════════════════════════════════════════════════════════════════
+#
+#  🔴 그 함수가 있던 까닭은 **보드 줄**(사용자 캡처·피드)이 `BoardLine` 꼴로
+#     들어와 대입 산수(`survive.apply`)의 옛 타입으로 옮겨야 했기 때문이다.
+#  ⚠️ 배당을 안 받으므로 보드 줄이 **없다** — 기준선은 `survive.our_board` 가
+#     처음부터 옛 꼴로 만들고 `_new_of` 가 `BoardLine` 으로 옮긴다(한 방향).
 
 
 # ══════════════════════════════════════════════════════════════════

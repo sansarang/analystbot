@@ -19,7 +19,7 @@ from __future__ import annotations
 import inspect
 
 from app.core import compare, form, matchup, style
-from app.core.schema import (AdjProb, BaseProb, MarketProb, MatchRef,
+from app.core.schema import (AdjProb, BaseProb, MatchRef,
                              ProbTriple, Variable)
 
 
@@ -337,61 +337,24 @@ def _ref() -> MatchRef:
                     away_name="밴쿠버", kickoff_utc="2026-10-12T02:30:00Z")
 
 
-def _market(home: float, draw: float, away: float) -> MarketProb:
-    return MarketProb(probs={"win:home": home, "win:draw": draw,
-                             "win:away": away}, source="test", used=True)
-
-
-def test_evidence_against_us_cannot_support_us() -> None:
-    """🔴🔴 우리 결론이 **원정**인데 근거가 홈을 밀면 "유지"를 못 낸다."""
-    vars_ = [Variable(id="IR02-home", type="absence", subject="team:000001",
-                      favors="home", hardness="hard", weight=1.0,
-                      usable_as_basis=True, claim="x", quote="q")]
-    out = compare.market_reasons(
-        BaseProb(probs=ProbTriple(home=0.3, draw=0.25, away=0.45),
-                 home_elo=1540, away_elo=1574, dr=-34),
-        AdjProb(strength_pct={"home": -2.0}),
-        _market(0.52, 0.24, 0.24), vars_, _ref(),
-        ours=ProbTriple(home=0.33, draw=0.24, away=0.43))
-    said = "\n".join(out)
-    assert "근거 부족" in said and "시장과 갈림" in said, said
-    assert "우리 판단 유지" not in said, said
-
-
-def test_same_direction_evidence_keeps_our_call() -> None:
-    """🔴 방향이 같으면 그대로 "유지" 다(검열이 전부를 막지 않는다)."""
-    vars_ = [Variable(id="IR02-home", type="absence", subject="team:000001",
-                      favors="away", hardness="hard", weight=1.0,
-                      usable_as_basis=True, claim="x", quote="q")]
-    out = compare.market_reasons(
-        BaseProb(probs=ProbTriple(home=0.3, draw=0.25, away=0.45),
-                 home_elo=1540, away_elo=1574, dr=-34),
-        AdjProb(strength_pct={"home": -2.0}),
-        _market(0.52, 0.24, 0.24), vars_, _ref(),
-        ours=ProbTriple(home=0.33, draw=0.24, away=0.43))
-    said = "\n".join(out)
-    assert "우리 판단 유지" in said, said
-
-
-def test_elo_on_our_side_is_not_a_market_reason() -> None:
-    """🔴 Elo 가 **우리와 같은 방향**이면 "시장이 다르게 보는 까닭"이 아니다."""
-    out = compare.market_reasons(
-        BaseProb(probs=ProbTriple(home=0.3, draw=0.25, away=0.45),
-                 home_elo=1540, away_elo=1574, dr=-34),
-        AdjProb(), _market(0.52, 0.24, 0.24), [], _ref(),
-        ours=ProbTriple(home=0.33, draw=0.24, away=0.43))
-    said = "\n".join(out)
-    tail = said.split("시장이 다르게 보는 까닭")
-    assert len(tail) == 1 or "Elo" not in tail[1].split(")")[0], said
-
-
 # ══════════════════════════════════════════════════════════════════
-# 1-b. `facts.recent`(폼 블록·S01)도 **그 목록**에서 센다
+# 🔴🔴 **근거 검열 시험 셋을 걷었다** — 사용자 지시 2026-10-19
 # ══════════════════════════════════════════════════════════════════
 #
-#  ⚠️ 실측 2026-10-11(재현 1회차): 카드 블록 3 은 밴쿠버 **최근5 실 8**(1.60)을
-#     적었는데 같은 카드의 `S01-away` 는 **실점 평균 2.0** 이었다 — `facts.recent`
-#     가 *또 다른 파서*(fotmob 폼 블록·`team_recent`)에서 왔기 때문이다.
+#  > 시장배당은 **아예 쓰지도 않는다.**
+#
+#  걷은 것: `test_evidence_against_us_cannot_support_us` ·
+#     `test_same_direction_evidence_keeps_our_call` ·
+#     `test_elo_on_our_side_is_not_a_market_reason`(헬퍼 `_market` 포함).
+#
+#  ⚠️ **어떤 보장이 사라졌나** — 셋은 전부 `compare.market_reasons` 를 쟀다:
+#     *"시장이 우세로 보는 쪽의 근거"* 를 적을 때 **우리 결론과 같은 방향**인
+#     근거만 쓴다는 것(2026-10-11 ④ · 실사고 LAFC–밴쿠버: 우리 수는 밴쿠버
+#     43% 인데 카드가 *"우리 판단 유지 — 근거: LAFC 결장"* 을 적었다).
+#  🔴 그 함수가 **지워졌으므로** 보장할 글자 자체가 없다 — 카드에 *"시장이
+#     다르게 보는 까닭"* 줄이 더는 없다. ⚠️ 조용히 지우지 않는다(CLAUDE.md #3):
+#     시장이 다시 들어온다면 이 세 시험을 **함께** 되살려야 한다.
+
 
 def test_facts_recent_comes_from_the_same_list() -> None:
     """🔴🔴 ① — `facts.recent` 의 수가 **같은 경기 목록**에서 나온다."""

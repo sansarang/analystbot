@@ -1045,27 +1045,24 @@ class HypoSet(Frozen):
 
 
 class BoardLine(Frozen):
-    """🔴 보드 한 줄.
+    """🔴 **줄 하나** — 어느 마켓 · 어느 쪽 · 기준선.
 
     ══════════════════════════════════════════════════════════════════
-    🔴🔴 **배당 칸이 생겼다** — 네 층 지시서 §2-6(사용자 결정 2026-10-06)
+    🔴🔴 **배당 칸을 걷었다** — 사용자 지시 2026-10-19
     ══════════════════════════════════════════════════════════════════
 
-    > 보드 파서는 배당을 **버리지 않고** `BoardLine.price` 에 담는다.
-    > 배당 원숫자는 시장·사용자 보드 열에 **괄호로** 보인다.
+    > 시장배당은 **아예 쓰지도 않는다.**
 
-    ⚠️ 이것은 CLAUDE.md 절대규칙 6(*"배당은 `research` 스키마에만"*)과 충돌한다 —
-       🔴 **직접 지시가 이긴다.** 다만 쓰임은 **정보**로만이다:
-         · `price` 로 **확률**을 만들어 카드에 나란히 보인다(§7 세 열)
-         · 🔴 **기대값·손익분기·켈리·금액은 어디에도 없다**(§0 금지 · 계약이 잠근다)
-         · 🔴 등급 계산에 `price` 가 직접 들어가지 않는다(§7 금지)
+    ⚠️ 종전에는 `price` 칸이 있었다(네 층 지시서 §2-6 · 2026-10-06 결정: *"파서는
+       배당을 버리지 않고 `BoardLine.price` 에 담는다"*). 🔴 그 결정은 걷혔다 —
+       칸과 그것을 채우던 파서·피드를 지웠다.
+    🔴 남은 것은 **우리가 만든 줄**이다 — `s7_judge._baseline_lines` 가 기준선을
+       세우고 등급이 그 줄에 붙는다. 배당은 어디에도 없다.
     """
 
     market: Market
     side: str
     point: float | None = None
-    #: 🔴 소수 배당(1.01 이상). ⚠️ `None` 은 *"배당을 못 읽었다"* 다 — 0 이 아니다
-    price: float | None = Field(default=None, ge=1.01)
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -1189,43 +1186,16 @@ class AdjProb(Frozen):
     lineup_view_why: str = ""
 
 
-class MarketQuote(Frozen):
-    """🔴 ④ 한 마켓의 **업체 배당 한 묶음** — 디빅 전 원숫자다."""
-
-    market: Market
-    side: str
-    point: float | None = None
-    price: float = Field(ge=1.01)
-    bookmaker: str = ""
-
-
-class MarketProb(Frozen):
-    """🔴 ④ 시장 확률 — 봇이 받은 배당을 **공정 확률**로(§2-5).
-
-    ⚠️ 같은 마켓의 결과 배당이 **하나라도 빠지면** 그 마켓은 확률이 없다(§2-5).
-    🔴 `vig` 는 업체 몫(역수 합 − 1)이고 마켓마다 적는다.
-    """
-
-    #: `(마켓, 쪽, 점)` → 공정 확률
-    probs: dict[str, float] = Field(default_factory=dict)
-    #: 🔴 승무패는 Shin 방식도 함께 보인다(§2-5)
-    shin: dict[str, float] = Field(default_factory=dict)
-    vig: dict[str, float] = Field(default_factory=dict)
-    quotes: list[MarketQuote] = Field(default_factory=list)
-    #: 🔴 "피나클" · "n개 업체 중앙값" · "단일 업체" · "사용자 보드"
-    basis: str = ""
-    source: str = ""
-    captured_at: datetime | None = None
-    why: str = ""
-    #: 🔴 피드 사용량 — 카드 블록 1 이 적는다(§2-2)
-    used: int | None = None
-    limit: int | None = None
-
-
-class Board(Frozen):
-    """🔴 캡처한 보드. ⚠️ 없으면 `None` 이고 s7 이 기준선으로 간다."""
-
-    lines: list[BoardLine] = Field(default_factory=list)
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **`MarketQuote` · `MarketProb` · `Board` 를 걷었다**(2026-10-19)
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 시장배당은 **아예 쓰지도 않는다.** (사용자 지시 2026-10-19)
+#
+#  ⚠️ 셋이 하던 일: 업체 배당 한 묶음(`MarketQuote`) · 그것을 마진 제거해 만든
+#     **시장 확률**(`MarketProb` — `shin`·`vig`·`used`/`limit` 까지) · 캡처한
+#     보드(`Board`). 🔴 받아오는 길(피드·사다리·OCR 파서)을 지웠으므로 이 타입을
+#     채울 자료가 **없다** — 빈 채로 두면 *"안 이어진 코드"* 가 된다(CLAUDE.md #2).
 
 
 class MarketEval(Frozen):
@@ -1251,11 +1221,6 @@ class Judgement(Frozen):
     """
 
     evals: list[MarketEval] = Field(default_factory=list)
-    #: 🔴🔴 **평가 줄의 출처**(사용자 지시 2026-10-07 ①) — `user_board`·`feed`·`none`
-    #
-    #  > 출처 순서: **사용자 보드 > 피드의 메인 라인 > 없음.**
-    #  ⚠️ `none` 이면 그 표는 **참고**이고 등급은 전부 `보류` 다.
-    board_source: str = "none"
     #: 🔴 블록 9 — **등급과 무관하게 매 경기 한 줄**(지시서 §2-2)
     direction: str = ""
     conclusion: str = ""
@@ -1298,11 +1263,6 @@ class Card(Frozen):
     drops: list[Drop] = Field(default_factory=list)
     hypo: HypoSet | None = None
     evals: list[MarketEval] = Field(default_factory=list)
-    #: 🔴🔴 **평가 줄의 출처**(사용자 지시 2026-10-07 ①) — `user_board`·`feed`·`none`
-    #
-    #  > 출처 순서: **사용자 보드 > 피드의 메인 라인 > 없음.**
-    #  ⚠️ `none` 이면 그 표는 **참고**이고 등급은 전부 `보류` 다.
-    board_source: str = "none"
     direction: str = ""
     conclusion: str = ""
     #: 🔴🔴 **반증 판정**(지시서 2026-10-12 ⑯) — 결론 줄이 한 줄로 적는다
@@ -1330,13 +1290,6 @@ class Card(Frozen):
     #  > 카드 맨 위에 `재분석 — 바뀐 것:` 한 블록: XI 상태(예상→확정), 새로 생긴·
     #  > 사라진 변수, 등급 변화, 방아쇠 중 걸린 것.
     changed: list[str] = Field(default_factory=list)
-    #: 🔴 보드에서 **추가 옵션**으로 들어온 줄(§4) · 못 읽은 줄
-    #: 🔴🔴 **보드 블록**(의심 검증 v2 §1·§7) — 사다리가 모은 줄과 출처·시각.
-    #:    수집 실패면 🔴 경보 글자가 들어온다(보드 없는 경기는 정상이 아니다).
-    board_feed: str = ""
-    #: 🔴🔴 **보드에 있는 줄 이름**(후속 지시 2026-10-14h §1) — 칠 표 후보는
-    #:    이 목록 **안에서만** 고른다. 비어 있으면 그 경기는 표에서 빠진다.
-    board_lines: list[str] = Field(default_factory=list)
     #: 🔴🔴 **1단 기계 점검**(의심 검증 v2 §2) — 의심 블록 **머리 줄**이 이 글자다.
     #:    `core/machine.said_of` 하나가 만든다(사본 금지).
     machine: str = ""
@@ -1352,8 +1305,6 @@ class Card(Frozen):
     #     이 칸은 *"무엇이 비었고, LLM 이 무엇을 냈나"* 를 카드에 적기 위한
     #     글자다(#3 조용한 0 금지).
     recall: str = ""
-    board_extra: list[str] = Field(default_factory=list)
-    board_bad: list[str] = Field(default_factory=list)
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **네 층 확률**(네 층 지시서 §8) — 블록 3c·7b 가 이것을 그린다
     # ══════════════════════════════════════════════════════════════════
@@ -1361,25 +1312,12 @@ class Card(Frozen):
     #  ⚠️ 세 열을 **한 숫자로 합치지 않는다**(§1) — 나란히 둔다.
     base_prob: BaseProb = Field(default_factory=BaseProb)
     adj_prob: AdjProb = Field(default_factory=AdjProb)
-    #: 🔴 피드에서 받은 시장 · 🔴 사용자 보드 시장 — **섞지 않는다**(§2-6 불변식)
-    market: MarketProb = Field(default_factory=MarketProb)
-    user_market: MarketProb = Field(default_factory=MarketProb)
-    #: 🔴🔴 **P5 시장 괴리 줄**(표시만) — `core/divergence.said_of` 가 만든 글자
-    #:    하나를 그대로 들고 온다. ⚠️ 실사고 2026-10-14: 렌더러가 **공정 확률을
-    #:    되뒤집어** 원 배당이라 적고(마진 0.0%) ⬜ 목록도 `gaps=[]` 로 비워,
-    #:    파이프라인은 `접는다` 인데 카드는 `조건부 허용` 이라 적었다.
-    divergence: str = ""
     #: 🔴 ③ 우리 확률(시나리오 무게 비율) — 블록 9 방향 판정과 **같은 숫자**다
     our_prob: ProbTriple | None = None
-    #: 🔴 §6 판정 글자(`세 열 일치`·`우리만 튄다`·…)와 그 설명 줄들
+    #: 🔴 §6 판정 글자(`두 열 일치`·`우리만 튄다`·…)와 그 설명 줄들
     compare: str = ""
     compare_lines: list[str] = Field(default_factory=list)
     tilt: list[str] = Field(default_factory=list)
-    market_why: list[str] = Field(default_factory=list)
-    #: 🔴 OCR 로 읽은 보드 **원문**(§2-6: 원문 그대로 보여 준다)
-    ocr_text: str = ""
-    #: 🔴🔴 **평가 줄의 출처**(2026-10-07 ①) — `user_board`·`feed`·`none`
-    board_source: str = "none"
     #: 🔴🔴 **경기 양상**(2026-10-07 ②) — 양상·비중·가장 무거운 스코어 셋
     shape: dict = Field(default_factory=dict)
     #: 🔴🔴 **종합 논평**(2026-10-07 ③) — 없으면 `None`(그 사실을 카드가 적는다)

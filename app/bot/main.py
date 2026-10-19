@@ -99,8 +99,9 @@ async def cmd_analyze(m: Message) -> None:
     from app.core.pipeline import split_asked
     team, opponent = split_asked(arg)
     pool = await get_pool(s.database_url)
-    # 🔴 **보드 글**(§4) — 질문 아래 줄에 `보드:`·`추가:` 가 오면 그 글을 넘긴다.
-    #    ⚠️ 배당 숫자는 파서가 **받지 않는다**(`app/core/board.py`).
+    # 🔴 **보드 글**(§1-1 ①) — 질문 아래 줄이 있으면 그 글을 넘긴다.
+    #    🔴 쓰임은 **경기 신원 단서**(날짜·시각·두 팀·리그)뿐이다 — 배당은 읽지
+    #       않는다(2026-10-19 · `app/core/board.hint_of`).
     lines = (m.text or "").splitlines()
     board_text = "\n".join(lines[1:]).strip() if len(lines) > 1 else ""
     body, got = await _v6_card(pool, team=team, opponent=opponent,
@@ -316,7 +317,7 @@ async def on_button(cb: CallbackQuery) -> None:
     | 버튼 | 무엇 |
     |---|---|
     | `pick` | §1-3 — 후보를 고른다. 🔴 그 열쇠로 **못 박아** 분석한다 |
-    | `deep`·`scen`·`market` | 1겹의 뒤쪽(긴 카드) — 마지막 실행을 다시 쓴다 |
+    | `deep`·`scen` | 1겹의 뒤쪽(긴 카드) — 마지막 실행을 다시 쓴다 |
     | `again` | 🔄 즉시 한 번 재분석 |
     | `watch`·`unwatch` | §2-3 — **라인업 감시**를 켜고 끈다 |
     """
@@ -339,7 +340,8 @@ async def on_button(cb: CallbackQuery) -> None:
     if action in ("watch", "unwatch"):
         await _on_watch(cb, ask, token, on=(action == "watch"), pool=pool)
         return
-    if action in ("deep", "scen", "market", "again"):
+    # ⚠️ `market`(💹 시장 비교)은 **걷혔다**(2026-10-19) — 그 버튼이 없다
+    if action in ("deep", "scen", "again"):
         await cb.answer("돌린다…")
         body, got = await _v6_card(pool, said=ask.asked, again=True,
                                   deep=(action != "again"), want_ref=True)
