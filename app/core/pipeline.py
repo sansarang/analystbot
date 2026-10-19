@@ -351,10 +351,6 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #     *"갈래 지우지 마라"*) — 다만 판정할 **주장이 없어** 안 돈다.
     from app.core import ability as _ab3
     from app.core import branchjudge as _bj
-    said_tg, said_why_tg = _ab3.targets(ref, facts, plan)
-    said_box, said_why_ab = await _ab3.fetch(net, said_tg, clock=st.clock)
-    said_ability = _ab3.said_of(said_tg, said_box, ref=ref)
-    st.note(f"⑤-b1 선수 능력치 — {said_why_tg} · {said_why_ab}")
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **⑤-b1b 선발 전원 능력치 — 전술 갈래를 가릴 재료**
     #      사용자 지시 2026-10-17
@@ -373,6 +369,43 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     said_sq, said_why_sq = await _ab3.squad_fetch(net, facts, ref, clock=st.clock)
     _bj.set_squad(said_sq)
     st.note(f"⑤-b1b 선발 능력치 — {said_why_sq}")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **선발 능력치 검문** — 사용자 지시 2026-10-19
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > **선발 11명 능력치를 받지 못하면 분석은 무의미하다**
+    #
+    #  🔴 자리가 여기인 까닭 — ⑤-b1b 가 선발 전원을 받은 **직후**이고 변수·확률
+    #     **앞**이다. 문턱은 `config/ability.yaml` 이 든다(코드에 박지 않는다).
+    #  ⚠️ **XI 가 아예 없는 판은 건너뛴다** — 라인업 신원 검문과 **같은 예외**다
+    #     (T−24h 기본 카드 · 없는 것은 모순이 아니다 · 바로 위 `said_xi_rows`).
+    said_abg = (_ab3.XIGate(ok=True, why="⬜ 건너뜀 — 어느 쪽도 XI 가 없다")
+                if said_xi_rows == 0 else _ab3.xi_gate(facts, ref, said_sq))
+    st.note(f"⑤-b1c 선발 능력치 검문 — {said_abg.why}")
+    if not said_abg.ok:
+        # 🔴 카드 줄은 `_gate_card` 가 적는다 — 여기서 또 적으면 **두 번** 찍힌다
+        #    (실측 2026-10-19 하르키우 재시험: 같은 줄이 나란히 두 번 나왔다).
+        return _gate_card(ref, facts, variables, said_abg, state=st,
+                          docs=docs, before=before,
+                          head="선발 능력치 미확보",
+                          stance="🔴 확률 미산출(선발 능력치 검문)")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **⑤-b1 교체 짝·핵심 선수 능력치** — 새 통신 **0건**
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 자리를 ⑤-b1b **뒤로** 옮겼다(사용자 지시 2026-10-19 ③) — 그 묶음을
+    #     `have=` 로 넘겨 **같은 선수를 두 번 받지 않는다**. ⚠️ 종전엔 6명을
+    #     먼저 받고 곧바로 선발 22명을 또 받았다(겹치는 6명 중복 · 실측
+    #     2026-10-19 하르키우).
+    #  🔴 그리고 그 글자(`said_of`)를 **장부에 적는다** — 종전엔 만들고 **버렸다**
+    #     (배선 안 된 코드는 없는 코드보다 나쁘다 · CLAUDE.md #2).
+    said_tg, said_why_tg = _ab3.targets(ref, facts, plan)
+    said_box, said_why_ab = await _ab3.fetch(net, said_tg, clock=st.clock,
+                                             have=said_sq)
+    said_ability = _ab3.said_of(said_tg, said_box, ref=ref)
+    st.note(f"⑤-b1 선수 능력치 — {said_why_tg} · {said_why_ab}")
+    for line in said_ability[:12]:
+        st.note(f"⑤-b1 {line}")
     st.note("⑤-b2 LLM 전략분석 — 🔴 **지웠다**(사용자 지시 2026-10-18) · "
             "능력치·전략 판정·직전 5경기 자료는 그대로 모은다")
     # ══════════════════════════════════════════════════════════════════
@@ -1273,10 +1306,16 @@ def _machine_of(ref: MatchRef, facts, layers: dict, prob, *,
 
 
 def _gate_card(ref: MatchRef, facts, variables: list, gate, *,
-               state: RunState, docs: list, before: Card | None):
-    """🔴🔴 ③ — **"라인업 신원 미확정" 카드**. 상성·확률 칸을 **비운 채** 낸다.
+               state: RunState, docs: list, before: Card | None,
+               head: str = "라인업 신원 미확정",
+               stance: str = "🔴 확률 미산출(신원 검문)"):
+    """🔴🔴 ③ — **검문 퇴로 카드**. 상성·확률 칸을 **비운 채** 낸다.
 
     > 숫자를 낸 채 🔴만 다는 것 금지.
+
+    🔴 `head`·`stance` 는 **어느 검문이 걸렸나**다 — 라인업 신원 검문과
+       **선발 능력치 검문**(사용자 지시 2026-10-19)이 이 퇴로를 함께 쓴다.
+       ⚠️ 까닭이 섞이면 칠 표가 두 경기를 같은 줄로 센다(#3).
     """
     from app.core.schema import Card as _C
     state.note(gate.card())
@@ -1290,12 +1329,12 @@ def _gate_card(ref: MatchRef, facts, variables: list, gate, *,
     #    점검 **앞**에서 돌아 나가므로, 그대로 두면 카드에 점검 줄이 없고 칠 표는
     #    이 경기를 *"보드 없음"* 으로만 뺀다(까닭이 달라진다).
     from app.core import machine as _mc
-    said_mc = _mc.held(f"라인업 신원 미확정 — {gate.why}")
+    said_mc = _mc.held(f"{head} — {gate.why}")
     return _C(match=ref, facts=facts, variables=list(variables or []),
               funnel=state.counted_box() if hasattr(state, "counted_box")
               else _C(match=ref, facts=facts).funnel,
               machine=said_mc.why, machine_hold=True,
-              conclusion=gate.card(), stance="🔴 확률 미산출(신원 검문)")
+              conclusion=gate.card(), stance=stance)
 def _moved(before: Card, layers: dict, mr: object) -> list[str]:
     """🔴🔴 **F1 — 바뀐 것: 상성 축(전→후)·확률(전→후)·등급(전→후)**.
 

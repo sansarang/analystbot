@@ -245,12 +245,16 @@ def test_ab10b_이름을_글에서_파싱하지_않고_명부에서_찾는다() 
     plan = _Plan({"L9": {"side": "home", "kind": "swap",
                          "text": "A팀 CM 자리 — 빠짐 ['Sohel Rana'] · 들어옴 ['B']"}})
     rows, why = ab.targets(_R(), facts, plan)
-    assert len(rows) == 1, (rows, why)
+    #  🔴🔴 **교체 짝 행은 하나다** — 나머지는 상한을 채운 `xi` 행이다
+    #     (사용자 지시 2026-10-19 ③ · `test_ab10c` 가 그 행을 센다).
+    swaps = [r for r in rows if r["kind"] == "swap"]
+    assert len(swaps) == 1, (rows, why)
     # 🔴 `Rana` 를 **따로 세지 않는다**(긴 이름 안에 든 짧은 이름)
-    assert dict(rows[0]["players"]) == {"Sohel Rana": 11, "B": 2}, rows[0]
+    assert dict(swaps[0]["players"]) == {"Sohel Rana": 11, "B": 2}, swaps[0]
     # 🔴 아는 이름이 없으면 **그 사실을 적는다**(#3)
     rows0, why0 = ab.targets(_R(), _F(), _Plan(
         {"L9": {"side": "home", "kind": "swap", "text": "빠짐 ['X']"}}))
+    #  ⚠️ XI 가 **아예 없는** 대역이라 채울 선발도 없다 → 빈 목록이 맞다
     assert rows0 == [] and "아는 선수 이름이 없다" in why0, why0
     # ⚠️ 파싱 흔적이 남아 있지 않다(되파싱 금지)
     src = inspect.getsource(ab.targets)
@@ -389,6 +393,144 @@ def test_ab15_운영과_러너에_배선됐다() -> None:
     assert "⑤-b1 선수 능력치" in said_run, "🔴 장부에 칸이 없다"
 
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **③ 고침 + 안전장치** — 사용자 지시 2026-10-19
+#
+#  > 3 고치고 안전장치를 만들어라 **선발 11명 능력치를 받지 못하면 분석은
+#  > 무의미하다**
+#
+#  실측이 이 둘을 불렀다(하르키우 2-1 리비 베레흐 · fotmob 5909177):
+#    ① ⑤-b1 이 6명을 받고 ⑤-b1b 가 **같은 선발 22명**을 또 받았다(겹침 중복)
+#    ② 그 6명은 `traits: null` 이었고, 능력치가 **있는 선발 둘**(홈 GK·LB)은
+#       **대상이 아니어서** 한 명도 안 썼다 → *"능력치 0명"*
+#    ③ 원정이 **0명**인데도 카드가 확률을 **냈다**(홈 32.9 · 무 32.2 · 원정 34.9)
+# ══════════════════════════════════════════════════════════════════
+
+
+class _XIB(_XI):
+    """🔴 벤치까지 있는 XI(운영 모양) — `bench` 는 **이름 글자**다."""
+
+    def __init__(self, rows: list, bench: list | None = None) -> None:
+        super().__init__(rows)
+        self.bench = list(bench or [])
+
+
+def _eleven(side_key: int) -> list:
+    """🔴 선발 11명 — 번호는 팀마다 다르게."""
+    return [_P(f"p{side_key}_{i}", side_key * 100 + i) for i in range(11)]
+
+
+def test_ab17_이미_받은_선수를_다시_받지_않는다() -> None:
+    """🔴🔴 ③ — `have=` 로 넘긴 선수는 **통신 0건**이다(행동으로 센다).
+
+    ⚠️ 글자 검사로는 못 센다 — `net` 을 **아예 안 주고**(None) 부른다. 다시
+       받으려 들면 그 자리에서 터진다.
+    """
+    rows = [{"id": "L9", "side": "home", "kind": "swap", "text": "x",
+             "players": [("A", 1), ("B", 2)]}]
+    have = {"A": {"pid": 1, "group": "g", "items": DUK["items"]},
+            "B": {"pid": 2, "group": "g", "items": GK["items"]}}
+    got, why = asyncio.run(ab.fetch(None, rows, have=have))
+    assert set(got) == {"A", "B"}, (got, why)
+    assert got["A"]["items"] == DUK["items"]
+    # 🔴 재사용한 수를 **사유에 적는다**(#3 · 조용한 재사용 금지)
+    assert "이미 받은 것 2명" in why, why
+
+
+def test_ab18_상한이_남으면_오늘_선발로_채운다() -> None:
+    """🔴🔴 ③ — 교체·핵심 선수가 상한을 안 채우면 **오늘 선발**이 들어온다.
+
+    ⚠️ 하르키우 판: 결장 0건이라 대상이 공격 쪽 6명뿐이었고 그 6명이 전부
+       `traits: null` 이었다. 능력치가 **있는 선발**은 대상이 아니었다.
+    """
+    facts = _F(xi={"team:000001": _XIB(_eleven(1)),
+                   "team:000002": _XIB(_eleven(2))})
+    rows, why = ab.targets(_R(), facts, _Plan({}))
+    assert rows, why
+    assert {r["kind"] for r in rows} == {"xi"}, rows
+    # 🔴 양 팀이 **고르게** 들어간다(팀별 상한)
+    assert {r["side"] for r in rows} == {"home", "away"}, rows
+    n = sum(len(r["players"]) for r in rows)
+    assert n == ab.MAX_PLAYERS, (n, why)
+    assert "오늘 선발" in why, why
+    # 🔴 교체 짝이 상한을 **다 채우면** 선발을 안 넣는다(종전 동작 그대로)
+    full: dict = {}
+    book: list = []
+    for side, key in (("home", 1), ("away", 2)):
+        for i in range(3):
+            full[f"{side[0]}{i}"] = {"side": side, "kind": "swap",
+                                     "text": f"빠짐 ['{side}{i}']"}
+            book.append(_P(f"{side}{i}", key * 10 + i))
+    f2 = _F(xi={"team:000001": _XIB(book), "team:000002": _XIB(book)})
+    rows2, why2 = ab.targets(_R(), f2, _Plan(full))
+    assert "xi" not in {r["kind"] for r in rows2}, (rows2, why2)
+
+
+def test_ab19_선발_능력치_검문() -> None:
+    """🔴🔴 **안전장치** — 양 팀 각각 `xi_ability_min_per_side` 명이어야 간다."""
+    facts = _F(xi={"team:000001": _XIB(_eleven(1)),
+                   "team:000002": _XIB(_eleven(2))})
+    need = ab.xi_min()
+    assert need == 11, f"🔴 문턱이 11 이 아니다({need})"
+    box_full = {f"p{k}_{i}": {"group": "g", "items": DUK["items"]}
+                for k in (1, 2) for i in range(11)}
+    ok = ab.xi_gate(facts, _R(), box_full)
+    assert ok.ok and ok.card() == "", ok
+    assert "11/11" in ok.why, ok.why
+    # ══════════════════════════════════════════════════════════════
+    # 🔴🔴 **하르키우 판** — 홈 2명 · 원정 **0명** → 확률을 내지 않는다
+    # ══════════════════════════════════════════════════════════════
+    box_ukr = {f"p1_{i}": {"group": "g", "items": GK["items"]}
+               for i in range(2)}
+    bad = ab.xi_gate(facts, _R(), box_ukr)
+    assert not bad.ok, bad
+    assert "2/11" in bad.why and "0/11" in bad.why, bad.why
+    # 🔴 "누구"를 적는다(#3) — 양 팀 모두
+    assert any(x.startswith("home") for x in bad.names), bad.names
+    assert any(x.startswith("away") for x in bad.names), bad.names
+    assert "선발 능력치 미확보" in bad.card()
+    # 🔴 한쪽만 차도 **안 된다**(비교가 못 선다)
+    half = dict(box_full)
+    for i in range(11):
+        half.pop(f"p2_{i}")
+    assert not ab.xi_gate(facts, _R(), half).ok
+    # 🔴 `traits` 가 **빈 묶음**은 받은 것이 아니다
+    empty = {nm: {"group": "g", "items": []} for nm in box_full}
+    assert not ab.xi_gate(facts, _R(), empty).ok
+
+
+def test_ab19b_문턱_0_이면_검문이_꺼진다(monkeypatch) -> None:  # noqa: ANN001
+    """🔴 사용자가 0 으로 두면 끈다(§13-7) — 코드가 제 값을 쥐지 않는다."""
+    monkeypatch.setattr(ab, "_CUTS", {"xi_ability_min_per_side": 0})
+    got = ab.xi_gate(_F(), _R(), {})
+    assert got.ok and "검문 꺼짐" in got.why, got
+
+
+def test_ab20_검문이_확률_앞에_배선됐다() -> None:
+    """🔴🔴 **배선** — 검문이 운영 경로에서 **확률 앞**에 있어야 한다.
+
+    🔴 그리고 걸리면 **확률 칸을 비운 채** 퇴로 카드로 나간다(숫자를 낸 채
+       🔴만 다는 것 금지 · 라인업 신원 검문과 같은 규율).
+    ⚠️ **XI 가 아예 없는 판**(T−24h 기본 카드)은 건너뛴다 — 없는 것은 모순이
+       아니다. 그 예외가 없으면 라인업 전 카드가 통째로 막힌다.
+    """
+    said = (ROOT / "app/core/pipeline.py").read_text(encoding="utf-8")
+    assert "_ab3.xi_gate(" in said, "🔴 검문을 안 부른다"
+    assert "선발 능력치 미확보" in said, "🔴 퇴로 머리글이 없다"
+    assert "said_xi_rows == 0" in said, "🔴 XI 없는 판 예외가 없다"
+    i_gate = said.index("_ab3.xi_gate(")
+    #  🔴 확률은 `probmodel` 을 **처음 부르는 자리**다(이름이 바뀌어도 모듈은
+    #     그대로다 · 사본 금지)
+    i_prob = said.index("import probmodel")
+    assert i_gate < i_prob, "🔴 검문이 확률 **뒤**에 있다"
+    #  🔴 ⑤-b1 이 ⑤-b1b **뒤**다(그래야 `have=` 로 다시 안 받는다)
+    assert said.index("_ab3.squad_fetch(") < said.index("_ab3.fetch("), \
+        "🔴 ⑤-b1 이 선발 전원보다 **먼저** 받는다(중복 통신)"
+    assert "have=said_sq" in said, "🔴 받은 묶음을 재사용하지 않는다"
+    #  🔴 그 글자를 **버리지 않는다**(CLAUDE.md #2 배선)
+    assert "st.note(f\"⑤-b1 {line}\")" in said, "🔴 글자를 만들고 버린다"
+
+
 def test_ab16_문턱_표가_설정에_있다() -> None:
     """🔴 ① 값은 `config/` 에 두고 **사용자만** 바꾼다(§13-7)."""
     import yaml
@@ -401,9 +543,17 @@ def test_ab16_문턱_표가_설정에_있다() -> None:
     #     더해졌다. ⚠️ 그것도 **사용자가 정한 손값**이다(측정값이 아니다):
     #     르아브르 1-3 에서 8명 ↔ 10명 평균을 견주다 틀렸고, 완전 일치(0)로
     #     막으니 즈볼러의 쓸 만한 갈래(10↔11)까지 버려져 **1** 로 두었다.
+    #  🔴 **표가 또 자랐다**(2026-10-19 · 사용자 지시 *"안전장치를 만들어라"*) —
+    #     `xi_ability_min_per_side`(선발 능력치 최소 인원)가 더해졌다.
+    #     ⚠️ 그것도 **사용자가 정한 손값**이다: *"선발 11명 능력치를 받지
+    #        못하면 분석은 무의미하다"*. 0 으로 두면 검문이 꺼진다.
     assert set(box) == {"strong", "weak", "branches", "branch_gap",
                         "branch_min", "squad_cap_per_side",
-                        "count_slack"}, sorted(box)
+                        "count_slack", "xi_ability_min_per_side"}, sorted(box)
+    #  🔴 그 값은 **정수**이고 음수가 아니다(0 이면 검문 꺼짐)
+    said_min = box["xi_ability_min_per_side"]
+    assert isinstance(said_min, int) and 0 <= said_min <= 11, said_min
+    assert "선발 11명 능력치를 받지 못하면" in said
     #  🔴 그 값은 **정수**이고 음수가 아니다(0 이면 완전 일치)
     assert isinstance(box["count_slack"], int) and box["count_slack"] >= 0
     #  🔴 갈래 표는 **지표 이름만** 적는다(값·계수가 아니다)
