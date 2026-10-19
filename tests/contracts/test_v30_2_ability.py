@@ -470,13 +470,23 @@ def test_ab19_선발_능력치_검문() -> None:
     """🔴🔴 **안전장치** — 양 팀 각각 `xi_ability_min_per_side` 명이어야 간다."""
     facts = _F(xi={"team:000001": _XIB(_eleven(1)),
                    "team:000002": _XIB(_eleven(2))})
+    #  🔴 문턱 값에 **묶지 않는다** — 사용자가 바꾸는 손값이다(11 → 8 ·
+    #     2026-10-19). 계약은 *"그 수대로 가른다"* 만 센다.
     need = ab.xi_min()
-    assert need == 11, f"🔴 문턱이 11 이 아니다({need})"
+    assert 1 <= need <= 11, f"🔴 문턱이 꼴이 아니다({need})"
     box_full = {f"p{k}_{i}": {"group": "g", "items": DUK["items"]}
                 for k in (1, 2) for i in range(11)}
     ok = ab.xi_gate(facts, _R(), box_full)
     assert ok.ok and ok.card() == "", ok
     assert "11/11" in ok.why, ok.why
+    #  🔴 **문턱 바로 아래는 걸린다**(경계 · 절제로 잡는다)
+    edge = {f"p{k}_{i}": {"group": "g", "items": DUK["items"]}
+            for k in (1, 2) for i in range(need - 1)}
+    assert not ab.xi_gate(facts, _R(), edge).ok, (need, "문턱-1 이 통과했다")
+    #  🔴 **문턱 딱 그만큼은 통과한다**
+    just = {f"p{k}_{i}": {"group": "g", "items": DUK["items"]}
+            for k in (1, 2) for i in range(need)}
+    assert ab.xi_gate(facts, _R(), just).ok, (need, "문턱만큼인데 걸렸다")
     # ══════════════════════════════════════════════════════════════
     # 🔴🔴 **하르키우 판** — 홈 2명 · 원정 **0명** → 확률을 내지 않는다
     # ══════════════════════════════════════════════════════════════
@@ -497,6 +507,45 @@ def test_ab19_선발_능력치_검문() -> None:
     # 🔴 `traits` 가 **빈 묶음**은 받은 것이 아니다
     empty = {nm: {"group": "g", "items": []} for nm in box_full}
     assert not ab.xi_gate(facts, _R(), empty).ok
+
+
+def test_ab19c_동등한_조건에서만_센다() -> None:
+    """🔴🔴 **양쪽 인원 차** — 사용자 지시 2026-10-19.
+
+    > 그리고 **동등한 조건에서 측정을 해야 한다** .. 양팀 조건을 맞았을때
+
+    🔴 허용값은 저장소가 이미 든 `count_slack` 하나다(사본 금지) — 갈래 판정·
+       `AB1`·`AB3`·`DV3` 가 쓰는 그 수다.
+    ⚠️ 왜 — 르아브르 1-3: 0.50(**8명**) ↔ 0.37(10명) 을 견주다 틀렸다.
+    """
+    facts = _F(xi={"team:000001": _XIB(_eleven(1)),
+                   "team:000002": _XIB(_eleven(2))})
+    need, slack = ab.xi_min(), ab.count_slack()
+    assert slack >= 0, slack
+
+    def _box(n_home: int, n_away: int) -> dict:
+        got = {}
+        for k, n in ((1, n_home), (2, n_away)):
+            for i in range(n):
+                got[f"p{k}_{i}"] = {"group": "g", "items": DUK["items"]}
+        return got
+
+    # 🔴 **둘 다 문턱을 넘겨도** 차가 허용값보다 크면 걸린다
+    big = ab.xi_gate(facts, _R(), _box(11, need))
+    if 11 - need > slack:
+        assert not big.ok, (need, slack, big.why)
+        assert f"양쪽 차 {11 - need}명" in big.why, big.why
+    # 🔴 차가 허용값 안이면 통과한다(그 사실도 사유에 적는다)
+    fine = ab.xi_gate(facts, _R(), _box(need + slack, need))
+    assert fine.ok, (need, slack, fine.why)
+    assert f"양쪽 차 {slack}명(허용 {slack}명)" in fine.why, fine.why
+    # ══════════════════════════════════════════════════════════════
+    # 🔴 **실측 판 둘이 이 규칙대로 갈린다**(2026-10-19)
+    # ══════════════════════════════════════════════════════════════
+    #   이집트(home 9 · away 8) — 능력치를 주는 리그 → 통과해야 한다
+    #   우크라이나(home 2 · away 0) — 안 주는 리그 → 걸려야 한다
+    assert ab.xi_gate(facts, _R(), _box(9, 8)).ok, "🔴 이집트 판이 걸렸다"
+    assert not ab.xi_gate(facts, _R(), _box(2, 0)).ok, "🔴 우크라 판이 통과했다"
 
 
 def test_ab19b_문턱_0_이면_검문이_꺼진다(monkeypatch) -> None:  # noqa: ANN001
@@ -554,6 +603,11 @@ def test_ab16_문턱_표가_설정에_있다() -> None:
     said_min = box["xi_ability_min_per_side"]
     assert isinstance(said_min, int) and 0 <= said_min <= 11, said_min
     assert "선발 11명 능력치를 받지 못하면" in said
+    #  🔴 **값을 바꿀 때는 까닭을 적는다**(#3) — 11 → 8 은 실측에서 왔다
+    #     (이집트 1부는 능력치를 주는데도 팀별 9/11 · 8/11 이었다).
+    if said_min != 11:
+        assert "이집트" in said and "우크라이나" in said, \
+            "🔴 문턱을 내렸는데 그 까닭(실측)이 파일에 없다"
     #  🔴 그 값은 **정수**이고 음수가 아니다(0 이면 완전 일치)
     assert isinstance(box["count_slack"], int) and box["count_slack"] >= 0
     #  🔴 갈래 표는 **지표 이름만** 적는다(값·계수가 아니다)

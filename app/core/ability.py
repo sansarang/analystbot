@@ -538,17 +538,34 @@ def xi_gate(facts, ref, box: dict[str, dict]) -> XIGate:
                                    f"(`xi_ability_min_per_side` 0)")
     said: list[str] = []
     miss: list[str] = []
+    n_got: dict[str, int] = {}
     bad = False
     for side in ("home", "away"):
         rows, _why = squad_of(facts, ref, side)
         got = [x["name"] for x in rows
                if dict(dict(box or {}).get(x["name"]) or {}).get("items")]
         gone = [x["name"] for x in rows if x["name"] not in got]
+        n_got[side] = len(got)
         said.append(f"`{side}` 능력치 **{len(got)}/{len(rows)}명**"
                     f"(필요 {need}명)")
         if len(got) < need:
             bad = True
             miss += [f"{side} `{nm}`" for nm in gone]
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **동등한 조건에서만 센다** — 사용자 지시 2026-10-19
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 그리고 **동등한 조건에서 측정을 해야 한다** .. 양팀 조건을 맞았을때
+    #
+    #  🔴 양쪽 **인원 수가 다르면** 평균을 견주는 전제가 깨진다(르아브르 1-3:
+    #     0.50(8명) ↔ 0.37(10명) 을 견주다 틀렸다). 그 허용값은 저장소가 이미
+    #     들고 있다 — `count_slack` 하나를 읽는다(사본 금지 · `AB1`·`AB3`·
+    #     갈래 판정·`DV3` 가 같은 수를 쓴다).
+    slack = count_slack()
+    diff = abs(n_got.get("home", 0) - n_got.get("away", 0))
+    said.append(f"양쪽 차 {diff}명(허용 {slack}명)")
+    if diff > slack:
+        bad = True
     why = " · ".join(said)
     if not bad:
         return XIGate(ok=True, why=why)
