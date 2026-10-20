@@ -119,14 +119,23 @@ def _squad(n: int, pct: float) -> tuple[_F, dict]:
 
 
 def test_dv2_선발_평균_백분위가_변수가_된다(monkeypatch) -> None:
-    """🔴 A1 — 차가 문턱을 넘으면 **그쪽 유리**한 변수 하나."""
+    """🔴 A1 — **묶음을 더 많이 이긴 쪽**이 변수가 된다(2026-10-20).
+
+    🔴🔴 **옛 판은 평균 하나를 견줬다 — 그것이 결함이었다**(몬차 4-0 실측):
+       `center-backs` 백분위와 `forwards` 백분위는 **분모가 다르다**. 섞으면
+       공격수가 많은 팀이 자동으로 높게 나온다.
+    🔴 그래서 대역도 **묶음별**로 준다 — `ability.group_pct` 를 바꿔 끼운다.
+    """
     facts, box = _squad(9, 0.80)
 
     def fake(facts_, ref_, side, box_, rule):
-        return (0.80, 9, "대역") if side == "home" else (0.30, 9, "대역")
+        #  🔴 묶음 둘 다 홈이 앞선다(0.80 ↔ 0.30) · 인원은 같다
+        if side == "home":
+            return ({"center-backs": (0.80, 4), "forwards": (0.80, 5)}, 9, "대역")
+        return ({"center-backs": (0.30, 4), "forwards": (0.30, 5)}, 9, "대역")
 
     from app.core import ability as _ab
-    monkeypatch.setattr(_ab, "side_pct", fake)
+    monkeypatch.setattr(_ab, "group_pct", fake)
     got = dv.from_ability(_R(), facts, box, state=_state())
     one = next((x for x in got if x.id == "AB1"), None)
     assert one is not None, [x.id for x in got]
@@ -151,12 +160,17 @@ def test_dv3_문턱_아래면_안_선다(monkeypatch) -> None:
 
 
 def test_dv3b_인원이_적으면_안_선다(monkeypatch) -> None:
+    """🔴 A1 — **전체 측정 인원**이 `squad_min` 미만이면 안 센다.
+
+    ⚠️ 묶음별 비교로 바뀌어도(2026-10-20) 이 규율은 그대로다 — 팀 전체가 세 명
+       이면 묶음을 몇 개 이겼든 평균이 몇 사람에 휘둘린다.
+    """
     facts, box = _squad(3, 0.90)
     from app.core import ability as _ab
-    monkeypatch.setattr(_ab, "side_pct",
+    monkeypatch.setattr(_ab, "group_pct",
                         lambda f, r, side, b, rule:
-                        (0.90, 3, "대역") if side == "home"
-                        else (0.30, 3, "대역"))
+                        ({"forwards": (0.90, 3)}, 3, "대역") if side == "home"
+                        else ({"forwards": (0.30, 3)}, 3, "대역"))
     st = _state()
     got = dv.from_ability(_R(), facts, box, state=st)
     assert not [x for x in got if x.id == "AB1"], got

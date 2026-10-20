@@ -651,6 +651,129 @@ def xi_gate(facts, ref, box: dict[str, dict]) -> XIGate:
     return XIGate(ok=False, why=why + " · 🔴 양 팀 비교가 못 선다", names=miss)
 
 
+# ══════════════════════════════════════════════════════════════════════
+# 🔴🔴 **백분위는 같은 비교 묶음끼리만 견준다** — 사용자 지시 2026-10-20
+# ══════════════════════════════════════════════════════════════════════
+#
+#  > 선발 라인업 능력치가 **그 선발 라인 능력치로 계산됐는지**가 제일
+#  > 의심스럽다 → *"전부다 수정하고 실측 다시 해라"*
+#
+#  🔴🔴 **실측 2026-10-20(몬차 4-0 칼리아리) — 계산은 맞았고 재는 것이 틀렸다.**
+#     손으로 다시 계산한 값이 봇과 같았다(홈 0.454(10명) ↔ 원정 0.521(10명)).
+#     그런데 그 평균이 **서로 다른 모집단의 순위를 더한 수**였다:
+#        Goglichidze 0.095 = *"센터백들 중 하위 10%"*
+#        Mendy       0.762 = *"공격수들 중 상위 24%"*
+#     ⚠️ 출처(fotmob)가 **묶음을 고른다** — `center-backs`·`fullbacks`·
+#        `midfielders`·`attacking midfielders/wingers`·`forwards`·`keepers`.
+#        묶음이 다르면 백분위의 **분모가 다르다**.
+#     🔴 그래서 공격수가 많은 팀이 **자동으로 높게** 나왔다 — 몬차는 CB 셋
+#        (.095·.58·.748), 칼리아리는 ST 셋(.76·.67·.52). 결과는 **4-0 홈 완승**
+#        이고 봇은 원정 우위라 적었다.
+#     ⚠️ 그리고 쓰던 지표 넷(`aerials_won`·`chances_created`·
+#        `defensive_actions`·`touches`)은 **갈래 표에서 긁어모은 합집합**이라
+#        득점·슈팅·선방이 **아예 없었다** — *"볼 관여가 많은가"* 를 재고 있었다.
+#
+#  🔴 그래서 이제 **묶음별로 가른다**: 같은 묶음끼리 평균을 견주고, 묶음을
+#     **몇 개 더 이겼나**로 팀을 가린다. ⚠️ 자 둘을 섞지 않는다(사용자 지시
+#     2026-10-14 의 그 규율).
+#  🔴 지표도 **그 묶음이 주는 것 전부**를 쓴다(`rule.traits` 가 비면) — 우리가
+#     고르지 않는다(#1 사본 금지 · 출처가 고른 묶음을 그대로 받는다).
+
+
+def group_of(one: dict) -> str:
+    """🔴 그 선수의 **비교 묶음**(출처가 고른 것). 없으면 빈 글자."""
+    return str(dict(one or {}).get("group") or "").strip()
+
+
+def group_pct(facts, ref, side: str, box: dict, rule: dict
+              ) -> tuple[dict[str, tuple[float, int]], int, str]:
+    """🔴🔴 그 팀의 **묶음별 평균 백분위** — `({묶음: (평균, 인원)}, 전체 인원, 사유)`.
+
+    🔴 자리는 표가 고른다(`pos`·`flank` — 빈 목록이면 **안 가린다**).
+    🔴 지표는 `rule.traits` 가 있으면 그것만, **없으면 그 묶음이 주는 전부**다.
+    ⚠️ **선발만** 센다(벤치는 오늘 안 뛴다). 묶음을 못 읽은 선수는 **안 담고**
+       그 수를 사유에 적는다(#3).
+    """
+    rows, why = squad_of(facts, ref, side)
+    if not rows:
+        return {}, 0, why
+    want_pos = {str(x) for x in (rule.get("pos") or [])}
+    want_fl = {str(x) for x in (rule.get("flank") or [])}
+    traits = [str(x) for x in (rule.get("traits") or [])]
+    bag: dict[str, list[float]] = {}
+    n_seen = n_none = n_nogrp = 0
+    for p in rows:
+        if p["bench"]:
+            continue
+        if want_pos and p["pos"] not in want_pos:
+            continue
+        if want_fl and p["flank"] not in want_fl:
+            continue
+        n_seen += 1
+        one = dict(box.get(p["name"]) or {})
+        items = list(one.get("items") or [])
+        if not items:
+            n_none += 1
+            continue
+        grp = group_of(one)
+        if not grp:
+            n_nogrp += 1
+            continue
+        # 🔴 지표를 안 고르면 **그 묶음이 주는 전부**를 쓴다
+        got = [float(x["value"]) for x in items
+               if isinstance(x.get("value"), (int, float))
+               and (not traits or str(x.get("key") or "") in set(traits))]
+        if not got:
+            n_none += 1
+            continue
+        bag.setdefault(grp, []).append(sum(got) / len(got))
+    out = {g: (sum(v) / len(v), len(v)) for g, v in bag.items()}
+    said = f"묶음 {len(out)}개 · {sum(n for _m, n in out.values())}명"
+    if n_none:
+        said += f" · {NONE_MARK} 능력치 없는 선발 {n_none}명"
+    if n_nogrp:
+        said += f" · {NONE_MARK} 비교 묶음을 못 읽은 선발 {n_nogrp}명"
+    if not out:
+        said = (f"{NONE_MARK} 그 자리 선발 {n_seen}명의 능력치를 못 받았다"
+                if n_seen else why)
+    return out, n_seen, said
+
+
+def lead_of(h: dict, a: dict, *, gap: float) -> tuple[list[str], list[str], str]:
+    """🔴🔴 **묶음을 몇 개씩 이겼나** — `(홈이 이긴 묶음, 원정이 이긴 묶음, 사유)`.
+
+    🔴 양쪽에 **다 있는 묶음**만 센다 — 한쪽에만 있는 묶음은 견줄 상대가 없다.
+    🔴 인원 규율은 여기서도 같다 — `branch_min` 미만이거나 **인원 차가
+       `count_slack` 을 넘으면** 그 묶음은 **안 센다**(2026-10-19 규율).
+    ⚠️ 안 센 묶음도 **까닭을 적는다**(#3 조용한 0 금지).
+    """
+    low, slack = branch_min(), count_slack()
+    won_h: list[str] = []
+    won_a: list[str] = []
+    said: list[str] = []
+    for grp in sorted(set(h) & set(a)):
+        mh, nh = h[grp]
+        ma, na = a[grp]
+        tag = str(grp).replace("Stats compared to other ", "")
+        if nh < low or na < low:
+            said.append(f"{tag} {nh}↔{na}명 · 한쪽 {low}명 미만(안 센다)")
+            continue
+        if abs(nh - na) > slack:
+            said.append(f"{tag} {nh}↔{na}명 · 인원 차 {abs(nh - na)}"
+                        f"(허용 {slack} · 안 센다)")
+            continue
+        if abs(mh - ma) < gap:
+            said.append(f"{tag} {mh:.2f}↔{ma:.2f} · 차 {abs(mh - ma):.2f}"
+                        f" < {gap:g}(안 센다)")
+            continue
+        (won_h if mh > ma else won_a).append(
+            f"{tag} {mh:.2f}↔{ma:.2f}({nh}↔{na}명)")
+    for grp in sorted(set(h) ^ set(a)):
+        tag = str(grp).replace("Stats compared to other ", "")
+        said.append(f"{tag} 한쪽에만 있다(안 센다)")
+    return won_h, won_a, " · ".join(said)
+
+
 def _pct_of(one: dict, traits: list[str]) -> float | None:
     """🔴 그 선수의 **고른 지표 평균 백분위**. 하나도 없으면 `None`."""
     items = list(dict(one or {}).get("items") or [])
@@ -699,41 +822,32 @@ def judge_branch(kind: str, facts, ref, box: dict) -> tuple[str, str]:
 
     🔴 빈 부등호면 **안 가려졌다**(2단으로 간다). 사유는 늘 돌려준다(#3).
     ⚠️ `>` 는 **홈이 낫다**는 뜻이다(⑤-b3 의 그 약속과 같다).
+
+    🔴🔴 **묶음별로 가린다**(사용자 지시 2026-10-20) — `AB1` 과 **같은 까닭**이다.
+       ⚠️ 종전엔 그 자리 선수 전체의 평균 **하나**를 견줬다. 그런데 `수비 라인`
+          의 DF 가 `center-backs` 와 `fullbacks` 두 묶음에 걸쳐 있고 **백분위의
+          분모가 다르다** — 섞으면 자리 구성이 답을 지배한다(몬차 4-0 의 그 병).
+       🔴 그래서 같은 묶음끼리 견주고 **묶음을 더 많이 이긴 쪽**으로 가린다.
+          인원 규율(`branch_min`·`count_slack`)은 `lead_of` 안에서 묶음마다 선다.
     """
     rule = dict(branch_table().get(str(kind or "")) or {})
     if not rule:
         return "", f"{NONE_MARK} `{kind}` 는 능력치 표에 없다(`{CONF}`)"
     if not box:
         return "", f"{NONE_MARK} 능력치를 **한 명도 못 받았다**"
-    h, nh, why_h = side_pct(facts, ref, "home", box, rule)
-    a, na, why_a = side_pct(facts, ref, "away", box, rule)
+    h, _nh, why_h = group_pct(facts, ref, "home", box, rule)
+    a, _na, why_a = group_pct(facts, ref, "away", box, rule)
     said_t = "·".join(str(x) for x in (rule.get("traits") or []))
     head = f"능력치 `{said_t}` — "
-    if h is None or a is None:
+    if not h or not a:
         return "", head + f"{NONE_MARK} 못 쟀다(홈 {why_h} · 원정 {why_a})"
-    low = branch_min()
-    if nh < low or na < low:
-        return "", (head + f"홈 {nh}명 ↔ 원정 {na}명 — 한쪽이 **{low}명 미만**"
-                           f"이라 평균이 한 사람에 휘둘린다(안 가린다)")
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **인원이 다르면 견주지 않는다**(사용자 지시 2026-10-19 · 결함 1)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  ⚠️ 실측 2026-10-19(열여섯 판) — 갈래가 **표본 수가 다른 채로** 선 적이
-    #     많았다: `BR-1` 8건(브라이턴 8↔9) · `BR-2` 7건(우디네세 9↔7) ·
-    #     `BR-3`·`BR-4` 각 5건 · 묶음 `BR0` 4건(르아브르 9↔11).
-    #  🔴 까닭은 `AB1` 과 같다 — 능력치를 못 받는 선수는 보통 출전이 적은
-    #     선수이고, 그들을 뺀 평균은 **위로 치우친다**.
-    #     ⚠️ 그 갈래 하나가 `BR0`(묶음)의 셈에도 들어가므로 **두 번 샌다**.
-    #  🔴 새 손값을 만들지 않는다 — *"같지 않으면 안 가린다"* 하나다.
-    slack = count_slack()
-    if abs(nh - na) > slack:
-        return "", (head + f"홈 {nh}명 ↔ 원정 {na}명 — **인원 차가 {abs(nh-na)}명**"
-                           f"(허용 {slack}명 · 못 받은 선수가 평균을 위로 민다 "
-                           "· 안 가린다)")
-    said = (head + f"홈 **{h:.2f}** ({nh}명) ↔ 원정 **{a:.2f}** ({na}명)"
+    won_h, won_a, why_g = lead_of(h, a, gap=branch_gap())
+    said = (head + f"이긴 묶음 홈 **{len(won_h)}개** ↔ 원정 **{len(won_a)}개**"
             f" · {rule.get('why') or ''}")
-    gap = branch_gap()
-    if abs(h - a) < gap:
-        return "", said + f" — 차이가 {gap:g} 미만이다(안 가린다)"
-    return (">" if h > a else "<"), said + f" → `{'>' if h > a else '<'}`"
+    if why_g:
+        said += f" · 안 센 묶음 — {why_g}"
+    if len(won_h) == len(won_a):
+        return "", said + " — 같다(안 가린다)"
+    mark = ">" if len(won_h) > len(won_a) else "<"
+    said_w = " · ".join((won_h if mark == ">" else won_a)[:3])
+    return mark, said + f" · {said_w} → `{mark}`"
