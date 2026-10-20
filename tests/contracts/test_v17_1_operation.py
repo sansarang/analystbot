@@ -38,7 +38,9 @@ def test_m1_1_operation_number_comes_from_old_engine() -> None:
     """
     said = _code("app/core/probmodel.py")
     assert "_oe.run(" not in said, "🔴 운영이 옛 엔진을 다시 부른다"
-    i = said.index("said_flat, why_flat = flat_prob(varset, ref=ref)")
+    #  🔴 `facts` 를 함께 넘긴다(2026-10-20 · λ 기준점) — 호출 꼴이 바뀌었다
+    i = said.index("said_flat, why_flat = flat_prob(varset, ref=ref, "
+                   "facts=facts)")
     # ⚠️ `_code()` 는 `ast.unparse` 라 **따옴표가 작은 것**이다(D46) — 글자를
     #    그대로 비교하지 말고 **칸 이름**으로 센다.
     assert "got.home = round(float(said_flat[" in said[i:i + 400]

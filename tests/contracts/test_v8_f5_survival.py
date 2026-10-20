@@ -11,17 +11,12 @@ import inspect
 
 
 def _line(market: str, side: str = "", point=None):
-    """🔴 `apply`·`from_dist` 가 받는 옛 `Market` 꼴.
-
-    ⚠️ 종전에는 `s7_judge._old_of` 로 `BoardLine` 을 옮겼다 — 🔴 그 함수는
-       **걷혔다**(2026-10-19 · 배당을 안 받으므로 보드 줄이 없다). 여기서는
-       **생존 산수**를 재는 것이므로 옛 꼴을 바로 만든다.
-    """
-    from app.types import Market as OldMarket
-    if market == "win":
-        return OldMarket(market_type={"home": "home", "draw": "draw",
-                                      "away": "away"}[side])
-    return OldMarket(market_type=market, team=side, line=point)
+    """🔴 보드 줄 → `apply` 가 받는 옛 `Market` — 다리는 `s7_judge` 하나다(사본 금지)."""
+    from app.core.schema import BoardLine
+    from app.core.stages import s7_judge as _s7
+    got = _s7._old_of(BoardLine(market=market, side=side, point=point), ref=None)
+    assert got is not None, (market, side, point)
+    return got
 
 
 def _dist() -> dict:

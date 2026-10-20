@@ -1,14 +1,9 @@
-"""🔴🔴 **캡처 이미지 → 글** — **로컬에서만 돈다.**
+"""🔴🔴 **보드 캡처 → 글** — 네 층 지시서 §2-6. **로컬에서만 돈다.**
 
-🔴 쓰는 곳은 **XI 캡처 하나다**(`pipeline._xi_of` → `xicapture.parse`) — 확정
-   라인업을 사용자가 캡처로 줄 때 그 글자를 뽑는다.
-
-🔴🔴 **배당 보드 캡처는 걷혔다 — 사용자 지시 2026-10-19**
-> 시장배당은 **아예 쓰지도 않는다.**
-
-⚠️ 종전에는 `board_of` 가 캡처를 **보드 파서**(`core/board.parse`)에 넘겨 배당을
-   읽었다(네 층 지시서 §2-6). 🔴 그 함수와 그 길을 지웠다 — 남은 것은 글자를
-   뽑는 일(`read`)뿐이고 그것은 라인업이 쓴다.
+> 사용자가 캡처 이미지를 보내면 **로컬 OCR**(무료 오픈소스, 한국어 지원 — 예:
+> PaddleOCR·Tesseract kor)로 텍스트를 뽑아 같은 파서로. **로컬에서만 돌고 외부
+> API 를 부르지 않는다.** 인식 결과를 카드에 **원문 그대로** 보여 주고, 못 읽은
+> 줄은 *"못 읽음"*.
 
 🔴 **이 기계에 있는 것으로 한다** — 실측 2026-10-06:
    `/opt/homebrew/bin/tesseract` · 언어 `eng`·`kor` 둘 다 설치돼 있다.
@@ -60,3 +55,16 @@ def read(path: str) -> tuple[str, str]:
                     f"{(got.stderr or '').strip()[:80]}")
     logger.info("[ocr] %d자 ← %s", len(text), path)
     return text, f"로컬 OCR(tesseract {LANGS})"
+
+
+def board_of(path: str):
+    """🔴 캡처 → `(Board, 추가 줄, 못 읽은 줄, 원문)`. **원문을 함께 돌려준다**(§2-6).
+
+    ⚠️ 원문을 안 돌려주면 카드가 *"인식 결과를 원문 그대로 보여 준다"* 를 못 지킨다.
+    """
+    from app.core import board as _board
+    text, why = read(path)
+    if not text:
+        return None, [], [why], ""
+    got, extra, bad = _board.parse(text)
+    return got, extra, bad, text

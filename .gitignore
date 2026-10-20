@@ -1,4 +1,8 @@
 .env
+# 🔴 `.env` **백업·변형 전부**를 막는다 — 2026-10-20 실사고:
+#    `.env.bak_20261020` 이 커밋에 들어가 GitHub 이 DeepSeek 키를 잡았다.
+.env.*
+!.env.example
 .venv/
 __pycache__/
 *.pyc

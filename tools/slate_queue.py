@@ -200,17 +200,20 @@ def pick_row(name: str, one: dict, card) -> dict | None:
         if not held:
             return None
         return {"match": name, "league": str(one.get("comp") or ""),
-                "lines": {},
+                "board_lines": [], "lines": {},
                 "board_why": "⬜ 격자가 없다(1단 기계 보류)",
                 "kickoff": f"{one['kickoff'].astimezone(KST):%H:%M}",
                 "machine_hold": True,
                 "machine": str(getattr(card, "machine", "") or ""),
-                "verdict": ""}
+                "verdict": "",
+                "board": str(getattr(card, "board_source", "") or "")}
     lines = _pk2.lines_of(grid)
+    # 🔴 보드 줄은 **파이프라인이 센 칸**을 읽는다(사본 금지 · `core/picks`)
+    said_board = [str(x) for x in (getattr(card, "board_lines", None) or [])]
     return {"match": name, "league": str(one.get("comp") or ""),
-            # 🔴 보드는 **없다**(배당을 쓰지 않는다 · 2026-10-19) — 칠 표는
-            #    표준 줄(`picks.BOARD_COMMON`)에서 고른다
-            "board_why": "⬜ 보드 없음 — 표준 줄로 고른다(배당 미사용)",
+            "board_lines": said_board,
+            "board_why": ("보드 줄 %d개" % len(said_board) if said_board
+                          else "⬜ 보드가 없다 — 칠 표에서 뺀다"),
             "kickoff": f"{one['kickoff'].astimezone(KST):%H:%M}",
             "lines": lines,
             # 🔴🔴 **1단 기계 점검**(의심 검증 v2 §2) — 보류면 `core/picks` 가
@@ -221,7 +224,8 @@ def pick_row(name: str, one: dict, card) -> dict | None:
             "machine": str(getattr(card, "machine", "") or ""),
             # 🔴🔴 **2단 판정**(의심 검증 v2 §4) — 칠 표는 **확신·역배만** 받는다
             "doubt": str(getattr(card, "doubt", "") or ""),
-            "verdict": ""}
+            "verdict": "",
+            "board": str(getattr(card, "board_source", "") or "")}
 
 
 def save_picks(out, rows: list[dict]) -> None:

@@ -250,7 +250,7 @@ async def _one(mid: str, *, net, league: str, short: str, state_cls,
                                                 state=st)
         varset = _rt.place(variables)
         said_g = _goals_of(ref, facts)
-        prob, why = _pm.flat_prob(varset, ref=ref)
+        prob, why = _pm.flat_prob(varset, ref=ref, facts=facts)
     finally:
         # 🔴 시계를 **반드시** 돌려놓는다(전역이다)
         _w.set_clock(None)

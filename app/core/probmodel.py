@@ -288,16 +288,97 @@ def _layer_mul(kind: str, f_box: dict) -> float:
         return float(f_box.get("mul") or 1.05)
 
 
-def flat_prob(varset, *, ref) -> tuple[dict, str]:
-    """🔴 1/3 균등에서 변수만 움직인 승무패. `({home,draw,away}, 사유)`."""
+# ══════════════════════════════════════════════════════════════════════
+# 🔴🔴 **기대 득점(λ)을 기준점으로 되살린다** — 사용자 지시 2026-10-20
+# ══════════════════════════════════════════════════════════════════════
+#
+#  > **기대득점 넣어라**
+#
+#  🔴 **왜 — 1/3 균등이 홈 이점을 통째로 버렸다**(실측 2026-10-20 몬차 4-0):
+#     `push_home 0` · `push_away 4` → 원정 39.7% 였고 실제는 **4-0 홈 완승**.
+#     홈을 밀 수 있던 변수 셋 중 `S03`(홈 이점)은 **일부러 꺼져 있었다**
+#     (`variable_routing.home_field.places = [hypo]` · 2026-10-18 M26 —
+#     *"구조 상수가 오늘 층 한 표(×1.03)로 선다"* 는 올바른 까닭이었다).
+#     ⚠️ 그런데 λ 쪽 통로도 2026-10-17 에 지워져서 **어디에도 안 들어갔다**.
+#  🔴 그래서 홈 이점을 **변수 한 표가 아니라 기준점**으로 넣는다 — 그것이
+#     2026-10-19 밤에 적은 그 진단이다(*"뿌리는 경기마다 다른 기준점이 없다"*).
+#
+#  🔴🔴 **새 계수를 만들지 않는다** — 실측 표 두 칸이 λ 둘을 그대로 준다:
+#     `config/goal_baselines.yaml`
+#        `goals_per_match` = 두 팀 총골 · `home_share` = **홈 팀** 평균 득점
+#     → λ홈 = `home_share` · λ원정 = `goals_per_match` − `home_share`
+#     보기(세리에A · 표본 810): 2.5185 · 1.3185 → λ 1.3185 ↔ 1.2000
+#
+#  ⚠️ **기본 포아송이다** — Dixon-Coles 의 `ρ`(저득점 무 보정)는 **안 넣는다**.
+#     그 수는 적합이 필요한 계수인데 우리에겐 그 판이 없다(측정 없이 수를 짓지
+#     않는다 · #4). 🔴 그래서 **저득점 경기의 무를 과소평가한다** — 그 사실을
+#     사유에 적는다(#3 조용한 치우침 금지).
+#  ⚠️ 표가 없으면 **1/3 균등 그대로**다(다른 대회에서 빌리지 않는다 · CC1).
+
+#: 🔴 격자 상한 — 한 팀 득점을 이만큼까지 센다(그 위는 꼬리라 버린다)
+GRID_MAX = 10
+
+
+def _poisson(lam: float, k: int) -> float:
+    """🔴 포아송 확률 — 계수가 아니라 **수식**이다(지어낸 수 0개)."""
+    return math.exp(-lam) * lam ** k / math.factorial(k)
+
+
+def base_lambda(ref, facts=None) -> tuple[dict | None, str]:
+    """🔴🔴 **리그 실측 λ 로 만든 기준점** — `({home,draw,away}, 사유)`.
+
+    🔴 못 만들면 `(None, 사유)` 다 — 그때는 부르는 쪽이 1/3 균등을 쓴다.
+    """
+    from app import rules
+    kind = _kind(ref, facts)
+    said = rules.goal_baseline(kind)
+    mu = said.get("goals_per_match")
+    share = said.get("home_share")
+    if not isinstance(mu, (int, float)) or not isinstance(share, (int, float)):
+        return None, (f"⬜ `{kind}` 득점 기준이 없다 — 1/3 균등에서 "
+                      f"출발한다(다른 대회에서 빌리지 않는다 · CC1)")
+    lam_h = float(share)
+    lam_a = float(mu) - float(share)
+    if lam_h <= 0 or lam_a <= 0:
+        return None, (f"⬜ `{kind}` λ 가 꼴이 아니다"
+                      f"(총골 {mu} · 홈 몫 {share}) — 1/3 균등")
+    ph = [_poisson(lam_h, k) for k in range(GRID_MAX + 1)]
+    pa = [_poisson(lam_a, k) for k in range(GRID_MAX + 1)]
+    out = {"home": 0.0, "draw": 0.0, "away": 0.0}
+    for i, x in enumerate(ph):
+        for j, y in enumerate(pa):
+            out["home" if i > j else ("away" if i < j else "draw")] += x * y
+    total = sum(out.values()) or 1.0
+    out = {k: v / total for k, v in out.items()}
+    return out, (f"🎯 **기준점 = 리그 실측 λ**(`{kind}` · 표본 "
+                 f"{said.get('n') or '?'}) — λ홈 **{lam_h:.3f}** ↔ λ원정 "
+                 f"**{lam_a:.3f}**(총골 {float(mu):.3f} · 홈 몫 {lam_h:.3f}) "
+                 f"→ 홈 {out['home']:.1%} · 무 {out['draw']:.1%} · 원정 "
+                 f"{out['away']:.1%} · ⚠️ **기본 포아송**이라 저득점 경기의 "
+                 f"무를 과소평가한다(Dixon-Coles `ρ` 는 적합 판이 없어 안 쓴다)")
+
+
+def flat_prob(varset, *, ref, facts=None) -> tuple[dict, str]:
+    """🔴 **리그 실측 λ 기준점**에서 변수만 움직인 승무패. `({home,draw,away}, 사유)`.
+
+    ⚠️ 종전에는 **1/3 균등**에서 출발했다 — 그래서 경기가 달라도 쏠림 단계가
+       같으면 **같은 수**가 나왔고(실측 2026-10-19: 14판에 네 값뿐), 홈 이점이
+       통째로 빠졌다. 🔴 기준점이 바뀐 것뿐이고 **미는 방식은 그대로**다.
+    """
     from app.core import routing as _rt
     box = dict(_rt.table().get("lambda_rules") or {})
     by = dict(box.get("by_var") or {})
-    got = {"home": 1.0 / 3.0, "draw": 1.0 / 3.0, "away": 1.0 / 3.0}
+    # 🔴 **기준점** — 리그 실측 λ 로 세운다(없으면 1/3 균등 · 위 `base_lambda`)
+    #  🔴 `facts` 를 넘긴다 — 대회 열쇠는 **리그 번호**로 갈린다(`comp_kind`).
+    #     ⚠️ 안 넘기면 `_kind` 가 빈 글자를 주고 득점 기준이 통째로 비었다
+    #        (실측 2026-10-20: λ 를 넣었는데 확률이 **한 칸도 안 바뀌었다**).
+    seed, why_base = base_lambda(ref, facts)
+    got = dict(seed) if seed else {"home": 1.0 / 3.0, "draw": 1.0 / 3.0,
+                                   "away": 1.0 / 3.0}
     #: 🔴 쏠림을 세는 칸 — 어느 쪽을 몇 번 밀었나(무를 깎는 데 쓴다)
     net: dict = {"home": 0, "away": 0}
     if not by:
-        return got, "⬜ 변수 보정표가 없다 — 1/3 균등 그대로"
+        return got, f"{why_base} · ⬜ 변수 보정표가 없다 — 기준점 그대로"
     g_box, f_box = dict(by.get("goals") or {}), dict(by.get("favors") or {})
     g_types = {str(x) for x in (g_box.get("types") or [])}
     f_types = {str(x) for x in (f_box.get("types") or [])}
@@ -434,7 +515,7 @@ def run(ref, facts, mr, varset, *, edge: dict | None = None,
           카드·러너가 같은 꼴로 부른다). 그 사실을 사유에 적는다(#3).
     """
     got = ProbOut()
-    said_flat, why_flat = flat_prob(varset, ref=ref)
+    said_flat, why_flat = flat_prob(varset, ref=ref, facts=facts)
     got.home = round(float(said_flat["home"]), 6)
     got.draw = round(float(said_flat["draw"]), 6)
     got.away = round(float(said_flat["away"]), 6)

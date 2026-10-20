@@ -38,6 +38,7 @@ TRIGGER_CONDITIONS = "config/trigger_conditions.yaml"
 #: 🔴🔴 **v5 §10-4 — 단계 게이트.** 🔴 서명은 사용자다(내가 통과를 안 적는다).
 STAGE_GATES = "config/stage_gates.yaml"
 #: 🔴 네 층 지시서 §2-1·§3 — 피드·전력 출처 표(단계 1·4 실측 결과)
+ODDS_SOURCES = "config/odds_sources.yaml"
 RATING_SOURCES = "config/rating_sources.yaml"
 #: 🔴 §3-2 순서형 로짓 계수 — **봇은 읽기만 한다**(실행 중 적합 금지)
 BASE_MODEL = "config/base_model.yaml"
@@ -747,15 +748,21 @@ def all_one_direction(score_sets: list[list[str]]) -> bool:
 # ⚠️ 피드 이름·한도·계수를 **코드에 박지 않는다**(#1 사본 금지). 이 셋이 유일한 길이다.
 
 
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 **배당 피드 창구 셋을 걷었다** — 사용자 지시 2026-10-19
-# ══════════════════════════════════════════════════════════════════
-#
-#  > 시장배당은 **아예 쓰지도 않는다.**
-#
-#  ⚠️ `odds_sources`·`odds_feeds`·`odds_budget` 과 `config/odds_sources.yaml`
-#     이 하던 일: 피드 이름·키 환경변수·월 한도·요청 예산을 코드 밖에 두는 것.
-#  🔴 받아오는 길(`core/odds.from_feed`)을 지웠으므로 **읽을 곳이 0** 이다.
+def odds_sources() -> dict:
+    """🔴 §2-1 배당 피드 표 — `config/odds_sources.yaml` 그대로."""
+    return _load(ODDS_SOURCES)
+
+
+def odds_feeds(*, allowed_only: bool = True) -> list[dict]:
+    """🔴 피드 목록. ⚠️ `allowed: false` 는 **기본으로 빠진다**(§2-1 금지 기준)."""
+    rows = odds_sources().get("feeds") or []
+    out = [dict(r) for r in rows if isinstance(r, dict)]
+    return [r for r in out if r.get("allowed")] if allowed_only else out
+
+
+def odds_budget() -> dict:
+    """🔴 §2-2 요청 예산 — 분석 2회·재분석 1회·캐시 6시간·경고 80%·중단 100%."""
+    return dict(odds_sources().get("budget") or {})
 # 🔴 Elo 삭제(2026-10-17)로 `rating_sources` 도 고아가 됐다 — 같이 걷는다.
 
 

@@ -39,21 +39,11 @@ def test_세_묶음을_다_덮는다():
     #  ⚠️ 실측: 1단이 *"필수 입력 빠짐 — Elo 바닥 승무패 · 축0(⬜)"* 으로
     #     **영구히 기계 보류** 였다(Elo·상성을 지웠는데 필수로 물었다).
     #  🔴 그래서 센다: 남은 칸은 **있고**, Elo·축 칸은 **없다**.
-    #
-    # ══════════════════════════════════════════════════════════════
-    # 🔴🔴 **`board_lines` 칸도 같은 까닭으로 걷혔다** — 2026-10-19
-    # ══════════════════════════════════════════════════════════════
-    #
-    #  > 시장배당은 **아예 쓰지도 않는다.**
-    #
-    #  🔴 보드를 받아오는 길이 없으니 그 칸은 **영구히 ⬜** 이고, 필수로 물으면
-    #     모든 경기가 `기계 보류` 가 된다 — Elo 와 **똑같은 병**이다.
     for want in ("form_n", "xi", "absence_rung", "coach", "league_offset",
-                 "comp_history"):
+                 "comp_history", "board_lines"):
         assert want in names, want
-    for gone in ("elo_floor", "axis0", "axis1", "axis2", "axis3",
-                 "board_lines"):
-        assert gone not in names, f"🔴 `{gone}` 가 돌아왔다 — 지운 칸이다"
+    for gone in ("elo_floor", "axis0", "axis1", "axis2", "axis3"):
+        assert gone not in names, f"🔴 `{gone}` 가 돌아왔다 — Elo·상성은 지웠다"
     # 🔴 버그 칸은 **설정 표**가 이름을 든다(사본 금지)
     bugs = dict(mc.table().get("bugs") or {})
     for key, _n, group in mc.ROWS:

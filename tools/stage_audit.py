@@ -35,6 +35,7 @@ STAGES: tuple[tuple[str, str, str], ...] = (
     ("①", "질문 해석", "app/core/stages/s1_resolve.py"),
     ("③", "구조 사실", "app/core/stages/s2_facts.py"),
     ("③b", "기준 확률(Elo)", "app/core/stages/s2b_base.py"),
+    ("③c", "시장", "app/core/stages/s2c_market.py"),
     ("⑩", "전략 판정(LLM)", "app/core/stages/s2d_strategy.py"),
     ("⑪", "상성 재료", "app/core/stages/s2e_matchup.py"),
     ("⑤", "문서", "app/core/stages/s3_docs.py"),

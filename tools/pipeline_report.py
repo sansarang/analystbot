@@ -43,6 +43,8 @@ STAGES: tuple[tuple[str, str, str, str], ...] = (
      "app.core.routing", r"\*\*🔢 변수 \(배치 자리\)\*\*"),
     ("S1V 선수단 교체", "깃발①②③ · r 가중(확정 XI 전에는 **안 센다**)",
      "app.core.turnover", r"TURN-(home|away)|선수단 교체|평소 그대로|확정 XI 전"),
+    ("S1 시장", "배당 피드 → 시장 열(표시용 · 등급은 **내리기만**)",
+     "app.core.stages.s2c_market", r"\*\*7b\. 확률 세 열\*\*"),
     ("축2 전략 판정", "오늘 XI ↔ 평소 XI → 전략(로테이션·수비 위주·선수단 교체…)",
      "app.core.stages.s2d_strategy", r"\*\*🧠 라인업 전략"),
     ("전술 예측", "운영·흐름·승부처(근거 id 를 달아서)",

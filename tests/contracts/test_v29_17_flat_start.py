@@ -96,7 +96,10 @@ def test_운영_승무패가_그_수로_덮인다() -> None:
     """🔴 배선 — `run` 이 승무패를 `flat_prob` 로 덮어야 한다."""
     import inspect
     src = inspect.getsource(pm.run)
-    assert "flat_prob(varset, ref=ref)" in src, "🔴 안 덮는다"
+    #  🔴 `facts` 를 함께 넘긴다(2026-10-20) — 대회 열쇠가 **리그 번호**로
+    #     갈리고, 그 열쇠로 λ 기준점을 집는다(`base_lambda`).
+    #     ⚠️ 안 넘기면 득점 기준이 조용히 비어 1/3 균등으로 떨어진다(실측).
+    assert "flat_prob(varset, ref=ref, facts=facts)" in src, "🔴 안 덮는다"
     assert "got.home = round(float(said_flat[\"home\"]), 6)" in src
 
 

@@ -41,6 +41,7 @@ class Leg:
     p: float = 0.0
     side: str = ""            # 🔴 홈·원정·무·총골 — "전부 같은 방향" 금지에 쓴다
     verdict: str = ""         # 🔴 2단 판정(확신·역배) · 없으면 빈 글자
+    board: str = ""           # 🔴 보드 배당(계기판 · 판정 미사용)
     #: 🔴🔴 **의심 후 확률**(§4) — 있으면 `p` 가 이 수다(자가 다르다)
     after: float | None = None
     #: 🔴 그 칸(구간·경기 수) — 어디서 온 수인지 표에 적는다
@@ -51,7 +52,7 @@ class Leg:
                 + (f"(의심 후 · 칸 {self.cell})" if self.after is not None
                    else "")
                 + (f" · **{self.verdict}**" if self.verdict else "")
-                )
+                + (f" · 보드 {self.board}" if self.board else ""))
 
 
 @dataclass
@@ -128,23 +129,57 @@ BOARD_COMMON = ("홈 승", "무", "원정 승",
                 "오버 2.5", "언더 2.5", "오버 3.5", "언더 3.5")
 
 
-# ══════════════════════════════════════════════════════════════════
-# ⚠️ **`board_lines` 는 걷혔다**(2026-10-19) — 보드 줄 이름을 읽던 함수
-# ══════════════════════════════════════════════════════════════════
-#
-#  🔴 그 함수는 `Board.lines`(사용자 캡처·피드가 만든 배당 줄)에서 *"이 경기
-#     보드에 실제로 있는 줄"* 을 뽑아 칠 표 후보를 **그 안으로** 제한했다(§1).
-#  ⚠️ 배당을 안 받으므로 보드 줄이 **없다** — 후보는 늘 `BOARD_COMMON`
-#     (표준 줄)이고, 그 길은 사용자 지시 2026-10-14(*"보드없이 진행해라"*)가
-#     이미 열어 둔 것이다(아래 `best_of`).
+def board_lines(board) -> tuple[set[str], str]:
+    """🔴🔴 **그 경기 보드에 실제로 있는 줄 이름**(§1). 없으면 `(빈 집합, 사유)`.
+
+    🔴 이름은 칠 표가 쓰는 꼴로 맞춘다 —
+       · `win home|draw|away` → `홈 승`·`무`·`원정 승`
+       · `handicap home P` → `핸디 home{+P}`(**보드 왼쪽 = 홈 기준** · 파서가
+         `away` 쪽에 `-P` 를 함께 만든다)
+       · `total over|under P` → `오버 P`·`언더 P`
+    🔴 **정수 기준선**(±1·±2)은 국내 보드에서 **승·무·패 세 쪽**이다 — 조정 뒤
+       동점이 `무` 로 따로 선다(밀어주기(push)가 아니다). 그래서 그 줄은
+       `핸디 home+1 승`·`핸디 home+1 무` 두 이름으로 낸다.
+       ⚠️ 이 규칙이 쓰는 보드와 다르면 `line_hit` 과 이 함수 **두 곳**만 고친다.
+    """
+    rows = list(getattr(board, "lines", None) or [])
+    if not rows:
+        return set(), "⬜ 보드 줄이 없다 — 칠 표에서 뺀다(표시만)"
+    out: set[str] = set()
+    for one in rows:
+        market = str(getattr(one, "market", "") or "")
+        side = str(getattr(one, "side", "") or "")
+        point = getattr(one, "point", None)
+        if market == "win":
+            out.add({"home": "홈 승", "draw": "무",
+                     "away": "원정 승"}.get(side, ""))
+        elif market == "draw":
+            # ⚠️ 파서는 무를 **`market="draw"` · `side=""`** 로 낸다(실측)
+            out.add("무")
+        elif market == "handicap" and point is not None:
+            got = float(point)
+            name = f"핸디 {side}{got:+g}"
+            if float(got).is_integer():
+                out.add(f"{name} 승")
+                out.add(f"{name} 무")
+            else:
+                out.add(name)
+        elif market == "total" and point is not None:
+            got = float(point)
+            if "over" in side:
+                out.add(f"오버 {got:g}")
+            elif "under" in side:
+                out.add(f"언더 {got:g}")
+    out.discard("")
+    return out, (f"보드 줄 {len(out)}개" if out else
+                 "⬜ 보드에서 읽은 줄이 없다")
 
 
 def best_of(rows: list[dict]) -> tuple[list[Leg], list[tuple]]:
     """🔴 경기마다 **한 줄만** 고른다(§4 *"경기당 1줄"*).
 
-    🔴🔴 **후보는 표준 줄이다**(`BOARD_COMMON`) — 종전에는 *"보드에 있는 줄만"*
-       (§1)이었고 그 목록이 `row["board_lines"]` 였다. ⚠️ 배당을 안 받으므로
-       (2026-10-19) 그 목록은 늘 비어 있다 → **표준 줄 길 하나**다.
+    🔴🔴 **보드에 있는 줄만** 후보다(§1) — `row["board_lines"]` 가 그 목록이고,
+       비어 있으면 그 경기는 **칠 표에서 빠진다**(표시만).
     🔴🔴 **1단 기계 보류면 안 받는다**(의심 검증 v2 §2·§4) — 확신·역배 둘 다
        금지이고, 다폴 다리로도 못 쓴다(§5 *"기계 보류 다리 금지"*).
 
@@ -159,21 +194,27 @@ def best_of(rows: list[dict]) -> tuple[list[Leg], list[tuple]]:
     for one in rows or []:
         if one.get("machine_hold"):
             continue
-        # 🔴 보드 없이 간다는 사실을 **경기마다** 적는다(지시 "보드없이 진행")
-        no_board_rows.append(str(one.get("match") or ""))
-        # ══════════════════════════════════════════════════════════════
-        # 🔴🔴 **표준 줄로 간다** — 사용자 지시 2026-10-14 *"보드없이 진행해라"*
-        # ══════════════════════════════════════════════════════════════
-        #
-        #  ⚠️ §1 은 *"보드에 있는 줄 안에서만"* 이었다 — 직접 지시가 이겼고,
-        #     2026-10-19 에 배당이 걷히면서 **이 길만 남았다**.
-        #  🔴 표준 줄은 `BOARD_COMMON`(국내 보드에 흔한 기준선) 이고, 그 중
-        #     **승무패만** 판정으로 간다 — 핸디·언오버 칸은 *그 경기 보드의
-        #     메인 라인 하나*로 쟀으므로 보드 없는 줄에 붙이면 거짓이 된다
-        #     (아래 핸디·총점 잠금이 그것을 막는다 · AUC 0.511).
+        want = {str(x) for x in (one.get("board_lines") or [])}
+        # 🔴 보드가 없으면 **어느 길로 가든** 그 사실을 적는다(지시 "보드없이 진행")
+        if not want:
+            no_board_rows.append(str(one.get("match") or ""))
         got = [(str(k), float(v)) for k, v in
                dict(one.get("lines") or {}).items()
-               if v is not None and str(k) in BOARD_COMMON]
+               if v is not None and (not want or str(k) in want)]
+        if want:
+            got = [x for x in got if x[0] in want]
+        else:
+            # ══════════════════════════════════════════════════════════
+            # 🔴🔴 **보드가 없으면 표준 줄로 간다** — 사용자 지시 2026-10-14
+            #    *"보드없이 진행해라"*
+            # ══════════════════════════════════════════════════════════
+            #
+            #  ⚠️ §1 은 *"보드에 있는 줄 안에서만"* 이었다 — 직접 지시가 이긴다.
+            #  🔴 표준 줄은 `BOARD_COMMON`(국내 보드에 흔한 기준선) 이고, 그 중
+            #     **승무패만** 판정으로 간다 — 핸디·언오버 칸은 *그 경기 보드의
+            #     메인 라인 하나*로 쟀으므로 보드 없는 줄에 붙이면 거짓이 된다
+            #     (아래 핸디·총점 잠금이 그것을 막는다 · AUC 0.511).
+            got = [x for x in got if x[0] in BOARD_COMMON]
         # ══════════════════════════════════════════════════════════════
         # 🔴🔴 **봇 원래 핸디·총점 확률은 판정에 쓰지 않는다**(지시 3번)
         # ══════════════════════════════════════════════════════════════
@@ -196,7 +237,8 @@ def best_of(rows: list[dict]) -> tuple[list[Leg], list[tuple]]:
                        league=str(one.get("league") or ""),
                        kickoff=str(one.get("kickoff") or ""),
                        line=line, p=p, side=side_of(line),
-                       verdict=str(one.get("verdict") or "")))
+                       verdict=str(one.get("verdict") or ""),
+                       board=str(one.get("board") or "")))
     return sorted(out, key=lambda x: -x.p), shown, no_board_rows
 
 

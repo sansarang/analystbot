@@ -357,12 +357,14 @@ def _head(card: Card) -> str:
     #
     # ⚠️ 그 시각은 **킥오프 60분 전**이다(확정 XI 는 보통 그때 나온다 · 축구 §2).
     # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **"보드 캡처를 보내 달라" 는 걷혔다**(사용자 지시 2026-10-19)
+    # 🔴🔴 **피드에 없는 경기면 보드를 달라고 한다**(사용자 지시 2026-10-07 ③)
     # ══════════════════════════════════════════════════════════════════
     #
-    #  ⚠️ 종전에는 시장 피드에 없는 경기(대표팀 친선 등)면 카드 머리에
-    #     *"시장 피드에 없는 경기 — 보드 캡처를 보내 달라"* 를 적었다
-    #     (2026-10-07 ③). 🔴 배당을 **아예 쓰지 않으므로** 달라고 할 것이 없다.
+    # > 피드에 경기가 없을 때(대표팀 친선 등): 카드 머리에
+    # > *"시장 피드에 없는 경기 — 보드 캡처를 보내 달라"* 한 줄.
+    if not card.market.probs and not card.user_market.probs:
+        head += ("\n📋 **시장 피드에 없는 경기 — 보드 캡처를 보내 달라**"
+                 "(보드가 없으면 등급을 못 붙인다)")
     # 🔴🔴 A-3 — `📋 라인업 {확정|예상|없음} · 출처 {이름} · {HH:MM}`
     if card.facts.xi:
         from app.core import lineups as _ln
@@ -1008,6 +1010,10 @@ def _b6(card: Card) -> str:
     return ""
 
 
+#: 🔴 보드 출처 → 사람이 읽는 말(사용자 지시 2026-10-07 ①)
+_SRC_KO = {"user_board": "사용자 보드", "feed": "피드 메인 라인", "none": ""}
+
+
 def _b7(card: Card) -> str:
     if not card.evals:
         return "- ⬜ 대입한 줄이 없다"
@@ -1015,17 +1021,32 @@ def _b7(card: Card) -> str:
     head = "| 마켓 | " + " | ".join(ids) + " | 생존 | 상한 | 등급 |"
     bar = "|---" * (len(ids) + 4) + "|"
     rows: list[str] = []
-    # 🔴🔴 **출처는 하나다** — 배당을 쓰지 않으므로 늘 **기준선**이다(2026-10-19).
-    #    ⚠️ 종전에는 `사용자 보드`·`피드` 도 있었고 `추가:` 줄 묶음과 *"보드 줄
-    #       못 읽음"* 줄을 함께 적었다 — 셋 다 걷혔다.
-    rows.append("⏸ **참고 — 보드 없음**(기준선 목록이다 · 등급은 전부 `보류`)")
+    # 🔴🔴 **출처를 적는다** — 보드가 없으면 *"참고 — 보드 없음"*(지시 ②)
+    src = str(card.board_source or "none")
+    if src == "none":
+        rows.append("⏸ **참고 — 보드 없음**(기준선 목록이다 · 등급은 전부 `보류`)")
+    else:
+        rows.append(f"출처: **{_SRC_KO.get(src, src)}**")
     rows.append("")
     rows += [head, bar]
+    extra = set(card.board_extra)
+    tail: list[str] = []
     for e in card.evals:
         point = f" {e.line.point}" if e.line.point is not None else ""
+        said = (f"{e.line.market} {e.line.side}"
+                f"{(' ' + str(e.line.point)) if e.line.point is not None else ''}")
         cells = " | ".join(e.marks.get(i, "?") for i in ids)
-        rows.append(f"| {e.line.market} {e.line.side}{point} | {cells} | "
-                    f"{e.survival} | {e.cap} | {e.grade} |")
+        line = (f"| {e.line.market} {e.line.side}{point} | {cells} | "
+                f"{e.survival} | {e.cap} | {e.grade} |")
+        # 🔴 `추가:` 줄은 **아래 묶음**으로(§4 · 사용자 규칙)
+        (tail if said in extra else rows).append(line)
+    if tail:
+        rows.append("")
+        rows.append("**추가 옵션에 있으면**")
+        rows += tail
+    for said in card.board_bad:
+        # 🔴 **못 읽은 줄은 그대로 보인다**(조용히 버리지 않는다 · §4)
+        rows.append(f"- 🔴 보드 줄 못 읽음: {said}")
     return "\n".join(rows)
 
 
@@ -1302,25 +1323,35 @@ def _b3c(card: Card) -> str:
 
 
 def _b7b(card: Card) -> str:
-    """🔴 7b 확률 **두 열** — 기준·우리. **한 숫자로 합치지 않는다**.
+    """🔴 7b 확률 세 열 — 기준·우리·시장(+사용자 보드). **한 숫자로 합치지 않는다**.
 
-    🔴🔴 **시장·사용자 보드 열은 걷혔다 — 사용자 지시 2026-10-19**
-    > 시장배당은 **아예 쓰지도 않는다.**
-
-    ⚠️ 종전 이 블록은 네 칸이었다(기준·우리·시장·사용자 보드) 그리고 배당 원숫자를
-       **괄호로** 보였다(§8 · 2026-10-06 결정) · Shin 방식 · 업체 몫 · 월 사용량 ·
-       캡처 인식 원문. 🔴 전부 지웠다.
-    🔴 기대값·금액은 **어디에도 없다**(§0 금지 — 종전과 같다).
+    🔴 배당 원숫자는 시장·사용자 보드 열에 **괄호로** 보인다(§8 · 사용자 결정).
+    🔴 기대값·금액은 **어디에도 없다**(§0 금지).
     """
-    cols = ["| | 기준 | 우리 |", "|---|---|---|"]
-    # 🔴🔴 **기준 열은 "②반영" 이다**(네 층 지시서 §6 첫 줄: *"기준(②반영)·우리"*).
+    from app.core.odds import key_of
+    mk, user = card.market, card.user_market
+    head = f"시장 = {mk.basis or '없음'}"
+    if mk.captured_at is not None:
+        from app import timefmt
+        head += f"(받은 때 {timefmt.kst_label(mk.captured_at)})"
+    vig = (mk.vig or {}).get("win")
+    if vig is not None:
+        head += f" · 업체 몫 {vig:.1%}"
+    if mk.used is not None:
+        head += f" · 월 사용 {mk.used}/{mk.limit or '?'}"
+    # 🔴 §2-6 — 사용자 보드가 **그대로 시장 열**인 경우(피드 없음)에는 열을 **겹쳐
+    #    적지 않는다**. ⚠️ 겹쳐 적으면 같은 배당이 두 열에 보여 *"피드도 있다"* 로 읽힌다.
+    same_col = bool(user.probs) and mk.basis == user.basis
+    cols = ["| | 기준 | 우리 | 시장 |", "|---|---|---|---|"] if same_col else \
+           ["| | 기준 | 우리 | 시장 | 사용자 보드 |", "|---|---|---|---|---|"]
+    # 🔴🔴 **기준 열은 "②반영" 이다**(네 층 지시서 §6 첫 줄: *"기준(②반영)·우리·시장"*).
     #    ⚠️ ① 만 적으면 우리 열의 **출발점과 다른 수**가 기준 칸에 앉아, 이동량 줄이
     #       설명하지 못하는 차이가 생긴다(실측 2026-10-06: 54% vs 출발 52%).
     base_col = (card.adj_prob.probs if card.adj_prob.probs is not None
                 else card.base_prob.probs)
     if card.adj_prob.moved:
         cols[0] = cols[0].replace("| 기준 |", "| 기준(②반영) |")
-    rows = list(cols)
+    rows = [f"- {head}", ""] + cols
     names = ((f"{card.match.home_name} 승", "home"), ("무", "draw"),
              (f"{card.match.away_name} 승", "away"))
     for label, key in names:
@@ -1329,7 +1360,18 @@ def _b7b(card: Card) -> str:
                      if base_col is not None else "—")
         cells.append(f"{getattr(card.our_prob, key):.0%}"
                      if card.our_prob is not None else "—")
+        for box in ((mk,) if same_col else (mk, user)):
+            p = (box.probs or {}).get(key_of("win", key))
+            price = _price_of(box, key)
+            cells.append("—" if p is None else
+                         (f"{p:.0%}" + (f" ({price:g})" if price else "")))
         rows.append("| " + " | ".join(cells) + " |")
+    shin = mk.shin or {}
+    if shin:
+        said = " · ".join(
+            f"{nm} {shin.get(key_of('win', k), 0):.0%}"
+            for nm, k in (("홈", "home"), ("무", "draw"), ("원정", "away")))
+        rows.append(f"- Shin 방식(괄호 비교용): {said}")
     # 🔴🔴 **③ 이 움직인 양**(사용자 지시 2026-10-06(6차) ③) — 없으면 그 사실을 적는다
     if card.moves:
         said = " · ".join(
@@ -1355,6 +1397,13 @@ def _b7b(card: Card) -> str:
             rows.append(f"    {line}")
     for line in card.tilt:
         rows.append(f"- → {line}")
+    for line in card.market_why:
+        rows.append(f"- → {line}")
+    if card.ocr_text:
+        rows.append("- 캡처 인식 원문(그대로):")
+        rows += [f"    {x}" for x in card.ocr_text.splitlines() if x.strip()]
+    if not mk.probs and not user.probs:
+        rows.append(f"- ⬜ **시장 없음** — {mk.why or '피드·사용자 보드 모두 없다'}")
     return "\n".join(rows)
 
 
@@ -1362,6 +1411,14 @@ def _ds_fit(kind: str) -> dict:
     """🔴 `ΔS→dr` 계수의 **표본·R²** — 카드가 그 신뢰도를 숨기지 않는다(②)."""
     from app import rules
     return dict((rules.base_model(str(kind)) or {}).get("ds_fit") or {})
+
+
+def _price_of(box, side: str) -> float | None:
+    """🔴 그 쪽의 **원배당** — 괄호로 보이는 숫자다. ⚠️ 없으면 `None`."""
+    for q in (box.quotes or []):
+        if q.market == "win" and q.side == side:
+            return q.price
+    return None
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -1977,8 +2034,10 @@ def prob_summary(card: Card) -> str:
     # ── ⑤ 무 구간 실측(표시 전용 · 확률 불변)
     out.append(f"- **무 신뢰** — "
                f"{_db.said_of(ours.get('draw') if ours else None)}")
-    # ── ⑥-0 ⚠️ **보드 블록은 걷혔다**(2026-10-19) — 사다리가 모은 줄·출처·
-    #        시각을 적던 자리다. 🔴 배당을 안 받으므로 적을 것이 없다.
+    # ── ⑥-0 🔴🔴 **보드 블록**(의심 검증 v2 §7) — 사다리가 모은 줄·출처·시각
+    said_feed = str(getattr(card, "board_feed", "") or "")
+    if said_feed:
+        out.append(said_feed)
     # ── ⑥-0b 🔴🔴 **의심 블록 머리 = 1단 기계 점검**(의심 검증 v2 §2·§7)
     #        🔴 글자는 `core/machine.said_of` 가 만든다 — 여기서 다시 세지 않는다.
     said_mc = str(getattr(card, "machine", "") or "")
@@ -1987,12 +2046,51 @@ def prob_summary(card: Card) -> str:
     # 🔴🔴 **2단 의심 블록은 걷혔다**(지시 2026-10-14 *"의심 단계 삭제"*) —
     #    확신/보류/역배 줄도 함께 사라졌다. 1단(위)은 **남는다**: 그것은 입력
     #    완전성 점검이고 의심과 따로 선다.
-    # ── ⑥ ⚠️ **보드 줄(사용자 캡처 · 괴리)도 걷혔다**(2026-10-19)
+    # ── ⑥ **보드(사용자 캡처 · 표시만)** — 마진 제거 확률 나란히 · 괴리
+    said_board = _board_line(card, mk)
+    if said_board:
+        out.append(said_board)
     if not mk:
         out.append(f"🔴 **칸이 비었다** — {why}")
     said = "\n".join(out)
     check(said)
     return said
+
+
+def _board_line(card: Card, mk: dict) -> str:
+    """🔴🔴 **보드 줄**(P5 · 표시만) — 마진 제거 확률과 괴리. 없으면 빈 글자.
+
+    🔴 수는 `core/divergence` 하나가 만든다(사본 금지) · 등급·결론은 **우리
+       확률만** 쓴다(시장은 상한 하나만 건다 · 그 상한은 ⑯·⑱ 밖이다).
+    """
+    # 🔴🔴 **파이프라인이 센 글자를 그대로 쓴다**(사본 금지 · 실사고
+    #    2026-10-14: 아래 되뒤집기 길이 공정 확률을 "원 배당"이라 적고
+    #    마진 0.0% · ⬜ 목록을 비워 `접는다` 를 `조건부` 로 바꿨다)
+    said_pipe = str(getattr(card, "divergence", "") or "")
+    if said_pipe:
+        return f"- **보드(사용자 캡처 · 표시만)** — {said_pipe}"
+    from app.core import divergence as _dv
+    said = dict(getattr(card, "user_market", None) and
+                getattr(card.user_market, "quotes", None) and {} or {})
+    del said
+    prices: list[float] = []
+    try:
+        box = {str(k): float(v) for k, v in
+               dict(card.user_market.probs or {}).items()}
+    except AttributeError:
+        return ""
+    if not box or not mk:
+        return ""
+    from app.core.odds import key_of
+    for market, side in (("win", "home"), ("win", "draw"), ("win", "away")):
+        got = box.get(key_of(market, side))
+        prices.append((1.0 / float(got)) if got else 0.0)
+    if min(prices) <= 0:
+        return ""
+    said_line, _fold = _dv.said_of(
+        [float(mk["home"]), float(mk["draw"]), float(mk["away"])],
+        prices, gaps=[])
+    return f"- **보드(사용자 캡처 · 표시만)** — {said_line}"
 
 
 def check(said: str) -> None:
