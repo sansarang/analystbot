@@ -272,8 +272,7 @@ async def _v6_card(pool, *, team: str = "", opponent: str = "", said: str = "",
     # 🔴🔴 **P0** — 카드 실행은 **하루 캐시**를 쓴다(팀 페이지·대회 일정·순위표).
     #    ⚠️ XI·결장·뉴스 주소는 그 목록에 없어 **늘 새로 받는다**(`Net.DAY_CACHE`).
     got = await fn(asked, pool=pool,
-                   # 🔴 카드용 Net 은 **한 곳**에서 만든다(2026-10-19 · 2번)
-                   net=_net_mod.card_net(),
+                   net=_net_mod.Net(cache=True, day_cache=True),
                    chain=_search.build_chain(),
                    # 🔴 **사람이 준 라인업 캡처**는 두 길에 다 간다(실사고
                    #    2026-10-11: `--deep` 은 재분석 길이라 안 갔다)

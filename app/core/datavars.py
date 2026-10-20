@@ -97,23 +97,17 @@ def _var(rid: str, kind: str, ref: MatchRef, side: str, claim: str, *,
 #     그 사실을 사유에 적는다(지어내지 않는다).
 
 
-def _all_pct(facts, ref, side: str, box: dict
-             ) -> tuple[dict[str, tuple[float, int]], int, str]:
-    """🔴🔴 그 팀 선발의 **묶음별** 평균 백분위. `({묶음: (평균, 인원)}, 인원, 사유)`.
+def _all_pct(facts, ref, side: str, box: dict) -> tuple[float | None, int, str]:
+    """🔴 그 팀 **선발 전체**의 평균 백분위. `(값, 인원, 사유)`.
 
-    🔴🔴 **종전엔 한 수였다 — 그것이 결함이었다**(사용자 지적 2026-10-20).
-       자리를 안 가리고 평균 하나를 냈고, 지표는 **갈래 표의 합집합 넷**
-       (`aerials_won`·`chances_created`·`defensive_actions`·`touches`)이었다.
-       ⚠️ 실측(몬차 4-0): 홈 0.454 ↔ 원정 0.521 로 **원정 우위**라 적었는데
-          그 수는 *"센터백 중 하위 10%"* 와 *"공격수 중 상위 24%"* 를 더한
-          것이었다 — 분모가 다른 순위를 섞었고, **공격수가 많은 팀이 자동으로
-          높게** 나왔다. 득점·슈팅·선방은 아예 안 셌다.
-    🔴 그래서 **묶음별로** 낸다(`ability.group_pct`) — 지표는 그 묶음이 주는
-       전부다(우리가 안 고른다 · #1). 자리는 안 가린다(빈 규칙).
+    🔴 자리를 안 가린다 — `ability.side_pct` 를 **빈 규칙**으로 부른다(그
+       함수가 `pos`/`flank` 빈 목록을 *"안 가린다"* 로 읽는다 · 사본 금지).
     """
     from app.core import ability as _ab
-    return _ab.group_pct(facts, ref, side, box, {"pos": [], "flank": [],
-                                                 "traits": []})
+    rule = {"pos": [], "flank": [],
+            "traits": sorted({t for r in dict(_ab.branch_table()).values()
+                              for t in (r.get("traits") or [])})}
+    return _ab.side_pct(facts, ref, side, box, rule)
 
 
 def from_ability(ref: MatchRef, facts: Facts, box: dict, *,
@@ -125,20 +119,17 @@ def from_ability(ref: MatchRef, facts: Facts, box: dict, *,
     if not box:
         state.note(f"가 능력치 변수 — {NONE_MARK} 능력치를 한 명도 못 받았다")
         return out
-    # ── A1 선발 능력치 — 🔴 **묶음별로 견주고 묶음 수로 가린다**(2026-10-20)
+    # ── A1 선발 평균 백분위
     h, nh, why_h = _all_pct(facts, ref, "home", box)
     a, na, why_a = _all_pct(facts, ref, "away", box)
     low, gap = _num(cf, "squad_min"), _num(cf, "squad_gap")
-    lead1 = _num(cf, "tilt_lead")
-    n_h_m = sum(n for _m, n in h.values())
-    n_a_m = sum(n for _m, n in a.values())
-    if low is None or gap is None or lead1 is None:
+    if low is None or gap is None:
         state.note(f"가 A1 — {NONE_MARK} 문턱 표가 없다(`{CONF}`)")
-    elif not h or not a:
+    elif h is None or a is None:
         state.note(f"가 A1 — {NONE_MARK} 못 쟀다(홈 {why_h} · 원정 {why_a})")
-    elif n_h_m < low or n_a_m < low:
-        state.note(f"가 A1 — 홈 {n_h_m}명 ↔ 원정 {n_a_m}명 · 한쪽이 {low:g}명 "
-                   "미만이라 평균이 몇 사람에 휘둘린다(안 센다)")
+    elif nh < low or na < low:
+        state.note(f"가 A1 — 홈 {nh}명 ↔ 원정 {na}명 · 한쪽이 {low}명 미만이라 "
+                   "평균이 몇 사람에 휘둘린다(안 센다)")
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **인원 수가 다르면 평균을 견주지 않는다**(사용자 지시 2026-10-19)
     # ══════════════════════════════════════════════════════════════════
@@ -156,29 +147,20 @@ def from_ability(ref: MatchRef, facts: Facts, box: dict, *,
     #     빼고 낸 평균은 **위로 치우친다**. 표본 수가 다른 두 평균을 그대로
     #     견주면 비교의 전제가 깨진다.
     #  🔴 새 손값을 만들지 않는다 — *"같지 않으면 안 센다"* 하나다.
-    elif abs(n_h_m - n_a_m) > _ab.count_slack():
-        state.note(f"가 A1 — 홈 {n_h_m}명 ↔ 원정 {n_a_m}명 · **인원 차 "
-                   f"{abs(n_h_m - n_a_m)}명**(허용 {_ab.count_slack()}명) → 안 센다")
+    elif abs(nh - na) > _ab.count_slack():
+        state.note(f"가 A1 — 홈 {nh}명 ↔ 원정 {na}명 · **인원 차 "
+                   f"{abs(nh - na)}명**(허용 {_ab.count_slack()}명) → 안 센다")
+    elif abs(h - a) < gap:
+        state.note(f"가 A1 — 홈 {h:.3f} ↔ 원정 {a:.3f} · 차 {abs(h - a):.3f} "
+                   f"< 문턱 {gap:g}(안 센다)")
     else:
-        won_h, won_a, why_g = _ab.lead_of(h, a, gap=gap)
-        if abs(len(won_h) - len(won_a)) < lead1:
-            state.note(f"가 A1 — 이긴 묶음 홈 {len(won_h)}개 ↔ 원정 "
-                       f"{len(won_a)}개 · 차가 {lead1:g} 미만이다(안 센다)"
-                       + (f" · {why_g}" if why_g else ""))
-        else:
-            side = "home" if len(won_h) > len(won_a) else "away"
-            said_w = " · ".join((won_h if side == "home" else won_a)[:4])
-            out.append(_var("AB1", "squad_ability", ref, side,
-                            f"{_name(ref, _key(ref, side))} 선발 능력치가 "
-                            f"**더 많은 자리군에서 앞선다** — 이긴 묶음 홈 "
-                            f"{len(won_h)}개 ↔ 원정 {len(won_a)}개"
-                            f"(묶음 문턱 {gap:g} · 차 {lead1:g}) · {said_w}"
-                            f" · ⚠️ 백분위는 **같은 자리군끼리만** 견준다"
-                            f"(분모가 다른 순위를 섞지 않는다) · ⚠️ 벤치는 "
-                            f"번호가 없어 못 받았다"))
-            state.note(f"가 A1 **발동** — {side} · 이긴 묶음 홈 {len(won_h)}개 "
-                       f"↔ 원정 {len(won_a)}개 · {said_w}"
-                       + (f" · 안 센 묶음 — {why_g}" if why_g else ""))
+        side = "home" if h > a else "away"
+        out.append(_var("AB1", "squad_ability", ref, side,
+                        f"{_name(ref, _key(ref, side))} 선발 능력치 평균이 높다 "
+                        f"— 홈 **{h:.2f}**({nh}명) ↔ 원정 **{a:.2f}**({na}명) · "
+                        f"차 {abs(h - a):.2f}(문턱 {gap:g}) · ⚠️ 벤치는 번호가 "
+                        "없어 못 받았다"))
+        state.note(f"가 A1 **발동** — {side} · 홈 {h:.3f} ↔ 원정 {a:.3f}")
     # ── A2 결장 자리의 능력치 손실
     out += _absence_quality(ref, facts, box, state=state)
     # ── A3 자리별 쏠림

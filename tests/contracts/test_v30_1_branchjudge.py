@@ -86,11 +86,7 @@ def _mid_box(h: float, a: float, n: int = 3) -> dict:
     from app.core import ability as _ab
     traits = list(dict(_ab.branch_table()["중원 수싸움"]).get("traits") or [])
     def _one(v: float) -> dict:
-        #  🔴 **비교 묶음을 담는다**(운영 모양 · `ability.fetch` 가 담는 꼴)
-        #     — 2026-10-20 부터 백분위는 **같은 묶음끼리만** 견준다
-        #     (몬차 4-0 실측: `center-backs` 와 `forwards` 는 분모가 다르다).
-        return {"group": "Stats compared to other midfielders",
-                "items": [{"key": k, "value": v} for k in traits]}
+        return {"items": [{"key": k, "value": v} for k in traits]}
     return {**{f"H{i}": _one(h) for i in range(1, n + 1)},
             **{f"A{i}": _one(a) for i in range(1, n + 1)}}
 
@@ -126,11 +122,7 @@ def test_bj1_중원은_능력치로_가린다() -> None:
         from app.core import ability as _ab
         traits = list(dict(_ab.branch_table()["중원 수싸움"]).get("traits") or [])
         def _one(v: float) -> dict:
-            #  🔴 **비교 묶음을 담는다**(운영 모양 · `ability.fetch` 가 담는 꼴)
-            #     — 2026-10-20 부터 백분위는 **같은 묶음끼리만** 견준다
-            #     (몬차 4-0 실측: `center-backs` 와 `forwards` 는 분모가 다르다).
-            return {"group": "Stats compared to other midfielders",
-                "items": [{"key": k, "value": v} for k in traits]}
+            return {"items": [{"key": k, "value": v} for k in traits]}
         return {**{f"H{i}": _one(h) for i in (1, 2, 3)},
                 **{f"A{i}": _one(a) for i in (1, 2, 3)}}
     #  ① 홈 중원이 낫다 → `>`
