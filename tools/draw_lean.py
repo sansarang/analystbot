@@ -195,6 +195,27 @@ def _why_blocked(one, *, f_types: set, g_types: set) -> str:
     return " · ".join(said) or "⬜ 문에 안 걸렸다(방향이 없었다)"
 
 
+def _free_key(name: str, nth: int) -> str:
+    """🔴 그 팀의 **진짜 열쇠** — 못 가리면 **등록부에 없는** 열쇠를 돌려준다.
+
+    ⚠️ 지어낸 열쇠가 **실재하는 나라**였던 실사고(2026-10-20)를 막는다 —
+       빈 자리를 **찾아서** 쓴다(손으로 고른 상수를 두지 않는다 · #1·#4).
+    """
+    from app import teamref
+    got, _why = teamref.key_of(name)
+    if got:
+        return str(got)
+    try:
+        reg = teamref.registry().teams
+    except Exception:                                       # noqa: BLE001
+        reg = {}
+    for i in range(900000 + nth, 999999, 7):
+        key = f"team:{i:06d}"
+        if key not in reg:
+            return key
+    return f"team:99999{nth}"
+
+
 async def _one(mid: str, *, net, league: str, short: str, state_cls,
                row: dict) -> dict | None:
     """🔴 경기 하나 → 한 줄. ⚠️ 못 재면 **사유를 담아** 돌려준다(#3).
@@ -231,12 +252,31 @@ async def _one(mid: str, *, net, league: str, short: str, state_cls,
     #    신선도·`started` 는 **"지금"** 을 본다(오늘을 보면 과거 경기가 다 떨어진다).
     _w.set_clock(kick)
     try:
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **팀 열쇠를 지어내지 않는다** — 실사고 2026-10-20
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 종전엔 *"열쇠는 **꼴만** 맞으면 된다 — 짝은 이름으로 맞춘다"* 며
+        #     `team:000001`·`team:000002` 를 썼다. 🔴 그 둘은 **실재하는
+        #     열쇠**였다 — `team:000001` = **어센션섬**(`iso:AC`) ·
+        #     `team:000002` = **안도라**(`iso:AD`), 둘 다 **나라 이름표**다.
+        #  🔴 그래서 `s5_verify._is_national` 이 *"이름표에 나라 코드가 있다"* 로
+        #     **대표팀 경기**라 읽었고, `competition.kind_of` 가 대회 이름을
+        #     **보지도 않고** `national_official` 을 돌려줬다. 그 표는 A매치
+        #     (λ홈 **1.675** ↔ λ원정 1.070 · 표본 11147)라, 세리에A·우크라이나·
+        #     루마니아가 **전부 똑같이 홈 51.5%** 로 나왔다.
+        #     ⚠️ 즉 이 도구로 잰 수는 **리그를 안 본 수**였다(운영 봇은 진짜
+        #        열쇠를 써서 영향이 없다).
+        #  🔴 이제 **이름표에 물어서** 진짜 열쇠를 받는다(`teamref.key_of`).
+        #     못 가리면 **등록부에 없는 열쇠**로 떨어진다 — 없는 열쇠는
+        #     `_is_national` 이 `None` 으로 건너뛰므로 대표팀으로 안 샌다.
+        key_h = _free_key(str(row.get("home") or ""), 1)
+        key_a = _free_key(str(row.get("away") or ""), 2)
         ref = MatchRef(
             # 🔴 **접두가 있어야** fotmob 깊이가 열린다(`matchkey.source_of`)
             id=f"fotmob:{mid}", sport="soccer",
             competition=league, competition_short=short,
-            # 🔴 팀 열쇠는 **꼴만** 맞으면 된다 — 짝은 **이름으로** 맞춘다
-            home="team:000001", away="team:000002",
+            home=key_h, away=key_a,
             home_name=str(row.get("home") or ""),
             away_name=str(row.get("away") or ""),
             kickoff_utc=kick)

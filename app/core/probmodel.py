@@ -324,6 +324,43 @@ def _poisson(lam: float, k: int) -> float:
     return math.exp(-lam) * lam ** k / math.factorial(k)
 
 
+def grid_of(lam_h: float, lam_a: float) -> dict:
+    """🔴🔴 **λ 둘 → 승무패**(포아송 격자). 계수가 아니라 **수식**이다.
+
+    🔴 무는 **대각선 합**이다 — 깎는 장치가 필요 없다. 저득점 경기면 자동으로
+       커지고, λ 가 벌어지면 자동으로 작아진다.
+    """
+    ph = [_poisson(lam_h, k) for k in range(GRID_MAX + 1)]
+    pa = [_poisson(lam_a, k) for k in range(GRID_MAX + 1)]
+    out = {"home": 0.0, "draw": 0.0, "away": 0.0}
+    for i, x in enumerate(ph):
+        for j, y in enumerate(pa):
+            out["home" if i > j else ("away" if i < j else "draw")] += x * y
+    total = sum(out.values()) or 1.0
+    return {k: v / total for k, v in out.items()}
+
+
+def lam_pair(ref, facts=None) -> tuple[tuple[float, float] | None, str]:
+    """🔴🔴 그 대회의 **기준 λ 둘** — `((λ홈, λ원정), 사유)`. 없으면 `(None, 사유)`.
+
+    🔴 실측 표 두 칸이 그대로 준다(새 계수 0개):
+       λ홈 = `home_share` · λ원정 = `goals_per_match` − `home_share`
+    """
+    from app import rules
+    kind = _kind(ref, facts)
+    said = rules.goal_baseline(kind)
+    mu, share = said.get("goals_per_match"), said.get("home_share")
+    if not isinstance(mu, (int, float)) or not isinstance(share, (int, float)):
+        return None, (f"⬜ `{kind}` 득점 기준이 없다 — 1/3 균등에서 출발한다"
+                      f"(다른 대회에서 빌리지 않는다 · CC1)")
+    lam_h, lam_a = float(share), float(mu) - float(share)
+    if lam_h <= 0 or lam_a <= 0:
+        return None, (f"⬜ `{kind}` λ 가 꼴이 아니다"
+                      f"(총골 {mu} · 홈 몫 {share}) — 1/3 균등")
+    return (lam_h, lam_a), (f"`{kind}` · 표본 {said.get('n') or '?'} · "
+                            f"총골 {float(mu):.3f}")
+
+
 def base_lambda(ref, facts=None) -> tuple[dict | None, str]:
     """🔴🔴 **리그 실측 λ 로 만든 기준점** — `({home,draw,away}, 사유)`.
 
@@ -372,6 +409,28 @@ def flat_prob(varset, *, ref, facts=None) -> tuple[dict, str]:
     #  🔴 `facts` 를 넘긴다 — 대회 열쇠는 **리그 번호**로 갈린다(`comp_kind`).
     #     ⚠️ 안 넘기면 `_kind` 가 빈 글자를 주고 득점 기준이 통째로 비었다
     #        (실측 2026-10-20: λ 를 넣었는데 확률이 **한 칸도 안 바뀌었다**).
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **변수가 λ 를 움직인다** — 사용자 지시 2026-10-21
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > **변수가 λ 를 움직이게 해라**
+    #
+    #  🔴 **왜 — 변수가 확률을 밀어서는 기준점을 못 이긴다**(실측 2026-10-21
+    #     PL 20판): 우리 1위가 **20판 전부 홈**이었고 적중 10/20 은 *"늘 홈"*
+    #     이라 외치는 것과 **같은 수**였다. 원정으로 **네 번** 민 판도
+    #     (리버풀 0-3 맨시티) 홈 39.3 ↔ 원정 39.1 로 **0.2%p 모자라** 못 넘었다
+    #     — `×1.03⁴ = 1.126` 이 기준점의 9%p 격차를 못 이긴다.
+    #     ⚠️ 그리고 같은 쏠림 단계면 확률이 **글자 하나까지 같았다**(해상도가
+    #        여전히 걸음 수의 함수였다).
+    #  🔴 그래서 미는 자리를 **λ 로 옮긴다** — 변수는 그 팀의 **기대 득점**을
+    #     올리고 상대를 내린다. 승무패는 **맨 끝에 격자 한 번**으로 만든다.
+    #     · 무는 **대각선 합**이라 깎는 장치가 사라진다(저득점이면 자동으로 큼)
+    #     · 쏠릴수록 λ 격차가 벌어져 **원정도 1위가 될 수 있다**
+    #     · 경기마다 λ 가 다르므로 **같은 단계라도 수가 갈린다**
+    #  🔴 **새 계수를 만들지 않는다** — 쓰던 배율(`by_layer` 의 과거 1.05 ·
+    #     오늘 1.03)을 그대로 λ 에 곱한다.
+    pair, why_pair = lam_pair(ref, facts)
+    lam = list(pair) if pair else None
     seed, why_base = base_lambda(ref, facts)
     got = dict(seed) if seed else {"home": 1.0 / 3.0, "draw": 1.0 / 3.0,
                                    "away": 1.0 / 3.0}
@@ -455,8 +514,16 @@ def flat_prob(varset, *, ref, facts=None) -> tuple[dict, str]:
         #     때우지 않는다 · #3).
         mul = _layer_mul(kind, f_box)
         other = "away" if want == "home" else "home"
-        got[want] *= mul
-        got[other] /= mul
+        if lam is not None:
+            # 🔴 **λ 를 민다** — 그 팀 기대 득점 ×mul · 상대 ÷mul
+            #    ⚠️ 총골은 거의 그대로다(누가 더 넣나의 이야기지 몇 골 나오나가
+            #       아니다). 승무패는 **맨 끝 격자 한 번**이 만든다.
+            i = 0 if want == "home" else 1
+            lam[i] *= mul
+            lam[1 - i] /= mul
+        else:
+            got[want] *= mul
+            got[other] /= mul
         said_l = "과거" if _is_past(kind) else "오늘"
         said.append(f"[{rid}] {want} ×{mul:g}({why} · {said_l})")
         net[want] = net.get(want, 0) + 1
@@ -478,17 +545,32 @@ def flat_prob(varset, *, ref, facts=None) -> tuple[dict, str]:
         said.append(f"⚠️ 기사 변수 {n_doc}개는 **안 셌다**(내용 판단은 전략 "
                     "전문가가 한다 · 개수로 세지 않는다)")
     lean = abs(int(net.get("home", 0)) - int(net.get("away", 0)))
-    if lean:
-        # 🔴 무를 깎는 크기는 **기본값 하나**다(층과 무관) — 쏠림은 층이 아니라
-        #    **방향**의 이야기다. ⚠️ 그 사실을 사유에 적는다.
+    # 🔴🔴 **λ 를 밀면 무 보정을 하지 않는다**(2026-10-21) — 무는 격자의
+    #    **대각선**이 만들고, λ 가 벌어지면 **저절로** 작아진다. 여기서 또 깎으면
+    #    두 번 깎는 것이고, 게다가 아래 격자가 그 값을 **덮어** 사유만 거짓으로
+    #    남는다(실측: 스냅샷에 `무 ÷1.05^1` 이 찍혔는데 그 수는 안 쓰였다 · #3).
+    if lean and lam is None:
+        # 🔴 크기는 **기본값 하나**다 — 변수 하나가 쓰는 그 ±5% 를 쓴다.
         mul = float(f_box.get("mul") or 1.05)
         got["draw"] /= mul ** lean
-        said.append(f"무 ÷{mul:g}^{lean}(쏠림 {lean}단계)")
+        said.append(f"무 ÷{mul:g}^{lean}(쏠림 {lean}단계 · ⬜ λ 가 없어 "
+                    f"확률에서 깎는다)")
+    if lam is not None:
+        # 🔴 **여기서 한 번** 격자로 바꾼다(민 λ 로) — 무는 대각선이 만든다
+        got = grid_of(lam[0], lam[1])
+        why_base = (f"**기준점 = 리그 실측 λ**({why_pair}) — λ홈 "
+                    f"**{lam[0]:.3f}** ↔ λ원정 **{lam[1]:.3f}**(변수가 민 뒤) "
+                    f"· ⚠️ **기본 포아송**이다(Dixon-Coles `ρ` 는 적합 판이 "
+                    f"없어 안 쓴다)")
     total = sum(got.values()) or 1.0
     got = {k: v / total for k, v in got.items()}
-    head = "🎯 **초기 1/3 균등 + 변수**(사용자 지시 2026-10-15)"
+    # 🔴🔴 **사유가 기준점을 그대로 적는다**(2026-10-20 · #3 조용한 거짓 금지)
+    #    ⚠️ 실사고 2026-10-20: λ 기준점을 넣고도 이 줄이 *"초기 1/3 균등"* 이라
+    #       적고 있었다 — 쏠림 0단계인데 51.5% 가 나왔고 **어디서 온 수인지
+    #       사유로는 되짚을 수 없었다**. 머리글은 `base_lambda` 가 만든다.
+    head = f"🎯 {why_base}"
     if not said:
-        return got, head + " — ⬜ 민 변수가 없다(균등 그대로)"
+        return got, head + " — ⬜ 민 변수가 없다(기준점 그대로)"
     return got, (head + " — " + " · ".join(said)
                  + f" → 홈 {got['home']:.1%} · 무 {got['draw']:.1%} "
                    f"· 원정 {got['away']:.1%}")
@@ -496,7 +578,10 @@ def flat_prob(varset, *, ref, facts=None) -> tuple[dict, str]:
 
 def run(ref, facts, mr, varset, *, edge: dict | None = None,
         state=None, floor: object = None) -> ProbOut:
-    """🔴🔴 S3 — **승무패 = 초기 1/3 균등 + 변수**. 그것뿐이다.
+    """🔴🔴 S3 — **승무패 = 기준점 + 변수**. 그것뿐이다.
+
+    🔴 기준점은 **리그 실측 λ**(`flat_prob` → `lam_pair`)이고, 표가 없으면
+       1/3 균등이다. 변수는 **λ 를 민다**(2026-10-21).
 
     ══════════════════════════════════════════════════════════════════
     🔴🔴 **상성·시뮬을 지웠다** — 사용자 지시 2026-10-17
@@ -523,7 +608,9 @@ def run(ref, facts, mr, varset, *, edge: dict | None = None,
     got.lam, got.over, got.scores = {}, {}, {}
     got.xg, got.share, got.share_refs = {}, {}, {}
     got.shadow = {}
-    got.why = (f"🔴🔴 **승무패 = 초기 1/3 균등 + 변수**(사용자 지시 "
+    # 🔴 머리글은 **`flat_prob` 이 만든 사유**가 말한다(2026-10-21) — 기준점이
+    #    1/3 균등일 수도, 리그 실측 λ 일 수도 있다. 여기서 단정하지 않는다(#3).
+    got.why = (f"🔴🔴 **승무패 = 기준점 + 변수**(사용자 지시 "
                f"2026-10-15) — {why_flat} · 🔴 **기대 득점(λ)·오버·스코어는 "
                f"없다**(2026-10-17) · 🔴 **상성·시뮬은 지웠다**"
                f"(2026-10-17 — 결과가 버려지는 계산이었다)")
