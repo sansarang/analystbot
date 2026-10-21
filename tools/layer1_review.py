@@ -65,7 +65,9 @@ async def one(run_id: str, asked: str) -> int:
     at = recorded_at(run_id)
     if at is not None:
         print(f"[검수] 재생 시각 — 녹화본의 `recorded_at` {at:%Y-%m-%d %H:%M}Z")
-    got = await pipeline.analyze(asked, pool=pool, net=_net_mod.Net(),
+    # 🔴 카드 경로는 운영과 같은 Net 을 쓴다(2026-10-19 · 2번)
+    got = await pipeline.analyze(asked, pool=pool,
+                                 net=_net_mod.card_net(),
                                  chain=_search.build_chain(), now=at)
     if isinstance(got, Ambiguous):
         print(f"🔴 경기를 확정하지 못했다 — {got.why}")

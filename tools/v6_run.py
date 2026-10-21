@@ -78,7 +78,11 @@ async def main(argv: list[str]) -> int:
     q = Question(raw=arg, team=team, opponent=opp,
                  asked_at=datetime.now(timezone.utc))
 
-    net = _net_mod.Net()
+    # 🔴🔴 **운영과 같은 Net** — 하루 캐시를 켜야 예상 XI 판에서 받은
+    #    능력치를 확정 XI 판이 **가져다 쓴다**(사용자 지시 2026-10-19 2번).
+    #    ⚠️ 종전엔 `Net()` 맨몸이라 판마다 선수 페이지를 다시 받았고,
+    #       여기서 잰 시간이 운영과 달랐다(#12 프로브 금지의 그 어긋남).
+    net = _net_mod.card_net()
     ref = await s1_resolve.run(q, pool=pool, state=state, net=net)
     if isinstance(ref, Ambiguous):
         print("🔴 s1 — 경기를 확정하지 못했다")
@@ -158,13 +162,11 @@ async def main(argv: list[str]) -> int:
     board_text = ""
     if "--board" in argv:
         board_text = argv[argv.index("--board") + 1]
-        print(f"[v6] 사용자 보드 — {board_text}", flush=True)
-    image = argv[argv.index("--image") + 1] if "--image" in argv else ""
-    if image:
-        print(f"[v6] 보드 캡처 — {image}(로컬 OCR)", flush=True)
+        print(f"[v6] 보드 글 — {board_text}(경기 단서로만 쓴다 · 배당 미사용)",
+              flush=True)
+    # ⚠️ `--image`(보드 캡처 → 로컬 OCR → 배당 파서)는 **걷혔다**(2026-10-19)
     got = await pipeline.analyze(arg, pool=pool, net=net, chain=chain,
-                                state=state, board_text=board_text,
-                                board_image=image)
+                                state=state, board_text=board_text)
     if isinstance(got, Ambiguous):
         print("🔴 경기를 확정하지 못했다:", got.why)
         return 1

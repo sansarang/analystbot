@@ -43,6 +43,7 @@ Nagai(GK)        골키퍼는 **지표가 다르다**
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
 
@@ -182,15 +183,48 @@ def targets(ref, facts, plan) -> tuple[list[dict], str]:
         if sum(len(r["players"]) for r in rows) >= MAX_PLAYERS:
             said.append(f"{NONE_MARK} 전체 상한 {MAX_PLAYERS}명에서 멈췄다")
             break
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **상한이 안 차면 오늘 선발로 채운다** — 사용자 지시 2026-10-19 ③
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실측 2026-10-19(하르키우 vs 리비 베레흐): 오늘 **결장이 0건**이라
+    #     교체·핵심 선수 사실이 공격 쪽 6명만 댔고 그 6명은 fotmob 이 `traits`
+    #     를 **`null`** 로 준 선수였다 → ⑤-b1 이 *"능력치 0명"* 으로 끝났다.
+    #     🔴 그런데 같은 경기에서 능력치가 **있는 선발이 둘**(홈 GK·LB) 있었다 —
+    #        **대상이 아니어서** 한 명도 안 쓴 것이다.
+    #  🔴 그래서 상한이 남으면 **오늘 선발**로 채운다. ⚠️ 새 통신은 늘지 않는다 —
+    #     ⑤-b1b 가 선발 전원을 이미 받고 그 묶음이 `fetch(have=)` 로 온다.
+    #  🔴 명부는 `squad_of` 하나다(#1 사본 금지) — 거기 번호 없는 선수는 안 담는다.
+    taken_all = {nm for r in rows for nm, _p in r["players"]}
+    for side in ("home", "away"):
+        if sum(len(r["players"]) for r in rows) >= MAX_PLAYERS:
+            break
+        want = min(MAX_PER_SIDE - n_side.get(side, 0),
+                   MAX_PLAYERS - sum(len(r["players"]) for r in rows))
+        if want <= 0:
+            continue
+        xi_rows, _why_xi = squad_of(facts, ref, side)
+        more = [(x["name"], x["pid"]) for x in xi_rows
+                if x["name"] not in taken_all][:want]
+        if not more:
+            continue
+        taken_all |= {nm for nm, _p in more}
+        n_side[side] = n_side.get(side, 0) + len(more)
+        rows.append({"id": f"XI-{side}", "side": side, "kind": "xi",
+                     "text": f"오늘 선발 {len(more)}명(교체·핵심 선수로 "
+                             f"상한이 안 찼다)", "players": more})
+        said.append(f"오늘 선발 {len(more)}명으로 채웠다(`{side}`)")
     if not rows:
-        return [], (f"{NONE_MARK} 받을 선수가 없다(교체·핵심 선수 사실 0건)"
+        return [], (f"{NONE_MARK} 받을 선수가 없다(교체·핵심 선수 사실 0건 · "
+                    f"오늘 선발도 번호가 없다)"
                     + (" · " + " · ".join(said[:3]) if said else ""))
     return rows, (f"대상 {sum(len(r['players']) for r in rows)}명 / "
                   f"자리 {len(rows)}곳"
                   + (" · " + " · ".join(said[:3]) if said else ""))
 
 
-async def fetch(net, rows: list[dict], *, clock=None
+async def fetch(net, rows: list[dict], *, clock=None,
+                have: dict[str, dict] | None = None
                 ) -> tuple[dict[str, dict], str]:
     """🔴🔴 ② 선수 페이지를 받아 **능력치만** 꺼낸다. `({이름: 묶음}, 사유)`.
 
@@ -200,14 +234,31 @@ async def fetch(net, rows: list[dict], *, clock=None
        자리에서 멈추고** 사유를 남긴다(#3 · 조용히 적게 받지 않는다).
     ⚠️ 실패는 네 가지로 **갈라서** 적는다 — 번호가 없다 / 못 받았다 /
        `traits` 가 비었다 / 시간 상한.
+
+    ══════════════════════════════════════════════════════════════════
+    🔴🔴 **`have` — 이미 받은 것을 다시 받지 않는다**(사용자 지시 2026-10-19 ③)
+    ══════════════════════════════════════════════════════════════════
+
+    ⚠️ 실측 2026-10-19(하르키우 vs 리비 베레흐): 운영이 ⑤-b1 로 **6명**을 받고
+       곧바로 ⑤-b1b 로 **같은 선발 22명**을 또 받았다 — 겹치는 6명은 **두 번**
+       받은 것이다(한 명 2.09초 · 880KB). 🔴 그리고 ⑤-b1 의 글자
+       (`said_of`)는 **아무도 쓰지 않았다**(파이프라인이 만들고 버렸다).
+    🔴 그래서 선발 전원을 먼저 받고(`squad_fetch`) 그 묶음을 `have` 로 넘긴다 —
+       ⑤-b1 의 **새 통신은 0건**이 된다. ⚠️ 재사용한 수를 사유에 적는다(#3).
     """
     from app.collect import fotmob as _fm
     out: dict[str, dict] = {}
     said: list[str] = []
-    n_dead = n_empty = 0
+    book = dict(have or {})
+    n_dead = n_empty = n_again = 0
     for row in list(rows or []):
         for nm, pid in list(row.get("players") or []):
             if nm in out:
+                continue
+            # 🔴 ③ 이미 받은 선수는 **그 묶음을 그대로 쓴다**(통신 0건)
+            if dict(book.get(nm) or {}).get("items"):
+                out[nm] = dict(book[nm])
+                n_again += 1
                 continue
             if clock is not None and getattr(clock, "over", lambda: False)():
                 said.append(f"{NONE_MARK} **카드 상한**을 넘겨 멈췄다"
@@ -230,6 +281,8 @@ async def fetch(net, rows: list[dict], *, clock=None
                 continue
             out[nm] = {"pid": pid, "group": title, "items": items}
     head = f"능력치 **{len(out)}명**"
+    if n_again:
+        head += f" · ♻️ 이미 받은 것 {n_again}명(통신 0건)"
     if n_dead:
         head += f" · 🔴 못 받은 선수 {n_dead}명"
     if n_empty:
@@ -339,8 +392,11 @@ def squad_of(facts, ref, side: str) -> tuple[list[dict], str]:
     box = dict(getattr(facts, "xi", None) or {})
     key = str(getattr(ref, side, "") or "")
     one = box.get(key)
-    if one is None:
-        return [], f"{NONE_MARK} `{side}` XI 가 없다"
+    #  🔴🔴 **오늘 XI 가 없으면 평소 XI 로 되물린다**(2026-10-19 · 3번) —
+    #     라인업 블록이 통째로 없는 판(이란 `content.lineup = None`)이 그 경우다.
+    #     ⚠️ 비어 있는 `lineup` 도 같다 — 명단이 0명이면 받을 사람이 없다.
+    if one is None or not list(getattr(one, "lineup", None) or []):
+        return usual_of(facts, ref, side)
     got: list[dict] = []
     n_nopid = 0
     # ══════════════════════════════════════════════════════════════════
@@ -373,6 +429,82 @@ def squad_of(facts, ref, side: str) -> tuple[list[dict], str]:
         said += f" · {NONE_MARK} 번호 없는 선발 {n_nopid}명"
     if not got:
         return [], said
+    return got[:squad_cap()], said
+
+
+# ══════════════════════════════════════════════════════════════════════
+# 🔴🔴 **라인업 블록이 아예 없으면 평소 XI 로 되물린다** — 2026-10-19 (3번)
+# ══════════════════════════════════════════════════════════════════════
+#
+#  > 사용자가 경기를 물으면 우선 능력치부터 수집한다 .. **라인업이 안 떴어도**
+#  > .. 기존에 **예상 라인업 수집하는 로직**이 있다 .. 거기에 선수들을 적용한다
+#
+#  🔴 **대개는 이 길이 필요 없다** — fotmob 이 발표 전에도
+#     `lineupType='lastStarting11'` 을 주고 `adapt.xi_of` 가 그것을 `predicted`
+#     로 그대로 싣는다(실측 2026-10-19 이집트: 11+11 · 자리·측면·번호까지).
+#  🔴 이 길이 도는 것은 **블록이 통째로 없을 때**다 — 실측 2026-10-19(이란
+#     `Mes Shahr Babak vs Persepolis`): `content.lineup` 이 **`None`** 이었다
+#     (`weather`·`table`·`h2h` 는 왔는데 그 칸만 null).
+#  🔴 그때 쓸 명단은 **평소 XI** 다 — 빈도 규칙은 `s2b_base` 가 원본이고
+#     여기서 다시 짜지 않는다(#1 사본 금지). ⚠️ 그 함수는 **이름만** 주므로
+#     번호·자리는 과거 XI 행에서 끌어온다.
+#  ⚠️ **자리는 최빈값**이다(그 규칙이 여태 없었다) — 경기마다 자리가 달랐던
+#     선수는 가장 많이 선 자리로 둔다. 동률이면 **더 최근** 경기 쪽이다
+#     (무작위로 고르면 회차마다 갈래가 흔들린다 · `ranked` 와 같은 결).
+#  🔴 **되물린 사실을 사유에 적는다** — 오늘 XI 가 아니다(#3 조용한 대입 금지).
+
+
+def usual_of(facts, ref, side: str) -> tuple[list[dict], str]:
+    """🔴🔴 **평소 XI** — 과거 경기 선발 빈도 상위 11명 + 자리는 **최빈값**.
+
+    `([{name,pid,pos,flank,bench}], 사유)` — `squad_of` 와 **같은 모양**이다.
+    ⚠️ 번호(`pid`)가 없는 선수는 **안 담는다**(선수 페이지를 못 연다).
+    """
+    from app.core.stages import s2b_base as _s2b      # 🔴 빈도 규칙의 원본
+    key = str(getattr(ref, side, "") or "")
+    rows = list(dict(getattr(facts, "past_xi", None) or {}).get(key) or [])
+    if not rows:
+        return [], f"{NONE_MARK} `{side}` 과거 선발이 없다(평소 XI 를 못 만든다)"
+    names, why = _s2b.usual_xi(rows)
+    # 🔴 이름 → 번호·자리(최빈값). `i` 가 작을수록 **최근** 경기다.
+    box: dict[str, dict] = {}
+    for i, xi in enumerate(rows):
+        for p in list(getattr(xi, "lineup", None) or []):
+            nm = str(getattr(p, "name", "") or "").strip()
+            if not nm:
+                continue
+            one = box.setdefault(nm, {"pid": None, "pos": {}, "flank": {},
+                                      "first": i})
+            pid = getattr(p, "pid", None)
+            if one["pid"] is None and isinstance(pid, int) and pid > 0:
+                one["pid"] = pid
+            for what in ("pos", "flank"):
+                said = str(getattr(p, what, "") or "")
+                if said:
+                    seen = one[what].setdefault(said, [0, i])
+                    seen[0] += 1
+                    seen[1] = min(seen[1], i)
+
+    def _top(tally: dict) -> str:
+        """🔴 최빈값 — 동률이면 **더 최근**(작은 `i`) 쪽."""
+        if not tally:
+            return ""
+        return sorted(tally.items(), key=lambda kv: (-kv[1][0], kv[1][1]))[0][0]
+
+    got: list[dict] = []
+    n_nopid = 0
+    for nm in names:
+        one = box.get(nm)
+        if not one or not isinstance(one.get("pid"), int):
+            n_nopid += 1
+            continue
+        got.append({"name": nm, "pid": one["pid"],
+                    "pos": _top(one["pos"]), "flank": _top(one["flank"]),
+                    "bench": False})
+    said = (f"{side} 🔁 **평소 XI**(오늘 XI 가 없다) — {why} · "
+            f"번호 있는 선수 **{len(got)}명**")
+    if n_nopid:
+        said += f" · {NONE_MARK} 번호 없는 선수 {n_nopid}명"
     return got[:squad_cap()], said
 
 
@@ -418,6 +550,105 @@ async def squad_fetch(net, facts, ref, *, clock=None
         return {}, " · ".join(said)
     box, why_f = await fetch(net, rows, clock=clock)
     return box, " · ".join([*said, why_f])
+
+
+# ══════════════════════════════════════════════════════════════════════
+# 🔴🔴 **안전장치 — 선발 능력치가 없으면 분석을 내지 않는다**
+#      사용자 지시 2026-10-19
+# ══════════════════════════════════════════════════════════════════════
+#
+#  > 3 고치고 안전장치를 만들어라 **선발 11명 능력치를 받지 못하면 분석은
+#  > 무의미하다**
+#
+#  🔴 그래서 양 팀 **각각** `xi_ability_min_per_side` 명을 받아야 확률로 간다.
+#     못 받으면 카드는 확률 칸을 **비운 채** "선발 능력치 미확보 — 누구" 로
+#     나간다. ⚠️ **숫자를 낸 채 🔴만 다는 것 금지**(라인업 신원 검문과 같은 규율).
+#
+#  ⚠️ 실측 2026-10-19(하르키우 vs 리비 베레흐)가 이 검문이 막으려는 판이다:
+#     fotmob 이 선발 22명 중 **20명의 `traits` 를 `null`** 로 줘서 원정이
+#     **0명**이었다. 그 상태로 카드는 확률(홈 32.9 · 무 32.2 · 원정 34.9)을
+#     **냈고** 홈이 2-1 로 이겼다. 🔴 양쪽 비교가 통째로 빈 수였다.
+#
+#  🔴 **XI 가 아예 없는 판은 이 검문을 건너뛴다**(T−24h 기본 카드) — 없는 것은
+#     모순이 아니다. 그 예외는 `pipeline` 이 라인업 신원 검문과 **같은 자리**
+#     에서 적는다(`said_xi_rows == 0`).
+
+
+def xi_min() -> int:
+    """🔴 양 팀 **각각** 받아야 하는 선발 능력치 인원 — 표가 든다.
+
+    ⚠️ 0 이면 **검문을 끈다**(사용자가 그렇게 둔 것이다 · §13-7).
+    """
+    try:
+        return int(_load().get("xi_ability_min_per_side") or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+@dataclass
+class XIGate:
+    """🔴 선발 능력치 검문 결과. ⚠️ `ok=False` 면 **확률을 내지 않는다**."""
+
+    ok: bool = True
+    why: str = ""
+    #: 🔴 "누구"를 적는다 — 능력치를 못 받은 선발 이름이다(#3)
+    names: list[str] = field(default_factory=list)
+
+    def card(self) -> str:
+        """🔴 카드가 그대로 쓰는 한 줄."""
+        if self.ok:
+            return ""
+        return ("🔴🔴 **선발 능력치 미확보** — "
+                + (", ".join(self.names) if self.names
+                   else "선발을 한 명도 못 짚었다")
+                + f" · {self.why}")
+
+
+def xi_gate(facts, ref, box: dict[str, dict]) -> XIGate:
+    """🔴🔴 **선발 능력치 검문** — `({ok, why, names})`.
+
+    🔴 세는 것은 **오늘 선발**(`squad_of`)과 그들의 `traits` 수신 여부뿐이다 —
+       명부도 문턱도 **원본 하나**에서 온다(#1 사본 금지).
+    ⚠️ 양 팀 **각각** 센다 — 한쪽만 차면 비교가 못 선다(그것이 하르키우 판이다).
+    """
+    need = xi_min()
+    if need <= 0:
+        return XIGate(ok=True, why=f"{NONE_MARK} 검문 꺼짐"
+                                   f"(`xi_ability_min_per_side` 0)")
+    said: list[str] = []
+    miss: list[str] = []
+    n_got: dict[str, int] = {}
+    bad = False
+    for side in ("home", "away"):
+        rows, _why = squad_of(facts, ref, side)
+        got = [x["name"] for x in rows
+               if dict(dict(box or {}).get(x["name"]) or {}).get("items")]
+        gone = [x["name"] for x in rows if x["name"] not in got]
+        n_got[side] = len(got)
+        said.append(f"`{side}` 능력치 **{len(got)}/{len(rows)}명**"
+                    f"(필요 {need}명)")
+        if len(got) < need:
+            bad = True
+            miss += [f"{side} `{nm}`" for nm in gone]
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **동등한 조건에서만 센다** — 사용자 지시 2026-10-19
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 그리고 **동등한 조건에서 측정을 해야 한다** .. 양팀 조건을 맞았을때
+    #
+    #  🔴 양쪽 **인원 수가 다르면** 평균을 견주는 전제가 깨진다(르아브르 1-3:
+    #     0.50(8명) ↔ 0.37(10명) 을 견주다 틀렸다). 그 허용값은 저장소가 이미
+    #     들고 있다 — `count_slack` 하나를 읽는다(사본 금지 · `AB1`·`AB3`·
+    #     갈래 판정·`DV3` 가 같은 수를 쓴다).
+    slack = count_slack()
+    diff = abs(n_got.get("home", 0) - n_got.get("away", 0))
+    said.append(f"양쪽 차 {diff}명(허용 {slack}명)")
+    if diff > slack:
+        bad = True
+    why = " · ".join(said)
+    if not bad:
+        return XIGate(ok=True, why=why)
+    return XIGate(ok=False, why=why + " · 🔴 양 팀 비교가 못 선다", names=miss)
 
 
 def _pct_of(one: dict, traits: list[str]) -> float | None:

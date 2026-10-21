@@ -138,6 +138,28 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     facts, (feed_mk, user_mk) = await asyncio.gather(
         s2_facts.run(ref, state=st, net=net, xi_capture=xi_said),
         s2c_market.run(ref, pool=pool, net=net, state=st, board=got_board))
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **⑤-b1b 선발 전원 능력치 — 라인업보다 먼저 받는다**
+    #      사용자 지시 2026-10-19 · 되살림 2026-10-21
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 사용자가 경기를 물으면 **우선 능력치부터 수집한다** .. 라인업이 안
+    #  > 떴어도 .. **라인업 확정이 되면 능력치만 가져다가 쓴다**
+    #
+    #  🔴 자리가 여기인 까닭 — 사실 수집 **바로 뒤**이고 ③ 문서 추출·전략 판정·
+    #     라인업 신원 검문보다 **앞**이다. ⚠️ 실측 2026-10-21(리가 MX): 이 줄이
+    #     걷힌 채로 돌자 능력치가 **문서 추출 뒤**(④ 161줄 ↔ 선수 164줄)에
+    #     받아졌다 — 검색이 카드 상한을 먹으면 능력치를 **못 받는다**.
+    #  🔴🔴 **예상 XI 도 그대로 쓴다** — `fotmob.parse_lineup` 이 꼴을 안 가리고
+    #     `adapt.xi_of` 가 `predicted` 를 그대로 실어서, 발표 전
+    #     `lineupType='lastStarting11'` 판도 `facts.xi` 에 11+11 이 들어온다.
+    #  ⚠️ **능력치는 라인업 확정과 무관하다**(`traits` 는 선수 페이지 칸이다) —
+    #     일찍 받아도 받는 사람 수는 안 늘고, 줄어드는 것은 **시간**이다.
+    from app.core import ability as _ab3
+    from app.core import branchjudge as _bj
+    said_sq, said_why_sq = await _ab3.squad_fetch(net, facts, ref, clock=st.clock)
+    _bj.set_squad(said_sq)
+    st.note(f"⑤-b1b 선발 능력치(라인업보다 **먼저**) — {said_why_sq}")
     base_p, adj_p = await s2b_base.run(ref, facts, state=st, net=net)
     # 🔴🔴 §2 경우의 수 — **코드만**(LLM 없음). 순위표가 없으면 빈 표다
     look = s2b_base.outlook(ref, facts, state=st)
@@ -368,12 +390,39 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #     **코드가 만든 변수**로만 간다. 그 사실을 여기 적는다(#3).
     #  ⚠️ ⑤-b3 갈래 판정(`core/branchjudge`)은 **모듈을 남긴다**(사용자 지시
     #     *"갈래 지우지 마라"*) — 다만 판정할 **주장이 없어** 안 돈다.
-    from app.core import ability as _ab3
-    from app.core import branchjudge as _bj
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **선발 능력치 검문**(⑤-b1c) — 사용자 지시 2026-10-19 · 되살림 10-21
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > **선발 11명 능력치를 받지 못하면 분석은 무의미하다**
+    #
+    #  🔴 양 팀 **각각** `xi_ability_min_per_side`(8명) 이상이고 **양쪽 인원 차**가
+    #     `count_slack`(1) 이내여야 확률로 간다. 못 차면 확률 칸을 **비운 채**
+    #     퇴로 카드로 나간다(숫자를 낸 채 🔴만 다는 것 금지).
+    #  ⚠️ 🔴 **수집은 맨 앞이고 검문은 여기**다 — 라인업 **신원 모순**(결장인데
+    #     선발)이 능력치보다 **먼저** 걸려야 한다. 둘이 자리를 바꾸면 모순 입력
+    #     판이 *"능력치 미확보"* 로 적혀 까닭이 섞인다(#3).
+    #  ⚠️ **XI 가 아예 없는 판은 건너뛴다** — 라인업 신원 검문과 **같은 예외**다
+    #     (T−24h 기본 카드 · 없는 것은 모순이 아니다 · 위 `said_xi_rows`).
+    said_abg = (_ab3.XIGate(ok=True, why="⬜ 건너뜀 — 어느 쪽도 XI 가 없다")
+                if said_xi_rows == 0 else _ab3.xi_gate(facts, ref, said_sq))
+    st.note(f"⑤-b1c 선발 능력치 검문 — {said_abg.why}")
+    if not said_abg.ok:
+        # 🔴 카드 줄은 `_gate_card` 가 적는다 — 여기서 또 적으면 **두 번** 찍힌다
+        return _gate_card(ref, facts, variables, said_abg, state=st,
+                          docs=docs, before=before,
+                          head="선발 능력치 미확보",
+                          stance="🔴 확률 미산출(선발 능력치 검문)")
+    #  🔴 `_ab3`·`_bj` 는 **위에서 이미** 들여왔다(⑤-b1b 가 맨 앞이다).
+    #  🔴 `have=said_sq` — 선발 전원을 이미 받았으니 **다시 안 받는다**(통신 0).
     said_tg, said_why_tg = _ab3.targets(ref, facts, plan)
-    said_box, said_why_ab = await _ab3.fetch(net, said_tg, clock=st.clock)
+    said_box, said_why_ab = await _ab3.fetch(net, said_tg, clock=st.clock,
+                                             have=said_sq)
     said_ability = _ab3.said_of(said_tg, said_box, ref=ref)
     st.note(f"⑤-b1 선수 능력치 — {said_why_tg} · {said_why_ab}")
+    # 🔴 그 글자를 **장부에 적는다** — 종전엔 만들고 **버렸다**(#2 배선).
+    for line in said_ability[:12]:
+        st.note(f"⑤-b1 {line}")
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **⑤-b1b 선발 전원 능력치 — 전술 갈래를 가릴 재료**
     #      사용자 지시 2026-10-17
@@ -389,9 +438,8 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #  ⚠️ **벤치는 못 받는다** — `XI.bench` 가 이름 글자뿐이라 선수 페이지를
     #     열 번호가 없다(InfoQ 의 *"벤치 id 확정"* 칸이 그것을 세고 있다).
     #  🔴 수는 `core/ability` 에서 멈춘다 — 1단이 **부등호 하나**만 받는다.
-    said_sq, said_why_sq = await _ab3.squad_fetch(net, facts, ref, clock=st.clock)
-    _bj.set_squad(said_sq)
-    st.note(f"⑤-b1b 선발 능력치 — {said_why_sq}")
+    # 🔴 **수집은 위로 올라갔다**(2026-10-21 되살림) — 이 자리에 있던
+    #    `squad_fetch` 세 줄은 사실 수집 **바로 뒤**로 옮겼다.
     st.note("⑤-b2 LLM 전략분석 — 🔴 **지웠다**(사용자 지시 2026-10-18) · "
             "능력치·전략 판정·직전 5경기 자료는 그대로 모은다")
     # ══════════════════════════════════════════════════════════════════
@@ -1337,10 +1385,16 @@ def _machine_of(ref: MatchRef, facts, layers: dict, prob, *,
 
 
 def _gate_card(ref: MatchRef, facts, variables: list, gate, *,
-               state: RunState, docs: list, before: Card | None):
-    """🔴🔴 ③ — **"라인업 신원 미확정" 카드**. 상성·확률 칸을 **비운 채** 낸다.
+               state: RunState, docs: list, before: Card | None,
+               head: str = "라인업 신원 미확정",
+               stance: str = "🔴 확률 미산출(신원 검문)"):
+    """🔴🔴 ③ — **검문 퇴로 카드**. 상성·확률 칸을 **비운 채** 낸다.
 
     > 숫자를 낸 채 🔴만 다는 것 금지.
+
+    🔴 `head`·`stance` 는 **어느 검문이 걸렸나**다 — 라인업 신원 검문과
+       **선발 능력치 검문**이 이 퇴로를 함께 쓴다. ⚠️ 까닭이 섞이면 칠 표가
+       두 경기를 같은 줄로 센다(#3).
     """
     from app.core.schema import Card as _C
     state.note(gate.card())
@@ -1354,12 +1408,12 @@ def _gate_card(ref: MatchRef, facts, variables: list, gate, *,
     #    점검 **앞**에서 돌아 나가므로, 그대로 두면 카드에 점검 줄이 없고 칠 표는
     #    이 경기를 *"보드 없음"* 으로만 뺀다(까닭이 달라진다).
     from app.core import machine as _mc
-    said_mc = _mc.held(f"라인업 신원 미확정 — {gate.why}")
+    said_mc = _mc.held(f"{head} — {gate.why}")
     return _C(match=ref, facts=facts, variables=list(variables or []),
               funnel=state.counted_box() if hasattr(state, "counted_box")
               else _C(match=ref, facts=facts).funnel,
               machine=said_mc.why, machine_hold=True,
-              conclusion=gate.card(), stance="🔴 확률 미산출(신원 검문)")
+              conclusion=gate.card(), stance=stance)
 def _moved(before: Card, layers: dict, mr: object) -> list[str]:
     """🔴🔴 **F1 — 바뀐 것: 상성 축(전→후)·확률(전→후)·등급(전→후)**.
 
